@@ -51,42 +51,33 @@ def unpack_data(data_file_path):
     return  activity_dict, weight_dict, metrics_dict, hyperparams_dict
 
 
-def plot_metrics(metrics_dict_bp,metrics_dict_hebb,metrics_dict_btsp):
+def plot_metrics(metrics_dict, legend_dict, fig_superlist, xlim=(0,200)):
+    fig, ax = plt.subplots(2,2, figsize=(10, 5))
 
+    for row,fig_list in enumerate(fig_superlist):
+        col = 0
+        if row>1:
+            col = 1
+            row -= 2
+        for model_name in fig_list:
+            accuracy = metrics_dict[model_name]['accuracy']
+            ax[row,col].plot(accuracy, label=legend_dict[model_name][0], color=legend_dict[model_name][1])
+        ax[row,col].set_xlabel('Training blocks')
+        ax[row,col].set_ylabel('% correct')
+        ax[row,col].set_ylim(bottom=0)
+        ax[row,col].set_xlim(xlim)
+        ax[row,col].set_title('Argmax accuracy', fontsize=12)
+        ax[row,col].legend()
 
+    fig.tight_layout()
+    sns.despine()
 
-    for model_name in metrics_dict.keys():
-        print(model_name)
-
-        accuracy = metrics_dict[model_name]['accuracy']
-        loss = metrics_dict[model_name]['loss']
-        fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-
-        ax[0].plot(loss)
-        ax[0].set_xlabel('Epochs')
-        ax[0].set_ylabel('Loss')
-        ax[0].set_ylim(bottom=0)
-        ax[0].set_title('learning curve', fontsize=20)
-
-        ax[1].plot(accuracy)
-        ax[1].set_xlabel('Epochs')
-        ax[1].set_ylabel('% correct')
-        ax[1].set_ylim([0, 100])
-        ax[1].set_title('Argmax accuracy', fontsize=20)
-
-        plt.suptitle(model_name, fontsize=20)
-        m = np.max(accuracy)
-        print(f"Epochs to {np.round(m)}% accuracy: {np.where(accuracy >= m)[0][0]}")
-        for i in range(accuracy.shape[0]):
-            if np.all(accuracy[i:i + 50] == 100):
-                print(f"Stable epoch: {i + 50} /n")
-                break
-
-        fig.tight_layout()
-        sns.despine()
+    fig.savefig('figures/accuracy.svg', edgecolor='white', dpi=300, facecolor='white', transparent=True)
+    fig.savefig('figures/accuracy.png', edgecolor='white', dpi=300, facecolor='white', transparent=True)
 
 
 def plot_activity(activity_dict):
+    # for model_name in activity_dict.keys():
     return
 
 
@@ -103,7 +94,17 @@ def plot_weights(weights_dict):
 
 def main(plot):
 
-    legend_dict = {}
+    legend_dict =  {'FBI_RNN_1hidden_tau_Inh7': ('Backprop inh=7','red'),
+                    'FBI_RNN_1hidden_tau_Inh7_relu': ('Backprop inh=7, relu','green'),
+                    'FBI_RNN_1hidden_tau_global_Inh': ('Backprop global inh','blue'),
+                    'FBI_RNN_1hidden_tau_global_Inh_relu': ('Backprop global inh, relu','magenta'),
+                    'FF_network_1hidden': ('Backprop FF','cyan'),
+                    'FF_network_1hidden_relu': ('Backprop FF, relu','purple'),
+                    '_Hebb_1_hidden_inh_1_7': ('Hebb inh=1,7','orange'),
+                    '_Hebb_1_hidden_inh_7_7': ('Hebb inh=7,7','maroon'),
+                    '_Hebb_no_hidden_inh_1': ('Hebb inh=1, no hidden','tan'),
+                    '_Hebb_no_hidden_inh_7': ('Hebb inh=7, no hidden','plum'),
+                    'btsp_network': ('BTSP','navy')}
 
     activity_dict_bp, weight_dict_bp, metrics_dict_bp, hyperparams_dict_bp = unpack_data('20220504_backprop_network_data.hdf5')
     activity_dict_hebb, weight_dict_hebb, metrics_dict_hebb, hyperparams_dict_hebb = unpack_data('20220405_Hebb_lateral_inh_network_data.hdf5')
@@ -115,7 +116,12 @@ def main(plot):
 
     globals().update(locals())
 
-    # plot_metrics(metrics_dict)
+    fig1_list = ['FF_network_1hidden','FBI_RNN_1hidden_tau_global_Inh','FBI_RNN_1hidden_tau_Inh7']
+    fig2_list = ['FF_network_1hidden', 'FF_network_1hidden_relu']
+    fig3_list = ['FBI_RNN_1hidden_tau_Inh7', '_Hebb_1_hidden_inh_1_7']
+    fig4_list = ['FF_network_1hidden', 'FBI_RNN_1hidden_tau_Inh7', '_Hebb_1_hidden_inh_7_7', 'btsp_network']
+    fig_superlist = [fig1_list,fig2_list,fig3_list,fig4_list]
+    plot_metrics(metrics_dict, legend_dict, fig_superlist, xlim=(0,200))
 
     if plot:
         plt.show()
