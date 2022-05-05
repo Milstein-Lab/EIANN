@@ -90,11 +90,12 @@ def plot_activity(activity_dict, legend_dict, plot):
             sparsity_dict[model_name] = np.nanmean(sparsity)
 
             # Compute discriminability
-            similarity_matrix = cosine_similarity(activity_dict[model_name][1]['E'].T)
+            activity = activity_dict[model_name][1]['E'].T
+            similarity_matrix = cosine_similarity(activity)
+            zero_patterns = np.where(np.sum(activity,axis=1)==0)[0]
+            similarity_matrix[:,zero_patterns], similarity_matrix[zero_patterns,:] = 1,1
             similarity_matrix_idx = np.tril_indices_from(similarity_matrix, -1) # extract all values below diagonal
             similarity = similarity_matrix[similarity_matrix_idx]
-            invalid_idx = np.isnan(similarity)
-            similarity[invalid_idx] = 1
             discriminability = 1 - similarity
             discriminability_dict[model_name] = np.mean(discriminability)
 
@@ -125,11 +126,12 @@ def plot_activity(activity_dict, legend_dict, plot):
     sparsity_dict['ideal'] = np.nanmean(sparsity)
 
     # Compute ideal discriminability
-    similarity_matrix = cosine_similarity(ideal_2hot_activity.T)
+    activity = ideal_2hot_activity.T
+    similarity_matrix = cosine_similarity(activity)
+    zero_patterns = np.where(np.sum(activity, axis=1) == 0)[0]
+    similarity_matrix[:, zero_patterns], similarity_matrix[zero_patterns, :] = 1, 1
     similarity_matrix_idx = np.tril_indices_from(similarity_matrix, -1)  # extract all values below diagonal
     similarity = similarity_matrix[similarity_matrix_idx]
-    invalid_idx = np.isnan(similarity)
-    similarity[invalid_idx] = 1
     discriminability = 1 - similarity
     discriminability_dict['ideal'] = np.mean(discriminability)
 
@@ -333,17 +335,17 @@ def main(plot):
     # fig_superlist = [fig1_list,fig2_list,fig3_list,fig4_list]
     # plot_metrics(metrics_dict, legend_dict, fig_superlist, xlim=(0,200))
 
-    # sparsity_dict, discriminability_dict = plot_activity(activity_dict, legend_dict, plot)
+    sparsity_dict, discriminability_dict = plot_activity(activity_dict, legend_dict, plot)
     globals().update(locals())
 
-    plot_weights(weight_dict)
+    # plot_weights(weight_dict)
 
-    # fig1_list = ['FF_network_1hidden','FBI_RNN_1hidden_tau_global_Inh','FBI_RNN_1hidden_tau_Inh7']
-    # fig2_list = ['FF_network_1hidden', 'FF_network_1hidden_relu']
-    # fig3_list = ['FBI_RNN_1hidden_tau_Inh7', 'Hebb_1_hidden_inh_1_7']
-    # fig4_list = ['FF_network_1hidden', 'FBI_RNN_1hidden_tau_Inh7', 'Hebb_1_hidden_inh_7_7', 'btsp_network']
-    # fig_superlist = [fig1_list,fig2_list,fig3_list,fig4_list]
-    # plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, fig_superlist)
+    fig1_list = ['FF_network_1hidden','FBI_RNN_1hidden_tau_global_Inh','FBI_RNN_1hidden_tau_Inh7']
+    fig2_list = ['FF_network_1hidden', 'FF_network_1hidden_relu']
+    fig3_list = ['FBI_RNN_1hidden_tau_Inh7', 'Hebb_1_hidden_inh_1_7']
+    fig4_list = ['FF_network_1hidden', 'FBI_RNN_1hidden_tau_Inh7', 'Hebb_1_hidden_inh_7_7', 'btsp_network']
+    fig_superlist = [fig1_list,fig2_list,fig3_list,fig4_list]
+    plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, fig_superlist)
 
     # plot_activation_func()
 
