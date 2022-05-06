@@ -9,6 +9,7 @@ import h5py
 from copy import deepcopy
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy import stats
+import math
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
@@ -60,6 +61,7 @@ def unpack_data(data_file_path):
 def plot_activity(activity_dict, legend_dict, plot):
     sparsity_dict = {}
     discriminability_dict = {}
+    storage_capacity_dict = {}
 
     for model_name in activity_dict:
         fig = plt.figure(figsize=(10, 7))
@@ -88,6 +90,12 @@ def plot_activity(activity_dict, legend_dict, plot):
                 activity_fraction = (np.sum(pop_activity) / n) ** 2 / np.sum(pop_activity ** 2 / n)
                 sparsity[i] = (1 - activity_fraction) / (1 - 1 / n)
             sparsity_dict[model_name] = np.nanmean(sparsity)
+
+            # Calculate combinatorial patterns with binomial formula (generalized for non-integer values)
+            n = activity_dict[model_name][1]['E'].shape[0]
+            k = (1 - np.nanmean(sparsity)) * n
+            n_choose_k = math.gamma(n+1) / (math.gamma(k+1) * math.gamma(n-k+1))
+            storage_capacity_dict[model_name] = n_choose_k / num_patterns
 
             # Compute discriminability
             activity = activity_dict[model_name][1]['E'].T
@@ -125,6 +133,12 @@ def plot_activity(activity_dict, legend_dict, plot):
         sparsity[i] = (1 - activity_fraction) / (1 - 1 / n)
     sparsity_dict['ideal'] = np.nanmean(sparsity)
 
+    # Compute ideal combinatorial patterns with binomial formula (generalized for non-integer values)
+    n = 7
+    k = (1 - np.nanmean(sparsity)) * n
+    n_choose_k = math.gamma(n+1) / (math.gamma(k+1) * math.gamma(n-k+1))
+    storage_capacity_dict['ideal'] = n_choose_k / num_patterns
+
     # Compute ideal discriminability
     activity = ideal_2hot_activity.T
     similarity_matrix = cosine_similarity(activity)
@@ -135,7 +149,7 @@ def plot_activity(activity_dict, legend_dict, plot):
     discriminability = 1 - similarity
     discriminability_dict['ideal'] = np.mean(discriminability)
 
-    return sparsity_dict, discriminability_dict
+    return sparsity_dict, discriminability_dict, storage_capacity_dict
 
 
 def plot_activation_func():
@@ -186,10 +200,10 @@ def n_hot_patterns(n,length):
     return n_hot_patterns.T
 
 
-def plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, fig_superlist):
+def plot_summary_comparison(sparsity_dict, discriminability_dict, storage_capacity_dict, legend_dict, fig_superlist):
 
     fig = plt.figure(figsize=(10, 7))
-    axes = gs.GridSpec(nrows=2, ncols=4,
+    axes = gs.GridSpec(nrows=3, ncols=4,
                        left=0.07, right=0.98,
                        top=0.95, bottom=0.15,
                        wspace=0.3, hspace=0.2)
@@ -197,6 +211,7 @@ def plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, f
     for i,list in enumerate(fig_superlist):
         ax1 = fig.add_subplot(axes[0,i])
         ax2 = fig.add_subplot(axes[1,i])
+        ax3 = fig.add_subplot(axes[2,i])
 
         for x,model_name in enumerate(list):
             ax1.bar(x, sparsity_dict[model_name], width=0.5, color=legend_dict[model_name][1])
@@ -205,16 +220,22 @@ def plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, f
             ax2.bar(x, discriminability_dict[model_name], width=0.5, color=legend_dict[model_name][1])
             ax2.set_xlim([-1,4])
             ax2.set_ylim([0,1])
+            ax3.bar(x, storage_capacity_dict[model_name], width=0.5, color=legend_dict[model_name][1])
+            ax3.set_xlim([-1,4])
 
         ax1.plot([-1,4],sparsity_dict['ideal']*np.ones(2),'--', color='gray')
         ax2.plot([-1,4],discriminability_dict['ideal']*np.ones(2),'--', color='gray')
+        ax3.plot([-1,4],storage_capacity_dict['ideal']*np.ones(2),'--', color='gray')
 
         ax1.set_ylabel('Sparsity')
         ax2.set_ylabel('Discriminability')
+        ax3.set_ylabel(r'Max storage capacity $\binom{n}{k}$')
+
         ax1.set_xticks([])
-        ax2.set_xticks(np.arange(len(list)))
+        ax2.set_xticks([])
+        ax3.set_xticks(np.arange(len(list)))
         label_list = [legend_dict[x][0] for x in list]
-        ax2.set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
+        ax3.set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
 
     sns.despine()
 
@@ -335,7 +356,7 @@ def main(plot):
     # fig_superlist = [fig1_list,fig2_list,fig3_list,fig4_list]
     # plot_metrics(metrics_dict, legend_dict, fig_superlist, xlim=(0,200))
 
-    sparsity_dict, discriminability_dict = plot_activity(activity_dict, legend_dict, plot)
+    sparsity_dict, discriminability_dict, storage_capacity_dict = plot_activity(activity_dict, legend_dict, plot=False)
     globals().update(locals())
 
     # plot_weights(weight_dict)
@@ -345,7 +366,7 @@ def main(plot):
     fig3_list = ['FBI_RNN_1hidden_tau_Inh7', 'Hebb_1_hidden_inh_1_7']
     fig4_list = ['FF_network_1hidden', 'FBI_RNN_1hidden_tau_Inh7', 'Hebb_1_hidden_inh_7_7', 'btsp_network']
     fig_superlist = [fig1_list,fig2_list,fig3_list,fig4_list]
-    plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, fig_superlist)
+    plot_summary_comparison(sparsity_dict, discriminability_dict, storage_capacity_dict, legend_dict, fig_superlist)
 
     # plot_activation_func()
 
