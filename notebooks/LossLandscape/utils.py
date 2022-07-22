@@ -250,12 +250,12 @@ class FBI_RNN(nn.Module):
             self.fbi2out.weight.requires_grad = False
 
         # # initialize weights
-        self.in2out.weight.data.uniform_(0.1,0.5)
+        self.in2out.weight.data.uniform_(0.01,0.5)
         self.out2fbi.weight.data.uniform_(0.1,0.5)
         self.fbi2out.weight.data.uniform_(-0.5,-0.1)
 
         # initialize close to optimal weights
-        self.in2out.weight.data.fill_(0.1)
+        # self.in2out.weight.data.fill_(0.1)
         self.out2fbi.weight.data = torch.tensor([[0., 1.5]])
         self.fbi2out.weight.data = torch.tensor([[-1.5],[-0.]])
 
@@ -285,7 +285,7 @@ class FBI_RNN(nn.Module):
 
 
     def train(self, learning_rate, num_epochs, num_timesteps, num_BPTT_steps, eval_step, all_patterns, all_targets, tau=1.):
-        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+        optimizer = torch.optim.SGD(self.parameters(), lr=learning_rate)
         criterion = nn.MSELoss()
         num_patterns = all_patterns.shape[0]
 
@@ -310,7 +310,6 @@ class FBI_RNN(nn.Module):
                 out_preact = torch.zeros(self.out_size)
                 fbi_preact = torch.zeros(self.fbi_size)
 
-                loss = 0
                 for t in range(num_timesteps):  # iterate through all timepoints of the RNN
                     if t >= (
                             eval_step - num_BPTT_steps) and t <= eval_step:  # truncate BPTT to only evaluate n steps from the end
@@ -325,7 +324,7 @@ class FBI_RNN(nn.Module):
                     fbi_history[:, t, pattern_idx, epoch] = fbi.detach()
 
                     if t == eval_step:
-                        loss += criterion(output, target)
+                        loss = criterion(output, target)
 
                 weight_history['in2out'][:,:,epoch+1] = self.in2out.weight.detach()
                 weight_history['out2fbi'][:,:,epoch+1] = self.out2fbi.weight.detach()
@@ -367,19 +366,22 @@ class FBI_RNN(nn.Module):
                 out_preact = torch.zeros(self.out_size)
                 fbi_preact = torch.zeros(self.fbi_size)
 
-                loss = 0
                 for t in range(num_timesteps):  # iterate through all timepoints of the RNN
                     output, fbi, out_preact, fbi_preact = self.forward(pattern, out_preact, fbi_preact, output, fbi, tau)
                     output_history[:, t, pattern_idx, epoch] = output
                     fbi_history[:, t, pattern_idx, epoch] = fbi
 
                     if t == eval_step:
-                        loss += criterion(output, target)
+                        loss = criterion(output, target)
 
                 # update weights
                 d_weight, d_bias = btsp_step(self.in2out.weight, pattern, output, target)
                 self.in2out.weight.data += d_weight * lr
                 self.in2out.bias.data += d_bias * lr
+
+                # d_weight, d_bias = btsp_step(self.fbi2out.weight, fbi, output, target)
+                # dwi = loss * pre
+                # self.fbi2out.weight.data += d_weight * lr
 
                 weight_history['in2out'][:,:,epoch+1] = self.in2out.weight
                 weight_history['out2fbi'][:,:,epoch+1] = self.out2fbi.weight
