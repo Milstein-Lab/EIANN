@@ -46,6 +46,31 @@ def generate_samples(func):
     y = func(x)
     return x,y
 
+
+def generate_imbalanced_data(input_statistics):
+    '''
+    :param input_statistics: dict with 4 classes
+    :return: torch.tensors of patterns and targets
+    '''
+    assert len(input_statistics)==4, f"4 numbers required (one for every XOR class)"
+
+    pattern_classes = {'OR1': ([1., 0.],[0., 0.]),
+                       'OR2': ([0., 1.],[0., 0.]),
+                       'AND': ([1., 1.], [0., 1.]),
+                       'zero':([0., 0.],[0., 0.])}
+
+    all_patterns = torch.zeros(sum(input_statistics.values()),2)
+    all_targets = torch.zeros(sum(input_statistics.values()),2)
+
+    counter = 0
+    for pattern_class in input_statistics:
+        for i in range(input_statistics[pattern_class]):
+            all_patterns[counter], all_targets[counter] = torch.tensor(pattern_classes[pattern_class])
+            counter += 1
+
+    return all_patterns, all_targets
+
+
 #######################################################
 # Basic Plotting Functions
 
@@ -230,7 +255,54 @@ def plot_loss_landscape(model, target_func):
     plt.show()
 
 #######################################################
-# Network definition
+# Network definitions
+
+class AND_net(nn.Module):
+    def __init__(self,in_size=2, out_size=1, bias=True):
+        super().__init__()
+        self.in2out = nn.Linear(in_size, out_size, bias=bias)
+
+        self.in2out.weight.data.uniform_(0.01,0.2)
+
+    def forward(self,pattern):
+        out = F.relu(self.in2out(pattern))
+        return out
+
+    def train(self, lr, num_epochs, all_patterns, all_targets):
+        optimizer = torch.optim.SGD(self.parameters(), lr=lr)
+        criterion = nn.MSELoss()
+
+        num_patterns = all_patterns.shape[0]
+        loss_history = []
+        weight_history = torch.zeros(num_patterns*num_epochs+1,2)
+        bias_history = torch.zeros(num_patterns*num_epochs+1)
+        output_history = torch.zeros(num_patterns,num_epochs)
+
+        weight_history[0,:] = self.in2out.weight.detach()
+        bias_history[0] = self.in2out.bias.detach()
+        print(self.in2out.weight.detach())
+
+        counter = 1
+        for epoch in tqdm(range(num_epochs)):
+            for pattern_idx in torch.randperm(num_patterns):
+                pattern = all_patterns[pattern_idx]
+                target = all_targets[pattern_idx][1]
+
+                output = self.forward(pattern)[0]
+                loss = criterion(output,target)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                weight_history[counter,:] = self.in2out.weight.detach()
+                bias_history[counter] = self.in2out.bias.detach()
+                loss_history.append(loss.detach())
+                output_history[pattern_idx,epoch] = output.detach()
+                counter += 1
+
+        return all_patterns, output_history, loss_history, weight_history, bias_history
+
 
 class FBI_RNN(nn.Module):
     def __init__(self, input_size, output_size, fbi_size, bias, rule='bp'):
@@ -249,15 +321,15 @@ class FBI_RNN(nn.Module):
             self.out2fbi.weight.requires_grad = False
             self.fbi2out.weight.requires_grad = False
 
-        # # initialize weights
+        # initialize weights
         self.in2out.weight.data.uniform_(0.01,0.5)
-        self.out2fbi.weight.data.uniform_(0.1,0.5)
+        self.out2fbi.weight.data.uniform_(0.01,0.5)
         self.fbi2out.weight.data.uniform_(-0.5,-0.1)
 
-        # initialize close to optimal weights
+        # # initialize close to optimal weights
         # self.in2out.weight.data.fill_(0.1)
-        self.out2fbi.weight.data = torch.tensor([[0., 1.5]])
-        self.fbi2out.weight.data = torch.tensor([[-1.5],[-0.]])
+        # self.out2fbi.weight.data = torch.tensor([[0., 1.5]])
+        # self.fbi2out.weight.data = torch.tensor([[-1.5],[-0.]])
 
 
     def forward(self, input_pattern, out_preact, fbi_preact, out0, fbi0, act_sharpness=4, tau=1.):
