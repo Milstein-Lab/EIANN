@@ -113,7 +113,7 @@ def plot_activity(activity_dict, title_dict, model_list, show=False, save=False)
                 ax.set_xlabel('Input pattern')
                 ax.set_ylabel('Unit ID')
                 if activity_dict[model_name][layer][pop].shape[0] == 1:
-                    ax.set_xticks([0])
+                    ax.set_yticks([0])
                 clean_axes(ax)
 
         fig.suptitle('%s\n\nActivity' % title_dict[model_name])
@@ -305,8 +305,8 @@ def plot_lateral_weights(weight_dict, title_dict, model_list, show=False, save=F
         im = ax.imshow(weight_dict[model_name][layer][projection].T, aspect='auto', interpolation='none')
         cbar = plt.colorbar(im, ax=ax)
         ax.set_title('E <- I')
-        ax.set_xlabel('Pre (I)')
-        ax.set_ylabel('Post (E)')
+        ax.set_xlabel('Post (E)')
+        ax.set_ylabel('Pre (I)')
 
         # Plot weight correlations
         ax = axes[2]
@@ -388,6 +388,8 @@ def main(show, save, data_dir):
     plot_metrics(metrics_dict, ReLU_legend_dict, accuracy_model_list_2, show, save, 2)
     plot_metrics(metrics_dict, legend_dict, accuracy_model_list_3[:-1], show, save, 3)
     plot_metrics(metrics_dict, legend_dict, accuracy_model_list_3, show, save, 4)
+    plot_metrics(metrics_dict, legend_dict, accuracy_model_list_1[:1], show, save, 5)
+    plot_metrics(metrics_dict, legend_dict, accuracy_model_list_1[:2], show, save, 6)
 
     sparsity_dict, discriminability_dict = analyze_activity(activity_dict)
 
