@@ -54,7 +54,6 @@ class MNIST_net(nn.Module):
             fig, ax = plt.subplots(1, 3, figsize=(14, 4))
 
         for epoch in range(num_epochs):
-
             # Save initial weights for this epoch
             self.mean_weight_history1.append(torch.mean(self.layer_1.weight.detach()))
             self.weight_history1[epoch, 0, :, :] = self.layer_1.weight.detach()
@@ -116,5 +115,4 @@ class MNIST_net(nn.Module):
         output = F.softmax(self.forward(images).detach(),dim=1)
         self.test_accuracy = torch.sum(torch.argmax(output,dim=1) == classes) / images.shape[0]
         print(f'Final accuracy = {self.test_accuracy*100}%')
-
         return
