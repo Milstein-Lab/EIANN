@@ -1,7 +1,20 @@
 import torch
 import torch.nn as nn
+from tqdm import tqdm
+import itertools
 
-
+import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 15,
+                     'axes.spines.right': False,
+                     'axes.spines.top': False,
+                     'axes.linewidth':1.2,
+                     'xtick.major.size': 6,
+                     'xtick.major.width': 1.2,
+                     'ytick.major.size': 6,
+                     'ytick.major.width': 1.2,
+                     'legend.frameon': False,
+                     'legend.handletextpad': 0.1,
+                     'figure.figsize': [14.0, 4.0],})
 '''
 params_dict = {'layer_0':
                    {'E':
@@ -25,27 +38,28 @@ model = universalNet(params_dict)
 '''
 
 
-activation_dict = {'linear': lambda x: x,
+activation_dict = {'linear': nn.Identity(),
                    'relu': nn.ReLU(),
                    'sigmoid': nn.Sigmoid(),
                    'softplus': nn.Softplus(beta=4)}
 
 
 class universalNet(nn.Module):
-    def __init__(self):
+    def __init__(self, input_size, tau=1, seed=42):
         super().__init__()
-        self.tau = 1
-        self.seed = 42
-        self.nn_modules = nn.ModuleList()
+        self.tau = tau
+        self.seed = seed
+        self.nn_modules = nn.ModuleDict()
+
         self.net = Net()
 
-        self.net.input_layer = Layer('input_layer', populations={'E':10})
+        self.net.input_layer = Layer('input_layer', populations={'E':input_size})
 
-        self.net.layer_1 = Layer('layer_1', populations={'E':7, 'I':2})
+        self.net.layer_1 = Layer('layer_1', populations={'E':21, 'I':1})
         self.net.layer_1.E.activation = 'softplus'
         self.net.layer_1.E.add_projections(self, [self.net.input_layer.E])
 
-        self.net.layer_2 = Layer('layer_2', populations={'E':5})
+        self.net.layer_2 = Layer('layer_2', populations={'E':21})
         self.net.layer_2.E.activation = 'softplus'
         self.net.layer_2.E.add_projections(self, [self.net.input_layer.E, self.net.layer_1.E])
 
@@ -54,13 +68,65 @@ class universalNet(nn.Module):
             for j, population in enumerate(layer):
                 if i==0 and j==0: # set activity for the first population of the input layer
                     population.activity = input_pattern
+                else:
+                    delta_state = -population.state
+                    for projection in population:
+                        delta_state += projection(projection.pre.activity)
+                    population.state += delta_state / self.tau
+                    population.activity = population.activation(population.state)
+                    population.activity_history_ls.append(population.activity.detach())
 
-                delta_state = -population.state
-                for projection in population:
-                    delta_state += projection(projection.pre.activity)
-                population.state += delta_state / self.tau
-                population.activity = population.activation(population.state)
+    def train(self, num_epochs, all_patterns, all_targets, lr, num_timesteps=1, plot=False):
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        self.criterion = nn.MSELoss()
 
+        loss_history = []
+        weight_history = {}
+        for param_name, tensor in self.named_parameters():
+            if 'weight' in param_name:
+                name = param_name.split('.')[1]
+                weight_history[name] = [tensor.detach()]
+
+        num_patterns = all_patterns.shape[0]
+
+        for epoch in tqdm(range(num_epochs)):
+            for pattern_idx in torch.randperm(num_patterns):
+                input_pattern = all_patterns[pattern_idx]
+                target = all_targets[pattern_idx]
+
+                # Reset activities
+                for layer in self.net:
+                    for population in layer:
+                        population.state = torch.zeros(population.size)
+                        population.activity = torch.zeros(population.size)
+
+                for t in range(num_timesteps):
+                    self.forward(input_pattern)
+
+                output = self.net.layer_2.E.activity
+                loss = self.criterion(output,target)
+                loss_history.append(loss.detach())
+
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
+                # Save weights
+                for param_name, tensor in self.named_parameters():
+                    if 'weight' in param_name:
+                        name = param_name.split('.')[1]
+                        weight_history[name].append(tensor.detach())
+
+        self.loss_history = torch.tensor(loss_history)
+        self.weight_history = {proj_name: torch.stack(weights) for proj_name, weights in weight_history.items()}
+
+        if plot:
+            fig,ax = plt.subplots(1,2)
+            ax[0].plot(self.loss_history)
+            ax[0].set_xlabel('Training steps (epochs*patterns)')
+            ax[0].set_ylabel('Loss')
+
+            plt.tight_layout()
 
 # class universalNet(nn.Module):
 #     def __init__(self, params_dict, hparams):
@@ -88,6 +154,9 @@ class universalNet(nn.Module):
 
 
 class Net(object):
+    '''
+    Object for storing layers, allowing forward iteration over only the layer objects
+    '''
     def __iter__(self):
         for key,value in self.__dict__.items():
             yield value
@@ -129,9 +198,7 @@ class Population(nn.Module):
         self.state = torch.zeros(self.size)
         self.activity = torch.zeros(self.size)
         self.bias = torch.zeros(size)
-
-        self.prev_activity = torch.zeros(self.size)
-        self.activity_history = None
+        self.activity_history_ls = []
 
     def add_projections(self, network, pre_populations):
         for pre_pop in pre_populations:
@@ -144,28 +211,35 @@ class Population(nn.Module):
             projection.name = f'{name}_to_{self.fullname}'
             projection.pre = pre_pop
             projection.learning_rule = 'backprop'
-            projection.direction = 'FF'
             projection.lr = 0.01
 
             # Add to ModuleList to make projection a trainable parameter
-            network.nn_modules.append(projection)
+            network.nn_modules[projection.name] = projection
 
     def __iter__(self):
         for key,value in self.__dict__.items():
             if isinstance(value, nn.Linear): #only iterate over projections
                 yield value
 
-    # Automatically turn activation string into a callable function
     @property
     def activation(self):
+        # Automatically turn activation string into a callable function
         return activation_dict[self._act_name]
-
     @activation.setter
     def activation(self, act_name):
         self._act_name = act_name
 
+    @property
+    def activity_history(self):
+        return torch.stack(self.activity_history_ls)
 
 
+def n_hot_patterns(n,length):
+    all_permutations = torch.tensor(list(itertools.product([0., 1.], repeat=length)))
+    pattern_hotness = torch.sum(all_permutations,axis=1)
+    idx = torch.where(pattern_hotness == n)[0]
+    n_hot_patterns = all_permutations[idx]
+    return n_hot_patterns
 # class universalNet1(nn.Module):
 #     def __init__(self, params_dict):
 #         super().__init__()
