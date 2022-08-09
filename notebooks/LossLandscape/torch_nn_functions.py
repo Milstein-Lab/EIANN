@@ -106,15 +106,18 @@ class MNIST_net(nn.Module):
 
         return
 
-
 def get_line(v1, v2, num_p, num_extrap_p, plot_show=True):
     '''
     Takes two points in weight space and interpolates between them
-    :param vec_1: 1D numpy array of weights (e.g. initial weights)
-    :param vec_2: 1D numpy array of weights (e.g. final weights)
-    :param num_p: (int) number of points to interpolate (including start/end points)
-    :num_extrap_p: (int) number of points to extrapolate on either side of end points
-    :return steps_arr: 2D numpy array (num points x weight vector size) of interpolated points
+
+    Parameters
+    vec_1: 1D numpy array of weights (e.g. initial weights)
+    vec_2: 1D numpy array of weights (e.g. final weights)
+    num_p: (int) number of points to interpolate (including start/end points)
+    num_extrap_p: (int) number of points to extrapolate on either side of end points
+
+    Returns
+    steps_arr: 2D numpy array (num points x weight vector size) of interpolated points
     '''
 
     total_points = num_p + num_extrap_p*2
@@ -166,9 +169,17 @@ def get_line(v1, v2, num_p, num_extrap_p, plot_show=True):
     return steps_arr
 
 def get_distance(extrapolated_line):
-    """
-    
-    """
+    '''
+    Function takes in points on the line in an N-sim spece and finds out the distance between the points
+
+    Parameters
+    extrapolated_line: np.array
+        an array, where each entry is a coordinated to point
+
+    Returns
+    distance: list
+        list of distances between two consecutive points in a given line
+    '''
         # verify that difference between two adjacent points in extrapolated_line is always the same
 
     distance =  []
@@ -184,8 +195,17 @@ def calculate_loss(model, weights_vec, dataloader_test):
     '''
     Function calculates the loss on the full MNIST dataset for one instance of the network
     In each instance, the full set of weights needs to be specified
-    param: trainset
-    param: weights_vec: 1D array, lengt=num of weights
+
+    Parameters
+    model: MNIST_net
+    weights_vec: torch tensor, size: [1 x number of weights]
+        flattened weights of a network (over all layers)
+    dataloader_test: dataloader
+        test samples from the data set used to calculate loss
+
+    Returns
+    loss: torch tensor (?)
+        value of a loss given set of weights
     '''
 
     weights = torch.tensor(weights_vec).float()
@@ -207,22 +227,20 @@ def calculate_loss(model, weights_vec, dataloader_test):
 
     return loss
 
-def plot_loss_landscape(self): 
-    #not ready: still has self
-
-    loss_list = []
-    for i, (w1, w2) in tqdm(enumerate(zip(torch.flatten(self.M1), torch.flatten(self.M2)))):
-
-        loss_list.append(net.calculate_cost(sub_trainset, w1, w2))
-
-    loss_grid = torch.tensor(loss_list)
-    loss_grid = torch.reshape(loss_grid, net.M1.shape)
-
-    return loss_grid
-
 def plot_w_PCs(weight_history):
+    '''
+    Function performs PCA on a given set of weights and
+        1. plots the explained variance
+        2. the trajectory of the weights in the PC space during the course of learning
+        3. the loading scores of the weights
 
-    w = weight_history.flatten(start_dim=1)
+    Parameters
+    weight_history: torch tensor, size: [time_steps x total number of weights]
+
+    Returns
+    '''
+
+    w = weight_history
     w = preprocessing.scale(w) # center the data (mean=0, std=1)
     pca = PCA(n_components=5)
     pca.fit(w)
@@ -267,14 +285,37 @@ def plot_w_PCs(weight_history):
     plt.show()
 
 def flatten_weight_hist(model):
-    # get full set of weights from all leyers as a flatten array for each time point
+    '''
+    Function gets full set of weights from all leyers as a flatten array for each time point
+
+    Parameters
+    model: MNIST_net
+
+    Returns
+    w: torch tensor, size: [time points x number of weights in the whole network]
+    '''
+
     w1_h = model.weight_history1.flatten(start_dim=1)
     w2_h = model.weight_history2.flatten(start_dim=1)
     w3_h = model.weight_history3.flatten(start_dim=1)
     w = torch.cat((w1_h, w2_h, w3_h), dim=1)
     return w
 
-def get_loss_landscape(model, dataloader_test, num_points):
+def get_loss_landscape(model, dataloader_test, num_points, returning=True):
+    '''
+    Function created loss grid and plots loss landscape
+
+    Parameters
+    model: MNIST_net
+    dataloader_test: dataloader
+        test set from MNIST data set used to calculate loss
+    num_points: int
+        one of the dimentions of the grid
+
+    Returns
+    loss_grid: torch tensor, size: [num_points x num_points]
+        values of loss for the given model at a given set of weights
+    '''
 
     w = flatten_weight_hist(model)
 
@@ -309,9 +350,21 @@ def get_loss_landscape(model, dataloader_test, num_points):
     loss_grid = torch.reshape(loss_grid, PC1_mesh.shape)
     #
     plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
-    return loss_grid
+    if returning == True:
+        return loss_grid, PC1_mesh, PC2_mesh
 
 def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
+    '''
+    Function plots loss surface from the grid based on PCs
+
+    Parameters
+    loss_grid: torch tensor, size: [num_points x num_points]
+        values of loss for the given model at a given set of weights
+    PC1_mesh: torch tensor, size: [1 x num_points(specified in get_loss_landscape] (?)
+    PC2_mesh: torch tensor, size: [1 x num_points(specified in get_loss_landscape]
+
+    Returns
+    '''
     loss_grid_np = loss_grid.numpy()
     # plotting loss landscapes
     fig = plt.figure(figsize=(10, 7.5))
