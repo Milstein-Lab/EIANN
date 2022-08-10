@@ -43,15 +43,15 @@ activation_dict = {'linear': nn.Identity(),
                    'sigmoid': nn.Sigmoid(),
                    'softplus': nn.Softplus(beta=4)}
 
-def Hebb(pre, post, *args):
+def Hebb(pre, post):
     delta_W = torch.outer(post, pre)
     return delta_W
 
-def Oja(pre, post, W, *args):
-    delta_W = torch.outer(post, pre) - W * (post ** 2).unsqueeze(1)
+def Oja(pre, post, W):
+    delta_W = torch.outer(post, pre) - W * (post**2).unsqueeze(1)
     return delta_W
 
-def BCM(pre, post, W, theta):
+def BCM(pre, post, theta):
     delta_W = torch.outer(post, pre) * (post - theta).unsqueeze(1)
     return delta_W
 
@@ -61,8 +61,6 @@ class universalNet(nn.Module):
         self.tau = tau
         self.seed = seed
         self.dales_law = dales_law
-        self.theta_tau = 1 # for BCM learning
-        self.theta_k = 1 # for BCM learning
 
         self.nn_modules = nn.ModuleDict()
         self.nn_parameters = nn.ParameterDict()
@@ -86,13 +84,9 @@ class universalNet(nn.Module):
                     population.activity = input_pattern
                 else:
                     delta_state = -population.state # decay previous activity
-                    delta_theta = -population.theta_BCM
                     for projection in population:
                         delta_state += projection(projection.pre.activity)
-                        delta_theta += population.activity**2 / self.theta_k
                     population.state += population.bias + delta_state / self.tau
-                    population.theta_BCM += delta_theta / self.theta_tau
-
                     population.activity = population.activation(population.state)
 
                 population.activity_history_ls.append(population.activity.detach())
@@ -181,9 +175,23 @@ class universalNet(nn.Module):
             for population in layer:
                 population.step_bias()
                 for projection in population:
-                    if projection.learning_rule != 'backprop':
-                        delta_W = projection.learning_rule(pre = projection.pre.activity, post = population.activity,
-                                                           w = projection.weight, theta = population.theta_BCM)
+                    if projection.learning_rule == 'Hebb':
+                        delta_W = projection.delta_W(pre = projection.pre.activity,
+                                                     post = population.activity)
+                        projection.weight.data += projection.lr * delta_W
+
+                    elif projection.learning_rule == 'Oja':
+                        delta_W = projection.delta_W(pre = projection.pre.activity,
+                                                     post = population.activity,
+                                                     W = projection.weight)
+                        projection.weight.data += projection.lr * delta_W
+
+                    elif projection.learning_rule == 'BCM':
+                        delta_W = projection.delta_W(pre = projection.pre.activity,
+                                                     post = population.activity,
+                                                     theta = population.theta_BCM)
+                        delta_theta = (-population.theta_BCM + population.activity**2/population.theta_k) / population.theta_tau
+                        population.theta_BCM += delta_theta
                         projection.weight.data += projection.lr * delta_W
 
     def plot_summary(self):
@@ -263,6 +271,8 @@ class Population(nn.Module):
         self.bias_rule = 'backprop'
         self.learn_bias = False
         self.inputs = []
+        self.theta_tau = 1 # for BCM learning
+        self.theta_k = 1 # for BCM learning
 
         # State variables
         self.state = torch.zeros(self.size)
@@ -301,7 +311,7 @@ class Population(nn.Module):
             projection.learning_rule = learning_rule
             if learning_rule != 'backprop':
                 projection.weight.requires_grad = False
-                projection.learning_rule = lambda pre, post, w, theta: globals()[learning_rule](pre, post, w, theta)
+                projection.delta_W = lambda **args: globals()[learning_rule](**args)
 
             # Add to ModuleList to make projection a trainable parameter
             network.nn_modules[projection.name] = projection
