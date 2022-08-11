@@ -15,28 +15,6 @@ plt.rcParams.update({'font.size': 15,
                      'legend.frameon': False,
                      'legend.handletextpad': 0.1,
                      'figure.figsize': [14.0, 4.0],})
-'''
-params_dict = {'layer_0':
-                   {'E':
-                        {'n': 7,
-                         'projections': []}},
-               'layer_1':
-                   {'E':
-                        {'n': 100,
-                         'bias': False,
-                         'activation': 'relu',
-                         'projections': ['layer_0']}},
-               'layer_2':
-                   {'E':
-                        {'n': 10,
-                         'bias': False,
-                         'activation': 'relu',
-                         'projections': ['layer_1']}}
-               }
-
-model = universalNet(params_dict)
-'''
-
 
 activation_dict = {'linear': nn.Identity(),
                    'relu': nn.ReLU(),
@@ -55,8 +33,9 @@ def BCM(pre, post, theta):
     delta_W = torch.outer(post, pre) * (post - theta).unsqueeze(1)
     return delta_W
 
+
 class universalNet(nn.Module):
-    def __init__(self, input_size, tau=1, seed=42, dales_law=True):
+    def __init__(self, params_dict, tau=1, seed=42, dales_law=True):
         super().__init__()
         self.tau = tau
         self.seed = seed
@@ -65,19 +44,31 @@ class universalNet(nn.Module):
         self.nn_modules = nn.ModuleDict()
         self.nn_parameters = nn.ParameterDict()
 
-        self.input_layer = Layer('input_layer', populations={'E':input_size})
+        # Create layer objects for params dict
+        for layer_name in params_dict:
+            populations = {}
+            for population in params_dict[layer_name]:
+                populations[population] = params_dict[layer_name][population].pop('n')
+            self._modules[layer_name] = self._modules[layer_name] = Layer(layer_name, populations=populations)
 
-        self.layer1 = Layer('layer1', populations={'E':5, 'I':1})
-        self.layer1.E.update(self, activation='softplus')
-        self.layer1.E.add_projections(self, [self.input_layer.E])
+            # Add projections and apply optional parameters to the population
+            for population in params_dict[layer_name]:
+                if params_dict[layer_name][population]:
+                    self._modules[layer_name].__dict__[population].update(self, **params_dict[layer_name][population])
 
-        self.layer2 = Layer('layer2', populations={'E':21})
-        self.layer2.E.update(self, activation='softplus', learn_bias=True)
-        self.layer2.E.add_projections(self, [self.input_layer.E, self.layer1.E], learning_rule='Oja')
+        # self.input_layer = Layer('input_layer', populations={'E':7})
+        # self.layer1 = Layer('layer1', populations={'E':5, 'I':1})
+        # self.layer1.E.update(self, activation='softplus',
+        #                      inputs=['input_layer.E'])
+        # self.layer2 = Layer('layer2', populations={'E':21})
+        # self.layer2.E.update(self, activation='softplus', bias=True,
+        #                      inputs=['input_layer.E', 'layer1.E'], learning_rule = 'Oja')
 
         self.init_weights()
 
     def forward(self, input_pattern):
+        # TODO: add option to consult previous activity
+        # TODO: store activity history separately for epochs and timesteps
         for i, layer in enumerate(self):
             for j, population in enumerate(layer):
                 if i==0 and j==0: # set activity for the first population of the input layer
@@ -174,6 +165,9 @@ class universalNet(nn.Module):
         for layer in self:
             for population in layer:
                 population.step_bias()
+                # TODO: add theta update conditional on population projections
+                # delta_theta = (-population.theta_BCM + population.activity ** 2 / population.theta_k) / population.theta_tau
+                # population.theta_BCM += delta_theta
                 for projection in population:
                     if projection.learning_rule == 'Hebb':
                         delta_W = projection.delta_W(pre = projection.pre.activity,
@@ -195,6 +189,7 @@ class universalNet(nn.Module):
                         projection.weight.data += projection.lr * delta_W
 
     def plot_summary(self):
+        # TODO: expand plots to show individual biases, examples of input/output activities, activity dynamics
         fig, ax = plt.subplots(2, 3, figsize=(14,8))
         axes = (0,0)
         ax[axes].plot(self.loss_history)
@@ -282,9 +277,9 @@ class Population(nn.Module):
         self.activity_history_ls = []
         self.bias_history_ls = []
 
-    def update(self, network, activation='linear', learn_bias=False, bias_rule='backprop'):
+    def update(self, network, activation='linear', bias=False, bias_rule='backprop', inputs=None, learning_rule='backprop'):
         self.activation = activation
-        self.learn_bias = learn_bias
+        self.learn_bias = bias
         self.bias_rule = bias_rule
 
         if self.learn_bias == True:
@@ -292,19 +287,29 @@ class Population(nn.Module):
             self.bias = nn.Parameter(self.bias)
             network.nn_parameters[name] = self.bias
 
+        if inputs:
+            self.add_projections(network, inputs, learning_rule)
+
     def step_bias(self):
+        # TODO: add bias update (as nn.Parameter? or through nn.Linear?)
         return
 
-    def add_projections(self, network, pre_populations, learning_rule='backprop'):
-        for pre_pop in pre_populations:
-            name = pre_pop.layer + pre_pop.name
-            self.inputs.append(name)
-            self.__dict__[name] = nn.Linear(pre_pop.size, self.size, bias=False)
+    def add_projections(self, network, inputs, learning_rule='backprop'):
+        for object_name in inputs:
+            pre_layer, pre_pop = object_name.split('.')
+            pre_name = pre_layer + pre_pop
+            pre_pop = network._modules[pre_layer].__dict__[pre_pop]
+            self.inputs.append(pre_name)
+            self.__dict__[pre_name] = nn.Linear(pre_pop.size, self.size, bias=False)
+
+            # TODO: add theta during projection init for BCM layers
 
             # Set projection attributes
-            projection = self.__dict__[name]
-            projection.name = f'{name}_to_{self.fullname}'
+            projection = self.__dict__[pre_name]
             projection.pre = pre_pop
+            projection.post = self
+            projection.name = f'{pre_name}_to_{projection.post.fullname}'
+
             projection.weight_distribution = 'uniform'
             projection.init_weight_bounds = (0, 1)
             projection.lr = 0.01
