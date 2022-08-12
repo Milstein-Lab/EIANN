@@ -154,13 +154,12 @@ class Population(object):
 
 
 class FBI_RNN(nn.Module):
-    def __init__(self, input_size, output_size, fbi_size, learning_rate, optimizer=SGD, optimizer_kwargs=None,
+    def __init__(self, layer_config, projection_config, learning_rate, optimizer=SGD, optimizer_kwargs=None,
                  criterion=MSELoss, criterion_kwargs=None, seed=None, tau=1, forward_steps=1, backward_steps=1):
         """
 
-        :param input_size:
-        :param output_size:
-        :param fbi_size:
+        :param layer_config: nested dict
+        :param projection_config: nested dict
         :param learning_rate: float; applies to weights and biases in absence of projection-specific learning rates
         :param optimizer: callable
         :param optimizer_kwargs: dict
@@ -191,23 +190,26 @@ class FBI_RNN(nn.Module):
         self.module_list = nn.ModuleList()
 
         self.layers = {}
-        input_layer = Layer('Input')
-        self.layers[input_layer.name] = input_layer
-        input_pop = Input(self, input_layer, 'E', input_size)
-        input_layer.append_population(input_pop)
+        for i, (layer_name, pop_config) in enumerate(layer_config.items()):
+            layer = Layer(layer_name)
+            self.layers[layer_name] = layer
+            for j, (pop_name, pop_kwargs) in enumerate(pop_config.items()):
+                if i == 0 and j == 0:
+                    pop = Input(self, layer, pop_name, **pop_kwargs)
+                else:
+                    pop = Population(self, layer, pop_name, **pop_kwargs)
+                layer.append_population(pop)
 
-        output_layer = Layer('Output')
-        self.layers[output_layer.name] = output_layer
-        E_pop = Population(self, output_layer, 'E', output_size, 'softplus', {'beta': 4.}, include_bias=False)
-        output_layer.append_population(E_pop)
-        FBI_pop = Population(self, output_layer, 'FBI', fbi_size, 'softplus', {'beta': 4.}, include_bias=False)
-        output_layer.append_population(FBI_pop)
-        output_layer.populations['E'].append_projection(input_layer.populations['E'], 'uniform_', (0, 1), (0, 100),
-                                                        'FF', 'backprop')
-        output_layer.populations['E'].append_projection(output_layer.populations['FBI'], 'fill_', (-3.838023E+00,),
-                                                        None, 'FB', learning_rule=None)
-        output_layer.populations['FBI'].append_projection(output_layer.populations['E'], 'fill_', (1,), None,
-                                                          'FF', learning_rule=None)
+        for post_layer_name in projection_config:
+            post_layer = self.layers[post_layer_name]
+            for post_pop_name in projection_config[post_layer_name]:
+                post_pop = layer.populations[post_pop_name]
+                for pre_layer_name in projection_config[post_layer_name][post_pop_name]:
+                    pre_layer = self.layers[pre_layer_name]
+                    for pre_pop_name, projection_kwargs in \
+                            projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
+                        pre_pop = pre_layer.populations[pre_pop_name]
+                        post_pop.append_projection(pre_pop, **projection_kwargs)
 
         if optimizer is not None:
             if not callable(optimizer):
