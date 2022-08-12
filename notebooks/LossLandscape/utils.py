@@ -286,7 +286,7 @@ class AND_net(nn.Module):
         for epoch in tqdm(range(num_epochs)):
             for pattern_idx in torch.randperm(num_patterns):
                 pattern = all_patterns[pattern_idx]
-                target = all_targets[pattern_idx][1]
+                target = all_targets[pattern_idx][0]
 
                 output = self.forward(pattern)[0]
                 loss = criterion(output,target)
