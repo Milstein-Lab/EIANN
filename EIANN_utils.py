@@ -26,7 +26,7 @@ class Input(object):
         self.size = size
         self.activity = torch.zeros(self.size)
         self.prev_activity = torch.zeros(self.size)
-        self.temp_activity_history = None
+        self.temp_activity_history = []
         self.activity_history = None
         self.projections = {}
 
@@ -49,6 +49,7 @@ class Population(object):
                 ('Population: callable for activation: %s must be imported' % activation)
         if activation_kwargs is None:
             activation_kwargs = {}
+        self.activation_kwargs = activation_kwargs
         self.activation = lambda x: globals()[activation](x, **activation_kwargs)
         self.include_bias = include_bias
         self.learn_bias = learn_bias
@@ -68,7 +69,7 @@ class Population(object):
             self.bias_update = lambda population: globals()[self.bias_rule](population, **self.bias_rule_kwargs)
         self.activity = torch.zeros(self.size)
         self.prev_activity = torch.zeros(self.size)
-        self.temp_activity_history = None
+        self.temp_activity_history = []
         self.activity_history = None
         self.state = torch.zeros(self.size)
         self.projections = {}
@@ -203,7 +204,7 @@ class FBI_RNN(nn.Module):
         output_layer.append_population(FBI_pop)
         output_layer.populations['E'].append_projection(input_layer.populations['E'], 'uniform_', (0, 1), (0, 100),
                                                         'FF', 'backprop')
-        output_layer.populations['E'].append_projection(output_layer.populations['FBI'], 'fill_', (-5.864659E-01,),
+        output_layer.populations['E'].append_projection(output_layer.populations['FBI'], 'fill_', (-3.838023E+00,),
                                                         None, 'FB', learning_rule=None)
         output_layer.populations['FBI'].append_projection(output_layer.populations['E'], 'fill_', (1,), None,
                                                           'FF', learning_rule=None)
@@ -244,7 +245,6 @@ class FBI_RNN(nn.Module):
         for layer in self.layers.values():
             for population in layer.populations.values():
                 population.reinit()
-                population.temp_activity_history = None
                 population.activity_history = None
 
     def forward(self, sample, store_history=False):
@@ -274,7 +274,7 @@ class FBI_RNN(nn.Module):
                                         delta_state += projection(pre_pop.activity)
                                     elif projection.direction == 'FB':
                                         delta_state += projection(pre_pop.prev_activity)
-                            post_pop.state += delta_state / self.tau
+                            post_pop.state = post_pop.state + delta_state / self.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
                             post_pop.prev_activity = post_pop.activity.clone()
                         if store_history:
@@ -303,6 +303,7 @@ class FBI_RNN(nn.Module):
         """
         num_samples = dataset.shape[0]
         self.sample_order = []
+        self.sorted_sample_indexes = []
         self.loss_history = []
 
         if status_bar:
@@ -311,14 +312,13 @@ class FBI_RNN(nn.Module):
             epoch_iter = range(epochs)
         for epoch in epoch_iter:
             sample_indexes = torch.randperm(num_samples)
-            print(sample_indexes)
             self.sample_order.extend(sample_indexes)
+            self.sorted_sample_indexes.extend(np.add(epoch * num_samples, np.argsort(sample_indexes)))
             for sample_idx in sample_indexes:
                 sample = dataset[sample_idx]
                 sample_target  = target[sample_idx]
                 output = self.forward(sample, store_history)
                 self.loss = self.criterion(output, sample_target)
-                print(self.loss, torch.mean((sample_target - output) ** 2.))
                 self.loss_history.append(self.loss.detach())
                 for backward in self.backward_methods:
                     backward(self, output, sample_target)
@@ -333,7 +333,8 @@ class FBI_RNN(nn.Module):
                                     projection.weight_update(projection)
                 self.clamp_weights_and_biases()
 
-        self.sample_order = torch.IntTensor(self.sample_order)
+        self.sample_order = torch.LongTensor(self.sample_order)
+        self.sorted_sample_indexes = torch.LongTensor(self.sorted_sample_indexes)
         self.loss_history = torch.Tensor(self.loss_history)
 
         return self.loss
