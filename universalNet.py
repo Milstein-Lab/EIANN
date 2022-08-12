@@ -1,25 +1,35 @@
 import torch
 import torch.nn as nn
 from tqdm import tqdm
-import itertools
+from universalNet_utils import plot_summary
 
-import matplotlib.pyplot as plt
-plt.rcParams.update({'font.size': 15,
-                     'axes.spines.right': False,
-                     'axes.spines.top': False,
-                     'axes.linewidth':1.2,
-                     'xtick.major.size': 6,
-                     'xtick.major.width': 1.2,
-                     'ytick.major.size': 6,
-                     'ytick.major.width': 1.2,
-                     'legend.frameon': False,
-                     'legend.handletextpad': 0.1,
-                     'figure.figsize': [14.0, 4.0],})
+# hparams = {'seed': 42,
+#            'dales_law': True}
+#
+# params_dict = {'layer0':
+#                    {'E': {'n': 7}},
+#                'layer1':
+#                    {'E': {'n': 5,
+#                          'activation': 'softplus',
+#                          'inputs': ['layer0.E']},
+#                     'I': {'n': 1}},
+#                'layer2':
+#                    {'E': {'n': 21,
+#                          'bias': True,
+#                          'inputs': ['layer0.E', 'layer1.E'],
+#                          'learning_rule': 'Oja'}}}
+#
+# model = universalNet(params_dict, **hparams)
 
 activation_dict = {'linear': nn.Identity(),
                    'relu': nn.ReLU(),
                    'sigmoid': nn.Sigmoid(),
                    'softplus': nn.Softplus(beta=4)}
+
+# TODO: store order of presented patterns
+# TODO: add kwargs as dict to population activation params eg softmax, {beta=4}
+# TODO: store list/set of rules for every projection in a population (different rule for each proj)
+# TODO: add weight bounds
 
 def Hebb(pre, post):
     delta_W = torch.outer(post, pre)
@@ -35,16 +45,15 @@ def BCM(pre, post, theta):
 
 
 class universalNet(nn.Module):
-    def __init__(self, params_dict, tau=1, seed=42, dales_law=True):
+    def __init__(self, params_dict, seed=42, dales_law=True):
         super().__init__()
-        self.tau = tau
         self.seed = seed
         self.dales_law = dales_law
 
         self.nn_modules = nn.ModuleDict()
         self.nn_parameters = nn.ParameterDict()
 
-        # Create layer objects for params dict
+        # Create layer & population objects from params dict
         for layer_name in params_dict:
             populations = {}
             for population in params_dict[layer_name]:
@@ -56,6 +65,8 @@ class universalNet(nn.Module):
                 if params_dict[layer_name][population]:
                     self._modules[layer_name].__dict__[population].update(self, **params_dict[layer_name][population])
 
+        self.output_pop = self._modules[layer_name].E # E pop of final layer
+
         # self.input_layer = Layer('input_layer', populations={'E':7})
         # self.layer1 = Layer('layer1', populations={'E':5, 'I':1})
         # self.layer1.E.update(self, activation='softplus',
@@ -66,26 +77,30 @@ class universalNet(nn.Module):
 
         self.init_weights()
 
-    def forward(self, input_pattern):
-        # TODO: add option to consult previous activity
-        # TODO: store activity history separately for epochs and timesteps
+    def forward(self, input_pattern, training=True):
         for i, layer in enumerate(self):
             for j, population in enumerate(layer):
-                if i==0 and j==0: # set activity for the first population of the input layer
+                if i==0 and j==0: # pass pattern to first population of input layer
                     population.activity = input_pattern
                 else:
-                    delta_state = -population.state # decay previous activity
+                    population.prev_activity = population.activity
+                    population.state = population.state - population.state/population.tau
                     for projection in population:
-                        delta_state += projection(projection.pre.activity)
-                    population.state += population.bias + delta_state / self.tau
-                    population.activity = population.activation(population.state)
+                        if projection.direction == 'FF':
+                            population.state = population.state + projection(projection.pre.activity)/population.tau
+                        elif projection.direction == 'FB':
+                            population.state = population.state + projection(projection.pre.prev_activity)/population.tau
+                    population.activity = population.activation(population.state + population.bias)
 
-                population.activity_history_ls.append(population.activity.detach())
-                population.bias_history_ls.append(population.bias.detach())
+                if training:
+                    population.activity_history_ls.append(population.activity.detach())
+                    population.bias_history_ls.append(population.bias.detach())
 
     def train(self, num_epochs, all_patterns, all_targets, lr, num_timesteps=1, num_BPTT_steps=1, plot=False):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         self.criterion = nn.MSELoss()
+        self.all_patterns = all_patterns
+        self.num_timesteps = num_timesteps
 
         loss_history = []
         weight_history = {}
@@ -101,7 +116,7 @@ class universalNet(nn.Module):
                 input_pattern = all_patterns[pattern_idx]
                 target = all_targets[pattern_idx]
 
-                # Reset activities
+                # Reset activities & store history
                 for layer in self:
                     for population in layer:
                         population.state = torch.zeros(population.size)
@@ -116,7 +131,7 @@ class universalNet(nn.Module):
                     with torch.set_grad_enabled(track_grad):
                         self.forward(input_pattern)
 
-                output = self.layer2.E.activity
+                output = self.output_pop.activity
                 loss = self.criterion(output,target)
                 loss_history.append(loss.detach())
 
@@ -132,10 +147,10 @@ class universalNet(nn.Module):
                         weight_history[name].append(tensor.detach())
 
         self.loss_history = torch.tensor(loss_history)
-        self.weight_history = {proj_name: torch.stack(weights) for proj_name, weights in weight_history.items()}
+        self.weight_history = {projection_name: torch.stack(weights) for projection_name, weights in weight_history.items()}
 
         if plot:
-            self.plot_summary()
+            plot_summary(self)
 
     def init_weights(self):
         torch.manual_seed(self.seed)
@@ -188,44 +203,6 @@ class universalNet(nn.Module):
                         population.theta_BCM += delta_theta
                         projection.weight.data += projection.lr * delta_W
 
-    def plot_summary(self):
-        # TODO: expand plots to show individual biases, examples of input/output activities, activity dynamics
-        fig, ax = plt.subplots(2, 3, figsize=(14,8))
-        axes = (0,0)
-        ax[axes].plot(self.loss_history)
-        ax[axes].set_xlabel('Training steps (epochs*patterns)')
-        ax[axes].set_ylabel('Loss')
-        ax[axes].set_ylim(bottom=0)
-
-        for name,weights in self.weight_history.items():
-            axes = (0,1)
-            avg_weight = torch.mean(weights,dim=(1,2))
-            ax[axes].plot(avg_weight,label=name)
-            ax[axes].set_xlabel('Training steps (epochs*patterns)')
-            ax[axes].set_ylabel('Average weight')
-            ax[axes].legend()
-
-        w = self.weight_history['layer1E_to_layer2E'].flatten(1)
-        axes = (0,2)
-        ax[axes].plot(w)
-        ax[axes].set_xlabel('Training steps (epochs*patterns)')
-        ax[axes].set_ylabel('weight')
-        ax[axes].set_title('layer1E_to_layer2E')
-
-        axes = (1, 0)
-        for layer in self:
-            for population in layer:
-                avg_bias = torch.mean(population.bias_history, dim=1)
-                ax[axes].plot(avg_bias)
-                ax[axes].set_xlabel('Training steps (epochs*patterns)')
-                ax[axes].set_ylabel('bias')
-
-        ax[1,1].axis('off')
-        ax[1,2].axis('off')
-
-        plt.tight_layout()
-        plt.show()
-
     def __iter__(self):
         for key,value in self._modules.items():
             if isinstance(value, Layer):
@@ -262,6 +239,7 @@ class Population(nn.Module):
         self.name = name
         self.fullname = self.layer + self.name
         self.size = size
+        self.tau = 1
         self.activation = 'linear'
         self.bias_rule = 'backprop'
         self.learn_bias = False
@@ -272,6 +250,7 @@ class Population(nn.Module):
         # State variables
         self.state = torch.zeros(self.size)
         self.activity = torch.zeros(self.size)
+        self.prev_activity = torch.zeros(self.size)
         self.bias = torch.zeros(size)
         self.theta_BCM = torch.zeros(size)
         self.activity_history_ls = []
@@ -303,13 +282,13 @@ class Population(nn.Module):
             self.__dict__[pre_name] = nn.Linear(pre_pop.size, self.size, bias=False)
 
             # TODO: add theta during projection init for BCM layers
-
+            # TODO: create set of learning rules and separate backward passes for each
             # Set projection attributes
             projection = self.__dict__[pre_name]
             projection.pre = pre_pop
             projection.post = self
             projection.name = f'{pre_name}_to_{projection.post.fullname}'
-
+            projection.direction = 'FF'
             projection.weight_distribution = 'uniform'
             projection.init_weight_bounds = (0, 1)
             projection.lr = 0.01
@@ -349,11 +328,3 @@ class Population(nn.Module):
     @property
     def bias_history(self):
         return torch.stack(self.bias_history_ls)
-
-
-def n_hot_patterns(n,length):
-    all_permutations = torch.tensor(list(itertools.product([0., 1.], repeat=length)))
-    pattern_hotness = torch.sum(all_permutations,axis=1)
-    idx = torch.where(pattern_hotness == n)[0]
-    n_hot_patterns = all_permutations[idx]
-    return n_hot_patterns
