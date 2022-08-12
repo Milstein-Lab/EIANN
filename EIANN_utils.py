@@ -364,6 +364,17 @@ def BCM(projection, learning_rate, tau, k):
     delta_W = projection.bias
 
 
+def oja(projection, learning_rate=None):
+    if learning_rate is None:
+        learning_rate = projection.post.network.learning_rate
+    pre_activity = projection.pre.activity
+    post_activity = projection.post.activity
+    weights = projection.weight
+
+    delta_weights = torch.outer(post_activity, pre_activity) - weights * (post_activity ** 2).unsqueeze(1)
+    weights.data += learning_rate * delta_weights
+
+
 def backprop_backward(network, output, target):
     loss = network.criterion(output, target)
     network.optimizer.zero_grad()
