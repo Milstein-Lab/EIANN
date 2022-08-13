@@ -26,7 +26,7 @@ class Input(object):
         self.size = size
         self.activity = torch.zeros(self.size)
         self.prev_activity = torch.zeros(self.size)
-        self.temp_activity_history = None
+        self.temp_activity_history = []
         self.activity_history = None
         self.projections = {}
 
@@ -49,6 +49,7 @@ class Population(object):
                 ('Population: callable for activation: %s must be imported' % activation)
         if activation_kwargs is None:
             activation_kwargs = {}
+        self.activation_kwargs = activation_kwargs
         self.activation = lambda x: globals()[activation](x, **activation_kwargs)
         self.include_bias = include_bias
         self.learn_bias = learn_bias
@@ -68,7 +69,7 @@ class Population(object):
             self.bias_update = lambda population: globals()[self.bias_rule](population, **self.bias_rule_kwargs)
         self.activity = torch.zeros(self.size)
         self.prev_activity = torch.zeros(self.size)
-        self.temp_activity_history = None
+        self.temp_activity_history = []
         self.activity_history = None
         self.state = torch.zeros(self.size)
         self.projections = {}
@@ -153,13 +154,12 @@ class Population(object):
 
 
 class FBI_RNN(nn.Module):
-    def __init__(self, input_size, output_size, fbi_size, learning_rate, optimizer=SGD, optimizer_kwargs=None,
+    def __init__(self, layer_config, projection_config, learning_rate, optimizer=SGD, optimizer_kwargs=None,
                  criterion=MSELoss, criterion_kwargs=None, seed=None, tau=1, forward_steps=1, backward_steps=1):
         """
 
-        :param input_size:
-        :param output_size:
-        :param fbi_size:
+        :param layer_config: nested dict
+        :param projection_config: nested dict
         :param learning_rate: float; applies to weights and biases in absence of projection-specific learning rates
         :param optimizer: callable
         :param optimizer_kwargs: dict
@@ -190,23 +190,26 @@ class FBI_RNN(nn.Module):
         self.module_list = nn.ModuleList()
 
         self.layers = {}
-        input_layer = Layer('Input')
-        self.layers[input_layer.name] = input_layer
-        input_pop = Input(self, input_layer, 'E', input_size)
-        input_layer.append_population(input_pop)
+        for i, (layer_name, pop_config) in enumerate(layer_config.items()):
+            layer = Layer(layer_name)
+            self.layers[layer_name] = layer
+            for j, (pop_name, pop_kwargs) in enumerate(pop_config.items()):
+                if i == 0 and j == 0:
+                    pop = Input(self, layer, pop_name, **pop_kwargs)
+                else:
+                    pop = Population(self, layer, pop_name, **pop_kwargs)
+                layer.append_population(pop)
 
-        output_layer = Layer('Output')
-        self.layers[output_layer.name] = output_layer
-        E_pop = Population(self, output_layer, 'E', output_size, 'softplus', {'beta': 4.}, include_bias=False)
-        output_layer.append_population(E_pop)
-        FBI_pop = Population(self, output_layer, 'FBI', fbi_size, 'softplus', {'beta': 4.}, include_bias=False)
-        output_layer.append_population(FBI_pop)
-        output_layer.populations['E'].append_projection(input_layer.populations['E'], 'uniform_', (0, 1), (0, 100),
-                                                        'FF', 'backprop')
-        output_layer.populations['E'].append_projection(output_layer.populations['FBI'], 'fill_', (-5.864659E-01,),
-                                                        None, 'FB', learning_rule=None)
-        output_layer.populations['FBI'].append_projection(output_layer.populations['E'], 'fill_', (1,), None,
-                                                          'FF', learning_rule=None)
+        for post_layer_name in projection_config:
+            post_layer = self.layers[post_layer_name]
+            for post_pop_name in projection_config[post_layer_name]:
+                post_pop = layer.populations[post_pop_name]
+                for pre_layer_name in projection_config[post_layer_name][post_pop_name]:
+                    pre_layer = self.layers[pre_layer_name]
+                    for pre_pop_name, projection_kwargs in \
+                            projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
+                        pre_pop = pre_layer.populations[pre_pop_name]
+                        post_pop.append_projection(pre_pop, **projection_kwargs)
 
         if optimizer is not None:
             if not callable(optimizer):
@@ -244,7 +247,6 @@ class FBI_RNN(nn.Module):
         for layer in self.layers.values():
             for population in layer.populations.values():
                 population.reinit()
-                population.temp_activity_history = None
                 population.activity_history = None
 
     def forward(self, sample, store_history=False):
@@ -274,7 +276,7 @@ class FBI_RNN(nn.Module):
                                         delta_state += projection(pre_pop.activity)
                                     elif projection.direction == 'FB':
                                         delta_state += projection(pre_pop.prev_activity)
-                            post_pop.state += delta_state / self.tau
+                            post_pop.state = post_pop.state + delta_state / self.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
                             post_pop.prev_activity = post_pop.activity.clone()
                         if store_history:
@@ -303,6 +305,7 @@ class FBI_RNN(nn.Module):
         """
         num_samples = dataset.shape[0]
         self.sample_order = []
+        self.sorted_sample_indexes = []
         self.loss_history = []
 
         if status_bar:
@@ -311,14 +314,13 @@ class FBI_RNN(nn.Module):
             epoch_iter = range(epochs)
         for epoch in epoch_iter:
             sample_indexes = torch.randperm(num_samples)
-            print(sample_indexes)
             self.sample_order.extend(sample_indexes)
+            self.sorted_sample_indexes.extend(np.add(epoch * num_samples, np.argsort(sample_indexes)))
             for sample_idx in sample_indexes:
                 sample = dataset[sample_idx]
                 sample_target  = target[sample_idx]
                 output = self.forward(sample, store_history)
                 self.loss = self.criterion(output, sample_target)
-                print(self.loss, torch.mean((sample_target - output) ** 2.))
                 self.loss_history.append(self.loss.detach())
                 for backward in self.backward_methods:
                     backward(self, output, sample_target)
@@ -333,7 +335,8 @@ class FBI_RNN(nn.Module):
                                     projection.weight_update(projection)
                 self.clamp_weights_and_biases()
 
-        self.sample_order = torch.IntTensor(self.sample_order)
+        self.sample_order = torch.LongTensor(self.sample_order)
+        self.sorted_sample_indexes = torch.LongTensor(self.sorted_sample_indexes)
         self.loss_history = torch.Tensor(self.loss_history)
 
         return self.loss
@@ -361,8 +364,47 @@ def BCM(projection, learning_rate, tau, k):
     delta_W = projection.bias
 
 
+def oja(projection, learning_rate=None):
+    if learning_rate is None:
+        learning_rate = projection.post.network.learning_rate
+    pre_activity = projection.pre.activity
+    post_activity = projection.post.activity
+    weights = projection.weight
+
+    delta_weights = torch.outer(post_activity, pre_activity) - weights * (post_activity ** 2).unsqueeze(1)
+    weights.data += learning_rate * delta_weights
+
+
 def backprop_backward(network, output, target):
     loss = network.criterion(output, target)
     network.optimizer.zero_grad()
     loss.backward()
 
+
+def get_diag_argmax_row_indexes(data):
+    """
+    Sort the rows of a square matrix such that whenever row argmax and col argmax are equal, that value appears
+    on the diagonal. Returns row indexes.
+    :param data: 2d array; square matrix
+    :return: array of int
+    """
+    data = np.array(data)
+    if data.shape[0] != data.shape[1]:
+        raise Exception('get_diag_argmax_row_indexes: data must be a square matrix')
+    dim = data.shape[0]
+    avail_row_indexes = list(range(dim))
+    avail_col_indexes = list(range(dim))
+    final_row_indexes = np.empty_like(avail_row_indexes)
+    while(len(avail_col_indexes) > 0):
+        row_selectivity = np.zeros_like(avail_row_indexes)
+        row_max = np.max(data[avail_row_indexes, :][:, avail_col_indexes], axis=1)
+        row_mean = np.mean(data[avail_row_indexes,:][:,avail_col_indexes], axis=1)
+        nonzero_indexes = np.where(row_mean > 0)
+        row_selectivity[nonzero_indexes] = row_max[nonzero_indexes] / row_mean[nonzero_indexes]
+
+        row_index = avail_row_indexes[np.argsort(row_selectivity)[-1]]
+        col_index = avail_col_indexes[np.argmax(data[row_index,avail_col_indexes])]
+        final_row_indexes[col_index] = row_index
+        avail_row_indexes.remove(row_index)
+        avail_col_indexes.remove(col_index)
+    return final_row_indexes
