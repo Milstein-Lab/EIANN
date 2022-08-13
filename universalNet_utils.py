@@ -33,7 +33,7 @@ def plot_summary(model):
 
     mm = 1 / 25.4  # millimeters to inches
     fig = plt.figure(figsize=(180 * mm, 200 * mm), dpi=300)
-    axes = gs.GridSpec(nrows=4, ncols=3,
+    axes = gs.GridSpec(nrows=5, ncols=3,
                        left=0.05,right=0.98,
                        top = 0.95, bottom = 0.2,
                        wspace=0.4, hspace=0.8)
@@ -50,55 +50,44 @@ def plot_summary(model):
 
     # Weights
     ax = fig.add_subplot(axes[0, 1])
-    for name,weights in model.weight_history.items():
-        avg_weight = torch.mean(weights,dim=(1,2))
-        ax.plot(avg_weight,label=name)
-    ax.set_xlabel('Training steps (epochs*patterns)')
-    ax.set_ylabel('Average weight')
-    ax.legend()
-
-    ax = fig.add_subplot(axes[0, 2])
-    w = model.weight_history['layer0E_to_layer1E'].flatten(1)
-    ax.plot(w)
+    projection = model.layer1.E.layer0E
+    ax.plot(projection.weight_history.flatten(1), color='black', alpha=0.05)
+    avg_weight = torch.mean(projection.weight_history, dim=(1,2))
+    ax.plot(avg_weight, color='red', linewidth=2, label=projection.name)
     ax.set_xlabel('Training steps (epochs*patterns)')
     ax.set_ylabel('weight')
-    ax.set_title('layer1E_to_layer2E')
+    ax.set_title(projection.name)
 
-    # init_weights = sim_dict['data']['weight_history'][:,:,0]
-    # im = ax.imshow(init_weights, cmap='Reds')
-    # plt.colorbar(im, ax=ax)
-    # ax.set_title('Initial weights')
-    # ax.set_xlabel('Input units')
-    # ax.set_ylabel('Output units')
-    #
-    # final_weights = sim_dict['data']['weight_history'][:,:,-1]
-    # im = ax[1].imshow(final_weights, cmap='Reds')
-    # plt.colorbar(im, ax=ax[1])
-    # ax[1].set_title('Final weights')
-    # ax[1].set_xlabel('Input units')
-    # ax[1].set_ylabel('Output units')
-    #
-    # mean_weight = torch.mean(sim_dict['data']['weight_history'][:,:,:], dim=(0, 1))
-    # ax[3].plot(mean_weight)
-    # ax[3].set_xlabel("Pattern")
-    # ax[3].set_ylabel('mean weight')
+    ax = fig.add_subplot(axes[1:3, 0])
+    init_weights = model.layer1.E.layer0E.weight_history[0]
+    im = ax.imshow(init_weights, cmap='Reds')
+    plt.colorbar(im, ax=ax)
+    ax.set_title('Initial weights')
+    ax.set_xlabel('Input units')
+    ax.set_ylabel('Output units')
 
+    ax = fig.add_subplot(axes[1:3, 1])
+    final_weights = model.layer1.E.layer0E.weight_history[-1]
+    im = ax.imshow(final_weights, cmap='Reds')
+    plt.colorbar(im, ax=ax)
+    ax.set_title('Final weights')
+    ax.set_xlabel('Input units')
+    ax.set_ylabel('Output units')
 
     # Biases
-    ax = fig.add_subplot(axes[1, 0])
-    for layer in model:
-        for population in layer:
-            avg_bias = torch.mean(population.bias_history, dim=1)
-            ax.plot(avg_bias)
+    ax = fig.add_subplot(axes[0, 2])
+    population = model.layer1.E
+    ax.plot(population.bias_history, color='black', alpha=0.2)
+    avg_bias = torch.mean(population.bias_history, dim=1)
+    ax.plot(avg_bias, color='red', linewidth=2)
     ax.set_xlabel('Training steps (epochs*patterns)')
     ax.set_ylabel('bias')
 
     # Activities
     # ax = fig.add_subplot(axes[3, 0])
-    # initial_output_activities = []
-    #
+    # initial_output_activitiy = model.layer1.E.activity_history
 
-    ax = fig.add_subplot(axes[3, 1])
+    ax = fig.add_subplot(axes[3:5, 1:3])
     output_activities = torch.zeros(model.all_patterns.shape[0],model.output_pop.size)
     for i,pattern in enumerate(model.all_patterns):
         model.output_pop.state = torch.zeros(model.output_pop.size)

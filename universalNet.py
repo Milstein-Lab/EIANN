@@ -1,7 +1,18 @@
+
+import math
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from tqdm import tqdm
 from universalNet_utils import plot_summary
+
+# from typing import Any
+# from torch import Tensor
+# from torch.nn.parameter import Parameter, UninitializedParameter
+# from torch.nn import functional as F
+# from torch.nn import init
+# from torch.nn.modules.module import Module
+
 
 # hparams = {'seed': 42,
 #            'dales_law': True}
@@ -48,19 +59,19 @@ class universalNet(nn.Module):
     def __init__(self, params_dict, seed=42, dales_law=True):
         super().__init__()
         self.seed = seed
+        # torch.manual_seed(self.seed)
         self.dales_law = dales_law
 
         self.nn_modules = nn.ModuleDict()
-        self.nn_parameters = nn.ParameterDict()
 
         # Create layer & population objects from params dict
         for layer_name in params_dict:
             populations = {}
             for population in params_dict[layer_name]:
                 populations[population] = params_dict[layer_name][population].pop('n')
-            self._modules[layer_name] = self._modules[layer_name] = Layer(layer_name, populations=populations)
+            self._modules[layer_name] = self._modules[layer_name] = Layer(self, layer_name, populations=populations)
 
-            # Add projections and apply optional parameters to the population
+            # Add projections and apply optional parameters (bias, learning rules, etc.) to the population
             for population in params_dict[layer_name]:
                 if params_dict[layer_name][population]:
                     self._modules[layer_name].__dict__[population].update(self, **params_dict[layer_name][population])
@@ -74,8 +85,6 @@ class universalNet(nn.Module):
         # self.layer2 = Layer('layer2', populations={'E':21})
         # self.layer2.E.update(self, activation='softplus', bias=True,
         #                      inputs=['input_layer.E', 'layer1.E'], learning_rule = 'Oja')
-
-        self.init_weights()
 
     def forward(self, input_pattern, training=True):
         for i, layer in enumerate(self):
@@ -94,22 +103,14 @@ class universalNet(nn.Module):
 
                 if training:
                     population.activity_history_ls.append(population.activity.detach())
-                    population.bias_history_ls.append(population.bias.detach())
 
     def train(self, num_epochs, all_patterns, all_targets, lr, num_timesteps=1, num_BPTT_steps=1, plot=False):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         self.criterion = nn.MSELoss()
         self.all_patterns = all_patterns
-        self.num_timesteps = num_timesteps
-
-        loss_history = []
-        weight_history = {}
-        for param_name, tensor in self.named_parameters():
-            if 'weight' in param_name:
-                name = param_name.split('.')[1]
-                weight_history[name] = [tensor.detach()]
-
         num_patterns = all_patterns.shape[0]
+        self.num_timesteps = num_timesteps
+        loss_history = []
 
         for epoch in tqdm(range(num_epochs)):
             for pattern_idx in torch.randperm(num_patterns):
@@ -140,36 +141,24 @@ class universalNet(nn.Module):
                 if self.dales_law:
                     self.rectify_weights()
 
-                # Save weights
-                for param_name, tensor in self.named_parameters():
-                    if 'weight' in param_name:
-                        name = param_name.split('.')[1]
-                        weight_history[name].append(tensor.detach())
+                # Save weights & biases
+                for layer in self:
+                    for population in layer:
+                        if hasattr(population,'bias'):
+                            population.bias_history_ls.append(population.bias.detach().clone())
+                        for projection in population:
+                            projection.weight_history_ls.append(projection.weight.detach().clone())
 
         self.loss_history = torch.tensor(loss_history)
-        self.weight_history = {projection_name: torch.stack(weights) for projection_name, weights in weight_history.items()}
 
         if plot:
             plot_summary(self)
-
-    def init_weights(self):
-        torch.manual_seed(self.seed)
-        for layer in self:
-            for population in layer:
-                for projection in population:
-                    distribution = projection.weight_distribution + '_'
-                    getattr(projection.weight.data, distribution)(*projection.init_weight_bounds) # convert distribution name into pytorch callable
 
     def rectify_weights(self):
         for layer in self:
             for population in layer:
                 for projection in population:
-                    if projection.pre.name == 'E':
-                        projection.weight.data = projection.weight.data.clamp(min=0, max=None)
-                    elif projection.pre.name == 'I':
-                        projection.weight.data = projection.weight.data.clamp(min=None, max=0)
-                    else:
-                        raise RuntimeWarning("Population name must be 'E' or 'I' when using Dale's law. Weights not rectified")
+                    projection.rectify_weights()
 
     def update_params(self, loss):
         if any([param.requires_grad for param in self.parameters()]):
@@ -179,7 +168,7 @@ class universalNet(nn.Module):
 
         for layer in self:
             for population in layer:
-                population.step_bias()
+                # population.step_bias()
                 # TODO: add theta update conditional on population projections
                 # delta_theta = (-population.theta_BCM + population.activity ** 2 / population.theta_k) / population.theta_tau
                 # population.theta_BCM += delta_theta
@@ -210,12 +199,12 @@ class universalNet(nn.Module):
 
 
 class Layer(nn.Module):
-    def __init__(self, name, populations):
+    def __init__(self, network, name, populations):
         super().__init__()
         self.name = name
         self.populations = populations
         for pop,size in populations.items():
-            self.__dict__[pop] = Population(layer=name, name=pop, size=size)
+            self.__dict__[pop] = Population(network, layer=name, name=pop, size=size)
 
     def __iter__(self):
         for key,value in self.__dict__.items():
@@ -232,7 +221,7 @@ class Layer(nn.Module):
 
 
 class Population(nn.Module):
-    def __init__(self, layer, name, size):
+    def __init__(self, network, layer, name, size):
         super().__init__()
         # Hyperparameters
         self.layer = layer
@@ -248,61 +237,50 @@ class Population(nn.Module):
         self.theta_k = 1 # for BCM learning
 
         # State variables
-        self.state = torch.zeros(self.size)
-        self.activity = torch.zeros(self.size)
-        self.prev_activity = torch.zeros(self.size)
-        self.bias = torch.zeros(size)
-        self.theta_BCM = torch.zeros(size)
+        self.state = torch.empty(self.size)
+        self.activity = torch.empty(self.size)
+        self.prev_activity = torch.empty(self.size)
+        self.theta_BCM = torch.empty(size)
         self.activity_history_ls = []
-        self.bias_history_ls = []
 
-    def update(self, network, activation='linear', bias=False, bias_rule='backprop', inputs=None, learning_rule='backprop'):
+        # register to ModuleDict to make bias a backprop-trainable parameter
+        network.nn_modules[self.fullname] = self
+
+    def update(self, network, activation='linear', bias=None, bias_rule='backprop', inputs=None):
         self.activation = activation
         self.learn_bias = bias
         self.bias_rule = bias_rule
 
-        if self.learn_bias == True:
-            name = 'bias_'+self.fullname
-            self.bias = nn.Parameter(self.bias)
-            network.nn_parameters[name] = self.bias
+        if bias:
+            self.bias = torch.empty(self.size)
+            self.bias_history_ls = [self.bias.detach().clone()]
+            if bias_rule == 'backprop':
+                self.bias = nn.Parameter(self.bias)
 
         if inputs:
-            self.add_projections(network, inputs, learning_rule)
+            self.add_projections(network, inputs)
 
     def step_bias(self):
         # TODO: add bias update (as nn.Parameter? or through nn.Linear?)
         return
 
-    def add_projections(self, network, inputs, learning_rule='backprop'):
-        for object_name in inputs:
-            pre_layer, pre_pop = object_name.split('.')
-            pre_name = pre_layer + pre_pop
-            pre_pop = network._modules[pre_layer].__dict__[pre_pop]
-            self.inputs.append(pre_name)
-            self.__dict__[pre_name] = nn.Linear(pre_pop.size, self.size, bias=False)
+    def add_projections(self, network, inputs: dict):
+        for proj_origin in inputs:
+            pre_layer, pre_pop = proj_origin.split('.')
+            pre_pop = network._modules[pre_layer].__dict__[pre_pop] # get population object from string name
+            self.inputs.append(pre_pop.fullname)
 
             # TODO: add theta during projection init for BCM layers
             # TODO: create set of learning rules and separate backward passes for each
-            # Set projection attributes
-            projection = self.__dict__[pre_name]
-            projection.pre = pre_pop
-            projection.post = self
-            projection.name = f'{pre_name}_to_{projection.post.fullname}'
-            projection.direction = 'FF'
-            projection.weight_distribution = 'uniform'
-            projection.init_weight_bounds = (0, 1)
-            projection.lr = 0.01
-            projection.learning_rule = learning_rule
-            if learning_rule != 'backprop':
-                projection.weight.requires_grad = False
-                projection.delta_W = lambda **args: globals()[learning_rule](**args)
+            self.__dict__[pre_pop.fullname] = Projection(pre_pop, self, dales_law=network.dales_law, **inputs[proj_origin])
 
-            # Add to ModuleList to make projection a trainable parameter
-            network.nn_modules[projection.name] = projection
+            # register to ModuleDict to make projection a backprop-trainable parameter
+            projection_name = self.__dict__[pre_pop.fullname].name
+            network.nn_modules[projection_name] = self.__dict__[pre_pop.fullname]
 
     def __iter__(self):
         for key,value in self.__dict__.items():
-            if isinstance(value, nn.Linear): #only iterate over projections
+            if isinstance(value, Projection): #only iterate over projections
                 yield value
 
     def __repr__(self):
@@ -328,3 +306,59 @@ class Population(nn.Module):
     @property
     def bias_history(self):
         return torch.stack(self.bias_history_ls)
+
+
+class Projection(nn.Module):
+    r"""Applies a linear transformation to the incoming data: :math:`y = xA^T + b`
+    Args:
+        in_features: size of each input sample
+        out_features: size of each output sample
+    Attributes:
+        weight: the learnable weights of the module of shape
+    """
+    def __init__(self, pre_population, post_population, name=None, distribution='kaiming_uniform', bounds=(-0.5,0.5),
+                 dales_law=True, direction='FF', learning_rule='backprop'):
+        super().__init__()
+        self.pre = pre_population
+        self.post = post_population
+        self.direction = direction
+        self.bounds = bounds
+        self.learning_rule = learning_rule
+        if name:
+            self.name = name
+        else:
+            self.name = f'{self.post.fullname}_{self.pre.fullname}'
+
+        self.weight = nn.Parameter(torch.empty(self.post.size, self.pre.size))
+        self.initialize_weights(distribution, dales_law, bounds)
+        self.weight_history_ls = [self.weight.detach().clone()]
+
+        if learning_rule != 'backprop':
+            self.weight.requires_grad = False
+            self.delta_W = lambda **args: globals()[learning_rule](**args)
+
+    def forward(self, input):
+        return F.linear(input, self.weight)
+
+    def initialize_weights(self, distribution, dales_law, bounds):
+        if distribution == 'kaiming_uniform':
+            nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        else:
+            distribution += '_'
+            distribute_weights = getattr(nn.init, distribution) # get function for desired initial weight distribution
+            distribute_weights(self.weight, *bounds)
+
+        if dales_law:
+            self.rectify_weights()
+
+    def rectify_weights(self):
+        if self.pre.name == 'E':
+            self.weight.data = self.weight.data.clamp(min=0, max=None)
+        elif projection.pre.name == 'I':
+            self.weight.data = self.weight.data.clamp(min=None, max=0)
+        else:
+            raise RuntimeWarning("Population name must be 'E' or 'I' when using Dale's law. Weights not rectified")
+
+    @property
+    def weight_history(self):
+        return torch.stack(self.weight_history_ls)
