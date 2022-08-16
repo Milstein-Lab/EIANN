@@ -49,8 +49,8 @@ class Layer(object):
 
 class Population(object):
     def __init__(self, network, layer, name, size, activation, activation_kwargs=None, include_bias=False,
-                 learn_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None, bias_rule='backprop',
-                 bias_rule_kwargs=None):
+                 learn_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None, bias_learning_rule='backprop',
+                 bias_learning_rule_kwargs=None):
         self.network = network
         self.layer = layer
         self.name = name
@@ -62,22 +62,27 @@ class Population(object):
             activation_kwargs = {}
         self.activation_kwargs = activation_kwargs
         self.activation = lambda x: globals()[activation](x, **activation_kwargs)
+        if learn_bias:
+            include_bias = True
         self.include_bias = include_bias
         self.learn_bias = learn_bias
         self.bias_init = bias_init
+        if bias_init_args is None:
+            bias_init_args = ()
         self.bias_init_args = bias_init_args
         self.bias_bounds = bias_bounds
-        self.bias_rule = bias_rule
-        self.bias_rule_kwargs = bias_rule_kwargs
-        if self.bias_rule is None or self.bias_rule == 'backprop':
+        self.bias_learning_rule = bias_learning_rule
+        if bias_learning_rule_kwargs is None:
+            bias_learning_rule_kwargs = {}
+        self.bias_learning_rule_kwargs = bias_learning_rule_kwargs
+        if self.bias_learning_rule is None or self.bias_learning_rule == 'backprop':
             self.bias_update = lambda population: None
-        elif not (self.bias_rule in globals() and callable(globals()[self.bias_rule])):
+        elif not (self.bias_learning_rule in globals() and callable(globals()[self.bias_learning_rule])):
             raise RuntimeError \
-                ('Population: callable for bias_rule: %s must be imported' % bias_rule)
+                ('Population: callable for bias_learning_rule: %s must be imported' % bias_learning_rule)
         else:
-            if self.bias_rule_kwargs is None:
-                self.bias_rule_kwargs = {}
-            self.bias_update = lambda population: globals()[self.bias_rule](population, **self.bias_rule_kwargs)
+            self.bias_update = \
+                lambda population: globals()[self.bias_learning_rule](population, **self.bias_learning_rule_kwargs)
         self.activity_history_list = []
         self.projections = {}
         self.reinit()
@@ -87,8 +92,9 @@ class Population(object):
         self.state = torch.zeros(self.size)
         self.sample_activity = []
 
-    def append_projection(self, pre_pop, weight_init=None, weight_init_args=None, weight_bounds=None, direction='FF',
-                          learning_rule='backprop', learning_rule_kwargs=None, backward=None):
+    def append_projection(self, pre_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
+                          weight_constraint_kwargs=None, weight_bounds=None, direction='FF', learning_rule='backprop',
+                          learning_rule_kwargs=None, backward=None):
         if not self.projections:
             include_bias = self.include_bias
         else:
@@ -96,7 +102,7 @@ class Population(object):
         projection = nn.Linear(pre_pop.size, self.size, bias=include_bias)
 
         if not self.projections and self.include_bias:
-            if self.learn_bias and self.bias_rule == 'backprop':
+            if self.learn_bias and self.bias_learning_rule == 'backprop':
                 projection.bias.requires_grad = True
                 if backward is None:
                     backward = 'backprop_backward'
@@ -136,6 +142,19 @@ class Population(object):
             weight_init_args = ()
         projection.weight_init_args = weight_init_args
         projection.weight_bounds = weight_bounds
+
+        projection.weight_constraint = weight_constraint
+        if weight_constraint_kwargs is None:
+            weight_constraint_kwargs = {}
+        projection.weight_constraint_kwargs = weight_constraint_kwargs
+        if weight_constraint is not None:
+            if not(weight_constraint in globals() and callable(globals()[weight_constraint])):
+                raise RuntimeError \
+                    ('Population.append_projection: weight_constraint: %s must be imported and callable' %
+                     weight_constraint)
+            projection.constrain_weight = \
+                lambda projection: \
+                    globals()[weight_constraint](projection, **projection.weight_constraint_kwargs)
 
         if direction not in ['FF', 'FB']:
             raise RuntimeError('Population.append_projection: direction (%s) must be either FF or FB' % direction)
@@ -264,17 +283,19 @@ class EIANN(nn.Module):
                     for projection in post_pop:
                         if projection.weight_init is not None:
                             getattr(projection.weight.data, projection.weight_init)(*projection.weight_init_args)
-        self.clamp_weights_and_biases()
+        self.constrain_weights_and_biases()
 
-    def clamp_weights_and_biases(self):
+    def constrain_weights_and_biases(self):
         for i, post_layer in enumerate(self):
             if i > 0:
                 for post_pop in post_layer:
-                    if post_pop.learn_bias and post_pop.bias_bounds is not None:
+                    if post_pop.include_bias and post_pop.bias_bounds is not None:
                         post_pop.bias.data = post_pop.bias.data.clamp(*post_pop.bias_bounds)
                     for projection in post_pop:
                         if projection.weight_bounds is not None:
                             projection.weight.data = projection.weight.data.clamp(*projection.weight_bounds)
+                        if projection.weight_constraint is not None:
+                            projection.constrain_weight(projection)
 
     def reset_history(self):
         for layer in self:
@@ -361,7 +382,7 @@ class EIANN(nn.Module):
                                 post_pop.bias_update(post_pop)
                             for projection in post_pop:
                                 projection.weight_update(projection)
-                self.clamp_weights_and_biases()
+                self.constrain_weights_and_biases()
 
         self.sample_order = torch.LongTensor(self.sample_order)
         self.sorted_sample_indexes = torch.LongTensor(self.sorted_sample_indexes)
@@ -386,13 +407,39 @@ def n_hot_patterns(n,length):
     return n_hot_patterns
 
 
-def Hebb(projection, learning_rate):
-    delta_W = projection.post.activity * projection.pre.activity * learning_rate
-    projection.weight += delta_W
+def normalize_weight(projection, scale, autapses=False, axis=1):
+    projection.weight.data /= torch.sum(torch.abs(projection.weight.data), axis=axis).unsqueeze(1)
+    projection.weight.data *= scale
+    if not autapses and projection.pre == projection.post:
+        for i in range(projection.post.size):
+            projection.weight.data[i,i] = 0.
 
 
-def BCM(projection, learning_rate, tau, k):
-    delta_W = projection.bias
+def gjorgieva_hebb(projection, sign, learning_rate=None):
+    if learning_rate is None:
+        learning_rate = projection.post.network.learning_rate
+    pre_activity = projection.pre.activity
+    post_activity = projection.post.activity
+    delta_weight = torch.outer(post_activity, pre_activity)
+    if sign > 0:
+        projection.weight.data += learning_rate * delta_weight
+    else:
+        projection.weight.data -= learning_rate * delta_weight
+
+
+def bcm(projection, theta_init, theta_tau, k, learning_rate=None):
+    if learning_rate is None:
+        learning_rate = projection.post.network.learning_rate
+    if not hasattr(projection, 'theta'):
+        projection.theta = torch.ones(projection.post.size) * theta_init
+    pre_activity = projection.pre.activity
+    post_activity = projection.post.activity
+
+    delta_weight = torch.outer(post_activity, pre_activity) * (post_activity - projection.theta).unsqueeze(1)
+    projection.weight.data += learning_rate * delta_weight
+
+    delta_theta = (-projection.theta + post_activity ** 2. / k) / theta_tau
+    projection.theta += delta_theta
 
 
 def oja(projection, learning_rate=None):
@@ -400,10 +447,9 @@ def oja(projection, learning_rate=None):
         learning_rate = projection.post.network.learning_rate
     pre_activity = projection.pre.activity
     post_activity = projection.post.activity
-    weights = projection.weight
 
-    delta_weights = torch.outer(post_activity, pre_activity) - weights * (post_activity ** 2).unsqueeze(1)
-    weights.data += learning_rate * delta_weights
+    delta_weight = torch.outer(post_activity, pre_activity) - projection.weight * (post_activity ** 2).unsqueeze(1)
+    projection.weight.data += learning_rate * delta_weight
 
 
 def backprop_backward(network, output, target):
@@ -455,20 +501,39 @@ def test_EIANN_config(network, dataset, target, epochs):
     plt.ylabel('Output unit ID')
     plt.title('Initial weights\nOutput_E <- Input_E')
 
-    plt.figure()
-    plt.imshow(network.Output.E.activity_history[-dataset.shape[0]:, -1, :].T)
-    plt.colorbar()
-    plt.xlabel('Input pattern ID')
-    plt.ylabel('Output unit ID')
-    plt.title('Initial activity\nOutput_E')
+    Output_E_activity_history = network.Output.E.activity_history
+    fig, axes = plt.subplots(1, 2)
+    this_axis = axes[0]
+    im = this_axis.imshow(Output_E_activity_history[-dataset.shape[0]:, -1, :].T)
+    plt.colorbar(im, ax=this_axis)
+    this_axis.set_xlabel('Input pattern ID')
+    this_axis.set_ylabel('Output unit ID')
+    this_axis.set_title('Initial activity\nOutput_E')
+    this_axis = axes[1]
+    Output_FBI_activity_history = network.Output.FBI.activity_history
+    im = this_axis.imshow(Output_FBI_activity_history[-dataset.shape[0]:, -1, :].T)
+    plt.colorbar(im, ax=this_axis)
+    this_axis.set_xlabel('Input pattern ID')
+    this_axis.set_ylabel('Output unit ID')
+    this_axis.set_title('Initial activity\nOutput_FBI')
+    fig.tight_layout()
+    fig.show()
 
-    plt.figure()
-    plt.imshow(
-        torch.mean(network.Output.E.activity_history[-dataset.shape[0]:, :, :], axis=0).T)
-    plt.colorbar()
-    plt.xlabel('Equilibration time steps')
-    plt.ylabel('Output unit ID')
-    plt.title('Mean activity dynamics\nOutput_E')
+    fig, axes = plt.subplots(1, 2)
+    this_axis = axes[0]
+    for i in range(network.Output.E.size):
+        this_axis.plot(torch.mean(Output_E_activity_history[-dataset.shape[0]:, :, i], axis=0))
+    this_axis.set_xlabel('Equilibration time steps')
+    this_axis.set_ylabel('Output unit ID')
+    this_axis.set_title('Mean activity dynamics\nOutput_E')
+    this_axis = axes[1]
+    for i in range(network.Output.FBI.size):
+        this_axis.plot(torch.mean(Output_FBI_activity_history[-dataset.shape[0]:, :, i], axis=0))
+    this_axis.set_xlabel('Equilibration time steps')
+    this_axis.set_ylabel('Output unit ID')
+    this_axis.set_title('Mean activity dynamics\nOutput_FBI')
+    fig.tight_layout()
+    fig.show()
 
     for i, layer in enumerate(network):
         if i > 0:
@@ -479,43 +544,76 @@ def test_EIANN_config(network, dataset, target, epochs):
 
     network.train(dataset, target, epochs, store_history=True, shuffle=True, status_bar=True)
 
-    final_output = network.Output.E.activity_history[network.sorted_sample_indexes, -1, :][
-                   -dataset.shape[0]:, :].T
+    Output_E_activity_history = network.Output.E.activity_history
+
+    final_output = Output_E_activity_history[network.sorted_sample_indexes, -1, :][-dataset.shape[0]:, :].T
     if final_output.shape[0] == final_output.shape[1]:
         sorted_idx = get_diag_argmax_row_indexes(final_output)
     else:
         sorted_idx = np.arange(final_output.shape[0])
 
-    plt.figure()
-    plt.plot(network.loss_history)
+    sorted_loss_history = []
+    for i in range(Output_E_activity_history.shape[0]):
+        sample_idx = network.sample_order[i]
+        sample_target = target[sample_idx,:]
+        output = Output_E_activity_history[i,-1,sorted_idx]
+        loss = network.criterion(output, sample_target)
+        sorted_loss_history.append(loss)
+    sorted_loss_history = torch.tensor(sorted_loss_history)
+
+    fig = plt.figure()
+    plt.plot(network.loss_history, label='Unsorted')
+    plt.plot(sorted_loss_history, label='Sorted')
+    plt.legend(bbox_to_anchor=(1.05, 1.), loc='upper left', frameon=False)
     plt.xlabel('Training steps')
     plt.ylabel('MSE loss')
     plt.title('Training loss')
+    fig.tight_layout()
+    fig.show()
 
-    plt.figure()
+    fig = plt.figure()
     plt.imshow(network.Output.E.Input.E.weight.data[sorted_idx, :])
     plt.colorbar()
     plt.xlabel('Input unit ID')
     plt.ylabel('Output unit ID')
     plt.title('Final weights\nOutput_E <- Input_E')
+    fig.show()
 
-    plt.figure()
-    plt.imshow(final_output[sorted_idx, :])
-    plt.colorbar()
-    plt.xlabel('Input pattern ID')
-    plt.ylabel('Output unit ID')
-    plt.title('Final activity\nOutput_E')
+    fig, axes = plt.subplots(1, 2)
+    this_axis = axes[0]
+    im = this_axis.imshow(final_output[sorted_idx, :])
+    plt.colorbar(im, ax=this_axis)
+    this_axis.set_xlabel('Input pattern ID')
+    this_axis.set_ylabel('Output unit ID')
+    this_axis.set_title('Final activity\nOutput_E')
+    this_axis = axes[1]
+    Output_FBI_activity_history = network.Output.FBI.activity_history
+    im = this_axis.imshow(Output_FBI_activity_history[network.sorted_sample_indexes, -1, :][
+                   -dataset.shape[0]:, :].T)
+    plt.colorbar(im, ax=this_axis)
+    this_axis.set_xlabel('Input pattern ID')
+    this_axis.set_ylabel('Output unit ID')
+    this_axis.set_title('Final activity\nOutput_FBI')
+    fig.tight_layout()
+    fig.show()
 
-    plt.figure()
-    plt.imshow(
-        torch.mean(network.Output.E.activity_history[-dataset.shape[0]:, :, :], axis=0).T[
-        sorted_idx, :])
-    plt.colorbar()
-    plt.xlabel('Equilibration time steps')
-    plt.ylabel('Output unit ID')
-    plt.title('Mean activity dynamics\nOutput_E')
+    fig, axes = plt.subplots(1, 2)
+    this_axis = axes[0]
+    for i in range(network.Output.E.size):
+        this_axis.plot(torch.mean(Output_E_activity_history[-dataset.shape[0]:, :, i], axis=0))
+    this_axis.set_xlabel('Equilibration time steps')
+    this_axis.set_ylabel('Output unit ID')
+    this_axis.set_title('Mean activity dynamics\nOutput_E')
+    this_axis = axes[1]
+    for i in range(network.Output.FBI.size):
+        this_axis.plot(torch.mean(Output_FBI_activity_history[-dataset.shape[0]:, :, i], axis=0))
+    this_axis.set_xlabel('Equilibration time steps')
+    this_axis.set_ylabel('Output unit ID')
+    this_axis.set_title('Mean activity dynamics\nOutput_FBI')
+    fig.tight_layout()
+    fig.show()
 
     for i, layer in enumerate(network):
         if i > 0:
             for population in layer:
-                print(layer.name, population.name, population.bias)
+                print(layer.name, population.name, 'bias:', population.bias)
