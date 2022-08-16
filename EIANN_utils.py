@@ -9,6 +9,30 @@ import numpy as np
 from tqdm import tqdm
 
 
+class AttrDict(dict):
+    def __init__(self, value=None):
+        if value is None:
+            pass
+        elif isinstance(value, dict):
+            for key in value:
+                self.__setitem__(key, value[key])
+        else:
+            raise TypeError('expected dict')
+
+    def __setitem__(self, key, value):
+        if isinstance(value, dict) and not isinstance(value, AttrDict):
+            value = AttrDict(value)
+        super(AttrDict, self).__setitem__(key, value)
+
+    def __getitem__(self, key):
+        found = self.get(key)
+        if found is None:
+            raise KeyError
+        return found
+
+    __setattr__, __getattr__ = __setitem__, __getitem__
+
+
 class Layer(object):
     def __init__(self, name):
         self.name = name
@@ -16,29 +40,16 @@ class Layer(object):
 
     def append_population(self, population):
         self.populations[population.name] = population
+        self.__dict__[population.name] = population
 
-
-class Input(object):
-    def __init__(self, network, layer, name, size):
-        self.network = network
-        self.layer = layer
-        self.name = name
-        self.size = size
-        self.activity = torch.zeros(self.size)
-        self.prev_activity = torch.zeros(self.size)
-        self.temp_activity_history = []
-        self.activity_history = None
-        self.projections = {}
-
-    def reinit(self):
-        self.activity = torch.zeros(self.size)
-        self.temp_activity_history = []
-        self.prev_activity = torch.zeros(self.size)
+    def __iter__(self):
+        for population in self.populations.values():
+            yield population
 
 
 class Population(object):
     def __init__(self, network, layer, name, size, activation, activation_kwargs=None, include_bias=False,
-                 learn_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None, bias_rule=None,
+                 learn_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None, bias_rule='backprop',
                  bias_rule_kwargs=None):
         self.network = network
         self.layer = layer
@@ -67,15 +78,17 @@ class Population(object):
             if self.bias_rule_kwargs is None:
                 self.bias_rule_kwargs = {}
             self.bias_update = lambda population: globals()[self.bias_rule](population, **self.bias_rule_kwargs)
-        self.activity = torch.zeros(self.size)
-        self.prev_activity = torch.zeros(self.size)
-        self.temp_activity_history = []
-        self.activity_history = None
-        self.state = torch.zeros(self.size)
+        self.activity_history_list = []
         self.projections = {}
+        self.reinit()
+
+    def reinit(self):
+        self.activity = torch.zeros(self.size)
+        self.state = torch.zeros(self.size)
+        self.sample_activity = []
 
     def append_projection(self, pre_pop, weight_init=None, weight_init_args=None, weight_bounds=None, direction='FF',
-                          learning_rule='backprop', learning_rule_kwargs=None, backward='backprop_backward'):
+                          learning_rule='backprop', learning_rule_kwargs=None, backward=None):
         if not self.projections:
             include_bias = self.include_bias
         else:
@@ -85,6 +98,8 @@ class Population(object):
         if not self.projections and self.include_bias:
             if self.learn_bias and self.bias_rule == 'backprop':
                 projection.bias.requires_grad = True
+                if backward is None:
+                    backward = 'backprop_backward'
             else:
                 projection.bias.requires_grad = False
             if self.bias_init is not None:
@@ -100,13 +115,15 @@ class Population(object):
             learning_rule_kwargs = {}
         projection.learning_rule_kwargs = learning_rule_kwargs
         if learning_rule is None or learning_rule == 'backprop':
-            projection.weight_update = lambda projection: self.network.optimizer.step()
+            projection.weight_update = lambda projection: None
         elif not (learning_rule in globals() and callable(globals()[learning_rule])):
             raise RuntimeError \
                 ('Population.append_projection: callable for learning_rule: %s must be imported' % learning_rule)
         else:
             projection.weight_update  = lambda projection: globals()[learning_rule](projection, **learning_rule_kwargs)
         if learning_rule == 'backprop':
+            if backward is None:
+                backward = 'backprop_backward'
             projection.weight.requires_grad = True
         else:
             projection.weight.requires_grad = False
@@ -127,7 +144,9 @@ class Population(object):
         projection.post = self
         if pre_pop.layer.name not in self.projections:
             self.projections[pre_pop.layer.name] = {}
+            self.__dict__[pre_pop.layer.name] = AttrDict()
         self.projections[pre_pop.layer.name][pre_pop.name] = projection
+        self.__dict__[pre_pop.layer.name][pre_pop.name] = projection
 
         if backward is not None:
             if backward in globals() and callable(globals()[backward]):
@@ -137,23 +156,37 @@ class Population(object):
                                    backward)
         self.network.module_list.append(projection)
 
+    def __iter__(self):
+        for projections in self.projections.values():
+            for projection in projections.values():
+                yield projection
+
     @property
     def bias(self):
         if self.include_bias:
-            pre_pops = next(iter(self.projections.values()))
-            projection = next(iter(pre_pops.values()))
+            projection = next(iter(self))
             return projection.bias
         else:
             return torch.zeros(self.size)
 
-    def reinit(self):
-        self.activity = torch.zeros(self.size)
-        self.temp_activity_history = []
-        self.prev_activity = torch.zeros(self.size)
-        self.state = torch.zeros(self.size)
+    @property
+    def activity_history(self):
+        return torch.cat([torch.unsqueeze(torch.stack(sample_activity), 0)
+                          for sample_activity in self.activity_history_list], 0)
 
 
-class FBI_RNN(nn.Module):
+class Input(Population):
+    def __init__(self, network, layer, name, size, *args, **kwargs):
+        self.network = network
+        self.layer = layer
+        self.name = name
+        self.size = size
+        self.activity_history_list = []
+        self.projections = {}
+        self.reinit()
+
+
+class EIANN(nn.Module):
     def __init__(self, layer_config, projection_config, learning_rate, optimizer=SGD, optimizer_kwargs=None,
                  criterion=MSELoss, criterion_kwargs=None, seed=None, tau=1, forward_steps=1, backward_steps=1):
         """
@@ -193,6 +226,7 @@ class FBI_RNN(nn.Module):
         for i, (layer_name, pop_config) in enumerate(layer_config.items()):
             layer = Layer(layer_name)
             self.layers[layer_name] = layer
+            self.__dict__[layer_name] = layer
             for j, (pop_name, pop_kwargs) in enumerate(pop_config.items()):
                 if i == 0 and j == 0:
                     pop = Input(self, layer, pop_name, **pop_kwargs)
@@ -222,40 +256,39 @@ class FBI_RNN(nn.Module):
         self.init_weights_and_biases()
 
     def init_weights_and_biases(self):
-        for i, post_layer in enumerate(self.layers.values()):
+        for i, post_layer in enumerate(self):
             if i > 0:
-                for post_pop in post_layer.populations.values():
+                for post_pop in post_layer:
                     if post_pop.include_bias and post_pop.bias_init is not None:
                         getattr(post_pop.bias.data, post_pop.bias_init)(*post_pop.bias_init_args)
-                    for pre_layer_name in post_pop.projections:
-                        for projection in post_pop.projections[pre_layer_name].values():
-                            if projection.weight_init is not None:
-                                getattr(projection.weight.data, projection.weight_init)(*projection.weight_init_args)
+                    for projection in post_pop:
+                        if projection.weight_init is not None:
+                            getattr(projection.weight.data, projection.weight_init)(*projection.weight_init_args)
+        self.clamp_weights_and_biases()
 
     def clamp_weights_and_biases(self):
-        for i, post_layer in enumerate(self.layers.values()):
+        for i, post_layer in enumerate(self):
             if i > 0:
-                for post_pop in post_layer.populations.values():
+                for post_pop in post_layer:
                     if post_pop.learn_bias and post_pop.bias_bounds is not None:
                         post_pop.bias.data = post_pop.bias.data.clamp(*post_pop.bias_bounds)
-                    for pre_layer_name in post_pop.projections:
-                        for projection in post_pop.projections[pre_layer_name].values():
-                            if projection.weight_bounds is not None:
-                                projection.weight.data = projection.weight.data.clamp(*projection.weight_bounds)
+                    for projection in post_pop:
+                        if projection.weight_bounds is not None:
+                            projection.weight.data = projection.weight.data.clamp(*projection.weight_bounds)
 
     def reset_history(self):
-        for layer in self.layers.values():
-            for population in layer.populations.values():
+        for layer in self:
+            for population in layer:
                 population.reinit()
-                population.activity_history = None
+                population.activity_history_list = []
 
     def forward(self, sample, store_history=False):
 
-        for i, layer in enumerate(self.layers.values()):
-            for pop in layer.populations.values():
+        for i, layer in enumerate(self):
+            for pop in layer:
                 pop.reinit()
             if i == 0:
-                input_pop = next(iter(layer.populations.values()))
+                input_pop = next(iter(layer))
                 input_pop.activity = sample
 
         for t in range(self.forward_steps):
@@ -264,34 +297,30 @@ class FBI_RNN(nn.Module):
             else:
                 track_grad = False
             with torch.set_grad_enabled(track_grad):
-                for i, post_layer in enumerate(self.layers.values()):
-                    for post_pop in post_layer.populations.values():
+                for post_layer in self:
+                    for post_pop in post_layer:
+                        post_pop.prev_activity = post_pop.activity
+                for i, post_layer in enumerate(self):
+                    for post_pop in post_layer:
                         if i > 0:
-                            delta_state = -post_pop.state + post_pop.bias
-                            for pre_layer_name in post_pop.projections:
-                                for pre_pop_name in post_pop.projections[pre_layer_name]:
-                                    pre_pop = self.layers[pre_layer_name].populations[pre_pop_name]
-                                    projection = post_pop.projections[pre_layer_name][pre_pop_name]
-                                    if projection.direction == 'FF':
-                                        delta_state += projection(pre_pop.activity)
-                                    elif projection.direction == 'FB':
-                                        delta_state += projection(pre_pop.prev_activity)
+                            delta_state = -post_pop.state
+                            for projection in post_pop:
+                                pre_pop = projection.pre
+                                if projection.direction == 'FF':
+                                    delta_state = delta_state + projection(pre_pop.activity)
+                                elif projection.direction == 'FB':
+                                    delta_state = delta_state + projection(pre_pop.prev_activity)
                             post_pop.state = post_pop.state + delta_state / self.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
-                            post_pop.prev_activity = post_pop.activity.clone()
                         if store_history:
-                            post_pop.temp_activity_history.append(post_pop.activity.detach().clone())
-        if store_history:
-            for layer in self.layers.values():
-                for pop in layer.populations.values():
-                    temp_activity_history = torch.stack(pop.temp_activity_history)
-                    if pop.activity_history is None:
-                        pop.activity_history = torch.unsqueeze(temp_activity_history, 0)
-                    else:
-                        pop.activity_history = torch.cat \
-                            ((pop.activity_history, torch.unsqueeze(temp_activity_history, 0)))
+                            post_pop.sample_activity.append(post_pop.activity.detach().clone())
 
-        return next(iter(layer.populations.values())).activity
+        if store_history:
+            for layer in self:
+                for pop in layer:
+                    pop.activity_history_list.append(pop.sample_activity)
+
+        return next(iter(layer)).activity
 
     def train(self, dataset, target, epochs, store_history=False, shuffle=True, status_bar=False):
         """
@@ -325,14 +354,13 @@ class FBI_RNN(nn.Module):
                 for backward in self.backward_methods:
                     backward(self, output, sample_target)
 
-                for i, post_layer in enumerate(self.layers.values()):
+                for i, post_layer in enumerate(self):
                     if i > 0:
-                        for post_pop in post_layer.populations.values():
+                        for post_pop in post_layer:
                             if post_pop.learn_bias:
                                 post_pop.bias_update(post_pop)
-                            for pre_layer_name in post_pop.projections:
-                                for projection in post_pop.projections[pre_layer_name].values():
-                                    projection.weight_update(projection)
+                            for projection in post_pop:
+                                projection.weight_update(projection)
                 self.clamp_weights_and_biases()
 
         self.sample_order = torch.LongTensor(self.sample_order)
@@ -341,6 +369,9 @@ class FBI_RNN(nn.Module):
 
         return self.loss
 
+    def __iter__(self):
+        for layer in self.layers.values():
+            yield layer
 
 def n_choose_k(n,k):
     num_permutations = np.math.factorial(n) / (np.math.factorial(k)*np.math.factorial(n-k))
@@ -379,6 +410,7 @@ def backprop_backward(network, output, target):
     loss = network.criterion(output, target)
     network.optimizer.zero_grad()
     loss.backward()
+    network.optimizer.step()
 
 
 def get_diag_argmax_row_indexes(data):
@@ -408,3 +440,82 @@ def get_diag_argmax_row_indexes(data):
         avail_row_indexes.remove(row_index)
         avail_col_indexes.remove(col_index)
     return final_row_indexes
+
+
+def test_EIANN_config(network, dataset, target, epochs):
+    import matplotlib.pyplot as plt
+
+    for sample in dataset:
+        network.forward(sample, store_history=True)
+
+    plt.figure()
+    plt.imshow(network.Output.E.Input.E.weight.data)
+    plt.colorbar()
+    plt.xlabel('Input unit ID')
+    plt.ylabel('Output unit ID')
+    plt.title('Initial weights\nOutput_E <- Input_E')
+
+    plt.figure()
+    plt.imshow(network.Output.E.activity_history[-dataset.shape[0]:, -1, :].T)
+    plt.colorbar()
+    plt.xlabel('Input pattern ID')
+    plt.ylabel('Output unit ID')
+    plt.title('Initial activity\nOutput_E')
+
+    plt.figure()
+    plt.imshow(
+        torch.mean(network.Output.E.activity_history[-dataset.shape[0]:, :, :], axis=0).T)
+    plt.colorbar()
+    plt.xlabel('Equilibration time steps')
+    plt.ylabel('Output unit ID')
+    plt.title('Mean activity dynamics\nOutput_E')
+
+    for i, layer in enumerate(network):
+        if i > 0:
+            for population in layer:
+                print(layer.name, population.name, population.bias)
+
+    network.reset_history()
+
+    network.train(dataset, target, epochs, store_history=True, shuffle=True, status_bar=True)
+
+    final_output = network.Output.E.activity_history[network.sorted_sample_indexes, -1, :][
+                   -dataset.shape[0]:, :].T
+    if final_output.shape[0] == final_output.shape[1]:
+        sorted_idx = get_diag_argmax_row_indexes(final_output)
+    else:
+        sorted_idx = np.arange(final_output.shape[0])
+
+    plt.figure()
+    plt.plot(network.loss_history)
+    plt.xlabel('Training steps')
+    plt.ylabel('MSE loss')
+    plt.title('Training loss')
+
+    plt.figure()
+    plt.imshow(network.Output.E.Input.E.weight.data[sorted_idx, :])
+    plt.colorbar()
+    plt.xlabel('Input unit ID')
+    plt.ylabel('Output unit ID')
+    plt.title('Final weights\nOutput_E <- Input_E')
+
+    plt.figure()
+    plt.imshow(final_output[sorted_idx, :])
+    plt.colorbar()
+    plt.xlabel('Input pattern ID')
+    plt.ylabel('Output unit ID')
+    plt.title('Final activity\nOutput_E')
+
+    plt.figure()
+    plt.imshow(
+        torch.mean(network.Output.E.activity_history[-dataset.shape[0]:, :, :], axis=0).T[
+        sorted_idx, :])
+    plt.colorbar()
+    plt.xlabel('Equilibration time steps')
+    plt.ylabel('Output unit ID')
+    plt.title('Mean activity dynamics\nOutput_E')
+
+    for i, layer in enumerate(network):
+        if i > 0:
+            for population in layer:
+                print(layer.name, population.name, population.bias)
