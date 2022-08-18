@@ -209,7 +209,8 @@ class Input(Population):
 
 class EIANN(nn.Module):
     def __init__(self, layer_config, projection_config, learning_rate, optimizer=SGD, optimizer_kwargs=None,
-                 criterion=MSELoss, criterion_kwargs=None, seed=None, tau=1, forward_steps=1, backward_steps=1):
+                 criterion=MSELoss, criterion_kwargs=None, seed=None, tau=1, forward_steps=1, backward_steps=1,
+                 verbose=False):
         """
 
         :param layer_config: nested dict
@@ -223,6 +224,7 @@ class EIANN(nn.Module):
         :param tau: int
         :param forward_steps: int
         :param backward_steps: int
+        :param verbose: bool
         """
         super().__init__()
         self.learning_rate = learning_rate
@@ -258,13 +260,16 @@ class EIANN(nn.Module):
         for post_layer_name in projection_config:
             post_layer = self.layers[post_layer_name]
             for post_pop_name in projection_config[post_layer_name]:
-                post_pop = layer.populations[post_pop_name]
+                post_pop = post_layer.populations[post_pop_name]
                 for pre_layer_name in projection_config[post_layer_name][post_pop_name]:
                     pre_layer = self.layers[pre_layer_name]
                     for pre_pop_name, projection_kwargs in \
                             projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
                         pre_pop = pre_layer.populations[pre_pop_name]
                         post_pop.append_projection(pre_pop, **projection_kwargs)
+                        if verbose:
+                            print('EIANN: appending a projection from %s %s -> %s %s' %
+                                  (pre_pop.layer.name, pre_pop.name, post_pop.layer.name, post_pop.name))
 
         if optimizer is not None:
             if not callable(optimizer):
