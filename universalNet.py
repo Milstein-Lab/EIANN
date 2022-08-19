@@ -73,8 +73,8 @@ class universalNet(nn.Module):
 
             # Add projections and apply optional parameters (bias, learning rules, etc.) to the population
             for population in params_dict[layer_name]:
-                if params_dict[layer_name][population]:
-                    self._modules[layer_name].__dict__[population].update(self, **params_dict[layer_name][population])
+                # if params_dict[layer_name][population]:
+                self._modules[layer_name].__dict__[population].update(self, **params_dict[layer_name][population])
 
         self.output_pop = self._modules[layer_name].E # E pop of final layer
 
@@ -86,7 +86,17 @@ class universalNet(nn.Module):
         # self.layer2.E.update(self, activation='softplus', bias=True,
         #                      inputs=['input_layer.E', 'layer1.E'], learning_rule = 'Oja')
 
-    def forward(self, input_pattern, training=True):
+    def forward(self, all_patterns, track_activity=False):
+        for p, pattern in enumerate(self.all_patterns):
+            self.reset_units()
+            for t in range(self.num_timesteps):
+                self.forward_single(pattern)
+                for layer in self:
+                    for populaltion in layer:
+                        populaltion.all_pattern_activities[t,p,:] = populaltion.activity.detach()
+        return self.output_pop.all_pattern_activities.clone()
+
+    def forward_single(self, input_pattern, track_activity=False, training=False):
         for i, layer in enumerate(self):
             for j, population in enumerate(layer):
                 if i==0 and j==0: # pass pattern to first population of input layer
@@ -101,8 +111,11 @@ class universalNet(nn.Module):
                             population.state = population.state + projection(projection.pre.prev_activity)/population.tau
                     population.activity = population.activation(population.state + population.bias)
 
-                if training:
+                if track_activity:
                     population.activity_history_ls.append(population.activity.detach())
+
+                if training:
+                    population.activity_train_history[self.epoch, self.t, self.pattern_idx, :] = population.activity.detach()
 
     def train(self, num_epochs, all_patterns, all_targets, lr, num_timesteps=1, num_BPTT_steps=1, plot=False):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
@@ -111,26 +124,30 @@ class universalNet(nn.Module):
         num_patterns = all_patterns.shape[0]
         self.num_timesteps = num_timesteps
         loss_history = []
+        for layer in self:
+            for population in layer:
+                population.activity_train_history = torch.zeros(num_epochs, num_timesteps, num_patterns, population.size)
+                population.all_pattern_activities = torch.zeros(num_timesteps, num_patterns, population.size)
+
+        self.initial_activity = self.forward(all_patterns)
 
         for epoch in tqdm(range(num_epochs)):
+            self.epoch = epoch
             for pattern_idx in torch.randperm(num_patterns):
+                self.pattern_idx = pattern_idx
                 input_pattern = all_patterns[pattern_idx]
                 target = all_targets[pattern_idx]
 
-                # Reset activities & store history
-                for layer in self:
-                    for population in layer:
-                        population.state = torch.zeros(population.size)
-                        population.activity = torch.zeros(population.size)
-
+                self.reset_units()
                 for t in range(num_timesteps):
+                    self.t = t
                     if t >= (num_timesteps - num_BPTT_steps):  # truncate BPTT to only evaluate n steps from the end
                         track_grad = True
                     else:
                         track_grad = False
 
                     with torch.set_grad_enabled(track_grad):
-                        self.forward(input_pattern)
+                        self.forward_single(input_pattern, training=True)
 
                 output = self.output_pop.activity
                 loss = self.criterion(output,target)
@@ -141,7 +158,7 @@ class universalNet(nn.Module):
                 if self.dales_law:
                     self.rectify_weights()
 
-                # Save weights & biases
+                # Save weights & biases & activity
                 for layer in self:
                     for population in layer:
                         if hasattr(population,'bias'):
@@ -150,6 +167,7 @@ class universalNet(nn.Module):
                             projection.weight_history_ls.append(projection.weight.detach().clone())
 
         self.loss_history = torch.tensor(loss_history)
+        self.final_activity = self.forward(all_patterns)
 
         if plot:
             plot_summary(self)
@@ -159,6 +177,13 @@ class universalNet(nn.Module):
             for population in layer:
                 for projection in population:
                     projection.rectify_weights()
+
+    def reset_units(self):
+    # Zero states and activities
+        for layer in self:
+            for population in layer:
+                population.state = torch.zeros(population.size)
+                population.activity = torch.zeros(population.size)
 
     def update_params(self, loss):
         if any([param.requires_grad for param in self.parameters()]):
@@ -228,32 +253,28 @@ class Population(nn.Module):
         self.name = name
         self.fullname = self.layer + self.name
         self.size = size
-        self.tau = 1
-        self.activation = 'linear'
-        self.bias_rule = 'backprop'
-        self.learn_bias = False
         self.inputs = []
-        self.theta_tau = 1 # for BCM learning
-        self.theta_k = 1 # for BCM learning
+        # self.theta_tau = 1 # for BCM learning
+        # self.theta_k = 1 # for BCM learning
 
         # State variables
-        self.state = torch.empty(self.size)
-        self.activity = torch.empty(self.size)
-        self.prev_activity = torch.empty(self.size)
-        self.theta_BCM = torch.empty(size)
+        self.state = torch.zeros(self.size)
+        self.activity = torch.zeros(self.size)
+        self.prev_activity = torch.zeros(self.size)
         self.activity_history_ls = []
+        self.bias = torch.zeros(self.size)
+        self.bias_history_ls = [self.bias.detach().clone()]
 
         # register to ModuleDict to make bias a backprop-trainable parameter
         network.nn_modules[self.fullname] = self
 
-    def update(self, network, activation='linear', bias=None, bias_rule='backprop', inputs=None):
+    def update(self, network, activation='linear', tau=1, bias=None, bias_rule='backprop', inputs=None):
         self.activation = activation
         self.learn_bias = bias
         self.bias_rule = bias_rule
+        self.tau = tau
 
         if bias:
-            self.bias = torch.empty(self.size)
-            self.bias_history_ls = [self.bias.detach().clone()]
             if bias_rule == 'backprop':
                 self.bias = nn.Parameter(self.bias)
 
@@ -354,7 +375,7 @@ class Projection(nn.Module):
     def rectify_weights(self):
         if self.pre.name == 'E':
             self.weight.data = self.weight.data.clamp(min=0, max=None)
-        elif projection.pre.name == 'I':
+        elif self.pre.name == 'I':
             self.weight.data = self.weight.data.clamp(min=None, max=0)
         else:
             raise RuntimeWarning("Population name must be 'E' or 'I' when using Dale's law. Weights not rectified")
