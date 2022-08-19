@@ -48,8 +48,23 @@ class Layer(object):
 
 class Population(object):
     def __init__(self, network, layer, name, size, activation, activation_kwargs=None, include_bias=False,
-                 learn_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None, bias_learning_rule='backprop',
+                 bias_init=None, bias_init_args=None, bias_bounds=None, bias_learning_rule=None,
                  bias_learning_rule_kwargs=None):
+        """
+
+        :param network:
+        :param layer:
+        :param name:
+        :param size:
+        :param activation:
+        :param activation_kwargs:
+        :param include_bias:
+        :param bias_init:
+        :param bias_init_args:
+        :param bias_bounds:
+        :param bias_learning_rule:
+        :param bias_learning_rule_kwargs:
+        """
         self.network = network
         self.layer = layer
         self.name = name
@@ -61,27 +76,29 @@ class Population(object):
             activation_kwargs = {}
         self.activation_kwargs = activation_kwargs
         self.activation = lambda x: globals()[activation](x, **activation_kwargs)
-        if learn_bias:
-            include_bias = True
-        self.include_bias = include_bias
-        self.learn_bias = learn_bias
+
         self.bias_init = bias_init
         if bias_init_args is None:
             bias_init_args = ()
         self.bias_init_args = bias_init_args
         self.bias_bounds = bias_bounds
-        self.bias_learning_rule = bias_learning_rule
         if bias_learning_rule_kwargs is None:
             bias_learning_rule_kwargs = {}
-        self.bias_learning_rule_kwargs = bias_learning_rule_kwargs
-        if self.bias_learning_rule is None or self.bias_learning_rule == 'backprop':
-            self.bias_update = lambda population: None
-        elif not (self.bias_learning_rule in globals() and callable(globals()[self.bias_learning_rule])):
-            raise RuntimeError \
-                ('Population: callable for bias_learning_rule: %s must be imported' % self.bias_learning_rule)
+        if bias_learning_rule is None:
+            self.bias_learning_rule_class = BiasLearningRule
         else:
-            self.bias_update = \
-                lambda population: globals()[self.bias_learning_rule](population, **self.bias_learning_rule_kwargs)
+            include_bias = True
+            if bias_learning_rule == 'Backprop':
+                self.bias_learning_rule_class = BackpropBias
+            elif bias_learning_rule in globals() and issubclass(globals()[bias_learning_rule], BiasLearningRule):
+                self.bias_learning_rule_class = globals()[bias_learning_rule]
+            else:
+                raise RuntimeError \
+                    ('Population: bias_learning_rule: %s must be imported and subclass of BiasLearningRule' %
+                     bias_learning_rule)
+        self.include_bias = include_bias
+        self.bias_learning_rule = self.bias_learning_rule_class(self, **bias_learning_rule_kwargs)
+        self.network.backward_methods.add(self.bias_learning_rule_class.backward)
         self.activity_history_list = []
         self._activity_history = None
         self.projections = {}
@@ -104,9 +121,7 @@ class Population(object):
         projection.post = self
 
         if not self.projections and self.include_bias:
-            if self.learn_bias and self.bias_learning_rule == 'backprop':
-                projection.bias.requires_grad = True
-            else:
+            if self.bias_learning_rule_class != BackpropBias:
                 projection.bias.requires_grad = False
             if self.bias_init is not None:
                 if not hasattr(projection.bias.data, self.bias_init):
@@ -121,17 +136,17 @@ class Population(object):
         if learning_rule_kwargs is None:
             learning_rule_kwargs = {}
         if learning_rule is None:
-            projection.learning_rule = LearningRule
+            projection.learning_rule_class = LearningRule
         elif learning_rule in globals() and issubclass(globals()[learning_rule], LearningRule):
-            projection.learning_rule = globals()[learning_rule]
+            projection.learning_rule_class = globals()[learning_rule]
         else:
             raise RuntimeError \
                 ('Population.append_projection: learning_rule: %s must be imported and instance of LearningRule' %
                  learning_rule)
-        projection.update_weight  = projection.learning_rule(projection, **learning_rule_kwargs)
-        if learning_rule != 'Backprop':
+        projection.learning_rule  = projection.learning_rule_class(projection, **learning_rule_kwargs)
+        if projection.learning_rule_class != Backprop:
             projection.weight.requires_grad = False
-        self.network.backward_methods.add(projection.learning_rule.backward)
+        self.network.backward_methods.add(projection.learning_rule_class.backward)
 
         projection.weight_init = weight_init
         if weight_init is not None and not hasattr(projection.weight.data, weight_init):
@@ -386,10 +401,10 @@ class EIANN(nn.Module):
                 for i, post_layer in enumerate(self):
                     if i > 0:
                         for post_pop in post_layer:
-                            if post_pop.learn_bias:
-                                post_pop.bias_update(post_pop)
+                            if post_pop.include_bias:
+                                post_pop.bias_learning_rule.step()
                             for projection in post_pop:
-                                projection.update_weight()
+                                projection.learning_rule.step()
                 self.constrain_weights_and_biases()
 
         self.sample_order = torch.LongTensor(self.sample_order)
@@ -418,11 +433,26 @@ class LearningRule(object):
             learning_rate = self.projection.post.network.learning_rate
         self.learning_rate = learning_rate
 
-    def __call__(self):
+    def step(self):
         pass
 
     @classmethod
-    def backward(self, network, output, target):
+    def backward(cls, network, output, target):
+        pass
+
+
+class BiasLearningRule(object):
+    def __init__(self, population, learning_rate=None):
+        self.population = population
+        if learning_rate is None:
+            learning_rate = self.population.network.learning_rate
+        self.learning_rate = learning_rate
+
+    def step(self):
+        pass
+
+    @classmethod
+    def backward(cls, network, output, target):
         pass
 
 
@@ -435,8 +465,12 @@ class Backprop(LearningRule):
         network.optimizer.step()
 
 
+class BackpropBias(BiasLearningRule):
+    backward = Backprop.backward
+
+
 class Oja(LearningRule):
-    def __call__(self):
+    def step(self):
         delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity) - \
                        self.projection.weight * (self.projection.post.activity ** 2).unsqueeze(1)
         self.projection.weight.data += self.learning_rate * delta_weight
@@ -455,15 +489,26 @@ class BCM(LearningRule):
         super().__init__(projection, learning_rate)
         self.theta_tau = theta_tau
         self.k = k
-        self.projection.theta = torch.ones(projection.post.size) * theta_init
+        self.projection.post.theta = torch.ones(projection.post.size) * theta_init
 
-    def __call__(self):
+    def step(self):
         delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity) * \
-                       (self.projection.post.activity - self.projection.theta).unsqueeze(1)
+                       (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1)
         self.projection.weight.data += self.learning_rate * delta_weight
 
-        delta_theta = (-self.projection.theta + self.projection.post.activity ** 2. / self.k) / self.theta_tau
-        self.projection.theta += delta_theta
+    @classmethod
+    def backward(cls, network, output, target):
+        for i, layer in enumerate(network):
+            if i > 0:
+                for population in layer:
+                    for projection in population:
+                        if projection.learning_rule_class == cls:
+                            population.prev_theta = population.theta.clone()
+                            delta_theta = (-population.theta + population.activity ** 2. /
+                                           projection.learning_rule.k) / projection.learning_rule.theta_tau
+                            population.theta += delta_theta
+                            # only update theta once per population
+                            break
 
 
 class GjorgievaHebb(LearningRule):
@@ -471,7 +516,7 @@ class GjorgievaHebb(LearningRule):
         super().__init__(projection, learning_rate)
         self.sign = sign
 
-    def __call__(self):
+    def step(self):
         delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity)
         if self.sign > 0:
             self.projection.weight.data += self.learning_rate * delta_weight
@@ -532,7 +577,7 @@ class BTSP(LearningRule):
         else:
             self.w_max = self.projection.weight_bounds[1]
 
-    def __call__(self):
+    def step(self):
         plateau = self.projection.post.plateau
         discount = plateau.detach().clone()
         discount[plateau > 0] = 1.
@@ -551,11 +596,31 @@ class BTSP(LearningRule):
         reversed_layers = list(network)
         reversed_layers.reverse()
         output_pop = next(iter(reversed_layers[0]))
+        output_pop.dendritic_loss = output_loss.detach().clone()
         for projection in output_pop:
-            if projection.learning_rule == cls:
+            if projection.learning_rule_class == cls:
                 break
         output_pop.plateau = torch.zeros(output_pop.size)
-        where_pos_loss = torch.where(output_loss > projection.update_weight.pos_loss_th)
+        where_pos_loss = torch.where(output_loss > projection.learning_rule.pos_loss_th)
         output_pop.plateau[where_pos_loss] = output_loss[where_pos_loss]
-        where_neg_loss = torch.where(output_loss < projection.update_weight.neg_loss_th)
+        where_neg_loss = torch.where(output_loss < projection.learning_rule.neg_loss_th)
         output_pop.plateau[where_neg_loss] = output_loss[where_neg_loss]
+
+
+class DendriticLossBias(BiasLearningRule):
+    def step(self):
+        self.population.bias.data += self.learning_rate * self.population.dendritic_loss
+
+    backward = BTSP.backward
+
+
+class DendriticLoss(LearningRule):
+    def __init__(self, projection, sign=1, learning_rate=None):
+        super().__init__(projection, learning_rate)
+        self.sign = sign
+
+    def step(self):
+        self.projection.weight.data += self.sign * self.learning_rate * \
+                                       torch.outer(self.projection.post.dendritic_loss, self.projection.pre.activity)
+
+    backward = BTSP.backward
