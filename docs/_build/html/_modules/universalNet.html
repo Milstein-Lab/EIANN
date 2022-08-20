@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>universalNet &mdash; EIANN  documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> EIANN
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../summary.html">Summary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">dentate_circuit_learning</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">EIANN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Module code</a> &raquo;</li>
+      <li>universalNet</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for universalNet</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">universalNet_utils</span> <span class="kn">import</span> <span class="n">plot_summary</span>
+
+<span class="c1"># from typing import Any</span>
+<span class="c1"># from torch import Tensor</span>
+<span class="c1"># from torch.nn.parameter import Parameter, UninitializedParameter</span>
+<span class="c1"># from torch.nn import functional as F</span>
+<span class="c1"># from torch.nn import init</span>
+<span class="c1"># from torch.nn.modules.module import Module</span>
+
+
+<span class="c1"># hparams = {&#39;seed&#39;: 42,</span>
+<span class="c1">#            &#39;dales_law&#39;: True}</span>
+<span class="c1">#</span>
+<span class="c1"># params_dict = {&#39;layer0&#39;:</span>
+<span class="c1">#                    {&#39;E&#39;: {&#39;n&#39;: 7}},</span>
+<span class="c1">#                &#39;layer1&#39;:</span>
+<span class="c1">#                    {&#39;E&#39;: {&#39;n&#39;: 5,</span>
+<span class="c1">#                          &#39;activation&#39;: &#39;softplus&#39;,</span>
+<span class="c1">#                          &#39;inputs&#39;: [&#39;layer0.E&#39;]},</span>
+<span class="c1">#                     &#39;I&#39;: {&#39;n&#39;: 1}},</span>
+<span class="c1">#                &#39;layer2&#39;:</span>
+<span class="c1">#                    {&#39;E&#39;: {&#39;n&#39;: 21,</span>
+<span class="c1">#                          &#39;bias&#39;: True,</span>
+<span class="c1">#                          &#39;inputs&#39;: [&#39;layer0.E&#39;, &#39;layer1.E&#39;],</span>
+<span class="c1">#                          &#39;learning_rule&#39;: &#39;Oja&#39;}}}</span>
+<span class="c1">#</span>
+<span class="c1"># model = universalNet(params_dict, **hparams)</span>
+
+<span class="n">activation_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;linear&#39;</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">(),</span>
+                   <span class="s1">&#39;relu&#39;</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+                   <span class="s1">&#39;sigmoid&#39;</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sigmoid</span><span class="p">(),</span>
+                   <span class="s1">&#39;softplus&#39;</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Softplus</span><span class="p">(</span><span class="n">beta</span><span class="o">=</span><span class="mi">4</span><span class="p">)}</span>
+
+<span class="c1"># TODO: store order of presented patterns</span>
+<span class="c1"># TODO: add kwargs as dict to population activation params eg softmax, {beta=4}</span>
+<span class="c1"># TODO: store list/set of rules for every projection in a population (different rule for each proj)</span>
+<span class="c1"># TODO: add weight bounds</span>
+
+<div class="viewcode-block" id="Hebb"><a class="viewcode-back" href="../universalNet.html#universalNet.Hebb">[docs]</a><span class="k">def</span> <span class="nf">Hebb</span><span class="p">(</span><span class="n">pre</span><span class="p">,</span> <span class="n">post</span><span class="p">):</span>
+    <span class="n">delta_W</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="n">pre</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">delta_W</span></div>
+
+<div class="viewcode-block" id="Oja"><a class="viewcode-back" href="../universalNet.html#universalNet.Oja">[docs]</a><span class="k">def</span> <span class="nf">Oja</span><span class="p">(</span><span class="n">pre</span><span class="p">,</span> <span class="n">post</span><span class="p">,</span> <span class="n">W</span><span class="p">):</span>
+    <span class="n">delta_W</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="n">pre</span><span class="p">)</span> <span class="o">-</span> <span class="n">W</span> <span class="o">*</span> <span class="p">(</span><span class="n">post</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">delta_W</span></div>
+
+<div class="viewcode-block" id="BCM"><a class="viewcode-back" href="../universalNet.html#universalNet.BCM">[docs]</a><span class="k">def</span> <span class="nf">BCM</span><span class="p">(</span><span class="n">pre</span><span class="p">,</span> <span class="n">post</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
+    <span class="n">delta_W</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="n">pre</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">post</span> <span class="o">-</span> <span class="n">theta</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">delta_W</span></div>
+
+
+<div class="viewcode-block" id="universalNet"><a class="viewcode-back" href="../universalNet.html#universalNet.universalNet">[docs]</a><span class="k">class</span> <span class="nc">universalNet</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params_dict</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">dales_law</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="c1"># torch.manual_seed(self.seed)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dales_law</span> <span class="o">=</span> <span class="n">dales_law</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">nn_modules</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleDict</span><span class="p">()</span>
+
+        <span class="c1"># Create layer &amp; population objects from params dict</span>
+        <span class="k">for</span> <span class="n">layer_name</span> <span class="ow">in</span> <span class="n">params_dict</span><span class="p">:</span>
+            <span class="n">populations</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="n">params_dict</span><span class="p">[</span><span class="n">layer_name</span><span class="p">]:</span>
+                <span class="n">populations</span><span class="p">[</span><span class="n">population</span><span class="p">]</span> <span class="o">=</span> <span class="n">params_dict</span><span class="p">[</span><span class="n">layer_name</span><span class="p">][</span><span class="n">population</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;n&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="p">[</span><span class="n">layer_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="p">[</span><span class="n">layer_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer_name</span><span class="p">,</span> <span class="n">populations</span><span class="o">=</span><span class="n">populations</span><span class="p">)</span>
+
+            <span class="c1"># Add projections and apply optional parameters (bias, learning rules, etc.) to the population</span>
+            <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="n">params_dict</span><span class="p">[</span><span class="n">layer_name</span><span class="p">]:</span>
+                <span class="c1"># if params_dict[layer_name][population]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="p">[</span><span class="n">layer_name</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">population</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">params_dict</span><span class="p">[</span><span class="n">layer_name</span><span class="p">][</span><span class="n">population</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_pop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="p">[</span><span class="n">layer_name</span><span class="p">]</span><span class="o">.</span><span class="n">E</span> <span class="c1"># E pop of final layer</span>
+
+        <span class="c1"># self.input_layer = Layer(&#39;input_layer&#39;, populations={&#39;E&#39;:7})</span>
+        <span class="c1"># self.layer1 = Layer(&#39;layer1&#39;, populations={&#39;E&#39;:5, &#39;I&#39;:1})</span>
+        <span class="c1"># self.layer1.E.update(self, activation=&#39;softplus&#39;,</span>
+        <span class="c1">#                      inputs=[&#39;input_layer.E&#39;])</span>
+        <span class="c1"># self.layer2 = Layer(&#39;layer2&#39;, populations={&#39;E&#39;:21})</span>
+        <span class="c1"># self.layer2.E.update(self, activation=&#39;softplus&#39;, bias=True,</span>
+        <span class="c1">#                      inputs=[&#39;input_layer.E&#39;, &#39;layer1.E&#39;], learning_rule = &#39;Oja&#39;)</span>
+
+<div class="viewcode-block" id="universalNet.forward"><a class="viewcode-back" href="../universalNet.html#universalNet.universalNet.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">all_patterns</span><span class="p">,</span> <span class="n">track_activity</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">all_patterns</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reset_units</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">forward_single</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">populaltion</span> <span class="ow">in</span> <span class="n">layer</span><span class="p">:</span>
+                        <span class="n">populaltion</span><span class="o">.</span><span class="n">all_pattern_activities</span><span class="p">[</span><span class="n">t</span><span class="p">,</span><span class="n">p</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">populaltion</span><span class="o">.</span><span class="n">activity</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_pop</span><span class="o">.</span><span class="n">all_pattern_activities</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="universalNet.forward_single"><a class="viewcode-back" href="../universalNet.html#universalNet.universalNet.forward_single">[docs]</a>    <span class="k">def</span> <span class="nf">forward_single</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_pattern</span><span class="p">,</span> <span class="n">track_activity</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">training</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">population</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layer</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">i</span><span class="o">==</span><span class="mi">0</span> <span class="ow">and</span> <span class="n">j</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span> <span class="c1"># pass pattern to first population of input layer</span>
+                    <span class="n">population</span><span class="o">.</span><span class="n">activity</span> <span class="o">=</span> <span class="n">input_pattern</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">population</span><span class="o">.</span><span class="n">prev_activity</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">activity</span>
+                    <span class="n">population</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">state</span> <span class="o">-</span> <span class="n">population</span><span class="o">.</span><span class="n">state</span><span class="o">/</span><span class="n">population</span><span class="o">.</span><span class="n">tau</span>
+                    <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">population</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">projection</span><span class="o">.</span><span class="n">direction</span> <span class="o">==</span> <span class="s1">&#39;FF&#39;</span><span class="p">:</span>
+                            <span class="n">population</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">state</span> <span class="o">+</span> <span class="n">projection</span><span class="p">(</span><span class="n">projection</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">activity</span><span class="p">)</span><span class="o">/</span><span class="n">population</span><span class="o">.</span><span class="n">tau</span>
+                        <span class="k">elif</span> <span class="n">projection</span><span class="o">.</span><span class="n">direction</span> <span class="o">==</span> <span class="s1">&#39;FB&#39;</span><span class="p">:</span>
+                            <span class="n">population</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">state</span> <span class="o">+</span> <span class="n">projection</span><span class="p">(</span><span class="n">projection</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">prev_activity</span><span class="p">)</span><span class="o">/</span><span class="n">population</span><span class="o">.</span><span class="n">tau</span>
+                    <span class="n">population</span><span class="o">.</span><span class="n">activity</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">activation</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">state</span> <span class="o">+</span> <span class="n">population</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">track_activity</span><span class="p">:</span>
+                    <span class="n">population</span><span class="o">.</span><span class="n">activity_history_ls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">activity</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span>
+
+                <span class="k">if</span> <span class="n">training</span><span class="p">:</span>
+                    <span class="n">population</span><span class="o">.</span><span class="n">activity_train_history</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">epoch</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pattern_idx</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">activity</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="universalNet.train"><a class="viewcode-back" href="../universalNet.html#universalNet.universalNet.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_epochs</span><span class="p">,</span> <span class="n">all_patterns</span><span class="p">,</span> <span class="n">all_targets</span><span class="p">,</span> <span class="n">lr</span><span class="p">,</span> <span class="n">num_timesteps</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_BPTT_steps</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">lr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_patterns</span> <span class="o">=</span> <span class="n">all_patterns</span>
+        <span class="n">num_patterns</span> <span class="o">=</span> <span class="n">all_patterns</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span> <span class="o">=</span> <span class="n">num_timesteps</span>
+        <span class="n">loss_history</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="n">layer</span><span class="p">:</span>
+                <span class="n">population</span><span class="o">.</span><span class="n">activity_train_history</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">,</span> <span class="n">num_timesteps</span><span class="p">,</span> <span class="n">num_patterns</span><span class="p">,</span> <span class="n">population</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+                <span class="n">population</span><span class="o">.</span><span class="n">all_pattern_activities</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_timesteps</span><span class="p">,</span> <span class="n">num_patterns</span><span class="p">,</span> <span class="n">population</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_activity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">all_patterns</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">=</span> <span class="n">epoch</span>
+            <span class="k">for</span> <span class="n">pattern_idx</span> <span class="ow">in</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="n">num_patterns</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pattern_idx</span> <span class="o">=</span> <span class="n">pattern_idx</span>
+                <span class="n">input_pattern</span> <span class="o">=</span> <span class="n">all_patterns</span><span class="p">[</span><span class="n">pattern_idx</span><span class="p">]</span>
+                <span class="n">target</span> <span class="o">=</span> <span class="n">all_targets</span><span class="p">[</span><span class="n">pattern_idx</span><span class="p">]</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">reset_units</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_timesteps</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="n">t</span>
+                    <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="n">num_timesteps</span> <span class="o">-</span> <span class="n">num_BPTT_steps</span><span class="p">):</span>  <span class="c1"># truncate BPTT to only evaluate n steps from the end</span>
+                        <span class="n">track_grad</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">track_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+                    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="n">track_grad</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">forward_single</span><span class="p">(</span><span class="n">input_pattern</span><span class="p">,</span> <span class="n">training</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+                <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_pop</span><span class="o">.</span><span class="n">activity</span>
+                <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">criterion</span><span class="p">(</span><span class="n">output</span><span class="p">,</span><span class="n">target</span><span class="p">)</span>
+                <span class="n">loss_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loss</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_params</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dales_law</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">rectify_weights</span><span class="p">()</span>
+
+                <span class="c1"># Save weights &amp; biases &amp; activity</span>
+                <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="n">layer</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">population</span><span class="p">,</span><span class="s1">&#39;bias&#39;</span><span class="p">):</span>
+                            <span class="n">population</span><span class="o">.</span><span class="n">bias_history_ls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">())</span>
+                        <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">population</span><span class="p">:</span>
+                            <span class="n">projection</span><span class="o">.</span><span class="n">weight_history_ls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">())</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">loss_history</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">loss_history</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">final_activity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">all_patterns</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
+            <span class="n">plot_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="universalNet.rectify_weights"><a class="viewcode-back" href="../universalNet.html#universalNet.universalNet.rectify_weights">[docs]</a>    <span class="k">def</span> <span class="nf">rectify_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="n">layer</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">population</span><span class="p">:</span>
+                    <span class="n">projection</span><span class="o">.</span><span class="n">rectify_weights</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="universalNet.reset_units"><a class="viewcode-back" href="../universalNet.html#universalNet.universalNet.reset_units">[docs]</a>    <span class="k">def</span> <span class="nf">reset_units</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c1"># Zero states and activities</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="n">layer</span><span class="p">:</span>
+                <span class="n">population</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+                <span class="n">population</span><span class="o">.</span><span class="n">activity</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">size</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="universalNet.update_params"><a class="viewcode-back" href="../universalNet.html#universalNet.universalNet.update_params">[docs]</a>    <span class="k">def</span> <span class="nf">update_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loss</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span> <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">()]):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="n">layer</span><span class="p">:</span>
+                <span class="c1"># population.step_bias()</span>
+                <span class="c1"># TODO: add theta update conditional on population projections</span>
+                <span class="c1"># delta_theta = (-population.theta_BCM + population.activity ** 2 / population.theta_k) / population.theta_tau</span>
+                <span class="c1"># population.theta_BCM += delta_theta</span>
+                <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">population</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule</span> <span class="o">==</span> <span class="s1">&#39;Hebb&#39;</span><span class="p">:</span>
+                        <span class="n">delta_W</span> <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">delta_W</span><span class="p">(</span><span class="n">pre</span> <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">activity</span><span class="p">,</span>
+                                                     <span class="n">post</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">activity</span><span class="p">)</span>
+                        <span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="n">projection</span><span class="o">.</span><span class="n">lr</span> <span class="o">*</span> <span class="n">delta_W</span>
+
+                    <span class="k">elif</span> <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule</span> <span class="o">==</span> <span class="s1">&#39;Oja&#39;</span><span class="p">:</span>
+                        <span class="n">delta_W</span> <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">delta_W</span><span class="p">(</span><span class="n">pre</span> <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">activity</span><span class="p">,</span>
+                                                     <span class="n">post</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">activity</span><span class="p">,</span>
+                                                     <span class="n">W</span> <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
+                        <span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="n">projection</span><span class="o">.</span><span class="n">lr</span> <span class="o">*</span> <span class="n">delta_W</span>
+
+                    <span class="k">elif</span> <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule</span> <span class="o">==</span> <span class="s1">&#39;BCM&#39;</span><span class="p">:</span>
+                        <span class="n">delta_W</span> <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">delta_W</span><span class="p">(</span><span class="n">pre</span> <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">activity</span><span class="p">,</span>
+                                                     <span class="n">post</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">activity</span><span class="p">,</span>
+                                                     <span class="n">theta</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">theta_BCM</span><span class="p">)</span>
+                        <span class="n">delta_theta</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">population</span><span class="o">.</span><span class="n">theta_BCM</span> <span class="o">+</span> <span class="n">population</span><span class="o">.</span><span class="n">activity</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">population</span><span class="o">.</span><span class="n">theta_k</span><span class="p">)</span> <span class="o">/</span> <span class="n">population</span><span class="o">.</span><span class="n">theta_tau</span>
+                        <span class="n">population</span><span class="o">.</span><span class="n">theta_BCM</span> <span class="o">+=</span> <span class="n">delta_theta</span>
+                        <span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="n">projection</span><span class="o">.</span><span class="n">lr</span> <span class="o">*</span> <span class="n">delta_W</span></div>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Layer</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">value</span></div>
+
+
+<div class="viewcode-block" id="Layer"><a class="viewcode-back" href="../universalNet.html#universalNet.Layer">[docs]</a><span class="k">class</span> <span class="nc">Layer</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">populations</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">populations</span> <span class="o">=</span> <span class="n">populations</span>
+        <span class="k">for</span> <span class="n">pop</span><span class="p">,</span><span class="n">size</span> <span class="ow">in</span> <span class="n">populations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">pop</span><span class="p">]</span> <span class="o">=</span> <span class="n">Population</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">pop</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">callable</span><span class="p">(</span><span class="n">value</span><span class="p">):</span> <span class="c1">#only iterate over Populations</span>
+                <span class="k">yield</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ls</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;_&#39;</span><span class="p">:</span>
+                <span class="n">ls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ls</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s1"> :</span><span class="se">\n\t</span><span class="s1">(</span><span class="si">{</span><span class="n">items</span><span class="si">}</span><span class="s1">)&#39;</span></div>
+
+
+<div class="viewcode-block" id="Population"><a class="viewcode-back" href="../universalNet.html#universalNet.Population">[docs]</a><span class="k">class</span> <span class="nc">Population</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="c1"># Hyperparameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layer</span> <span class="o">=</span> <span class="n">layer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fullname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layer</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># self.theta_tau = 1 # for BCM learning</span>
+        <span class="c1"># self.theta_k = 1 # for BCM learning</span>
+
+        <span class="c1"># State variables</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activity</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_activity</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activity_history_ls</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias_history_ls</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()]</span>
+
+        <span class="c1"># register to ModuleDict to make bias a backprop-trainable parameter</span>
+        <span class="n">network</span><span class="o">.</span><span class="n">nn_modules</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">fullname</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span>
+
+<div class="viewcode-block" id="Population.update"><a class="viewcode-back" href="../universalNet.html#universalNet.Population.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bias_rule</span><span class="o">=</span><span class="s1">&#39;backprop&#39;</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activation</span> <span class="o">=</span> <span class="n">activation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">learn_bias</span> <span class="o">=</span> <span class="n">bias</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias_rule</span> <span class="o">=</span> <span class="n">bias_rule</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau</span> <span class="o">=</span> <span class="n">tau</span>
+
+        <span class="k">if</span> <span class="n">bias</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">bias_rule</span> <span class="o">==</span> <span class="s1">&#39;backprop&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bias</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">inputs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_projections</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Population.step_bias"><a class="viewcode-back" href="../universalNet.html#universalNet.Population.step_bias">[docs]</a>    <span class="k">def</span> <span class="nf">step_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># TODO: add bias update (as nn.Parameter? or through nn.Linear?)</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="Population.add_projections"><a class="viewcode-back" href="../universalNet.html#universalNet.Population.add_projections">[docs]</a>    <span class="k">def</span> <span class="nf">add_projections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">proj_origin</span> <span class="ow">in</span> <span class="n">inputs</span><span class="p">:</span>
+            <span class="n">pre_layer</span><span class="p">,</span> <span class="n">pre_pop</span> <span class="o">=</span> <span class="n">proj_origin</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+            <span class="n">pre_pop</span> <span class="o">=</span> <span class="n">network</span><span class="o">.</span><span class="n">_modules</span><span class="p">[</span><span class="n">pre_layer</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">pre_pop</span><span class="p">]</span> <span class="c1"># get population object from string name</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">fullname</span><span class="p">)</span>
+
+            <span class="c1"># TODO: add theta during projection init for BCM layers</span>
+            <span class="c1"># TODO: create set of learning rules and separate backward passes for each</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">fullname</span><span class="p">]</span> <span class="o">=</span> <span class="n">Projection</span><span class="p">(</span><span class="n">pre_pop</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">dales_law</span><span class="o">=</span><span class="n">network</span><span class="o">.</span><span class="n">dales_law</span><span class="p">,</span> <span class="o">**</span><span class="n">inputs</span><span class="p">[</span><span class="n">proj_origin</span><span class="p">])</span>
+
+            <span class="c1"># register to ModuleDict to make projection a backprop-trainable parameter</span>
+            <span class="n">projection_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">fullname</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">network</span><span class="o">.</span><span class="n">nn_modules</span><span class="p">[</span><span class="n">projection_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">fullname</span><span class="p">]</span></div>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Projection</span><span class="p">):</span> <span class="c1">#only iterate over projections</span>
+                <span class="k">yield</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ls</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;_&#39;</span><span class="p">:</span>
+                <span class="n">ls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ls</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s1"> :</span><span class="se">\n\t</span><span class="s1">(</span><span class="si">{</span><span class="n">items</span><span class="si">}</span><span class="s1">)&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">activation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Automatically turn activation string into a callable function</span>
+        <span class="k">return</span> <span class="n">activation_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_act_name</span><span class="p">]</span>
+    <span class="nd">@activation</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">activation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">act_name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_act_name</span> <span class="o">=</span> <span class="n">act_name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">activity_history</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">activity_history_ls</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bias_history</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bias_history_ls</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Projection"><a class="viewcode-back" href="../universalNet.html#universalNet.Projection">[docs]</a><span class="k">class</span> <span class="nc">Projection</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Applies a linear transformation to the incoming data: :math:`y = xA^T + b`</span>
+<span class="sd">    Args:</span>
+<span class="sd">        in_features: size of each input sample</span>
+<span class="sd">        out_features: size of each output sample</span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        weight: the learnable weights of the module of shape</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pre_population</span><span class="p">,</span> <span class="n">post_population</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">distribution</span><span class="o">=</span><span class="s1">&#39;kaiming_uniform&#39;</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">),</span>
+                 <span class="n">dales_law</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">&#39;FF&#39;</span><span class="p">,</span> <span class="n">learning_rule</span><span class="o">=</span><span class="s1">&#39;backprop&#39;</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pre</span> <span class="o">=</span> <span class="n">pre_population</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post</span> <span class="o">=</span> <span class="n">post_population</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">bounds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">learning_rule</span> <span class="o">=</span> <span class="n">learning_rule</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">fullname</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">fullname</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">size</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initialize_weights</span><span class="p">(</span><span class="n">distribution</span><span class="p">,</span> <span class="n">dales_law</span><span class="p">,</span> <span class="n">bounds</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight_history_ls</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()]</span>
+
+        <span class="k">if</span> <span class="n">learning_rule</span> <span class="o">!=</span> <span class="s1">&#39;backprop&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delta_W</span> <span class="o">=</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">args</span><span class="p">:</span> <span class="nb">globals</span><span class="p">()[</span><span class="n">learning_rule</span><span class="p">](</span><span class="o">**</span><span class="n">args</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Projection.forward"><a class="viewcode-back" href="../universalNet.html#universalNet.Projection.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">F</span><span class="o">.</span><span class="n">linear</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Projection.initialize_weights"><a class="viewcode-back" href="../universalNet.html#universalNet.Projection.initialize_weights">[docs]</a>    <span class="k">def</span> <span class="nf">initialize_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distribution</span><span class="p">,</span> <span class="n">dales_law</span><span class="p">,</span> <span class="n">bounds</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">distribution</span> <span class="o">==</span> <span class="s1">&#39;kaiming_uniform&#39;</span><span class="p">:</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">kaiming_uniform_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">distribution</span> <span class="o">+=</span> <span class="s1">&#39;_&#39;</span>
+            <span class="n">distribute_weights</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="p">,</span> <span class="n">distribution</span><span class="p">)</span> <span class="c1"># get function for desired initial weight distribution</span>
+            <span class="n">distribute_weights</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span> <span class="o">*</span><span class="n">bounds</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dales_law</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rectify_weights</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Projection.rectify_weights"><a class="viewcode-back" href="../universalNet.html#universalNet.Projection.rectify_weights">[docs]</a>    <span class="k">def</span> <span class="nf">rectify_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;E&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;I&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeWarning</span><span class="p">(</span><span class="s2">&quot;Population name must be &#39;E&#39; or &#39;I&#39; when using Dale&#39;s law. Weights not rectified&quot;</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">weight_history</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight_history_ls</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, A.R.Galloni &amp; A.D.Milstein.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

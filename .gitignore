@@ -2,3 +2,5 @@ notebooks/.ipynb_checkpoints/**
 .ipynb_checkpoints/**
 .idea/**
 __pycache__/**
+/notebooks
+.DS_Store

@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EIANN &mdash; EIANN  documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> EIANN
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../summary.html">Summary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">dentate_circuit_learning</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">EIANN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Module code</a> &raquo;</li>
+      <li>EIANN</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for EIANN</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">from</span> <span class="nn">torch.nn.functional</span> <span class="kn">import</span> <span class="n">softplus</span><span class="p">,</span> <span class="n">relu</span>
+<span class="kn">from</span> <span class="nn">torch.optim</span> <span class="kn">import</span> <span class="n">Adam</span><span class="p">,</span> <span class="n">SGD</span>
+<span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">MSELoss</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+
+
+<div class="viewcode-block" id="AttrDict"><a class="viewcode-back" href="../EIANN.html#EIANN.AttrDict">[docs]</a><span class="k">class</span> <span class="nc">AttrDict</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Dict class for storing population attributes (?)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="fm">__setitem__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;expected dict&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">AttrDict</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">AttrDict</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AttrDict</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__setitem__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span>
+        <span class="k">return</span> <span class="n">found</span>
+
+    <span class="fm">__setattr__</span><span class="p">,</span> <span class="fm">__getattr__</span> <span class="o">=</span> <span class="fm">__setitem__</span><span class="p">,</span> <span class="fm">__getitem__</span></div>
+
+
+<div class="viewcode-block" id="Layer"><a class="viewcode-back" href="../EIANN.html#EIANN.Layer">[docs]</a><span class="k">class</span> <span class="nc">Layer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">populations</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="Layer.append_population"><a class="viewcode-back" href="../EIANN.html#EIANN.Layer.append_population">[docs]</a>    <span class="k">def</span> <span class="nf">append_population</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">population</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">population</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">population</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">population</span></div>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">populations</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">population</span></div>
+
+
+<div class="viewcode-block" id="Population"><a class="viewcode-back" href="../EIANN.html#EIANN.Population">[docs]</a><span class="k">class</span> <span class="nc">Population</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">activation</span><span class="p">,</span> <span class="n">activation_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">include_bias</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">bias_init</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bias_init_args</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bias_bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bias_learning_rule</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">bias_learning_rule_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Class for population of neurons</span>
+<span class="sd">        :param network:</span>
+<span class="sd">        :param layer:</span>
+<span class="sd">        :param name:</span>
+<span class="sd">        :param size:</span>
+<span class="sd">        :param activation:</span>
+<span class="sd">        :param activation_kwargs:</span>
+<span class="sd">        :param include_bias:</span>
+<span class="sd">        :param bias_init:</span>
+<span class="sd">        :param bias_init_args:</span>
+<span class="sd">        :param bias_bounds:</span>
+<span class="sd">        :param bias_learning_rule:</span>
+<span class="sd">        :param bias_learning_rule_kwargs:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Constants</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="n">network</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layer</span> <span class="o">=</span> <span class="n">layer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span>
+
+        <span class="c1"># Set callable activation function</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">activation</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="ow">and</span> <span class="n">callable</span><span class="p">(</span><span class="nb">globals</span><span class="p">()[</span><span class="n">activation</span><span class="p">])):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span> \
+                <span class="p">(</span><span class="s1">&#39;Population: callable for activation: </span><span class="si">%s</span><span class="s1"> must be imported&#39;</span> <span class="o">%</span> <span class="n">activation</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">activation_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">activation_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activation_kwargs</span> <span class="o">=</span> <span class="n">activation_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activation</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">globals</span><span class="p">()[</span><span class="n">activation</span><span class="p">](</span><span class="n">x</span><span class="p">,</span> <span class="o">**</span><span class="n">activation_kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Set bias parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias_init</span> <span class="o">=</span> <span class="n">bias_init</span>
+        <span class="k">if</span> <span class="n">bias_init_args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">bias_init_args</span> <span class="o">=</span> <span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias_init_args</span> <span class="o">=</span> <span class="n">bias_init_args</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias_bounds</span> <span class="o">=</span> <span class="n">bias_bounds</span>
+        <span class="k">if</span> <span class="n">bias_learning_rule_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">bias_learning_rule_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">bias_learning_rule</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bias_learning_rule_class</span> <span class="o">=</span> <span class="n">BiasLearningRule</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">include_bias</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">bias_learning_rule</span> <span class="o">==</span> <span class="s1">&#39;Backprop&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bias_learning_rule_class</span> <span class="o">=</span> <span class="n">BackpropBias</span>
+            <span class="k">elif</span> <span class="n">bias_learning_rule</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="nb">globals</span><span class="p">()[</span><span class="n">bias_learning_rule</span><span class="p">],</span> <span class="n">BiasLearningRule</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bias_learning_rule_class</span> <span class="o">=</span> <span class="nb">globals</span><span class="p">()[</span><span class="n">bias_learning_rule</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span> \
+                    <span class="p">(</span><span class="s1">&#39;Population: bias_learning_rule: </span><span class="si">%s</span><span class="s1"> must be imported and subclass of BiasLearningRule&#39;</span> <span class="o">%</span>
+                     <span class="n">bias_learning_rule</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">include_bias</span> <span class="o">=</span> <span class="n">include_bias</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bias_learning_rule</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_learning_rule_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">bias_learning_rule_kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">backward_methods</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bias_learning_rule_class</span><span class="o">.</span><span class="n">backward</span><span class="p">)</span>
+
+        <span class="c1"># Initialize storage containers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activity_history_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_activity_history</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projections</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reinit</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Population.reinit"><a class="viewcode-back" href="../EIANN.html#EIANN.Population.reinit">[docs]</a>    <span class="k">def</span> <span class="nf">reinit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Method for resetting state variables of a population</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activity</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_activity</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+<div class="viewcode-block" id="Population.append_projection"><a class="viewcode-back" href="../EIANN.html#EIANN.Population.append_projection">[docs]</a>    <span class="k">def</span> <span class="nf">append_projection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pre_pop</span><span class="p">,</span> <span class="n">weight_init</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weight_init_args</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weight_constraint</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                          <span class="n">weight_constraint_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weight_bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">&#39;FF&#39;</span><span class="p">,</span> <span class="n">learning_rule</span><span class="o">=</span><span class="s1">&#39;Backprop&#39;</span><span class="p">,</span>
+                          <span class="n">learning_rule_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># Create projection object</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">projections</span><span class="p">:</span>
+            <span class="n">include_bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_bias</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">include_bias</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">projection</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">include_bias</span><span class="p">)</span>
+        <span class="n">projection</span><span class="o">.</span><span class="n">pre</span> <span class="o">=</span> <span class="n">pre_pop</span>
+        <span class="n">projection</span><span class="o">.</span><span class="n">post</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="c1"># Specify bias, stored as an attribute of the projection class</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">projections</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_bias</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_learning_rule_class</span> <span class="o">!=</span> <span class="n">BackpropBias</span><span class="p">:</span>
+                <span class="n">projection</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">projection</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_init</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                        <span class="s1">&#39;Population.append_projection: callable for bias_init: </span><span class="si">%s</span><span class="s1"> must be a method of Tensor&#39;</span> <span class="o">%</span>
+                        <span class="n">bias_init</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bias_init_args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">bias_init_args</span> <span class="o">=</span> <span class="p">()</span>
+
+        <span class="n">projection</span><span class="o">.</span><span class="n">weight_bounds</span> <span class="o">=</span> <span class="n">weight_bounds</span>
+
+        <span class="c1"># Set learning rule as callable of the projection</span>
+        <span class="k">if</span> <span class="n">learning_rule_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">learning_rule_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">learning_rule</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule_class</span> <span class="o">=</span> <span class="n">LearningRule</span>
+        <span class="k">elif</span> <span class="n">learning_rule</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="nb">globals</span><span class="p">()[</span><span class="n">learning_rule</span><span class="p">],</span> <span class="n">LearningRule</span><span class="p">):</span>
+            <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule_class</span> <span class="o">=</span> <span class="nb">globals</span><span class="p">()[</span><span class="n">learning_rule</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span> \
+                <span class="p">(</span><span class="s1">&#39;Population.append_projection: learning_rule: </span><span class="si">%s</span><span class="s1"> must be imported and instance of LearningRule&#39;</span> <span class="o">%</span>
+                 <span class="n">learning_rule</span><span class="p">)</span>
+        <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule</span>  <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule_class</span><span class="p">(</span><span class="n">projection</span><span class="p">,</span> <span class="o">**</span><span class="n">learning_rule_kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule_class</span> <span class="o">!=</span> <span class="n">Backprop</span><span class="p">:</span>
+            <span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">backward_methods</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">projection</span><span class="o">.</span><span class="n">learning_rule_class</span><span class="o">.</span><span class="n">backward</span><span class="p">)</span>
+
+        <span class="c1"># Set projection parameters</span>
+        <span class="n">projection</span><span class="o">.</span><span class="n">weight_init</span> <span class="o">=</span> <span class="n">weight_init</span>
+        <span class="k">if</span> <span class="n">weight_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">weight_init</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span> \
+                <span class="p">(</span><span class="s1">&#39;Population.append_projection: callable for weight_init: </span><span class="si">%s</span><span class="s1"> must be a method of Tensor&#39;</span> <span class="o">%</span> <span class="n">weight_init</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">weight_init_args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">weight_init_args</span> <span class="o">=</span> <span class="p">()</span>
+        <span class="n">projection</span><span class="o">.</span><span class="n">weight_init_args</span> <span class="o">=</span> <span class="n">weight_init_args</span>
+
+        <span class="n">projection</span><span class="o">.</span><span class="n">weight_constraint</span> <span class="o">=</span> <span class="n">weight_constraint</span>
+        <span class="k">if</span> <span class="n">weight_constraint_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">weight_constraint_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">projection</span><span class="o">.</span><span class="n">weight_constraint_kwargs</span> <span class="o">=</span> <span class="n">weight_constraint_kwargs</span>
+        <span class="k">if</span> <span class="n">weight_constraint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span><span class="p">(</span><span class="n">weight_constraint</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="ow">and</span> <span class="n">callable</span><span class="p">(</span><span class="nb">globals</span><span class="p">()[</span><span class="n">weight_constraint</span><span class="p">])):</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span> \
+                    <span class="p">(</span><span class="s1">&#39;Population.append_projection: weight_constraint: </span><span class="si">%s</span><span class="s1"> must be imported and callable&#39;</span> <span class="o">%</span>
+                     <span class="n">weight_constraint</span><span class="p">)</span>
+            <span class="n">projection</span><span class="o">.</span><span class="n">constrain_weight</span> <span class="o">=</span> \
+                <span class="k">lambda</span> <span class="n">projection</span><span class="p">:</span> \
+                    <span class="nb">globals</span><span class="p">()[</span><span class="n">weight_constraint</span><span class="p">](</span><span class="n">projection</span><span class="p">,</span> <span class="o">**</span><span class="n">projection</span><span class="o">.</span><span class="n">weight_constraint_kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">direction</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;FF&#39;</span><span class="p">,</span> <span class="s1">&#39;FB&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Population.append_projection: direction (</span><span class="si">%s</span><span class="s1">) must be either FF or FB&#39;</span> <span class="o">%</span> <span class="n">direction</span><span class="p">)</span>
+        <span class="n">projection</span><span class="o">.</span><span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span>
+        <span class="k">if</span> <span class="n">pre_pop</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">projections</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">projections</span><span class="p">[</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">AttrDict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projections</span><span class="p">[</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="p">][</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">projection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="p">][</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">projection</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">module_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">projection</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">projections</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">projections</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">projections</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="k">yield</span> <span class="n">projection</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bias</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_bias</span><span class="p">:</span>
+            <span class="n">projection</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">projection</span><span class="o">.</span><span class="n">bias</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">activity_history</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_activity_history</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">activity_history_list</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_activity_history</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">sample_activity</span><span class="p">)</span>
+                                                      <span class="k">for</span> <span class="n">sample_activity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">activity_history_list</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">activity_history_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">activity_history_list</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_activity_history</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_activity_history</span><span class="p">,</span>
+                                                    <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">sample_activity</span><span class="p">)</span>
+                                                                 <span class="k">for</span> <span class="n">sample_activity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">activity_history_list</span><span class="p">])])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">activity_history_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_activity_history</span></div>
+
+
+<div class="viewcode-block" id="Input"><a class="viewcode-back" href="../EIANN.html#EIANN.Input">[docs]</a><span class="k">class</span> <span class="nc">Input</span><span class="p">(</span><span class="n">Population</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="n">network</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layer</span> <span class="o">=</span> <span class="n">layer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activity_history_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_activity_history</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projections</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reinit</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="EIANN"><a class="viewcode-back" href="../EIANN.html#EIANN.EIANN">[docs]</a><span class="k">class</span> <span class="nc">EIANN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer_config</span><span class="p">,</span> <span class="n">projection_config</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">,</span> <span class="n">optimizer</span><span class="o">=</span><span class="n">SGD</span><span class="p">,</span> <span class="n">optimizer_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">criterion</span><span class="o">=</span><span class="n">MSELoss</span><span class="p">,</span> <span class="n">criterion_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">forward_steps</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">backward_steps</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        :param layer_config: nested dict</span>
+<span class="sd">        :param projection_config: nested dict</span>
+<span class="sd">        :param learning_rate: float; applies to weights and biases in absence of projection-specific learning rates</span>
+<span class="sd">        :param optimizer: callable</span>
+<span class="sd">        :param optimizer_kwargs: dict</span>
+<span class="sd">        :param criterion: callable</span>
+<span class="sd">        :param criterion_kwargs: dict</span>
+<span class="sd">        :param seed: int or sequence of int</span>
+<span class="sd">        :param tau: int</span>
+<span class="sd">        :param forward_steps: int</span>
+<span class="sd">        :param backward_steps: int</span>
+<span class="sd">        :param verbose: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="n">learning_rate</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">callable</span><span class="p">(</span><span class="n">criterion</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;EIANN: criterion (</span><span class="si">%s</span><span class="s1">) must be imported and callable&#39;</span> <span class="o">%</span> <span class="n">criterion</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">criterion_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">criterion_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">criterion_kwargs</span> <span class="o">=</span> <span class="n">criterion_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">criterion</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="o">**</span><span class="n">criterion_kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau</span> <span class="o">=</span> <span class="n">tau</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">forward_steps</span> <span class="o">=</span> <span class="n">forward_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backward_steps</span> <span class="o">=</span> <span class="n">backward_steps</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">backward_methods</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">module_list</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">layer_name</span><span class="p">,</span> <span class="n">pop_config</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layer_config</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="n">layer</span> <span class="o">=</span> <span class="n">Layer</span><span class="p">(</span><span class="n">layer_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">layer_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">layer</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">layer_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">layer</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="p">(</span><span class="n">pop_name</span><span class="p">,</span> <span class="n">pop_kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">pop_config</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">pop</span> <span class="o">=</span> <span class="n">Input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">pop_name</span><span class="p">,</span> <span class="o">**</span><span class="n">pop_kwargs</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">pop</span> <span class="o">=</span> <span class="n">Population</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">pop_name</span><span class="p">,</span> <span class="o">**</span><span class="n">pop_kwargs</span><span class="p">)</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">append_population</span><span class="p">(</span><span class="n">pop</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">post_layer_name</span> <span class="ow">in</span> <span class="n">projection_config</span><span class="p">:</span>
+            <span class="n">post_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">post_layer_name</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">post_pop_name</span> <span class="ow">in</span> <span class="n">projection_config</span><span class="p">[</span><span class="n">post_layer_name</span><span class="p">]:</span>
+                <span class="n">post_pop</span> <span class="o">=</span> <span class="n">post_layer</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">post_pop_name</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">pre_layer_name</span> <span class="ow">in</span> <span class="n">projection_config</span><span class="p">[</span><span class="n">post_layer_name</span><span class="p">][</span><span class="n">post_pop_name</span><span class="p">]:</span>
+                    <span class="n">pre_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">pre_layer_name</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">pre_pop_name</span><span class="p">,</span> <span class="n">projection_kwargs</span> <span class="ow">in</span> \
+                            <span class="n">projection_config</span><span class="p">[</span><span class="n">post_layer_name</span><span class="p">][</span><span class="n">post_pop_name</span><span class="p">][</span><span class="n">pre_layer_name</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="n">pre_pop</span> <span class="o">=</span> <span class="n">pre_layer</span><span class="o">.</span><span class="n">populations</span><span class="p">[</span><span class="n">pre_pop_name</span><span class="p">]</span>
+                        <span class="n">post_pop</span><span class="o">.</span><span class="n">append_projection</span><span class="p">(</span><span class="n">pre_pop</span><span class="p">,</span> <span class="o">**</span><span class="n">projection_kwargs</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;EIANN: appending a projection from </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> -&gt; </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span>
+                                  <span class="p">(</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">pre_pop</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">optimizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">callable</span><span class="p">(</span><span class="n">optimizer</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;EIANN: optimizer (</span><span class="si">%s</span><span class="s1">) must be imported and callable&#39;</span> <span class="o">%</span> <span class="n">optimizer</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">optimizer_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">optimizer_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer_kwargs</span> <span class="o">=</span> <span class="n">optimizer_kwargs</span>
+            <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optimizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer_kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">optimizer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_weights_and_biases</span><span class="p">()</span>
+
+<div class="viewcode-block" id="EIANN.init_weights_and_biases"><a class="viewcode-back" href="../EIANN.html#EIANN.EIANN.init_weights_and_biases">[docs]</a>    <span class="k">def</span> <span class="nf">init_weights_and_biases</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">post_layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">post_pop</span> <span class="ow">in</span> <span class="n">post_layer</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">include_bias</span> <span class="ow">and</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">bias_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="nb">getattr</span><span class="p">(</span><span class="n">post_pop</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">bias_init</span><span class="p">)(</span><span class="o">*</span><span class="n">post_pop</span><span class="o">.</span><span class="n">bias_init_args</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">post_pop</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">projection</span><span class="o">.</span><span class="n">weight_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="nb">getattr</span><span class="p">(</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">projection</span><span class="o">.</span><span class="n">weight_init</span><span class="p">)(</span><span class="o">*</span><span class="n">projection</span><span class="o">.</span><span class="n">weight_init_args</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">constrain_weights_and_biases</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="EIANN.constrain_weights_and_biases"><a class="viewcode-back" href="../EIANN.html#EIANN.EIANN.constrain_weights_and_biases">[docs]</a>    <span class="k">def</span> <span class="nf">constrain_weights_and_biases</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">post_layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">post_pop</span> <span class="ow">in</span> <span class="n">post_layer</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">include_bias</span> <span class="ow">and</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">bias_bounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">post_pop</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="o">*</span><span class="n">post_pop</span><span class="o">.</span><span class="n">bias_bounds</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">post_pop</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">projection</span><span class="o">.</span><span class="n">weight_bounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="o">*</span><span class="n">projection</span><span class="o">.</span><span class="n">weight_bounds</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">projection</span><span class="o">.</span><span class="n">weight_constraint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">projection</span><span class="o">.</span><span class="n">constrain_weight</span><span class="p">(</span><span class="n">projection</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EIANN.reset_history"><a class="viewcode-back" href="../EIANN.html#EIANN.EIANN.reset_history">[docs]</a>    <span class="k">def</span> <span class="nf">reset_history</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="n">layer</span><span class="p">:</span>
+                <span class="n">population</span><span class="o">.</span><span class="n">reinit</span><span class="p">()</span>
+                <span class="n">population</span><span class="o">.</span><span class="n">activity_history_list</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">population</span><span class="o">.</span><span class="n">_activity_history</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="EIANN.forward"><a class="viewcode-back" href="../EIANN.html#EIANN.EIANN.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="n">store_history</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">pop</span> <span class="ow">in</span> <span class="n">layer</span><span class="p">:</span>
+                <span class="n">pop</span><span class="o">.</span><span class="n">reinit</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">input_pop</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">layer</span><span class="p">))</span>
+                <span class="n">input_pop</span><span class="o">.</span><span class="n">activity</span> <span class="o">=</span> <span class="n">sample</span>
+
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">forward_steps</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward_steps</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">backward_steps</span><span class="p">:</span>
+                <span class="n">track_grad</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">track_grad</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="n">track_grad</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">post_layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">post_pop</span> <span class="ow">in</span> <span class="n">post_layer</span><span class="p">:</span>
+                        <span class="n">post_pop</span><span class="o">.</span><span class="n">prev_activity</span> <span class="o">=</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">activity</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">post_layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">post_pop</span> <span class="ow">in</span> <span class="n">post_layer</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">delta_state</span> <span class="o">=</span> <span class="o">-</span><span class="n">post_pop</span><span class="o">.</span><span class="n">state</span>
+                            <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">post_pop</span><span class="p">:</span>
+                                <span class="n">pre_pop</span> <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">pre</span>
+                                <span class="k">if</span> <span class="n">projection</span><span class="o">.</span><span class="n">direction</span> <span class="o">==</span> <span class="s1">&#39;FF&#39;</span><span class="p">:</span>
+                                    <span class="n">delta_state</span> <span class="o">=</span> <span class="n">delta_state</span> <span class="o">+</span> <span class="n">projection</span><span class="p">(</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">activity</span><span class="p">)</span>
+                                <span class="k">elif</span> <span class="n">projection</span><span class="o">.</span><span class="n">direction</span> <span class="o">==</span> <span class="s1">&#39;FB&#39;</span><span class="p">:</span>
+                                    <span class="n">delta_state</span> <span class="o">=</span> <span class="n">delta_state</span> <span class="o">+</span> <span class="n">projection</span><span class="p">(</span><span class="n">pre_pop</span><span class="o">.</span><span class="n">prev_activity</span><span class="p">)</span>
+                            <span class="n">post_pop</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">state</span> <span class="o">+</span> <span class="n">delta_state</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau</span>
+                            <span class="n">post_pop</span><span class="o">.</span><span class="n">activity</span> <span class="o">=</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">activation</span><span class="p">(</span><span class="n">post_pop</span><span class="o">.</span><span class="n">state</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">store_history</span><span class="p">:</span>
+                            <span class="n">post_pop</span><span class="o">.</span><span class="n">sample_activity</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">post_pop</span><span class="o">.</span><span class="n">activity</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">())</span>
+
+        <span class="k">if</span> <span class="n">store_history</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">pop</span> <span class="ow">in</span> <span class="n">layer</span><span class="p">:</span>
+                    <span class="n">pop</span><span class="o">.</span><span class="n">activity_history_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pop</span><span class="o">.</span><span class="n">sample_activity</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">layer</span><span class="p">))</span><span class="o">.</span><span class="n">activity</span></div>
+
+<div class="viewcode-block" id="EIANN.train"><a class="viewcode-back" href="../EIANN.html#EIANN.EIANN.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">epochs</span><span class="p">,</span> <span class="n">store_history</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">status_bar</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        :param dataset: 2d array or tensor of float</span>
+<span class="sd">        :param target: 2d array or tensor of float</span>
+<span class="sd">        :param epochs: int</span>
+<span class="sd">        :param store_history: bool</span>
+<span class="sd">        :param shuffle: bool</span>
+<span class="sd">        :param status_bar: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">num_samples</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_order</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sorted_sample_indexes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loss_history</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">status_bar</span><span class="p">:</span>
+            <span class="n">epoch_iter</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">epochs</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">epoch_iter</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">epochs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="n">epoch_iter</span><span class="p">:</span>
+            <span class="n">sample_indexes</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_order</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sample_indexes</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sorted_sample_indexes</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">epoch</span> <span class="o">*</span> <span class="n">num_samples</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">sample_indexes</span><span class="p">)))</span>
+            <span class="k">for</span> <span class="n">sample_idx</span> <span class="ow">in</span> <span class="n">sample_indexes</span><span class="p">:</span>
+                <span class="n">sample</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[</span><span class="n">sample_idx</span><span class="p">]</span>
+                <span class="n">sample_target</span>  <span class="o">=</span> <span class="n">target</span><span class="p">[</span><span class="n">sample_idx</span><span class="p">]</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">store_history</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">criterion</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">sample_target</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">loss_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span>
+                <span class="k">for</span> <span class="n">backward</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">backward_methods</span><span class="p">:</span>
+                    <span class="n">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">sample_target</span><span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">post_layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">post_pop</span> <span class="ow">in</span> <span class="n">post_layer</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="n">post_pop</span><span class="o">.</span><span class="n">include_bias</span><span class="p">:</span>
+                                <span class="n">post_pop</span><span class="o">.</span><span class="n">bias_learning_rule</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+                            <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">post_pop</span><span class="p">:</span>
+                                <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">constrain_weights_and_biases</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_order</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">LongTensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_order</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sorted_sample_indexes</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">LongTensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sorted_sample_indexes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loss_history</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loss_history</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span></div>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">layer</span></div>
+
+
+<div class="viewcode-block" id="normalize_weight"><a class="viewcode-back" href="../EIANN.html#EIANN.normalize_weight">[docs]</a><span class="k">def</span> <span class="nf">normalize_weight</span><span class="p">(</span><span class="n">projection</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">autapses</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">/=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">*=</span> <span class="n">scale</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">autapses</span> <span class="ow">and</span> <span class="n">projection</span><span class="o">.</span><span class="n">pre</span> <span class="o">==</span> <span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span></div>
+
+
+<div class="viewcode-block" id="LearningRule"><a class="viewcode-back" href="../EIANN.html#EIANN.LearningRule">[docs]</a><span class="k">class</span> <span class="nc">LearningRule</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">projection</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projection</span> <span class="o">=</span> <span class="n">projection</span>
+        <span class="k">if</span> <span class="n">learning_rate</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">learning_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">learning_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="n">learning_rate</span>
+
+<div class="viewcode-block" id="LearningRule.step"><a class="viewcode-back" href="../EIANN.html#EIANN.LearningRule.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="LearningRule.backward"><a class="viewcode-back" href="../EIANN.html#EIANN.LearningRule.backward">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="k">pass</span></div></div>
+
+
+<div class="viewcode-block" id="BiasLearningRule"><a class="viewcode-back" href="../EIANN.html#EIANN.BiasLearningRule">[docs]</a><span class="k">class</span> <span class="nc">BiasLearningRule</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">population</span> <span class="o">=</span> <span class="n">population</span>
+        <span class="k">if</span> <span class="n">learning_rate</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">learning_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">population</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">learning_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="n">learning_rate</span>
+
+<div class="viewcode-block" id="BiasLearningRule.step"><a class="viewcode-back" href="../EIANN.html#EIANN.BiasLearningRule.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="BiasLearningRule.backward"><a class="viewcode-back" href="../EIANN.html#EIANN.BiasLearningRule.backward">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="k">pass</span></div></div>
+
+
+<div class="viewcode-block" id="Backprop"><a class="viewcode-back" href="../EIANN.html#EIANN.Backprop">[docs]</a><span class="k">class</span> <span class="nc">Backprop</span><span class="p">(</span><span class="n">LearningRule</span><span class="p">):</span>
+<div class="viewcode-block" id="Backprop.backward"><a class="viewcode-back" href="../EIANN.html#EIANN.Backprop.backward">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">network</span><span class="o">.</span><span class="n">criterion</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+        <span class="n">network</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+        <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+        <span class="n">network</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span></div></div>
+
+
+<div class="viewcode-block" id="BackpropBias"><a class="viewcode-back" href="../EIANN.html#EIANN.BackpropBias">[docs]</a><span class="k">class</span> <span class="nc">BackpropBias</span><span class="p">(</span><span class="n">BiasLearningRule</span><span class="p">):</span>
+    <span class="n">backward</span> <span class="o">=</span> <span class="n">Backprop</span><span class="o">.</span><span class="n">backward</span></div>
+
+
+<div class="viewcode-block" id="Oja"><a class="viewcode-back" href="../EIANN.html#EIANN.Oja">[docs]</a><span class="k">class</span> <span class="nc">Oja</span><span class="p">(</span><span class="n">LearningRule</span><span class="p">):</span>
+<div class="viewcode-block" id="Oja.step"><a class="viewcode-back" href="../EIANN.html#EIANN.Oja.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">delta_weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">activity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">activity</span><span class="p">)</span> <span class="o">-</span> \
+                       <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">activity</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">delta_weight</span></div></div>
+
+
+<div class="viewcode-block" id="BCM"><a class="viewcode-back" href="../EIANN.html#EIANN.BCM">[docs]</a><span class="k">class</span> <span class="nc">BCM</span><span class="p">(</span><span class="n">LearningRule</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">projection</span><span class="p">,</span> <span class="n">theta_init</span><span class="p">,</span> <span class="n">theta_tau</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        :param projection:</span>
+<span class="sd">        :param theta_init: float</span>
+<span class="sd">        :param theta_tau: float</span>
+<span class="sd">        :param k: float</span>
+<span class="sd">        :param learning_rate: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">projection</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">theta_tau</span> <span class="o">=</span> <span class="n">theta_tau</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="n">k</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">theta</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="n">theta_init</span>
+
+<div class="viewcode-block" id="BCM.step"><a class="viewcode-back" href="../EIANN.html#EIANN.BCM.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">delta_weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">activity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">activity</span><span class="p">)</span> <span class="o">*</span> \
+                       <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">activity</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">prev_theta</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">delta_weight</span></div>
+
+<div class="viewcode-block" id="BCM.backward"><a class="viewcode-back" href="../EIANN.html#EIANN.BCM.backward">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">network</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">population</span> <span class="ow">in</span> <span class="n">layer</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">population</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule_class</span> <span class="o">==</span> <span class="bp">cls</span><span class="p">:</span>
+                            <span class="n">population</span><span class="o">.</span><span class="n">prev_theta</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">theta</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                            <span class="n">delta_theta</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">population</span><span class="o">.</span><span class="n">theta</span> <span class="o">+</span> <span class="n">population</span><span class="o">.</span><span class="n">activity</span> <span class="o">**</span> <span class="mf">2.</span> <span class="o">/</span>
+                                           <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule</span><span class="o">.</span><span class="n">k</span><span class="p">)</span> <span class="o">/</span> <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule</span><span class="o">.</span><span class="n">theta_tau</span>
+                            <span class="n">population</span><span class="o">.</span><span class="n">theta</span> <span class="o">+=</span> <span class="n">delta_theta</span>
+                            <span class="c1"># only update theta once per population</span>
+                            <span class="k">break</span></div></div>
+
+
+<div class="viewcode-block" id="GjorgievaHebb"><a class="viewcode-back" href="../EIANN.html#EIANN.GjorgievaHebb">[docs]</a><span class="k">class</span> <span class="nc">GjorgievaHebb</span><span class="p">(</span><span class="n">LearningRule</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">projection</span><span class="p">,</span> <span class="n">sign</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">projection</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sign</span> <span class="o">=</span> <span class="n">sign</span>
+
+<div class="viewcode-block" id="GjorgievaHebb.step"><a class="viewcode-back" href="../EIANN.html#EIANN.GjorgievaHebb.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">delta_weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">activity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">activity</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sign</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">delta_weight</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">delta_weight</span></div></div>
+
+
+<div class="viewcode-block" id="get_scaled_rectified_sigmoid"><a class="viewcode-back" href="../EIANN.html#EIANN.get_scaled_rectified_sigmoid">[docs]</a><span class="k">def</span> <span class="nf">get_scaled_rectified_sigmoid</span><span class="p">(</span><span class="n">th</span><span class="p">,</span> <span class="n">peak</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ylim</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transform a sigmoid to intersect x and y range limits.</span>
+<span class="sd">    :param th: float</span>
+<span class="sd">    :param peak: float</span>
+<span class="sd">    :param x: array</span>
+<span class="sd">    :param ylim: pair of float</span>
+<span class="sd">    :return: callable</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ylim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ylim</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">th</span> <span class="o">&lt;</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">or</span> <span class="n">th</span> <span class="o">&gt;</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;scaled_single_sigmoid: th: </span><span class="si">%.2E</span><span class="s1"> is out of range for xlim: [</span><span class="si">%.2E</span><span class="s1">, </span><span class="si">%.2E</span><span class="s1">]&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">th</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="k">if</span> <span class="n">peak</span> <span class="o">==</span> <span class="n">th</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;scaled_single_sigmoid: peak and th: </span><span class="si">%.2E</span><span class="s1"> cannot be equal&#39;</span> <span class="o">%</span> <span class="n">th</span><span class="p">)</span>
+    <span class="n">slope</span> <span class="o">=</span> <span class="mf">2.</span> <span class="o">/</span> <span class="p">(</span><span class="n">peak</span> <span class="o">-</span> <span class="n">th</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="mf">1.</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">slope</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">th</span><span class="p">)))</span>
+    <span class="n">start_val</span> <span class="o">=</span> <span class="n">y</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">end_val</span> <span class="o">=</span> <span class="n">y</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">amp</span> <span class="o">=</span> <span class="n">end_val</span> <span class="o">-</span> <span class="n">start_val</span>
+    <span class="n">target_amp</span> <span class="o">=</span> <span class="n">ylim</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ylim</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">vectorize</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">xi</span><span class="p">:</span>
+        <span class="p">(</span><span class="n">target_amp</span> <span class="o">/</span> <span class="n">amp</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">slope</span> <span class="o">*</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="n">th</span><span class="p">)))</span> <span class="o">-</span> <span class="n">start_val</span><span class="p">)</span> <span class="o">+</span> <span class="n">ylim</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="BTSP"><a class="viewcode-back" href="../EIANN.html#EIANN.BTSP">[docs]</a><span class="k">class</span> <span class="nc">BTSP</span><span class="p">(</span><span class="n">LearningRule</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">projection</span><span class="p">,</span> <span class="n">pos_loss_th</span><span class="o">=</span><span class="mf">2.440709E-01</span><span class="p">,</span> <span class="n">neg_loss_th</span><span class="o">=-</span><span class="mf">4.592181E-01</span><span class="p">,</span> <span class="n">neg_loss_ET_discount</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+         <span class="n">dep_ratio</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">dep_th</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">dep_width</span><span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        :param projection: :class:&#39;nn.Linear&#39;</span>
+<span class="sd">        :param pos_loss_th: float</span>
+<span class="sd">        :param neg_loss_th: float</span>
+<span class="sd">        :param neg_loss_ET_discount: float</span>
+<span class="sd">        :param dep_ratio: float</span>
+<span class="sd">        :param dep_th: float</span>
+<span class="sd">        :param dep_width: float</span>
+<span class="sd">        :param learning_rate: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">projection</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q_dep</span> <span class="o">=</span> <span class="n">get_scaled_rectified_sigmoid</span><span class="p">(</span><span class="n">dep_th</span><span class="p">,</span> <span class="n">dep_th</span> <span class="o">+</span> <span class="n">dep_width</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos_loss_th</span> <span class="o">=</span> <span class="n">pos_loss_th</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">neg_loss_th</span> <span class="o">=</span> <span class="n">neg_loss_th</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">neg_loss_ET_discount</span> <span class="o">=</span> <span class="n">neg_loss_ET_discount</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dep_ratio</span> <span class="o">=</span> <span class="n">dep_ratio</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight_bounds</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight_bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">w_max</span> <span class="o">=</span> <span class="mf">2.</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">w_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight_bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+<div class="viewcode-block" id="BTSP.step"><a class="viewcode-back" href="../EIANN.html#EIANN.BTSP.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">plateau</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">plateau</span>
+        <span class="n">discount</span> <span class="o">=</span> <span class="n">plateau</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">discount</span><span class="p">[</span><span class="n">plateau</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.</span>
+        <span class="n">discount</span><span class="p">[</span><span class="n">plateau</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neg_loss_ET_discount</span>
+        <span class="n">IS</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">plateau</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ET</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">discount</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">activity</span><span class="p">)</span>
+
+        <span class="n">delta_weight</span> <span class="o">=</span> <span class="n">IS</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w_max</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span> <span class="o">*</span> <span class="n">ET</span> <span class="o">-</span> \
+                       <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dep_ratio</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_dep</span><span class="p">(</span><span class="n">ET</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">delta_weight</span></div>
+
+<div class="viewcode-block" id="BTSP.backward"><a class="viewcode-back" href="../EIANN.html#EIANN.BTSP.backward">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="n">output_loss</span> <span class="o">=</span> <span class="n">target</span> <span class="o">-</span> <span class="n">output</span>
+        <span class="n">reversed_layers</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">network</span><span class="p">)</span>
+        <span class="n">reversed_layers</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+        <span class="n">output_pop</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">reversed_layers</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">output_pop</span><span class="o">.</span><span class="n">dendritic_loss</span> <span class="o">=</span> <span class="n">output_loss</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">projection</span> <span class="ow">in</span> <span class="n">output_pop</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule_class</span> <span class="o">==</span> <span class="bp">cls</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="n">output_pop</span><span class="o">.</span><span class="n">plateau</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">output_pop</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="n">where_pos_loss</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">output_loss</span> <span class="o">&gt;</span> <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule</span><span class="o">.</span><span class="n">pos_loss_th</span><span class="p">)</span>
+        <span class="n">output_pop</span><span class="o">.</span><span class="n">plateau</span><span class="p">[</span><span class="n">where_pos_loss</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_loss</span><span class="p">[</span><span class="n">where_pos_loss</span><span class="p">]</span>
+        <span class="n">where_neg_loss</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">output_loss</span> <span class="o">&lt;</span> <span class="n">projection</span><span class="o">.</span><span class="n">learning_rule</span><span class="o">.</span><span class="n">neg_loss_th</span><span class="p">)</span>
+        <span class="n">output_pop</span><span class="o">.</span><span class="n">plateau</span><span class="p">[</span><span class="n">where_neg_loss</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_loss</span><span class="p">[</span><span class="n">where_neg_loss</span><span class="p">]</span></div></div>
+
+
+<div class="viewcode-block" id="DendriticLossBias"><a class="viewcode-back" href="../EIANN.html#EIANN.DendriticLossBias">[docs]</a><span class="k">class</span> <span class="nc">DendriticLossBias</span><span class="p">(</span><span class="n">BiasLearningRule</span><span class="p">):</span>
+<div class="viewcode-block" id="DendriticLossBias.step"><a class="viewcode-back" href="../EIANN.html#EIANN.DendriticLossBias.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">population</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">population</span><span class="o">.</span><span class="n">dendritic_loss</span></div>
+
+    <span class="n">backward</span> <span class="o">=</span> <span class="n">BTSP</span><span class="o">.</span><span class="n">backward</span></div>
+
+
+<div class="viewcode-block" id="DendriticLoss"><a class="viewcode-back" href="../EIANN.html#EIANN.DendriticLoss">[docs]</a><span class="k">class</span> <span class="nc">DendriticLoss</span><span class="p">(</span><span class="n">LearningRule</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">projection</span><span class="p">,</span> <span class="n">sign</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">projection</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sign</span> <span class="o">=</span> <span class="n">sign</span>
+
+<div class="viewcode-block" id="DendriticLoss.step"><a class="viewcode-back" href="../EIANN.html#EIANN.DendriticLoss.step">[docs]</a>    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sign</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">*</span> \
+                                       <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">post</span><span class="o">.</span><span class="n">dendritic_loss</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="o">.</span><span class="n">pre</span><span class="o">.</span><span class="n">activity</span><span class="p">)</span></div>
+
+    <span class="n">backward</span> <span class="o">=</span> <span class="n">BTSP</span><span class="o">.</span><span class="n">backward</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, A.R.Galloni &amp; A.D.Milstein.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

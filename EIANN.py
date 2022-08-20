@@ -9,6 +9,9 @@ from tqdm import tqdm
 
 
 class AttrDict(dict):
+    '''
+    Dict class for storing population attributes (?)
+    '''
     def __init__(self, value=None):
         if value is None:
             pass
@@ -51,7 +54,7 @@ class Population(object):
                  bias_init=None, bias_init_args=None, bias_bounds=None, bias_learning_rule=None,
                  bias_learning_rule_kwargs=None):
         """
-
+        Class for population of neurons
         :param network:
         :param layer:
         :param name:
@@ -65,10 +68,13 @@ class Population(object):
         :param bias_learning_rule:
         :param bias_learning_rule_kwargs:
         """
+        # Constants
         self.network = network
         self.layer = layer
         self.name = name
         self.size = size
+
+        # Set callable activation function
         if not (activation in globals() and callable(globals()[activation])):
             raise RuntimeError \
                 ('Population: callable for activation: %s must be imported' % activation)
@@ -77,6 +83,7 @@ class Population(object):
         self.activation_kwargs = activation_kwargs
         self.activation = lambda x: globals()[activation](x, **activation_kwargs)
 
+        # Set bias parameters
         self.bias_init = bias_init
         if bias_init_args is None:
             bias_init_args = ()
@@ -99,12 +106,17 @@ class Population(object):
         self.include_bias = include_bias
         self.bias_learning_rule = self.bias_learning_rule_class(self, **bias_learning_rule_kwargs)
         self.network.backward_methods.add(self.bias_learning_rule_class.backward)
+
+        # Initialize storage containers
         self.activity_history_list = []
         self._activity_history = None
         self.projections = {}
         self.reinit()
 
     def reinit(self):
+        '''
+        Method for resetting state variables of a population
+        '''
         self.activity = torch.zeros(self.size)
         self.state = torch.zeros(self.size)
         self.sample_activity = []
@@ -112,6 +124,7 @@ class Population(object):
     def append_projection(self, pre_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
                           weight_constraint_kwargs=None, weight_bounds=None, direction='FF', learning_rule='Backprop',
                           learning_rule_kwargs=None):
+        # Create projection object
         if not self.projections:
             include_bias = self.include_bias
         else:
@@ -120,6 +133,7 @@ class Population(object):
         projection.pre = pre_pop
         projection.post = self
 
+        # Specify bias, stored as an attribute of the projection class
         if not self.projections and self.include_bias:
             if self.bias_learning_rule_class != BackpropBias:
                 projection.bias.requires_grad = False
@@ -133,6 +147,7 @@ class Population(object):
 
         projection.weight_bounds = weight_bounds
 
+        # Set learning rule as callable of the projection
         if learning_rule_kwargs is None:
             learning_rule_kwargs = {}
         if learning_rule is None:
@@ -148,6 +163,7 @@ class Population(object):
             projection.weight.requires_grad = False
         self.network.backward_methods.add(projection.learning_rule_class.backward)
 
+        # Set projection parameters
         projection.weight_init = weight_init
         if weight_init is not None and not hasattr(projection.weight.data, weight_init):
             raise RuntimeError \
