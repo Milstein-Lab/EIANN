@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Search &mdash; EIANN  documentation</title>
+  <title>get_diag_argmax_row_indexes &mdash; EIANN  documentation</title>
   
 
   
@@ -25,14 +25,16 @@
 
   
 
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <!-- <link rel="stylesheet" href="_static/pygments.css" type="text/css" /> -->
-  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
-    <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="#" /> 
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!-- <link rel="stylesheet" href="../_static/pygments.css" type="text/css" /> -->
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="n_choose_k" href="EIANN_utils.n_choose_k.html" />
+    <link rel="prev" title="EIANN_utils module" href="../EIANN_utils.html" /> 
 
   
-  <script src="_static/js/modernizr.min.js"></script>
+  <script src="../_static/js/modernizr.min.js"></script>
 </head>
 
 <div class="container-fluid header-holder tutorials-header" id="header-holder">
@@ -113,7 +115,7 @@
 
 
 <div role="search">
-  <form id="rtd-search-form" class="wy-form" action="#" method="get">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
     <input type="text" name="q" placeholder="Search Docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -130,9 +132,9 @@
             
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="summary.html">Summary</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules.html">dentate_circuit_learning</a></li>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../summary.html">Summary</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../modules.html">dentate_circuit_learning</a></li>
 </ul>
 
             
@@ -167,7 +169,7 @@
   <ul class="pytorch-breadcrumbs">
     
       <li>
-        <a href="index.html">
+        <a href="../index.html">
           
             Docs
           
@@ -175,12 +177,18 @@
       </li>
 
         
-      <li>Search</li>
+          <li><a href="../modules.html">dentate_circuit_learning</a> &gt;</li>
+        
+          <li><a href="../EIANN_utils.html">EIANN_utils module</a> &gt;</li>
+        
+      <li>get_diag_argmax_row_indexes</li>
     
     
       <li class="pytorch-breadcrumbs-aside">
         
             
+            <a href="../_sources/api/EIANN_utils.get_diag_argmax_row_indexes.rst.txt" rel="nofollow"><img src="../_static/images/view-page-source-icon.svg"></a>
+          
         
       </li>
     
@@ -202,24 +210,39 @@
             <div role="main" class="main-content" itemscope="itemscope" itemtype="http://schema.org/Article">
              <article itemprop="articleBody" class="pytorch-article">
               
-  <noscript>
-  <div id="fallback" class="admonition warning">
-    <p class="last">
-      Please activate JavaScript to enable the search
-      functionality.
-    </p>
-  </div>
-  </noscript>
+  <div class="section" id="get-diag-argmax-row-indexes">
+<h1>get_diag_argmax_row_indexes<a class="headerlink" href="#get-diag-argmax-row-indexes" title="Permalink to this headline"></a></h1>
+<dl class="py function">
+<dt id="EIANN_utils.get_diag_argmax_row_indexes">
+<code class="sig-prename descclassname">EIANN_utils.</code><code class="sig-name descname">get_diag_argmax_row_indexes</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/EIANN_utils.html#get_diag_argmax_row_indexes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN_utils.get_diag_argmax_row_indexes" title="Permalink to this definition"></a></dt>
+<dd><p>Sort the rows of a square matrix such that whenever row argmax and col argmax are equal, that value appears
+on the diagonal. Returns row indexes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>data</strong> – 2d array; square matrix</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>array of int</p>
+</dd>
+</dl>
+</dd></dl>
 
-  
-  <div id="search-results">
-  
-  </div>
+</div>
+
 
              </article>
              
             </div>
             <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="EIANN_utils.n_choose_k.html" class="btn btn-neutral float-right" title="n_choose_k" accesskey="n" rel="next">Next <img src="../_static/images/chevron-right-orange.svg" class="next-page"></a>
+      
+      
+        <a href="../EIANN_utils.html" class="btn btn-neutral" title="EIANN_utils module" accesskey="p" rel="prev"><img src="../_static/images/chevron-right-orange.svg" class="previous-page"> Previous</a>
+      
+    </div>
   
 
   <hr/>
@@ -240,7 +263,10 @@
         <div class="pytorch-content-right" id="pytorch-content-right">
           <div class="pytorch-right-menu" id="pytorch-right-menu">
             <div class="pytorch-side-scroll" id="pytorch-side-scroll-right">
-              
+              <ul>
+<li><a class="reference internal" href="#">get_diag_argmax_row_indexes</a></li>
+</ul>
+
             </div>
           </div>
         </div>
@@ -254,7 +280,7 @@
 
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
+            URL_ROOT:'../',
             VERSION:'',
             LANGUAGE:'None',
             COLLAPSE_INDEX:false,
@@ -263,31 +289,23 @@
             SOURCELINK_SUFFIX: '.txt'
         };
     </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/language_data.js"></script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="../_static/language_data.js"></script>
       <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-      <script type="text/javascript" src="_static/searchtools.js"></script>
 
   
 
-  <script type="text/javascript" src="_static/js/vendor/popper.min.js"></script>
-  <script type="text/javascript" src="_static/js/vendor/bootstrap.min.js"></script>
-  <script type="text/javascript" src="_static/js/theme.js"></script>
+  <script type="text/javascript" src="../_static/js/vendor/popper.min.js"></script>
+  <script type="text/javascript" src="../_static/js/vendor/bootstrap.min.js"></script>
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
 
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-  <script type="text/javascript">
-    jQuery(function() { Search.loadIndex("searchindex.js"); });
-  </script>
-  
-  <script type="text/javascript" id="searchindexloader"></script>
-   
-
+  </script> 
 
   <!-- Begin Footer -->
 
@@ -445,7 +463,7 @@
 
   <!-- End Mobile Menu -->
 
-  <script type="text/javascript" src="_static/js/vendor/anchor.min.js"></script>
+  <script type="text/javascript" src="../_static/js/vendor/anchor.min.js"></script>
 
   <script type="text/javascript">
     mobileMenu.bind();
