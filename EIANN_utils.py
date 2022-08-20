@@ -52,42 +52,116 @@ def test_EIANN_config(network, dataset, target, epochs):
     for sample in dataset:
         network.forward(sample, store_history=True)
 
-    plt.figure()
-    plt.imshow(network.Output.E.Input.E.weight.data)
-    plt.colorbar()
-    plt.xlabel('Input unit ID')
-    plt.ylabel('Output unit ID')
-    plt.title('Initial weights\nOutput_E <- Input_E')
+    reversed_layers = list(network)
+    reversed_layers.reverse()
+    output_pop = next(iter(reversed_layers[0]))
 
-    fig, axes = plt.subplots(1, 2)
-    this_axis = axes[0]
-    im = this_axis.imshow(network.Output.E.activity_history[-dataset.shape[0]:, -1, :].T)
-    plt.colorbar(im, ax=this_axis)
-    this_axis.set_xlabel('Input pattern ID')
-    this_axis.set_ylabel('Output unit ID')
-    this_axis.set_title('Initial activity\nOutput_E')
-    this_axis = axes[1]
-    im = this_axis.imshow(network.Output.FBI.activity_history[-dataset.shape[0]:, -1, :].T)
-    plt.colorbar(im, ax=this_axis)
-    this_axis.set_xlabel('Input pattern ID')
-    this_axis.set_ylabel('Output unit ID')
-    this_axis.set_title('Initial activity\nOutput_FBI')
+    max_rows = 1
+    cols = len(network.layers) - 1
+    for layer in network:
+        projection_count = 0
+        for population in layer:
+            projection_count += len(list(population))
+        max_rows = max(max_rows, projection_count)
+
+    fig, axes = plt.subplots(max_rows, cols, figsize=(3.*cols, 3.*max_rows))
+    for i, layer in enumerate(network):
+        if i > 0:
+            col = i - 1
+            row = 0
+            for population in layer:
+                for projection in population:
+                    if cols == 1:
+                        if max_rows == 1:
+                            this_axis = axes
+                        else:
+                            this_axis = axes[row]
+                    elif max_rows == 1:
+                        this_axis = axes[col]
+                    else:
+                        this_axis = axes[row, col]
+                    im = this_axis.imshow(projection.weight.data, aspect='auto')
+                    fig.colorbar(im, ax=this_axis)
+                    this_axis.set_xlabel('Pre unit ID')
+                    this_axis.set_ylabel('Post unit ID')
+                    this_axis.set_title('%s.%s <- %s.%s' %
+                              (projection.post.layer.name, projection.post.name,
+                               projection.pre.layer.name, projection.pre.name))
+                    row += 1
+            while row < max_rows:
+                if cols == 1:
+                    this_axis = axes[row]
+                else:
+                    this_axis = axes[row, col]
+                this_axis.set_visible(False)
+                row += 1
+    fig.suptitle('Initial weights')
     fig.tight_layout()
     fig.show()
 
-    fig, axes = plt.subplots(1, 2)
-    this_axis = axes[0]
-    for i in range(network.Output.E.size):
-        this_axis.plot(torch.mean(network.Output.E.activity_history[-dataset.shape[0]:, :, i], axis=0))
-    this_axis.set_xlabel('Equilibration time steps')
-    this_axis.set_ylabel('Output unit ID')
-    this_axis.set_title('Mean activity dynamics\nOutput_E')
-    this_axis = axes[1]
-    for i in range(network.Output.FBI.size):
-        this_axis.plot(torch.mean(network.Output.FBI.activity_history[-dataset.shape[0]:, :, i], axis=0))
-    this_axis.set_xlabel('Equilibration time steps')
-    this_axis.set_ylabel('Output unit ID')
-    this_axis.set_title('Mean activity dynamics\nOutput_FBI')
+    max_rows = 1
+    cols = len(network.layers)
+    for layer in network:
+        max_rows = max(max_rows, len(layer.populations))
+
+    fig, axes = plt.subplots(max_rows, cols, figsize=(3. * cols, 3. * max_rows))
+    for col, layer in enumerate(network):
+        for row, population in enumerate(layer):
+            if cols == 1:
+                if max_rows == 1:
+                    this_axis = axes
+                else:
+                    this_axis = axes[row]
+            elif max_rows == 1:
+                this_axis = axes[col]
+            else:
+                this_axis = axes[row, col]
+            im = this_axis.imshow(population.activity_history[-dataset.shape[0]:, -1, :].T, aspect='auto')
+            fig.colorbar(im, ax=this_axis)
+            this_axis.set_xlabel('Input pattern ID')
+            this_axis.set_ylabel('Output unit ID')
+            this_axis.set_title('%s.%s' % (layer.name, population.name))
+        row += 1
+        while row < max_rows:
+            if cols == 1:
+                this_axis = axes[row]
+            else:
+                this_axis = axes[row, col]
+            this_axis.set_visible(False)
+            row += 1
+    fig.suptitle('Initial activity')
+    fig.tight_layout()
+    fig.show()
+
+    cols = len(network.layers) - 1
+    fig, axes = plt.subplots(max_rows, cols, figsize=(3. * cols, 3. * max_rows))
+    for i, layer in enumerate(network):
+        if i > 0:
+            col = i - 1
+            for row, population in enumerate(layer):
+                if cols == 1:
+                    if max_rows == 1:
+                        this_axis = axes
+                    else:
+                        this_axis = axes[row]
+                elif max_rows == 1:
+                    this_axis = axes[col]
+                else:
+                    this_axis = axes[row, col]
+                for i in range(population.size):
+                    this_axis.plot(torch.mean(population.activity_history[-dataset.shape[0]:, :, i], axis=0))
+                this_axis.set_xlabel('Equilibration time steps')
+                this_axis.set_ylabel('Unit ID')
+                this_axis.set_title('%s.%s' % (layer.name, population.name))
+            row += 1
+            while row < max_rows:
+                if cols == 1:
+                    this_axis = axes[row]
+                else:
+                    this_axis = axes[row, col]
+                this_axis.set_visible(False)
+                row += 1
+    fig.suptitle('Mean activity dynamics')
     fig.tight_layout()
     fig.show()
 
@@ -100,17 +174,17 @@ def test_EIANN_config(network, dataset, target, epochs):
 
     network.train(dataset, target, epochs, store_history=True, shuffle=True, status_bar=True)
 
-    final_output = network.Output.E.activity_history[network.sorted_sample_indexes, -1, :][-dataset.shape[0]:, :].T
+    final_output = output_pop.activity_history[network.sorted_sample_indexes, -1, :][-dataset.shape[0]:, :].T
     if final_output.shape[0] == final_output.shape[1]:
         sorted_idx = get_diag_argmax_row_indexes(final_output)
     else:
         sorted_idx = np.arange(final_output.shape[0])
 
     sorted_loss_history = []
-    for i in range(network.Output.E.activity_history.shape[0]):
+    for i in range(output_pop.activity_history.shape[0]):
         sample_idx = network.sample_order[i]
         sample_target = target[sample_idx,:]
-        output = network.Output.E.activity_history[i,-1,sorted_idx]
+        output = output_pop.activity_history[i,-1, sorted_idx]
         loss = network.criterion(output, sample_target)
         sorted_loss_history.append(loss)
     sorted_loss_history = torch.tensor(sorted_loss_history)
@@ -125,44 +199,120 @@ def test_EIANN_config(network, dataset, target, epochs):
     fig.tight_layout()
     fig.show()
 
-    fig = plt.figure()
-    plt.imshow(network.Output.E.Input.E.weight.data[sorted_idx, :])
-    plt.colorbar()
-    plt.xlabel('Input unit ID')
-    plt.ylabel('Output unit ID')
-    plt.title('Final weights\nOutput_E <- Input_E')
-    fig.show()
+    max_rows = 1
+    cols = len(network.layers) - 1
+    for layer in network:
+        projection_count = 0
+        for population in layer:
+            projection_count += len(list(population))
+        max_rows = max(max_rows, projection_count)
 
-    fig, axes = plt.subplots(1, 2)
-    this_axis = axes[0]
-    im = this_axis.imshow(final_output[sorted_idx, :])
-    plt.colorbar(im, ax=this_axis)
-    this_axis.set_xlabel('Input pattern ID')
-    this_axis.set_ylabel('Output unit ID')
-    this_axis.set_title('Final activity\nOutput_E')
-    this_axis = axes[1]
-    im = this_axis.imshow(network.Output.FBI.activity_history[network.sorted_sample_indexes, -1, :][
-                   -dataset.shape[0]:, :].T)
-    plt.colorbar(im, ax=this_axis)
-    this_axis.set_xlabel('Input pattern ID')
-    this_axis.set_ylabel('Output unit ID')
-    this_axis.set_title('Final activity\nOutput_FBI')
+    fig, axes = plt.subplots(max_rows, cols, figsize=(3.*cols, 3.*max_rows))
+    for i, layer in enumerate(network):
+        if i > 0:
+            col = i - 1
+            row = 0
+            for population in layer:
+                for projection in population:
+                    if cols == 1:
+                        if max_rows == 1:
+                            this_axis = axes
+                        else:
+                            this_axis = axes[row]
+                    elif max_rows == 1:
+                        this_axis = axes[col]
+                    else:
+                        this_axis = axes[row, col]
+                    if projection.post == output_pop:
+                        im = this_axis.imshow(projection.weight.data[sorted_idx,:], aspect='auto')
+                    else:
+                        im = this_axis.imshow(projection.weight.data, aspect='auto')
+                    fig.colorbar(im, ax=this_axis)
+                    this_axis.set_xlabel('Pre unit ID')
+                    this_axis.set_ylabel('Post unit ID')
+                    this_axis.set_title('%s.%s <- %s.%s' %
+                              (projection.post.layer.name, projection.post.name,
+                               projection.pre.layer.name, projection.pre.name))
+                    row += 1
+            while row < max_rows:
+                if cols == 1:
+                    this_axis = axes[row]
+                else:
+                    this_axis = axes[row, col]
+                this_axis.set_visible(False)
+                row += 1
+    fig.suptitle('Final weights')
     fig.tight_layout()
     fig.show()
 
-    fig, axes = plt.subplots(1, 2)
-    this_axis = axes[0]
-    for i in range(network.Output.E.size):
-        this_axis.plot(torch.mean(network.Output.E.activity_history[-dataset.shape[0]:, :, i], axis=0))
-    this_axis.set_xlabel('Equilibration time steps')
-    this_axis.set_ylabel('Output unit ID')
-    this_axis.set_title('Mean activity dynamics\nOutput_E')
-    this_axis = axes[1]
-    for i in range(network.Output.FBI.size):
-        this_axis.plot(torch.mean(network.Output.FBI.activity_history[-dataset.shape[0]:, :, i], axis=0))
-    this_axis.set_xlabel('Equilibration time steps')
-    this_axis.set_ylabel('Output unit ID')
-    this_axis.set_title('Mean activity dynamics\nOutput_FBI')
+    max_rows = 1
+    cols = len(network.layers)
+    for layer in network:
+        max_rows = max(max_rows, len(layer.populations))
+
+    fig, axes = plt.subplots(max_rows, cols, figsize=(3. * cols, 3. * max_rows))
+    for col, layer in enumerate(network):
+        for row, population in enumerate(layer):
+            if cols == 1:
+                if max_rows == 1:
+                    this_axis = axes
+                else:
+                    this_axis = axes[row]
+            elif max_rows == 1:
+                this_axis = axes[col]
+            else:
+                this_axis = axes[row, col]
+            if population == output_pop:
+                im = this_axis.imshow(population.activity_history[network.sorted_sample_indexes, -1, :][
+                                      -dataset.shape[0]:, sorted_idx].T, aspect='auto')
+            else:
+                im = this_axis.imshow(population.activity_history[network.sorted_sample_indexes, -1, :][
+                                      -dataset.shape[0]:, :].T, aspect='auto')
+            fig.colorbar(im, ax=this_axis)
+            this_axis.set_xlabel('Input pattern ID')
+            this_axis.set_ylabel('Output unit ID')
+            this_axis.set_title('%s.%s' % (layer.name, population.name))
+        row += 1
+        while row < max_rows:
+            if cols == 1:
+                this_axis = axes[row]
+            else:
+                this_axis = axes[row, col]
+            this_axis.set_visible(False)
+            row += 1
+    fig.suptitle('Final activity')
+    fig.tight_layout()
+    fig.show()
+
+    cols = len(network.layers) - 1
+    fig, axes = plt.subplots(max_rows, cols, figsize=(3. * cols, 3. * max_rows))
+    for i, layer in enumerate(network):
+        if i > 0:
+            col = i - 1
+            for row, population in enumerate(layer):
+                if cols == 1:
+                    if max_rows == 1:
+                        this_axis = axes
+                    else:
+                        this_axis = axes[row]
+                elif max_rows == 1:
+                    this_axis = axes[col]
+                else:
+                    this_axis = axes[row, col]
+                for i in range(population.size):
+                    this_axis.plot(torch.mean(population.activity_history[-dataset.shape[0]:, :, i], axis=0))
+                this_axis.set_xlabel('Equilibration time steps')
+                this_axis.set_ylabel('Unit ID')
+                this_axis.set_title('%s.%s' % (layer.name, population.name))
+            row += 1
+            while row < max_rows:
+                if cols == 1:
+                    this_axis = axes[row]
+                else:
+                    this_axis = axes[row, col]
+                this_axis.set_visible(False)
+                row += 1
+    fig.suptitle('Mean activity dynamics')
     fig.tight_layout()
     fig.show()
 
