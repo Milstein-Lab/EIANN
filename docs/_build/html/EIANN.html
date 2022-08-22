@@ -1,0 +1,735 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>EIANN module &mdash; EIANN  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!-- <link rel="stylesheet" href="_static/pygments.css" type="text/css" /> -->
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="EIANN_utils module" href="EIANN_utils.html" />
+    <link rel="prev" title="dentate_circuit_learning" href="modules.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+</head>
+
+<div class="container-fluid header-holder tutorials-header" id="header-holder">
+  <div class="container">
+    <div class="header-container">
+      <a class="header-logo" href="https://shiftlab.github.io/pytorch/" aria-label="PyTorch"></a>
+
+      <div class="main-menu">
+        <ul>
+          <li>
+            <a href="https://shiftlab.github.io/pytorch/get-started">Get Started</a>
+          </li>
+
+          <li>
+            <a href="https://shiftlab.github.io/pytorch/features">Features</a>
+          </li>
+
+          <li>
+            <a href="https://shiftlab.github.io/pytorch/ecosystem">Ecosystem</a>
+          </li>
+
+          <li>
+            <a href="https://shiftlab.github.io/pytorch/blog/">Blog</a>
+          </li>
+
+          <li>
+            <a href="https://pytorch.org/tutorials">Tutorials</a>
+          </li>
+
+          <li>
+            <a href="https://pytorch.org/docs/stable/index.html">Docs</a>
+          </li>
+
+          <li>
+            <a href="https://shiftlab.github.io/pytorch/resources">Resources</a>
+          </li>
+
+          <li>
+            <a href="https://github.com/pytorch/pytorch">Github</a>
+          </li>
+        </ul>
+      </div>
+
+      <a class="main-menu-open-button" href="#" data-behavior="open-mobile-menu"></a>
+    </div>
+
+  </div>
+</div>
+
+
+<body class="pytorch-body">
+
+   
+  <div>
+
+    
+
+    <div class="table-of-contents-link-wrapper">
+      <span>Table of Contents</span>
+      <a href="#" class="toggle-table-of-contents" data-behavior="toggle-table-of-contents"></a>
+    </div>
+
+    <nav data-toggle="wy-nav-shift" class="pytorch-left-menu" id="pytorch-left-menu">
+      <div class="pytorch-side-scroll">
+        <div class="pytorch-menu pytorch-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          <div class="pytorch-left-menu-search">
+            
+
+            
+              
+              
+            
+
+            
+
+
+  
+
+
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search Docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+            
+          </div>
+
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="summary.html">Summary</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">dentate_circuit_learning</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <div class="pytorch-container">
+
+      <section data-toggle="wy-nav-shift" class="pytorch-content-wrap">
+        <div class="pytorch-page-level-bar" id="pytorch-page-level-bar">
+          <div class="pytorch-breadcrumbs-wrapper">
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="pytorch-breadcrumbs">
+    
+      <li>
+        <a href="index.html">
+          
+            Docs
+          
+        </a> &gt;
+      </li>
+
+        
+          <li><a href="modules.html">dentate_circuit_learning</a> &gt;</li>
+        
+      <li>EIANN module</li>
+    
+    
+      <li class="pytorch-breadcrumbs-aside">
+        
+            
+            <a href="_sources/EIANN.rst.txt" rel="nofollow"><img src="_static/images/view-page-source-icon.svg"></a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+</div>
+          </div>
+
+          <div class="pytorch-shortcuts-wrapper" id="pytorch-shortcuts-wrapper">
+            Shortcuts
+          </div>
+        </div>
+
+        <div class="pytorch-content-left">
+          
+          <div class="rst-content">
+          
+            <div role="main" class="main-content" itemscope="itemscope" itemtype="http://schema.org/Article">
+             <article itemprop="articleBody" class="pytorch-article">
+              
+  <div class="section" id="module-EIANN">
+<span id="eiann-module"></span><h1>EIANN module<a class="headerlink" href="#module-EIANN" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt id="EIANN.AttrDict">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">AttrDict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">value</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#AttrDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.AttrDict" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></p>
+<p>Dict class for storing population attributes (?)</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.BCM">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">BCM</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">projection</span></em>, <em class="sig-param"><span class="n">theta_init</span></em>, <em class="sig-param"><span class="n">theta_tau</span></em>, <em class="sig-param"><span class="n">k</span></em>, <em class="sig-param"><span class="n">learning_rate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#BCM"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.BCM" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#EIANN.LearningRule" title="EIANN.LearningRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">EIANN.LearningRule</span></code></a></p>
+<dl class="py method">
+<dt id="EIANN.BCM.backward">
+<em class="property">classmethod </em><code class="sig-name descname">backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">network</span></em>, <em class="sig-param"><span class="n">output</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#BCM.backward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.BCM.backward" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.BCM.step">
+<code class="sig-name descname">step</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#BCM.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.BCM.step" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.BTSP">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">BTSP</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">projection</span></em>, <em class="sig-param"><span class="n">pos_loss_th</span><span class="o">=</span><span class="default_value">0.2440709</span></em>, <em class="sig-param"><span class="n">neg_loss_th</span><span class="o">=</span><span class="default_value">- 0.4592181</span></em>, <em class="sig-param"><span class="n">neg_loss_ET_discount</span><span class="o">=</span><span class="default_value">0.25</span></em>, <em class="sig-param"><span class="n">dep_ratio</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">dep_th</span><span class="o">=</span><span class="default_value">0.01</span></em>, <em class="sig-param"><span class="n">dep_width</span><span class="o">=</span><span class="default_value">0.01</span></em>, <em class="sig-param"><span class="n">learning_rate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#BTSP"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.BTSP" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#EIANN.LearningRule" title="EIANN.LearningRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">EIANN.LearningRule</span></code></a></p>
+<dl class="py method">
+<dt id="EIANN.BTSP.backward">
+<em class="property">classmethod </em><code class="sig-name descname">backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">network</span></em>, <em class="sig-param"><span class="n">output</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#BTSP.backward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.BTSP.backward" title="Permalink to this definition"></a></dt>
+<dd><p>Update the dendritic state and instructive signals</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.BTSP.step">
+<code class="sig-name descname">step</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#BTSP.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.BTSP.step" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.Backprop">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">Backprop</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">projection</span></em>, <em class="sig-param"><span class="n">learning_rate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#Backprop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.Backprop" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#EIANN.LearningRule" title="EIANN.LearningRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">EIANN.LearningRule</span></code></a></p>
+<dl class="py method">
+<dt id="EIANN.Backprop.backward">
+<em class="property">classmethod </em><code class="sig-name descname">backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">network</span></em>, <em class="sig-param"><span class="n">output</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#Backprop.backward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.Backprop.backward" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.BackpropBias">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">BackpropBias</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">population</span></em>, <em class="sig-param"><span class="n">learning_rate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#BackpropBias"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.BackpropBias" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#EIANN.BiasLearningRule" title="EIANN.BiasLearningRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">EIANN.BiasLearningRule</span></code></a></p>
+<dl class="py method">
+<dt id="EIANN.BackpropBias.backward">
+<em class="property">classmethod </em><code class="sig-name descname">backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">network</span></em>, <em class="sig-param"><span class="n">output</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="headerlink" href="#EIANN.BackpropBias.backward" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.BiasLearningRule">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">BiasLearningRule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">population</span></em>, <em class="sig-param"><span class="n">learning_rate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#BiasLearningRule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.BiasLearningRule" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="EIANN.BiasLearningRule.backward">
+<em class="property">classmethod </em><code class="sig-name descname">backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">network</span></em>, <em class="sig-param"><span class="n">output</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#BiasLearningRule.backward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.BiasLearningRule.backward" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.BiasLearningRule.step">
+<code class="sig-name descname">step</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#BiasLearningRule.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.BiasLearningRule.step" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.DendriticLoss">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">DendriticLoss</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">projection</span></em>, <em class="sig-param"><span class="n">sign</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">learning_rate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#DendriticLoss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.DendriticLoss" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#EIANN.LearningRule" title="EIANN.LearningRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">EIANN.LearningRule</span></code></a></p>
+<dl class="py method">
+<dt id="EIANN.DendriticLoss.backward">
+<em class="property">classmethod </em><code class="sig-name descname">backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">network</span></em>, <em class="sig-param"><span class="n">output</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="headerlink" href="#EIANN.DendriticLoss.backward" title="Permalink to this definition"></a></dt>
+<dd><p>Update the dendritic state and instructive signals</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.DendriticLoss.step">
+<code class="sig-name descname">step</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#DendriticLoss.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.DendriticLoss.step" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.DendriticLossBias">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">DendriticLossBias</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">population</span></em>, <em class="sig-param"><span class="n">learning_rate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#DendriticLossBias"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.DendriticLossBias" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#EIANN.BiasLearningRule" title="EIANN.BiasLearningRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">EIANN.BiasLearningRule</span></code></a></p>
+<dl class="py method">
+<dt id="EIANN.DendriticLossBias.backward">
+<em class="property">classmethod </em><code class="sig-name descname">backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">network</span></em>, <em class="sig-param"><span class="n">output</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="headerlink" href="#EIANN.DendriticLossBias.backward" title="Permalink to this definition"></a></dt>
+<dd><p>Update the dendritic state and instructive signals</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.DendriticLossBias.step">
+<code class="sig-name descname">step</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#DendriticLossBias.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.DendriticLossBias.step" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.EIANN">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">EIANN</code><span class="sig-paren">(</span><em class="sig-param">layer_config</em>, <em class="sig-param">projection_config</em>, <em class="sig-param">learning_rate</em>, <em class="sig-param">optimizer=&lt;class 'torch.optim.sgd.SGD'&gt;</em>, <em class="sig-param">optimizer_kwargs=None</em>, <em class="sig-param">criterion=&lt;class 'torch.nn.modules.loss.MSELoss'&gt;</em>, <em class="sig-param">criterion_kwargs=None</em>, <em class="sig-param">seed=None</em>, <em class="sig-param">tau=1</em>, <em class="sig-param">forward_steps=1</em>, <em class="sig-param">backward_steps=1</em>, <em class="sig-param">verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#EIANN"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.EIANN" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.module.Module</span></code></p>
+<dl class="py method">
+<dt id="EIANN.EIANN.constrain_weights_and_biases">
+<code class="sig-name descname">constrain_weights_and_biases</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#EIANN.constrain_weights_and_biases"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.EIANN.constrain_weights_and_biases" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.EIANN.forward">
+<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sample</span></em>, <em class="sig-param"><span class="n">store_history</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#EIANN.forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.EIANN.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Defines the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.EIANN.init_weights_and_biases">
+<code class="sig-name descname">init_weights_and_biases</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#EIANN.init_weights_and_biases"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.EIANN.init_weights_and_biases" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.EIANN.reset_history">
+<code class="sig-name descname">reset_history</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#EIANN.reset_history"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.EIANN.reset_history" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.EIANN.train">
+<code class="sig-name descname">train</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em>, <em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">epochs</span></em>, <em class="sig-param"><span class="n">store_history</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">shuffle</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">status_bar</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#EIANN.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.EIANN.train" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataset</strong> – 2d array or tensor of float</p></li>
+<li><p><strong>target</strong> – 2d array or tensor of float</p></li>
+<li><p><strong>epochs</strong> – int</p></li>
+<li><p><strong>store_history</strong> – bool</p></li>
+<li><p><strong>shuffle</strong> – bool</p></li>
+<li><p><strong>status_bar</strong> – bool</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="EIANN.EIANN.training">
+<code class="sig-name descname">training</code><em class="property">: bool</em><a class="headerlink" href="#EIANN.EIANN.training" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.GjorgievaHebb">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">GjorgievaHebb</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">projection</span></em>, <em class="sig-param"><span class="n">sign</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">learning_rate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#GjorgievaHebb"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.GjorgievaHebb" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#EIANN.LearningRule" title="EIANN.LearningRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">EIANN.LearningRule</span></code></a></p>
+<dl class="py method">
+<dt id="EIANN.GjorgievaHebb.step">
+<code class="sig-name descname">step</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#GjorgievaHebb.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.GjorgievaHebb.step" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.Input">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">Input</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">network</span></em>, <em class="sig-param"><span class="n">layer</span></em>, <em class="sig-param"><span class="n">name</span></em>, <em class="sig-param"><span class="n">size</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#Input"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.Input" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#EIANN.Population" title="EIANN.Population"><code class="xref py py-class docutils literal notranslate"><span class="pre">EIANN.Population</span></code></a></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.Layer">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">Layer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#Layer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.Layer" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="EIANN.Layer.append_population">
+<code class="sig-name descname">append_population</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">population</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#Layer.append_population"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.Layer.append_population" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.LearningRule">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">LearningRule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">projection</span></em>, <em class="sig-param"><span class="n">learning_rate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#LearningRule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.LearningRule" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="EIANN.LearningRule.backward">
+<em class="property">classmethod </em><code class="sig-name descname">backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">network</span></em>, <em class="sig-param"><span class="n">output</span></em>, <em class="sig-param"><span class="n">target</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#LearningRule.backward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.LearningRule.backward" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.LearningRule.step">
+<code class="sig-name descname">step</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#LearningRule.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.LearningRule.step" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.Oja">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">Oja</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">projection</span></em>, <em class="sig-param"><span class="n">learning_rate</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#Oja"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.Oja" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#EIANN.LearningRule" title="EIANN.LearningRule"><code class="xref py py-class docutils literal notranslate"><span class="pre">EIANN.LearningRule</span></code></a></p>
+<dl class="py method">
+<dt id="EIANN.Oja.step">
+<code class="sig-name descname">step</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#Oja.step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.Oja.step" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="EIANN.Population">
+<em class="property">class </em><code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">Population</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">network</span></em>, <em class="sig-param"><span class="n">layer</span></em>, <em class="sig-param"><span class="n">name</span></em>, <em class="sig-param"><span class="n">size</span></em>, <em class="sig-param"><span class="n">activation</span></em>, <em class="sig-param"><span class="n">activation_kwargs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">include_bias</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">bias_init</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bias_init_args</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bias_bounds</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bias_learning_rule</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bias_learning_rule_kwargs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#Population"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.Population" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="EIANN.Population.activity_history">
+<em class="property">property </em><code class="sig-name descname">activity_history</code><a class="headerlink" href="#EIANN.Population.activity_history" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.Population.append_projection">
+<code class="sig-name descname">append_projection</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pre_pop</span></em>, <em class="sig-param"><span class="n">weight_init</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weight_init_args</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weight_constraint</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weight_constraint_kwargs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">weight_bounds</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">direction</span><span class="o">=</span><span class="default_value">'FF'</span></em>, <em class="sig-param"><span class="n">learning_rule</span><span class="o">=</span><span class="default_value">'Backprop'</span></em>, <em class="sig-param"><span class="n">learning_rule_kwargs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#Population.append_projection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.Population.append_projection" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.Population.bias">
+<em class="property">property </em><code class="sig-name descname">bias</code><a class="headerlink" href="#EIANN.Population.bias" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="EIANN.Population.reinit">
+<code class="sig-name descname">reinit</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#Population.reinit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.Population.reinit" title="Permalink to this definition"></a></dt>
+<dd><p>Method for resetting state variables of a population</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="EIANN.get_scaled_rectified_sigmoid">
+<code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">get_scaled_rectified_sigmoid</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">th</span></em>, <em class="sig-param"><span class="n">peak</span></em>, <em class="sig-param"><span class="n">x</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ylim</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#get_scaled_rectified_sigmoid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.get_scaled_rectified_sigmoid" title="Permalink to this definition"></a></dt>
+<dd><p>Transform a sigmoid to intersect x and y range limits.
+:param th: float
+:param peak: float
+:param x: array
+:param ylim: pair of float
+:return: callable</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="EIANN.normalize_weight">
+<code class="sig-prename descclassname">EIANN.</code><code class="sig-name descname">normalize_weight</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">projection</span></em>, <em class="sig-param"><span class="n">scale</span></em>, <em class="sig-param"><span class="n">autapses</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">axis</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/EIANN.html#normalize_weight"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#EIANN.normalize_weight" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+             </article>
+             
+            </div>
+            <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="EIANN_utils.html" class="btn btn-neutral float-right" title="EIANN_utils module" accesskey="n" rel="next">Next <img src="_static/images/chevron-right-orange.svg" class="next-page"></a>
+      
+      
+        <a href="modules.html" class="btn btn-neutral" title="dentate_circuit_learning" accesskey="p" rel="prev"><img src="_static/images/chevron-right-orange.svg" class="previous-page"> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, A.R.Galloni &amp; A.D.Milstein.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+          </div>
+        </div>
+
+        <div class="pytorch-content-right" id="pytorch-content-right">
+          <div class="pytorch-right-menu" id="pytorch-right-menu">
+            <div class="pytorch-side-scroll" id="pytorch-side-scroll-right">
+              <ul>
+<li><a class="reference internal" href="#">EIANN module</a></li>
+</ul>
+
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="_static/language_data.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/vendor/popper.min.js"></script>
+  <script type="text/javascript" src="_static/js/vendor/bootstrap.min.js"></script>
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+  <!-- Begin Footer -->
+
+  <div class="container-fluid docs-tutorials-resources" id="docs-tutorials-resources">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-4 text-center">
+          <h2>Docs</h2>
+          <p>Lorem ipsum dolor sit amet, consectetur</p>
+          <a class="with-right-arrow" href="https://pytorch.org/docs/stable/index.html">View Docs</a>
+        </div>
+
+        <div class="col-md-4 text-center">
+          <h2>Tutorials</h2>
+          <p>Lorem ipsum dolor sit amet, consectetur</p>
+          <a class="with-right-arrow" href="https://pytorch.org/tutorials">View Tutorials</a>
+        </div>
+
+        <div class="col-md-4 text-center">
+          <h2>Resources</h2>
+          <p>Lorem ipsum dolor sit amet, consectetur</p>
+          <a class="with-right-arrow" href="https://shiftlab.github.io/pytorch/resources">View Resources</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <div class="footer-logo-wrapper">
+        <a href="https://shiftlab.github.io/pytorch/" class="footer-logo"></a>
+      </div>
+
+      <div class="footer-links-wrapper">
+        <div class="footer-links-col">
+          <ul>
+            <li class="list-title"><a href="https://shiftlab.github.io/pytorch/">PyTorch</a></li>
+            <li><a href="https://shiftlab.github.io/pytorch/get-started">Get Started</a></li>
+            <li><a href="https://shiftlab.github.io/pytorch/features">Features</a></li>
+            <li><a href="https://shiftlab.github.io/pytorch/ecosystem">Ecosystem</a></li>
+            <li><a href="https://shiftlab.github.io/pytorch/blog/">Blog</a></li>
+            <li><a href="https://shiftlab.github.io/pytorch/resources">Resources</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links-col">
+          <ul>
+            <li class="list-title"><a href="https://shiftlab.github.io/pytorch/support">Support</a></li>
+            <li><a href="https://pytorch.org/tutorials">Tutorials</a></li>
+            <li><a href="https://pytorch.org/docs/stable/index.html">Docs</a></li>
+            <li><a href="https://discuss.pytorch.org" target="_blank">Discuss</a></li>
+            <li><a href="https://github.com/pytorch/pytorch/issues" target="_blank">Github Issues</a></li>
+            <li><a href="https://pytorch.slack.com" target="_blank">Slack</a></li>
+            <li><a href="https://github.com/pytorch/pytorch/blob/master/CONTRIBUTING.md" target="_blank">Contributing</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links-col follow-us-col">
+          <ul>
+            <li class="list-title">Follow Us</li>
+            <li>
+              <div id="mc_embed_signup">
+                <form
+                  action="https://twitter.us14.list-manage.com/subscribe/post?u=75419c71fe0a935e53dfa4a3f&id=91d0dccd39"
+                  method="post"
+                  id="mc-embedded-subscribe-form"
+                  name="mc-embedded-subscribe-form"
+                  class="email-subscribe-form validate"
+                  target="_blank"
+                  novalidate>
+                  <div id="mc_embed_signup_scroll" class="email-subscribe-form-fields-wrapper">
+                    <div class="mc-field-group">
+                      <label for="mce-EMAIL" style="display:none;">Email Address</label>
+                      <input type="email" value="" name="EMAIL" class="required email" id="mce-EMAIL" placeholder="Email Address">
+                    </div>
+
+                    <div id="mce-responses" class="clear">
+                      <div class="response" id="mce-error-response" style="display:none"></div>
+                      <div class="response" id="mce-success-response" style="display:none"></div>
+                    </div>    <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+
+                    <div style="position: absolute; left: -5000px;" aria-hidden="true"><input type="text" name="b_75419c71fe0a935e53dfa4a3f_91d0dccd39" tabindex="-1" value=""></div>
+
+                    <div class="clear">
+                      <input type="submit" value="" name="subscribe" id="mc-embedded-subscribe" class="button email-subscribe-button">
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+            </li>
+          </ul>
+
+          <div class="footer-social-icons">
+            <a href="https://www.facebook.com/pytorch" target="_blank" class="facebook"></a>
+            <a href="https://twitter.com/pytorch" target="_blank" class="twitter"></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- End Footer -->
+
+  <!-- Begin Mobile Menu -->
+
+  <div class="mobile-main-menu">
+    <div class="container-fluid">
+      <div class="container">
+        <div class="mobile-main-menu-header-container">
+          <a class="header-logo" href="https://shiftlab.github.io/pytorch/" aria-label="PyTorch"></a>
+          <a class="main-menu-close-button" href="#" data-behavior="close-mobile-menu"></a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mobile-main-menu-links-container">
+      <div class="main-menu">
+        <ul>
+          <li>
+            <a href="#">Get Started</a>
+          </li>
+
+          <li>
+            <a href="#">Features</a>
+          </li>
+
+          <li>
+            <a href="#">Ecosystem</a>
+          </li>
+
+          <li>
+            <a href="https://shiftlab.github.io/pytorch/blog/">Blog</a>
+          </li>
+
+          <li>
+            <a href="https://pytorch.org/tutorials">Tutorials</a>
+          </li>
+
+          <li>
+            <a href="https://pytorch.org/docs/stable/index.html">Docs</a>
+          </li>
+
+          <li>
+            <a href="https://shiftlab.github.io/pytorch/resources">Resources</a>
+          </li>
+
+          <li>
+            <a href="https://github.com/pytorch/pytorch">Github</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- End Mobile Menu -->
+
+  <script type="text/javascript" src="_static/js/vendor/anchor.min.js"></script>
+
+  <script type="text/javascript">
+    mobileMenu.bind();
+    mobileTOC.bind();
+    pytorchAnchors.bind();
+
+    $(window).on("load", function() {
+      sideMenus.bind();
+      scrollToAnchor.bind();
+      highlightNavigation.bind();
+    })
+
+    // Add class to links that have code blocks, since we cannot create links in code blocks
+    $("article.pytorch-article a span.pre").each(function(e) {
+      $(this).closest("a").addClass("has-code");
+    });
+  </script>
+</body>
+</html>

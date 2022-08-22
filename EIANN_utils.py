@@ -5,12 +5,31 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-def n_choose_k(n,k):
+def n_choose_k(n, k):
+    '''
+    Calculates number of ways to choose k things out of n, using binomial coefficients
+
+    :param n: number of things to choose from
+    :type n: int
+    :param k: number of things chosen
+    :type k: int
+    :return: int
+    '''
+    assert n>k, "k must be smaller than n"
     num_permutations = np.math.factorial(n) / (np.math.factorial(k)*np.math.factorial(n-k))
     return int(num_permutations)
 
 
-def n_hot_patterns(n,length):
+def n_hot_patterns(n, length):
+    '''
+    Generates all possible binary n-hot patterns of given length
+
+    :param n: number of bits set to 1
+    :type n: int
+    :param length: size of pattern (number of bits)
+    :type length: int
+    :return: torch.tensor
+    '''
     all_permutations = torch.tensor(list(itertools.product([0., 1.], repeat=length)))
     pattern_hotness = torch.sum(all_permutations,axis=1)
     idx = torch.where(pattern_hotness == n)[0]
@@ -22,6 +41,7 @@ def get_diag_argmax_row_indexes(data):
     """
     Sort the rows of a square matrix such that whenever row argmax and col argmax are equal, that value appears
     on the diagonal. Returns row indexes.
+
     :param data: 2d array; square matrix
     :return: array of int
     """

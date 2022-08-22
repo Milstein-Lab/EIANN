@@ -9,6 +9,9 @@ from tqdm import tqdm
 
 
 class AttrDict(dict):
+    '''
+    Dict class for storing population attributes (?)
+    '''
     def __init__(self, value=None):
         if value is None:
             pass
@@ -51,7 +54,7 @@ class Population(object):
                  bias_init=None, bias_init_args=None, bias_bounds=None, bias_learning_rule=None,
                  bias_learning_rule_kwargs=None):
         """
-
+        Class for population of neurons
         :param network:
         :param layer:
         :param name:
@@ -65,10 +68,13 @@ class Population(object):
         :param bias_learning_rule:
         :param bias_learning_rule_kwargs:
         """
+        # Constants
         self.network = network
         self.layer = layer
         self.name = name
         self.size = size
+
+        # Set callable activation function
         if not (activation in globals() and callable(globals()[activation])):
             raise RuntimeError \
                 ('Population: callable for activation: %s must be imported' % activation)
@@ -77,6 +83,7 @@ class Population(object):
         self.activation_kwargs = activation_kwargs
         self.activation = lambda x: globals()[activation](x, **activation_kwargs)
 
+        # Set bias parameters
         self.bias_init = bias_init
         if bias_init_args is None:
             bias_init_args = ()
@@ -99,12 +106,17 @@ class Population(object):
         self.include_bias = include_bias
         self.bias_learning_rule = self.bias_learning_rule_class(self, **bias_learning_rule_kwargs)
         self.network.backward_methods.add(self.bias_learning_rule_class.backward)
+
+        # Initialize storage containers
         self.activity_history_list = []
         self._activity_history = None
         self.projections = {}
         self.reinit()
 
     def reinit(self):
+        '''
+        Method for resetting state variables of a population
+        '''
         self.activity = torch.zeros(self.size)
         self.state = torch.zeros(self.size)
         self.sample_activity = []
@@ -112,6 +124,7 @@ class Population(object):
     def append_projection(self, pre_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
                           weight_constraint_kwargs=None, weight_bounds=None, direction='FF', learning_rule='Backprop',
                           learning_rule_kwargs=None):
+        # Create projection object
         if not self.projections:
             include_bias = self.include_bias
         else:
@@ -120,6 +133,7 @@ class Population(object):
         projection.pre = pre_pop
         projection.post = self
 
+        # Specify bias, stored as an attribute of the projection class
         if not self.projections and self.include_bias:
             if self.bias_learning_rule_class != BackpropBias:
                 projection.bias.requires_grad = False
@@ -131,8 +145,10 @@ class Population(object):
                 if self.bias_init_args is None:
                     self.bias_init_args = ()
 
+        # Set learning rule as callable of the projection
         projection.weight_bounds = weight_bounds
 
+        # Set learning rule as callable of the projection
         if learning_rule_kwargs is None:
             learning_rule_kwargs = {}
         if learning_rule is None:
@@ -148,6 +164,7 @@ class Population(object):
             projection.weight.requires_grad = False
         self.network.backward_methods.add(projection.learning_rule_class.backward)
 
+        # Set projection parameters
         projection.weight_init = weight_init
         if weight_init is not None and not hasattr(projection.weight.data, weight_init):
             raise RuntimeError \
@@ -161,7 +178,7 @@ class Population(object):
             weight_constraint_kwargs = {}
         projection.weight_constraint_kwargs = weight_constraint_kwargs
         if weight_constraint is not None:
-            if not(weight_constraint in globals() and callable(globals()[weight_constraint])):
+            if not (weight_constraint in globals() and callable(globals()[weight_constraint])):
                 raise RuntimeError \
                     ('Population.append_projection: weight_constraint: %s must be imported and callable' %
                      weight_constraint)
@@ -385,16 +402,19 @@ class EIANN(nn.Module):
             epoch_iter = tqdm(range(epochs))
         else:
             epoch_iter = range(epochs)
+
         for epoch in epoch_iter:
             sample_indexes = torch.randperm(num_samples)
             self.sample_order.extend(sample_indexes)
             self.sorted_sample_indexes.extend(np.add(epoch * num_samples, np.argsort(sample_indexes)))
             for sample_idx in sample_indexes:
                 sample = dataset[sample_idx]
-                sample_target  = target[sample_idx]
+                sample_target = target[sample_idx]
                 output = self.forward(sample, store_history)
+
                 self.loss = self.criterion(output, sample_target)
                 self.loss_history.append(self.loss.detach())
+
                 for backward in self.backward_methods:
                     backward(self, output, sample_target)
 
@@ -423,7 +443,7 @@ def normalize_weight(projection, scale, autapses=False, axis=1):
     projection.weight.data *= scale
     if not autapses and projection.pre == projection.post:
         for i in range(projection.post.size):
-            projection.weight.data[i,i] = 0.
+            projection.weight.data[i, i] = 0.
 
 
 class LearningRule(object):
@@ -554,7 +574,7 @@ def get_scaled_rectified_sigmoid(th, peak, x=None, ylim=None):
 
 class BTSP(LearningRule):
     def __init__(self, projection, pos_loss_th=2.440709E-01, neg_loss_th=-4.592181E-01, neg_loss_ET_discount=0.25,
-         dep_ratio=1., dep_th=0.01, dep_width= 0.01, learning_rate=None):
+                 dep_ratio=1., dep_th=0.01, dep_width=0.01, learning_rate=None):
         """
 
         :param projection: :class:'nn.Linear'
@@ -592,6 +612,9 @@ class BTSP(LearningRule):
 
     @classmethod
     def backward(cls, network, output, target):
+        '''
+        Update the dendritic state and instructive signals
+        '''
         output_loss = target - output
         reversed_layers = list(network)
         reversed_layers.reverse()

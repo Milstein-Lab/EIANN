@@ -45,9 +45,6 @@ def plot_summary(model):
     ax.set_ylabel('Loss')
     ax.set_ylim(bottom=0)
 
-    # ax[2].plot(sim_dict['data']['sorted_loss_history'], label='sorted')
-    # ax[2].legend()
-
     # Weights
     ax = fig.add_subplot(axes[0, 1])
     projection = model.layer1.E.layer0E
@@ -74,6 +71,14 @@ def plot_summary(model):
     ax.set_xlabel('Input units')
     ax.set_ylabel('Output units')
 
+    # ax = fig.add_subplot(axes[1, 2])
+    # final_weights = model.layer1.I.layer1E.weight_history[-1]
+    # im = ax.imshow(final_weights, cmap='Blues')
+    # plt.colorbar(im, ax=ax)
+    # ax.set_title('Final weights')
+    # ax.set_xlabel('Input units')
+    # ax.set_ylabel('Output units')
+
     # Biases
     ax = fig.add_subplot(axes[0, 2])
     population = model.layer1.E
@@ -84,48 +89,32 @@ def plot_summary(model):
     ax.set_ylabel('bias')
 
     # Activities
-    # ax = fig.add_subplot(axes[3, 0])
-    # initial_output_activitiy = model.layer1.E.activity_history
+    ax = fig.add_subplot(axes[3, 0])
+    im = ax.imshow(model.initial_activity[-1,:,:])
+    plt.colorbar(im, ax=ax)
+    ax.set_title('Initial activity (unsorted)')
+    ax.set_xlabel('Input pattern')
+    ax.set_ylabel('Output unit')
 
-    ax = fig.add_subplot(axes[3:5, 1:3])
-    output_activities = torch.zeros(model.all_patterns.shape[0],model.output_pop.size)
-    for i,pattern in enumerate(model.all_patterns):
-        model.output_pop.state = torch.zeros(model.output_pop.size)
-        model.output_pop.activity = torch.zeros(model.output_pop.size)
-        for t in range(model.num_timesteps):
-            model.forward(pattern, training=False)
-        output_activities[i] = model.output_pop.activity.detach()
-    im = ax.imshow(output_activities)
+    ax = fig.add_subplot(axes[3, 1])
+    im = ax.imshow(model.final_activity[-1,:,:])
     plt.colorbar(im, ax=ax)
     ax.set_title('Final activity (unsorted)')
     ax.set_xlabel('Input pattern')
     ax.set_ylabel('Output unit')
 
-    # im = ax[1].imshow(sim_dict['data']['unsorted_output_history'][:,:,-1,-1])
-    # plt.colorbar(im, ax=ax[1])
-    # ax[1].set_title('Unsorted final activity')
-    # ax[1].set_xlabel('Input pattern')
-    # ax[1].set_ylabel('Output unit')
-    #
-    # im = ax[0].imshow(sim_dict['data']['sorted_output_history'][:,:,-1,0])
-    # plt.colorbar(im, ax=ax[0])
-    # ax[0].set_title('Sorted initial activity')
-    # ax[0].set_xlabel('Input pattern')
-    # ax[0].set_ylabel('Output unit')
-    #
-    # im = ax[1].imshow(sim_dict['data']['sorted_output_history'][:,:,-1,-1])
-    # plt.colorbar(im, ax=ax[1])
-    # ax[1].set_title('Sorted final activity')
-    # ax[1].set_xlabel('Input pattern')
-    # ax[1].set_ylabel('Output unit')
+    # Temporal dynamics
+    ax = fig.add_subplot(axes[3, 2])
+    avg_out_act = torch.mean(model.final_activity, dim=[1,2])
+    # avg_fbi_act = torch.mean(model.layer1.I.all_pattern_activities, dim=[1,2])
+    ax.plot(avg_out_act, color='red', label='Output')
+    # ax.plot(avg_fbi_act, color='blue', label='Layer1 FBI')
+    ax.set_title('Activity Dynamics')
+    ax.set_xlabel('Time Steps')
+    ax.set_ylabel('Average activity')
+    ax.legend()
 
-    # # Activity temporal dynamics
-    # avg_activity = torch.mean(sim_dict['data']['sorted_output_history'][:, :, :, -1], dim=(0, 1))
-    # ax[0].plot(avg_activity)
-    # ax[0].set_title('Output Dynamics')
-    # ax[0].set_xlabel('Time Steps')
-    # ax[0].set_ylabel('Average activity')
-    #
+
     # if 'fbi_history' in sim_dict['data']:
     #     avg_activity = torch.mean(sim_dict['data']['fbi_history'][:, :, :, -1], dim=(0, 1))
     #     ax[1].plot(avg_activity)
