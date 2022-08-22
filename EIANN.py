@@ -585,8 +585,8 @@ class BTSP(LearningRule):
         IS = torch.abs(plateau).unsqueeze(1)
         ET = torch.outer(discount, self.projection.pre.activity)
 
-        delta_weight = IS * (self.w_max - self.projection.weight) * ET - \
-                       self.projection.weight * self.dep_ratio * self.q_dep(ET)
+        delta_weight = IS * ((self.w_max - self.projection.weight) * ET - \
+                       self.projection.weight * self.dep_ratio * self.q_dep(ET))
 
         self.projection.weight.data += self.learning_rate * delta_weight
 
@@ -602,14 +602,18 @@ class BTSP(LearningRule):
                 break
         output_pop.plateau = torch.zeros(output_pop.size)
         where_pos_loss = torch.where(output_loss > projection.learning_rule.pos_loss_th)
-        output_pop.plateau[where_pos_loss] = output_loss[where_pos_loss]
+        output_pop.plateau[where_pos_loss] = torch.minimum(output_loss[where_pos_loss],
+                                                           torch.ones_like(where_pos_loss[0]))
+        output_pop.activity[where_pos_loss] += output_pop.plateau[where_pos_loss]
         where_neg_loss = torch.where(output_loss < projection.learning_rule.neg_loss_th)
-        output_pop.plateau[where_neg_loss] = output_loss[where_neg_loss]
+        output_pop.plateau[where_neg_loss] = torch.maximum(output_loss[where_neg_loss],
+                                                        -torch.ones_like(where_neg_loss[0]))
 
 
 class DendriticLossBias(BiasLearningRule):
     def step(self):
-        self.population.bias.data += self.learning_rate * self.population.dendritic_loss
+        # self.population.bias.data += self.learning_rate * self.population.dendritic_loss
+        self.population.bias.data += self.learning_rate * self.population.plateau
 
     backward = BTSP.backward
 
@@ -620,7 +624,9 @@ class DendriticLoss(LearningRule):
         self.sign = sign
 
     def step(self):
+        # self.projection.weight.data += self.sign * self.learning_rate * \
+        #                               torch.outer(self.projection.post.dendritic_loss, self.projection.pre.activity)
         self.projection.weight.data += self.sign * self.learning_rate * \
-                                       torch.outer(self.projection.post.dendritic_loss, self.projection.pre.activity)
+                                       torch.outer(self.projection.post.plateau, self.projection.pre.activity)
 
     backward = BTSP.backward
