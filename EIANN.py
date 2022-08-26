@@ -335,6 +335,9 @@ class EIANN(nn.Module):
             optimizer = optimizer(self.parameters(), lr=self.learning_rate, **self.optimizer_kwargs)
         self.optimizer = optimizer
         self.init_weights_and_biases()
+        self.sample_order = []
+        self.sorted_sample_indexes = []
+        self.loss_history = []
 
     def init_weights_and_biases(self):
         for i, post_layer in enumerate(self):
@@ -360,6 +363,9 @@ class EIANN(nn.Module):
                             projection.constrain_weight(projection)
 
     def reset_history(self):
+        self.sample_order = []
+        self.sorted_sample_indexes = []
+        self.loss_history = []
         for layer in self:
             for population in layer:
                 population.reinit()
@@ -417,9 +423,6 @@ class EIANN(nn.Module):
         :param status_bar: bool
         """
         num_samples = dataset.shape[0]
-        self.sample_order = []
-        self.sorted_sample_indexes = []
-        self.loss_history = []
 
         if status_bar:
             epoch_iter = tqdm(range(epochs))
@@ -730,7 +733,7 @@ class DendriticLoss(LearningRule):
         self.sign = sign
 
     def step(self):
-        # self.projection.weight.data += self.sign * self.learning_rate * \
+        #self.projection.weight.data += self.sign * self.learning_rate * \
         #                               torch.outer(self.projection.post.dendritic_state, self.projection.pre.activity)
         self.projection.weight.data += self.sign * self.learning_rate * \
                                        torch.outer(self.projection.post.plateau, self.projection.pre.activity)
