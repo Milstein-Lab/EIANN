@@ -6,10 +6,15 @@ from nested.utils import Context, param_array_to_dict
 context = Context()
 
 
+def config_worker():
+    context.start_instance = int(context.start_instance)
+    context.num_instances = int(context.num_instances)
+
+
 def get_random_seeds():
     return [[int.from_bytes((context.network_id, context.task_id, instance_id), byteorder='big')
             for instance_id in
-             range(int(context.start_instance), int(context.start_instance) + int(context.num_instances))]]
+             range(context.start_instance, context.start_instance + context.num_instances)]]
 
 
 def compute_features(x, seed, model_id=None, export=False):
