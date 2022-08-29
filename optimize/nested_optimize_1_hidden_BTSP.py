@@ -11,6 +11,11 @@ def config_worker():
     context.num_instances = int(context.num_instances)
     context.network_id = int(context.network_id)
     context.task_id = int(context.task_id)
+    if 'debug' not in context():
+        context.debug = False
+    else:
+        context.debug = bool(context.debug)
+        print('getting here')
 
 
 def get_random_seeds():
@@ -27,7 +32,6 @@ def compute_features(x, seed, model_id=None, export=False):
     :param export: bool
     :return: dict
     """
-    print(seed)
     param_dict = param_array_to_dict(x, context.param_names)
 
     layer_config = {'Input':
@@ -225,6 +229,9 @@ def compute_features(x, seed, model_id=None, export=False):
 
     if context.plot:
         plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=context.supervised, label='Final')
+
+    if context.debug:
+        context.update(locals())
 
     return {'loss': final_epoch_loss,
             'accuracy': final_argmax_accuracy}
