@@ -3,9 +3,7 @@ import torch.nn as nn
 from torch.nn.functional import softplus, relu
 from torch.optim import Adam, SGD
 from torch.nn import MSELoss
-
 import numpy as np
-from tqdm import tqdm
 
 
 class AttrDict(dict):
@@ -425,6 +423,7 @@ class EIANN(nn.Module):
         num_samples = dataset.shape[0]
 
         if status_bar:
+            from tqdm import tqdm
             epoch_iter = tqdm(range(epochs))
         else:
             epoch_iter = range(epochs)
