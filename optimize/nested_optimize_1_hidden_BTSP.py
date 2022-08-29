@@ -9,6 +9,8 @@ context = Context()
 def config_worker():
     context.start_instance = int(context.start_instance)
     context.num_instances = int(context.num_instances)
+    context.network_id = int(context.network_id)
+    context.task_id = int(context.task_id)
 
 
 def get_random_seeds():
@@ -25,6 +27,7 @@ def compute_features(x, seed, model_id=None, export=False):
     :param export: bool
     :return: dict
     """
+    print(seed)
     param_dict = param_array_to_dict(x, context.param_names)
 
     layer_config = {'Input':
