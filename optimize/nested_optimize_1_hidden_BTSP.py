@@ -15,7 +15,6 @@ def config_worker():
         context.debug = False
     else:
         context.debug = bool(context.debug)
-        print('getting here')
 
 
 def get_random_seeds():
