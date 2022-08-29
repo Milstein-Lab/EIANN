@@ -213,26 +213,41 @@ def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
                 print(layer.name, population.name, population.bias)
 
 
-def get_EIANN_loss_history(network, target, supervised=True, plot=False):
+def analyze_EIANN_loss(network, target, supervised=True, plot=False):
 
-    if supervised:
+    reversed_layers = list(network)
+    reversed_layers.reverse()
+    output_pop = next(iter(reversed_layers[0]))
+
+    argmax_correct = []
+    if supervised or output.shape[0] != output.shape[1]:
         loss_history = network.loss_history
+        for i in range(output_pop.activity_history.shape[0]):
+            sample_idx = network.sample_order[i]
+            sample_target = target[sample_idx, :]
+            output = output_pop.activity_history[i, -1, :]
+            argmax_correct.append(torch.argmax(output) == torch.argmax(sample_target))
     else:
-        reversed_layers = list(network)
-        reversed_layers.reverse()
-        output_pop = next(iter(reversed_layers[0]))
+        final_output = output_pop.activity_history[network.sorted_sample_indexes, -1, :][-target.shape[0]:, :].T
+        sorted_idx = get_diag_argmax_row_indexes(output)
+        loss_history = []
+        for i in range(output_pop.activity_history.shape[0]):
+            sample_idx = network.sample_order[i]
+            sample_target = target[sample_idx, :]
+            output = output_pop.activity_history[i, -1, sorted_idx]
+            loss = network.criterion(output, sample_target)
+            loss_history.append(loss)
+            argmax_correct.append(torch.argmax(output) == torch.argmax(sample_target))
+        loss_history = torch.tensor(loss_history)
+    argmax_correct = torch.tensor(argmax_correct)
 
-        output = output_pop.activity_history[network.sorted_sample_indexes, -1, :][-target.shape[0]:, :].T
-        if not supervised and output.shape[0] == output.shape[1]:
-            sorted_idx = get_diag_argmax_row_indexes(output)
-            loss_history = []
-            for i in range(output_pop.activity_history.shape[0]):
-                sample_idx = network.sample_order[i]
-                sample_target = target[sample_idx, :]
-                output = output_pop.activity_history[i, -1, sorted_idx]
-                loss = network.criterion(output, sample_target)
-                loss_history.append(loss)
-            loss_history = torch.tensor(loss_history)
+    epoch_argmax_accuracy = []
+    start = 0
+    while start < len(argmax_correct):
+        epoch_argmax_accuracy.append(torch.sum(argmax_correct[start:start+target.shape[0]]) / target.shape[0] * 100.)
+        start += target.shape[0]
+
+    epoch_argmax_accuracy = torch.tensor(epoch_argmax_accuracy)
 
     if plot:
         fig = plt.figure()
@@ -243,7 +258,15 @@ def get_EIANN_loss_history(network, target, supervised=True, plot=False):
         fig.tight_layout()
         fig.show()
 
-    return loss_history
+        fig = plt.figure()
+        plt.plot(epoch_argmax_accuracy)
+        plt.xlabel('Training epochs')
+        plt.ylabel('% correct argmax')
+        plt.title('Argmax accuracy')
+        fig.tight_layout()
+        fig.show()
+
+    return loss_history, epoch_argmax_accuracy
 
 
 def test_EIANN_config(network, dataset, target, epochs, supervised=True):

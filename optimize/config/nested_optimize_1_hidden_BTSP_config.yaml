@@ -63,8 +63,11 @@ kwargs:
   num_instances: 5
   supervised: True
   status_bar: False
+  epochs: 300
+  num_epochs_argmax_accuracy: 50
 feature_names:
 - loss
+- accuracy
 get_features_stages:
 - source: optimize.nested_optimize_1_hidden_BTSP
   get_args_static: get_random_seeds
@@ -74,6 +77,7 @@ get_objectives:
   optimize.nested_optimize_1_hidden_BTSP: get_objectives
 objective_names:
 - loss
+- accuracy
 optimization_title: EIANN_1_hidden_BTSP
 param_gen: PopulationAnnealing
 x0:

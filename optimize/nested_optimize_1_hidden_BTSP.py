@@ -8,7 +8,8 @@ context = Context()
 
 def get_random_seeds():
     return [[int.from_bytes((context.network_id, context.task_id, instance_id), byteorder='big')
-            for instance_id in range(context.start_instance, context.start_instance + context.num_instances)]]
+            for instance_id in
+             range(int(context.start_instance), int(context.start_instance) + int(context.num_instances))]]
 
 
 def compute_features(x, seed, model_id=None, export=False):
@@ -196,7 +197,7 @@ def compute_features(x, seed, model_id=None, export=False):
     dataset = torch.eye(input_size)
     target = torch.eye(dataset.shape[0])
 
-    epochs = 300
+    epochs = context.epochs
 
     network = EIANN(layer_config, projection_config, **hyperparameter_kwargs)
 
@@ -208,14 +209,17 @@ def compute_features(x, seed, model_id=None, export=False):
 
     network.train(dataset, target, epochs, store_history=True, shuffle=True, status_bar=context.status_bar)
 
-    loss_history = get_EIANN_loss_history(network, target, supervised=context.supervised, plot=context.plot)
+    loss_history, epoch_argmax_accuracy = \
+        analyze_EIANN_loss(network, target, supervised=context.supervised, plot=context.plot)
+
+    final_epoch_loss = torch.mean(loss_history[-target.shape[0]:])
+    final_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
 
     if context.plot:
         plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=context.supervised, label='Final')
 
-    final_epoch_loss = torch.mean(loss_history[-dataset.shape[0]:])
-
-    return {'loss': final_epoch_loss}
+    return {'loss': final_epoch_loss,
+            'accuracy': final_argmax_accuracy}
 
 
 def filter_features(primitives, current_features, model_id=None, export=False):
