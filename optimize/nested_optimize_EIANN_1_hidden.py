@@ -1,6 +1,6 @@
 from EIANN import *
 from EIANN_utils import *
-from nested.utils import Context, param_array_to_dict, read_from_yaml
+from nested.utils import Context, param_array_to_dict, read_from_yaml, write_to_yaml
 from nested.optimize_utils import update_source_contexts
 import os
 from copy import deepcopy
@@ -23,6 +23,9 @@ def config_worker():
         context.verbose = False
     else:
         context.verbose = bool(context.verbose)
+    if 'export_network_config_file_path' not in context():
+        context.export_network_config_file_path = None
+
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
@@ -103,7 +106,6 @@ def compute_features(x, seed, model_id=None, export=False):
     :return: dict
     """
     update_source_contexts(x, context)
-    context.training_kwargs['seed'] = seed
 
     input_size = 21
     dataset = torch.eye(input_size)
@@ -111,7 +113,7 @@ def compute_features(x, seed, model_id=None, export=False):
 
     epochs = context.epochs
 
-    network = EIANN(context.layer_config, context.projection_config, **context.training_kwargs)
+    network = EIANN(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
 
     if context.plot:
         for sample in dataset:
@@ -134,6 +136,14 @@ def compute_features(x, seed, model_id=None, export=False):
         print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
                                                                          network.Output.E.activity))
         context.update(locals())
+
+    if export:
+        config_dict = {'layer_config': context.layer_config,
+                       'projection_config': context.projection_config,
+                       'training_kwargs': context.training_kwargs}
+        if context.export_network_config_file_path is None:
+            raise Exception('nested_optimize_EIANN_1_hidden: missing required export_network_config_file_path')
+        write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
 
     return {'loss': final_epoch_loss,
             'accuracy': final_argmax_accuracy}

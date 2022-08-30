@@ -276,5 +276,5 @@ def test_EIANN_config(network, dataset, target, epochs, supervised=True):
     network.reset_history()
 
     network.train(dataset, target, epochs, store_history=True, shuffle=True, status_bar=True)
-    loss_history = get_EIANN_loss_history(network, target, supervised=supervised, plot=True)
+    loss_history, epoch_argmax_accuracy = analyze_EIANN_loss(network, target, supervised=supervised, plot=True)
     plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=supervised, label='Final')
