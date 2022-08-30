@@ -263,7 +263,7 @@ def filter_features(primitives, current_features, model_id=None, export=False):
 
 def get_objectives(features, model_id=None, export=False):
     objectives = {}
-    for key, val in features:
+    for key, val in features.items():
         if key in ['accuracy']:
             objectives[key] = 100. - val
         else:
