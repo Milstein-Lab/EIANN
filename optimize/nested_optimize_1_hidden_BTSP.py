@@ -12,6 +12,7 @@ def config_worker():
     context.num_instances = int(context.num_instances)
     context.network_id = int(context.network_id)
     context.task_id = int(context.task_id)
+    context.epochs = int(context.epochs)
     if 'debug' not in context():
         context.debug = False
     else:
