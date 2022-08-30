@@ -1,6 +1,7 @@
 from EIANN import *
 from EIANN_utils import *
 from nested.utils import Context, param_array_to_dict
+import os
 
 
 context = Context()
@@ -15,6 +16,10 @@ def config_worker():
         context.debug = False
     else:
         context.debug = bool(context.debug)
+    if 'verbose' not in context():
+        context.verbose = False
+    else:
+        context.verbose = bool(context.verbose)
 
 
 def get_random_seeds():
@@ -228,6 +233,9 @@ def compute_features(x, seed, model_id=None, export=False):
 
     if context.plot:
         plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=context.supervised, label='Final')
+
+    if context.verbose:
+        print('pid: %i, seed: %i, sample_order: %s' % (os.getpid(), seed, network.sample_order))
 
     if context.debug:
         context.update(locals())
