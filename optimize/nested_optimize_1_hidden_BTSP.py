@@ -2,6 +2,7 @@ from EIANN import *
 from EIANN_utils import *
 from nested.utils import Context, param_array_to_dict
 import os
+from copy import deepcopy
 
 
 context = Context()
@@ -261,5 +262,10 @@ def filter_features(primitives, current_features, model_id=None, export=False):
 
 
 def get_objectives(features, model_id=None, export=False):
-    objectives = features
+    objectives = {}
+    for key, val in features:
+        if key in ['accuracy']:
+            objectives[key] = 100. - val
+        else:
+            objectives[key] = val
     return features, objectives
