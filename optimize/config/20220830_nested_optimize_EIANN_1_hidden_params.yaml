@@ -1,0 +1,19 @@
+BTSP:
+  FBI_E_weight: 1.0
+  FB_BTSP_max_init_weight_factor: 1.8945973724294913
+  FB_BTSP_min_init_weight_factor: 0.6420790121486105
+  FF_BTSP_max_init_weight_factor: 0.1630200696925033
+  H1_E_BTSP_learning_rate: 0.010365414457039387
+  H1_E_BTSP_neg_loss_th: -0.21626037327313027
+  H1_E_BTSP_pos_loss_th: 0.18044591251994935
+  H1_E_H1_FBI_weight: -0.22348390576709928
+  H1_E_H1_I_dend_init_weight: -0.6852930519780757
+  H1_E_H1_I_dend_learning_rate: 0.02366760193152173
+  H1_E_Input_E_max_weight: 3.0544719559073297
+  H1_E_Output_E_max_weight: 3.648300667977972
+  H1_I_dend_H1_E_weight: 1.0
+  Output_E_BTSP_learning_rate: 0.01008384410972111
+  Output_E_BTSP_neg_loss_th: -0.09650058310782508
+  Output_E_BTSP_pos_loss_th: 0.305654476576947
+  Output_E_H1_E_max_weight: 4.455446468866057
+  Output_E_Output_FBI_weight: -2.923078353697012

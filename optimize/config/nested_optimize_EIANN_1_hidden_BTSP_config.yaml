@@ -65,16 +65,20 @@ kwargs:
   status_bar: False
   epochs: 300
   num_epochs_argmax_accuracy: 50
+  network_config_file_path: optimize/config/EIANN_1_hidden_BTSP_config.yaml
 feature_names:
 - loss
 - accuracy
+update_context:
+- - optimize.nested_optimize_EIANN_1_hidden
+  - update_EIANN_config_1_hidden_BTSP
 get_features_stages:
-- source: optimize.nested_optimize_1_hidden_BTSP
+- source: optimize.nested_optimize_EIANN_1_hidden
   get_args_static: get_random_seeds
   compute_features: compute_features
   filter_features: filter_features
 get_objectives:
-  optimize.nested_optimize_1_hidden_BTSP: get_objectives
+  optimize.nested_optimize_EIANN_1_hidden: get_objectives
 objective_names:
 - loss
 - accuracy

@@ -1,0 +1,163 @@
+from EIANN import *
+from EIANN_utils import *
+from nested.utils import Context, param_array_to_dict, read_from_yaml
+from nested.optimize_utils import update_source_contexts
+import os
+from copy import deepcopy
+
+
+context = Context()
+
+
+def config_worker():
+    context.start_instance = int(context.start_instance)
+    context.num_instances = int(context.num_instances)
+    context.network_id = int(context.network_id)
+    context.task_id = int(context.task_id)
+    context.epochs = int(context.epochs)
+    if 'debug' not in context():
+        context.debug = False
+    else:
+        context.debug = bool(context.debug)
+    if 'verbose' not in context():
+        context.verbose = False
+    else:
+        context.verbose = bool(context.verbose)
+    network_config = read_from_yaml(context.network_config_file_path)
+    context.layer_config = network_config['layer_config']
+    context.projection_config = network_config['projection_config']
+    context.training_kwargs = network_config['training_kwargs']
+
+
+def get_random_seeds():
+    return [[int.from_bytes((context.network_id, context.task_id, instance_id), byteorder='big')
+            for instance_id in
+             range(context.start_instance, context.start_instance + context.num_instances)]]
+
+
+def update_EIANN_config_1_hidden_BTSP(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    H1_E_Input_E_max_weight = param_dict['H1_E_Input_E_max_weight']
+    H1_E_Input_E_max_init_weight = H1_E_Input_E_max_weight * param_dict['FF_BTSP_max_init_weight_factor'] / \
+                                   context.layer_config['Input']['E']['size']
+    H1_E_BTSP_learning_rate = param_dict['H1_E_BTSP_learning_rate']
+    H1_E_BTSP_pos_loss_th = param_dict['H1_E_BTSP_pos_loss_th']
+    H1_E_BTSP_neg_loss_th = param_dict['H1_E_BTSP_neg_loss_th']
+    H1_E_Output_E_max_weight = param_dict['H1_E_Output_E_max_weight']
+    H1_E_Output_E_min_init_weight = H1_E_Output_E_max_weight * param_dict['FB_BTSP_min_init_weight_factor'] / \
+                                    context.layer_config['Output']['E']['size']
+    H1_E_Output_E_max_init_weight = H1_E_Output_E_max_weight * param_dict['FB_BTSP_max_init_weight_factor'] / \
+                                    context.layer_config['Output']['E']['size']
+
+    H1_E_H1_FBI_weight = param_dict['H1_E_H1_FBI_weight']
+    H1_I_dend_H1_E_weight = param_dict['H1_I_dend_H1_E_weight']
+    H1_E_H1_I_dend_init_weight = param_dict['H1_E_H1_I_dend_init_weight']
+    H1_E_H1_I_dend_learning_rate = param_dict['H1_E_H1_I_dend_learning_rate']
+
+    Output_E_H1_E_max_weight = param_dict['Output_E_H1_E_max_weight']
+    Output_E_H1_E_max_init_weight = Output_E_H1_E_max_weight * param_dict['FF_BTSP_max_init_weight_factor'] / \
+                                    context.layer_config['H1']['E']['size']
+    Output_E_BTSP_learning_rate = param_dict['Output_E_BTSP_learning_rate']
+    Output_E_BTSP_pos_loss_th = param_dict['Output_E_BTSP_pos_loss_th']
+    Output_E_BTSP_neg_loss_th = param_dict['Output_E_BTSP_neg_loss_th']
+    Output_E_Output_FBI_weight = param_dict['Output_E_Output_FBI_weight']
+
+    FBI_E_weight = param_dict['FBI_E_weight']
+
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (0, H1_E_Input_E_max_init_weight)
+    context.projection_config['H1']['E']['Input']['E']['weight_bounds'] = (0, H1_E_Input_E_max_weight)
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = H1_E_BTSP_pos_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_th'] = H1_E_BTSP_neg_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_BTSP_learning_rate
+    context.projection_config['H1']['E']['H1']['FBI']['weight_init_args'] = (H1_E_H1_FBI_weight,)
+    context.projection_config['H1']['E']['H1']['Dend_I']['weight_init_args'] = (H1_E_H1_I_dend_init_weight,)
+    context.projection_config['H1']['E']['H1']['Dend_I']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_H1_I_dend_learning_rate
+    context.projection_config['H1']['E']['Output']['E']['weight_init_args'] = \
+        (H1_E_Output_E_min_init_weight, H1_E_Output_E_max_init_weight)
+    context.projection_config['H1']['E']['Output']['E']['weight_bounds'] = (0, H1_E_Output_E_max_weight)
+
+    context.projection_config['H1']['FBI']['H1']['E']['weight_init_args'] = (FBI_E_weight,)
+    context.projection_config['H1']['Dend_I']['H1']['E']['weight_init_args'] = (H1_I_dend_H1_E_weight,)
+
+    context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (0, Output_E_H1_E_max_init_weight)
+    context.projection_config['Output']['E']['H1']['E']['weight_bounds'] = (0, Output_E_H1_E_max_weight)
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['pos_loss_th'] = \
+        Output_E_BTSP_pos_loss_th
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['neg_loss_th'] = \
+        Output_E_BTSP_neg_loss_th
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_BTSP_learning_rate
+    context.projection_config['Output']['E']['Output']['FBI']['weight_init_args'] = (Output_E_Output_FBI_weight,)
+    context.projection_config['Output']['FBI']['Output']['E']['weight_init_args'] = (FBI_E_weight,)
+
+
+def compute_features(x, seed, model_id=None, export=False):
+    """
+
+    :param x: array of float
+    :param model_id: str
+    :param export: bool
+    :return: dict
+    """
+    update_source_contexts(x, context)
+    context.training_kwargs['seed'] = seed
+
+    input_size = 21
+    dataset = torch.eye(input_size)
+    target = torch.eye(dataset.shape[0])
+
+    epochs = context.epochs
+
+    network = EIANN(context.layer_config, context.projection_config, **context.training_kwargs)
+
+    if context.plot:
+        for sample in dataset:
+            network.forward(sample, store_history=True)
+        plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=context.supervised, label='Initial')
+        network.reset_history()
+
+    network.train(dataset, target, epochs, store_history=True, shuffle=True, status_bar=context.status_bar)
+
+    loss_history, epoch_argmax_accuracy = \
+        analyze_EIANN_loss(network, target, supervised=context.supervised, plot=context.plot)
+
+    final_epoch_loss = torch.mean(loss_history[-target.shape[0]:])
+    final_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
+
+    if context.plot:
+        plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=context.supervised, label='Final')
+
+    if context.debug:
+        print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
+                                                                         network.Output.E.activity))
+        context.update(locals())
+
+    return {'loss': final_epoch_loss,
+            'accuracy': final_argmax_accuracy}
+
+
+def filter_features(primitives, current_features, model_id=None, export=False):
+
+    features = {}
+    for instance_features in primitives:
+        for key, val in instance_features.items():
+            if key not in features:
+                features[key] = []
+            features[key].append(val)
+    for key, val in features.items():
+        features[key] = np.mean(val)
+
+    return features
+
+
+def get_objectives(features, model_id=None, export=False):
+    objectives = {}
+    for key, val in features.items():
+        if key in ['accuracy']:
+            objectives[key] = 100. - val
+        else:
+            objectives[key] = val
+    return features, objectives
