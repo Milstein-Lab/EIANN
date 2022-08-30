@@ -708,7 +708,6 @@ class BTSP(LearningRule):
                         pop.dend_to_soma = torch.zeros(pop.size)
                         # sort cells by dendritic state
                         _, pop_indexes = torch.sort(pop.dendritic_state, descending=True, stable=True)
-                        print(pop.dendritic_state, pop_indexes)
                         for i in pop_indexes:
                             if pop.dendritic_state[i] > projection.learning_rule.pos_loss_th:
                                 pop.plateau[i] = pop.dendritic_state[i]
