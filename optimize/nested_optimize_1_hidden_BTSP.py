@@ -235,8 +235,8 @@ def compute_features(x, seed, model_id=None, export=False):
         plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=context.supervised, label='Final')
 
     if context.verbose:
-        print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order),
-              network.Output.E.activity)
+        print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
+                                                                         network.Output.E.activity))
 
     if context.debug:
         context.update(locals())
