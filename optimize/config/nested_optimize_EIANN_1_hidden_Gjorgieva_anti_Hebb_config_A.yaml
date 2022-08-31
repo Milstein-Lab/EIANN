@@ -1,0 +1,80 @@
+bounds:
+  E_E_learning_rate:
+    - 0.0001
+    - 1.
+  E_I_learning_rate:
+    - 0.0001
+    - 1.
+  I_E_learning_rate:
+    - 0.0001
+    - 1.
+  I_I_learning_rate:
+    - 0.0001
+    - 1.
+  Output_E_H1_E_weight_scale:
+    - 0.1
+    - 10.
+  Output_E_Output_FBI_weight_scale:
+    - 0.1
+    - 10.
+  Output_FBI_Output_E_weight_scale:
+    - 0.1
+    - 10.
+  Output_FBI_Output_FBI_weight_scale:
+    - 0.1
+    - 10.
+  H1_E_Input_E_weight_scale:
+    - 0.1
+    - 10.
+  H1_E_H1_FBI_weight_scale:
+    - 0.1
+    - 10.
+  H1_FBI_H1_E_weight_scale:
+    - 0.1
+    - 10.
+  H1_FBI_H1_FBI_weight_scale:
+    - 0.1
+    - 10.
+default_params:
+kwargs:
+  network_id: 1
+  task_id: 1
+  start_instance: 1
+  num_instances: 5
+  supervised: False
+  status_bar: False
+  epochs: 300
+  num_epochs_argmax_accuracy: 50
+  network_config_file_path: optimize/config/EIANN_1_hidden_Gjorgieva_anti_Hebb_config_A.yaml
+  I_floor_weight: -0.15
+feature_names:
+- loss
+- accuracy
+update_context:
+- - optimize.nested_optimize_EIANN_1_hidden
+  - update_EIANN_config_1_hidden_Gjorgieva_anti_Hebb_A
+get_features_stages:
+- source: optimize.nested_optimize_EIANN_1_hidden
+  get_args_static: get_random_seeds
+  compute_features: compute_features
+  filter_features: filter_features
+get_objectives:
+  optimize.nested_optimize_EIANN_1_hidden: get_objectives
+objective_names:
+- loss
+- accuracy
+optimization_title: EIANN_1_hidden_Gjorgieva_anti_Hebb_A
+param_gen: PopulationAnnealing
+x0:
+  E_E_learning_rate: 2.756839E-01
+  E_I_learning_rate: 1.415294E-02
+  I_E_learning_rate: 3.213503E-01
+  I_I_learning_rate: 4.600147E-02
+  Output_E_H1_E_weight_scale: 8.436103E-01
+  Output_E_Output_FBI_weight_scale: 1.589356E+00
+  Output_FBI_Output_E_weight_scale: 7.526584E+00
+  Output_FBI_Output_FBI_weight_scale: 1.979838E+00
+  H1_E_Input_E_weight_scale: 3.255803E+00
+  H1_E_H1_FBI_weight_scale: 2.352644E+00
+  H1_FBI_H1_E_weight_scale: 1.925080E+00
+  H1_FBI_H1_FBI_weight_scale: 1.877143E+00
