@@ -219,7 +219,7 @@ def analyze_EIANN_loss(network, target, supervised=True, plot=False):
     output_pop = next(iter(reversed_layers[0]))
 
     argmax_correct = []
-    if supervised or output.shape[0] != output.shape[1]:
+    if supervised or target.shape[0] != target.shape[1]:
         loss_history = network.loss_history
         for i in range(output_pop.activity_history.shape[0]):
             sample_idx = network.sample_order[i]
@@ -228,7 +228,7 @@ def analyze_EIANN_loss(network, target, supervised=True, plot=False):
             argmax_correct.append(torch.argmax(output) == torch.argmax(sample_target))
     else:
         final_output = output_pop.activity_history[network.sorted_sample_indexes, -1, :][-target.shape[0]:, :].T
-        sorted_idx = get_diag_argmax_row_indexes(output)
+        sorted_idx = get_diag_argmax_row_indexes(final_output)
         loss_history = []
         for i in range(output_pop.activity_history.shape[0]):
             sample_idx = network.sample_order[i]
