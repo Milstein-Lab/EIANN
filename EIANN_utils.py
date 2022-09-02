@@ -278,3 +278,34 @@ def test_EIANN_config(network, dataset, target, epochs, supervised=True):
     network.train(dataset, target, epochs, store_history=True, shuffle=True, status_bar=True)
     loss_history, epoch_argmax_accuracy = analyze_EIANN_loss(network, target, supervised=supervised, plot=True)
     plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=supervised, label='Final')
+
+
+def test_EIANN_CL_config(network, dataset, target, epochs, split=0.75, supervised=True):
+
+    for sample in dataset:
+        network.forward(sample, store_history=True)
+    plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=supervised, label='Initial')
+    network.reset_history()
+
+    phase1_num_samples = round(dataset.shape[0] * split)
+
+    network.train(dataset[:phase1_num_samples], target[:phase1_num_samples], epochs, store_history=True, shuffle=True,
+                  status_bar=True)
+    loss_history, epoch_argmax_accuracy = analyze_EIANN_loss(network, target[:phase1_num_samples],
+                                                             supervised=supervised, plot=True)
+    network.reset_history()
+
+    for sample in dataset:
+        network.forward(sample, store_history=True)
+    plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=supervised, label='After Phase 1')
+    network.reset_history()
+
+    network.train(dataset[phase1_num_samples:], target[phase1_num_samples:], epochs, store_history=True, shuffle=True,
+                  status_bar=True)
+    loss_history, epoch_argmax_accuracy = analyze_EIANN_loss(network, target[phase1_num_samples:],
+                                                             supervised=supervised, plot=True)
+    network.reset_history()
+
+    for sample in dataset:
+        network.forward(sample, store_history=True)
+    plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=supervised, label='After Phase 2')
