@@ -1,4 +1,4 @@
-BTSP:
+BTSP_A:
   FBI_E_weight: 1.0
   FB_BTSP_max_init_weight_factor: 1.8945973724294913
   FB_BTSP_min_init_weight_factor: 0.6420790121486105
@@ -17,3 +17,29 @@ BTSP:
   Output_E_BTSP_pos_loss_th: 0.305654476576947
   Output_E_H1_E_max_weight: 4.455446468866057
   Output_E_Output_FBI_weight: -2.923078353697012
+Gjorgieva_Hebb_A:
+  E_E_learning_rate: 0.29434780488671874
+  E_I_learning_rate: 0.11205994529904711
+  H1_E_H1_FBI_weight_scale: 1.301412672000941
+  H1_E_Input_E_weight_scale: 9.48517424257211
+  H1_FBI_H1_E_weight_scale: 2.9882012251682943
+  H1_FBI_H1_FBI_weight_scale: 7.3406424124335174
+  I_E_learning_rate: 0.4840460345190343
+  I_I_learning_rate: 0.19840532653703197
+  Output_E_H1_E_weight_scale: 5.36355008130285
+  Output_E_Output_FBI_weight_scale: 9.334091380215222
+  Output_FBI_Output_E_weight_scale: 8.229265739454137
+  Output_FBI_Output_FBI_weight_scale: 0.25475779357057554
+Gjorgieva_anti_Hebb_A:
+  E_E_learning_rate: 0.0704927744853826
+  E_I_learning_rate: 0.030297831847924134
+  H1_E_H1_FBI_weight_scale: 0.27791024379186774
+  H1_E_Input_E_weight_scale: 3.745882824771868
+  H1_FBI_H1_E_weight_scale: 0.7514785325102826
+  H1_FBI_H1_FBI_weight_scale: 2.441039554523474
+  I_E_learning_rate: 0.26414628205756524
+  I_I_learning_rate: 0.061455891941422265
+  Output_E_H1_E_weight_scale: 7.326462930463696
+  Output_E_Output_FBI_weight_scale: 6.8593991046897065
+  Output_FBI_Output_E_weight_scale: 4.3111301705250265
+  Output_FBI_Output_FBI_weight_scale: 0.1350853174035152

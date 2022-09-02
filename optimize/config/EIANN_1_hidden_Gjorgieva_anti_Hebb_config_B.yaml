@@ -1,0 +1,164 @@
+layer_config:
+  Input:
+    E:
+      size: 21
+  H1:
+    E:
+      size: 7
+      activation: relu
+    FBI:
+      size: 7
+      activation: relu
+  Output:
+    E:
+      size: 21
+      activation: relu
+    FBI:
+      size: 7
+      activation: relu
+projection_config:
+  H1:
+    E:
+      Input:
+        E:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - 0
+          - 1
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 3.255803
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: GjorgievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.2756839
+      H1:
+        FBI:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - -1
+          - 0
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 2.352644
+          weight_bounds: !!python/tuple
+          - null
+          - -0.15
+          direction: R
+          learning_rule: GjorgievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.01415294
+    FBI:
+      H1:
+        E:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - 0
+          - 1
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 1.92508
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: GjorgievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.3213503
+        FBI:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - -1
+          - 0
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 1.877143
+          weight_bounds: !!python/tuple
+          - null
+          - 0.
+          direction: R
+          learning_rule: GjorgievaHebb
+          learning_rule_kwargs:
+            sign: -1
+            learning_rate: 0.04600147
+  Output:
+    E:
+      H1:
+        E:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - 0
+          - 1
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 0.8436103
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: GjorgievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.2756839
+      Output:
+        FBI:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - -1
+          - 0
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 1.589356
+          weight_bounds: !!python/tuple
+          - null
+          - -0.15
+          direction: R
+          learning_rule: GjorgievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.01415294
+    FBI:
+      Output:
+        E:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - 0
+          - 1
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 7.526584
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: GjorgievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.3213503
+        FBI:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - -1
+          - 0
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 1.979838
+          weight_bounds: !!python/tuple
+          - null
+          - 0.
+          direction: R
+          learning_rule: GjorgievaHebb
+          learning_rule_kwargs:
+            sign: -1
+            learning_rate: 0.04600147
+training_kwargs:
+  tau: 3
+  forward_steps: 10
+  backward_steps: 0
+  learning_rate: 0.9553728
