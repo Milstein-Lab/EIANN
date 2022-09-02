@@ -38,6 +38,33 @@ def get_random_seeds():
              range(context.start_instance, context.start_instance + context.num_instances)]]
 
 
+def update_EIANN_config_1_hidden_backprop_relu_SGD(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    learning_rate = param_dict['learning_rate']
+
+    context.training_kwargs['optimizer'] = 'SGD'
+    context.training_kwargs['learning_rate'] = learning_rate
+
+
+def update_EIANN_config_1_hidden_backprop_softplus_SGD(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    learning_rate = param_dict['learning_rate']
+    softplus_beta = param_dict['softplus_beta']
+
+    for i, layer in enumerate(context.layer_config.values()):
+        if i > 0:
+            for pop in layer.values():
+                if 'activation' in pop and pop['activation'] == 'softplus':
+                    if 'activation_kwargs' not in pop:
+                        pop['activation_kwargs'] = {}
+                    pop['activation_kwargs']['beta'] = softplus_beta
+
+    context.training_kwargs['optimizer'] = 'SGD'
+    context.training_kwargs['learning_rate'] = learning_rate
+
+
 def update_EIANN_config_1_hidden_Gjorgieva_Hebb_A(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
 

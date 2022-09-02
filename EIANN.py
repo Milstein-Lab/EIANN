@@ -326,7 +326,10 @@ class EIANN(nn.Module):
 
         if optimizer is not None:
             if not callable(optimizer):
-                raise RuntimeError('EIANN: optimizer (%s) must be imported and callable' % optimizer)
+                if optimizer in globals() and callable(globals()[optimizer]):
+                    optimizer = globals()[optimizer]
+                else:
+                    raise RuntimeError('EIANN: optimizer (%s) must be imported and callable' % optimizer)
             if optimizer_kwargs is None:
                 optimizer_kwargs = {}
             self.optimizer_kwargs = optimizer_kwargs

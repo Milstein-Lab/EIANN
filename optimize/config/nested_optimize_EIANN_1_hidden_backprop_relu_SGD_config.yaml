@@ -1,0 +1,35 @@
+bounds:
+  learning_rate:
+    - 0.0001
+    - 1.
+default_params:
+kwargs:
+  network_id: 1
+  task_id: 1
+  start_instance: 1
+  num_instances: 5
+  supervised: True
+  status_bar: False
+  epochs: 300
+  num_epochs_argmax_accuracy: 50
+  network_config_file_path: optimize/config/EIANN_1_hidden_backprop_relu_SGD_config.yaml
+feature_names:
+- loss
+- accuracy
+update_context:
+- - optimize.nested_optimize_EIANN_1_hidden
+  - update_EIANN_config_1_hidden_backprop_relu_SGD
+get_features_stages:
+- source: optimize.nested_optimize_EIANN_1_hidden
+  get_args_static: get_random_seeds
+  compute_features: compute_features
+  filter_features: filter_features
+get_objectives:
+  optimize.nested_optimize_EIANN_1_hidden: get_objectives
+objective_names:
+- loss
+- accuracy
+optimization_title: EIANN_1_hidden_backprop_relu_SGD
+param_gen: PopulationAnnealing
+x0:
+  learning_rate: 2.756839E-01
