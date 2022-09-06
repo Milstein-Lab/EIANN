@@ -1,7 +1,7 @@
 bounds:
   learning_rate:
     - 0.0001
-    - 1.
+    - 10.
 default_params:
 kwargs:
   network_id: 1
