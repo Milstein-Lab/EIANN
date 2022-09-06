@@ -56,3 +56,11 @@ Gjorgieva_anti_Hebb_B:
   Output_E_Output_FBI_weight_scale: 8.075861412856131
   Output_FBI_Output_E_weight_scale: 6.074478663380149
   Output_FBI_Output_FBI_weight_scale: 0.1687297869686956
+backprop_relu_SGD:
+  learning_rate: 0.9999996041166471
+backprop_softplus_SGD:
+  learning_rate: 0.9997394644628589
+  softplus_beta: 49.998486112204304
+backprop_softplus_SGD_fast:
+  learning_rate: 10
+  softplus_beta: 50

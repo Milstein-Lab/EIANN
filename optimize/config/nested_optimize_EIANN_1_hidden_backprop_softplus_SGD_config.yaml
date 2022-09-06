@@ -1,10 +1,10 @@
 bounds:
   learning_rate:
     - 0.0001
-    - 1.
+    - 10.
   softplus_beta:
     - 1.
-    - 50.
+    - 100.
 default_params:
 kwargs:
   network_id: 1
