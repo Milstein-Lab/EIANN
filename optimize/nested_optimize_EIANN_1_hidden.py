@@ -256,7 +256,7 @@ def update_EIANN_config_1_hidden_BTSP_A(x, context):
     context.projection_config['Output']['FBI']['Output']['E']['weight_init_args'] = (FBI_E_weight,)
 
 
-def compute_features(x, seed, model_id=None, export=False):
+def compute_features(x, seed, model_id=None, export=False, plot=False):
     """
 
     :param x: array of float
@@ -274,7 +274,7 @@ def compute_features(x, seed, model_id=None, export=False):
 
     network = EIANN(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
 
-    if context.plot:
+    if plot:
         for sample in dataset:
             network.forward(sample, store_history=True)
         plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=context.supervised, label='Initial')
@@ -283,12 +283,12 @@ def compute_features(x, seed, model_id=None, export=False):
     network.train(dataset, target, epochs, store_history=True, shuffle=True, status_bar=context.status_bar)
 
     loss_history, epoch_argmax_accuracy = \
-        analyze_EIANN_loss(network, target, supervised=context.supervised, plot=context.plot)
+        analyze_EIANN_loss(network, target, supervised=context.supervised, plot=plot)
 
     final_epoch_loss = torch.mean(loss_history[-target.shape[0]:])
     final_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
 
-    if context.plot:
+    if plot:
         plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=context.supervised, label='Final')
 
     if context.debug:
@@ -308,7 +308,7 @@ def compute_features(x, seed, model_id=None, export=False):
             'accuracy': final_argmax_accuracy}
 
 
-def filter_features(primitives, current_features, model_id=None, export=False):
+def filter_features(primitives, current_features, model_id=None, export=False, plot=False):
 
     features = {}
     for instance_features in primitives:
@@ -322,7 +322,7 @@ def filter_features(primitives, current_features, model_id=None, export=False):
     return features
 
 
-def get_objectives(features, model_id=None, export=False):
+def get_objectives(features, model_id=None, export=False, plot=False):
     objectives = {}
     for key, val in features.items():
         if key in ['accuracy']:

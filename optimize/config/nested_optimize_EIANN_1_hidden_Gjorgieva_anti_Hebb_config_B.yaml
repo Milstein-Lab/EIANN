@@ -47,24 +47,16 @@ kwargs:
   num_epochs_argmax_accuracy: 50
   network_config_file_path: optimize/config/EIANN_1_hidden_Gjorgieva_anti_Hebb_config_B.yaml
   I_floor_weight: -0.01
-feature_names:
-- loss
-- accuracy
 update_context:
-- - optimize.nested_optimize_EIANN_1_hidden
-  - update_EIANN_config_1_hidden_Gjorgieva_anti_Hebb_B
-get_features_stages:
+- source: optimize.nested_optimize_EIANN_1_hidden
+  function: update_EIANN_config_1_hidden_Gjorgieva_anti_Hebb_B
+stages:
 - source: optimize.nested_optimize_EIANN_1_hidden
   get_args_static: get_random_seeds
   compute_features: compute_features
   filter_features: filter_features
-get_objectives:
-  optimize.nested_optimize_EIANN_1_hidden: get_objectives
-objective_names:
-- loss
-- accuracy
+  get_objectives: get_objectives
 optimization_title: EIANN_1_hidden_Gjorgieva_anti_Hebb_B
-param_gen: PopulationAnnealing
 x0:
   E_E_learning_rate: 2.756839E-01
   E_I_learning_rate: 1.415294E-02

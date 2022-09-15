@@ -66,24 +66,16 @@ kwargs:
   epochs: 300
   num_epochs_argmax_accuracy: 50
   network_config_file_path: optimize/config/EIANN_1_hidden_BTSP_config_A.yaml
-feature_names:
-- loss
-- accuracy
 update_context:
-- - optimize.nested_optimize_EIANN_1_hidden
-  - update_EIANN_config_1_hidden_BTSP_A
-get_features_stages:
+- source: optimize.nested_optimize_EIANN_1_hidden
+  function: update_EIANN_config_1_hidden_BTSP_A
+stages:
 - source: optimize.nested_optimize_EIANN_1_hidden
   get_args_static: get_random_seeds
   compute_features: compute_features
   filter_features: filter_features
-get_objectives:
-  optimize.nested_optimize_EIANN_1_hidden: get_objectives
-objective_names:
-- loss
-- accuracy
+  get_objectives: get_objectives
 optimization_title: EIANN_1_hidden_BTSP_A
-param_gen: PopulationAnnealing
 x0:
   H1_E_Input_E_max_weight: 1.673418E+00
   FF_BTSP_max_init_weight_factor: 1.035827E-01
