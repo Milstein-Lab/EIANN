@@ -159,7 +159,7 @@ def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
                                       -num_samples:, :].T, aspect='auto')
             fig.colorbar(im, ax=this_axis)
             this_axis.set_xlabel('Input pattern ID')
-            this_axis.set_ylabel('Output unit ID')
+            this_axis.set_ylabel('Unit ID')
             this_axis.set_title('%s.%s' % (layer.name, population.name))
         row += 1
         while row < max_rows:

@@ -303,6 +303,9 @@ def compute_features(x, seed, model_id=None, export=False, plot=False):
         if context.export_network_config_file_path is None:
             raise Exception('nested_optimize_EIANN_1_hidden: missing required export_network_config_file_path')
         write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
+        if context.disp:
+            print('nested_optimize_EIANN_1_hidden: pid: %i exported network config to %s' %
+                  (os.getpid(), context.export_network_config_file_path))
 
     return {'loss': final_epoch_loss,
             'accuracy': final_argmax_accuracy}
