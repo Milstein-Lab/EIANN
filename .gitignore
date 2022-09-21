@@ -5,3 +5,5 @@ notebooks/.ipynb_checkpoints/**
 __pycache__/**
 /notebooks
 .DS_Store
+EIANN/modules/__pychache__
+EIANN/notebooks/ipynb_checkpoints
