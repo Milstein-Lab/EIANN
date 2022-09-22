@@ -229,7 +229,7 @@ class EIANN(nn.Module):
                     # if hasattr(population,'bias'):
                     #     population.bias_history_ls.append(population.bias.detach().clone())
                     for projection in population:
-                        projection.weight_history_ls = torch.stack(projection.weight_history_ls)
+                        projection.weight_history = torch.stack(projection.weight_history_ls)
 
         return loss.detach()
 

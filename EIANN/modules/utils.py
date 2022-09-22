@@ -2,6 +2,7 @@ import torch
 import yaml
 import itertools
 import os
+from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 8,
                      'axes.spines.right': False,
@@ -116,9 +117,74 @@ def get_diag_argmax_row_indexes(data):
     return final_row_indexes
 
 
+# Loss landscape functions
+def plot_weight_PCs(flat_weight_history):
+    '''
+    Function performs PCA on a given set of weights and
+        1. plots the explained variance
+        2. the trajectory of the weights in the PC space during the course of learning
+        3. the loading scores of the weights
+
+    Parameters
+    weight_history: torch tensor, size: [time_steps x total number of weights]
+
+    Returns
+    '''
+
+    # Center the data (mean=0, std=1)
+    w_mean = torch.mean(flat_weight_history, axis=0)
+    w_std = torch.std(flat_weight_history, axis=0)
+    flat_weight_history = (flat_weight_history - w_mean) / w_std
+
+    pca = PCA(n_components=5)
+    pca.fit(flat_weight_history)
+    weights_pca_space = pca.transform(flat_weight_history)
+
+    # Plot explained variance
+    fig, ax = plt.subplots(1, 3)
+    explained_variance = pca.explained_variance_ratio_
+    percent_exp_var = np.round(explained_variance * 100, decimals=2)
+    labels = ['PC' + str(x) for x in range(1, len(percent_exp_var) + 1)]
+    ax[0].bar(x=range(1, len(percent_exp_var) + 1), height=percent_exp_var, tick_label=labels)
+    ax[0].set_ylabel('Percentage of variance explained')
+    ax[0].set_xlabel('Principal Component')
+    ax[0].set_title('Scree Plot')
+
+    # Plot weights in PC space
+    PC1 = weights_pca_space[:, 0]
+    PC2 = weights_pca_space[:, 1]
+    ax[1].scatter(PC1, PC2)
+    ax[1].scatter(PC1[0], PC2[0], color='blue', label='before training')
+    ax[1].scatter(PC1[-1], PC2[-1], color='red', label='after training')
+    ax[1].set_xlabel(f'PC1 - {percent_exp_var[0]}%')
+    ax[1].set_ylabel(f'PC2 - {percent_exp_var[1]}%')
+    ax[1].legend()
+    ax[1].set_ylim([-250, 280])
+    ax[1].set_xlim([-250, 280])
+
+    # Plot loading scores for PC1 to determine which/how many weights are important for variance along PC1
+    sorted_loadings = -np.sort(-np.abs(pca.components_[0]))  # Loadings sorted in descending order of abs magnitude
+    sorted_idx = np.argsort(-np.abs(pca.components_[0]))
+
+    most_important_weights_flat = sorted_idx[0:10]  #
+    most_important_weights_idx = []  # index of important weights in original weight matrix
+
+    ax[2].plot(sorted_loadings)
+    ax[2].set_xlabel('sorted weights')
+    ax[2].set_ylabel('Loading \n(alignment with weight)')
+    ax[2].set_title('PC1 weight components')
+
+    plt.tight_layout()
+    plt.show()
+
 # def plot_loss_landscape(network):
 
+# def flatten_network_weights():
 
+# def unflatten_network_weights():
+
+
+# Network summary functions
 def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
 
     reversed_layers = list(network)
