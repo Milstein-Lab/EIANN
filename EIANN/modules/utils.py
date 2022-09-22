@@ -116,6 +116,9 @@ def get_diag_argmax_row_indexes(data):
     return final_row_indexes
 
 
+# def plot_loss_landscape(network):
+
+
 def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
 
     reversed_layers = list(network)
@@ -263,9 +266,8 @@ def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
 
 def analyze_EIANN_loss(network, target, supervised=True, plot=False):
 
-    reversed_layers = list(network)
-    reversed_layers.reverse()
-    output_pop = next(iter(reversed_layers[0]))
+    output_layer = list(network)[-1]
+    output_pop = output_layer.E
 
     argmax_correct = []
     if supervised or target.shape[0] != target.shape[1]:

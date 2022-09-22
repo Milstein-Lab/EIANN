@@ -24,6 +24,7 @@ layer_config:
       activation: softplus
       activation_kwargs:
         beta: 99.78563100135408
+
 projection_config:
   H1:
     E:
@@ -73,6 +74,7 @@ projection_config:
           - null
           direction: F
           learning_rule: Backprop
+
 training_kwargs:
   tau: 3
   forward_steps: 10

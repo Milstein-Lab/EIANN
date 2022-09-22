@@ -159,7 +159,7 @@ class EIANN(nn.Module):
 
         return next(iter(layer)).activity
 
-    def train(self, dataset, target, epochs, store_history=False, shuffle=True, status_bar=False):
+    def train(self, dataloader, epochs, store_history=False, status_bar=False):
         """
 
         :param dataset: 2d array or tensor of float
@@ -169,28 +169,36 @@ class EIANN(nn.Module):
         :param shuffle: bool
         :param status_bar: bool
         """
-        num_samples = dataset.shape[0]
-
         if status_bar:
             epoch_iter = tqdm(range(epochs))
         else:
             epoch_iter = range(epochs)
 
+        # Save weights & biases & activity
+        if store_history:
+            for layer in self:
+                for population in layer:
+                    # if hasattr(population,'bias'):
+                    #     population.bias_history_ls.append(population.bias.detach().clone())
+                    for projection in population:
+                        projection.weight_history_ls = [projection.weight.detach().clone()]
+
         for epoch in epoch_iter:
-            sample_indexes = torch.randperm(num_samples)
-            self.sample_order.extend(sample_indexes)
-            self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(sample_indexes)))
-            for sample_idx in sample_indexes:
-                sample = dataset[sample_idx]
-                sample_target = target[sample_idx]
-                output = self.forward(sample, store_history)
+            # self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(sample_indexes)))
+            for batch in dataloader:
+                sample_idx, sample_data, sample_target = batch
+                self.sample_order.append(sample_idx[0])
 
-                self.loss = self.criterion(output, sample_target)
-                self.loss_history.append(self.loss.detach())
+                output = self.forward(sample_data, store_history)
 
+                loss = self.criterion(output, sample_target)
+                self.loss_history.append(loss.detach())
+
+                # Step weights
                 for backward in self.backward_methods:
                     backward(self, output, sample_target)
 
+                # Step bias
                 for i, post_layer in enumerate(self):
                     if i > 0:
                         for post_pop in post_layer:
@@ -198,13 +206,32 @@ class EIANN(nn.Module):
                                 post_pop.bias_learning_rule.step()
                             for projection in post_pop:
                                 projection.learning_rule.step()
+
                 self.constrain_weights_and_biases()
 
-        self.sample_order = torch.LongTensor(self.sample_order)
-        self.sorted_sample_indexes = torch.LongTensor(self.sorted_sample_indexes)
-        self.loss_history = torch.Tensor(self.loss_history)
+                # Save weights & biases & activity
+                if store_history:
+                    for layer in self:
+                        for population in layer:
+                            # if hasattr(population,'bias'):
+                            #     population.bias_history_ls.append(population.bias.detach().clone())
+                            for projection in population:
+                                projection.weight_history_ls.append(projection.weight.detach().clone())
 
-        return self.loss
+
+        self.sample_order = torch.stack(self.sample_order)
+        # self.sorted_sample_indexes = torch.LongTensor(self.sorted_sample_indexes)
+        self.loss_history = torch.stack(self.loss_history)
+
+        if store_history:
+            for layer in self:
+                for population in layer:
+                    # if hasattr(population,'bias'):
+                    #     population.bias_history_ls.append(population.bias.detach().clone())
+                    for projection in population:
+                        projection.weight_history_ls = torch.stack(projection.weight_history_ls)
+
+        return loss.detach()
 
     def __iter__(self):
         for layer in self.layers.values():
@@ -250,6 +277,13 @@ class Layer(object):
     def __iter__(self):
         for population in self.populations.values():
             yield population
+
+    def __repr__(self):
+        ls = []
+        for pop_name in self.populations.keys():
+            ls.append(pop_name)
+        items = ", ".join(ls)
+        return f'{type(self)} :\n\t({items})'
 
 
 class Population(object):
