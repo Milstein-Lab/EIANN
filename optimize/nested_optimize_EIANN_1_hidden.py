@@ -272,7 +272,7 @@ def compute_features(x, seed, model_id=None, export=False, plot=False):
 
     epochs = context.epochs
 
-    network = EIANN(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
+    network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
 
     if plot:
         for sample in dataset:
