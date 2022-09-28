@@ -406,7 +406,7 @@ class Network(nn.Module):
                 for i, post_layer in enumerate(self):
                     for post_pop in post_layer:
                         if i > 0:
-                            delta_state = -post_pop.state
+                            delta_state = -post_pop.state + post_pop.bias
                             for projection in post_pop:
                                 pre_pop = projection.pre
                                 if projection.direction in ['forward', 'F']:
