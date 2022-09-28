@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.nn.functional import softplus, relu
 from torch.optim import Adam, SGD
 from torch.nn import MSELoss
+from EIANN_utils import half_kaining_init, scaled_kaining_init
 import numpy as np
 
 
@@ -53,18 +54,18 @@ class Population(object):
                  bias_learning_rule_kwargs=None):
         """
         Class for population of neurons
-        :param network:
-        :param layer:
-        :param name:
-        :param size:
-        :param activation:
-        :param activation_kwargs:
-        :param include_bias:
-        :param bias_init:
-        :param bias_init_args:
-        :param bias_bounds:
-        :param bias_learning_rule:
-        :param bias_learning_rule_kwargs:
+        :param network: :class:'Network'
+        :param layer: :class:'Layer'
+        :param name: str
+        :param size: int
+        :param activation: str; name of imported callable
+        :param activation_kwargs: dict
+        :param include_bias: bool
+        :param bias_init: str; name of imported callable
+        :param bias_init_args: dict
+        :param bias_bounds: tuple of float
+        :param bias_learning_rule: str; name of imported callable
+        :param bias_learning_rule_kwargs: dict
         """
         # Constants
         self.network = network
@@ -78,10 +79,10 @@ class Population(object):
                 ('Population: callable for activation: %s must be imported' % activation)
         if activation_kwargs is None:
             activation_kwargs = {}
-        self.activation_kwargs = activation_kwargs
         self.activation = lambda x: globals()[activation](x, **activation_kwargs)
 
         # Set bias parameters
+        self.bias = nn.Parameter(torch.zeros(self.size), requires_grad=False)
         self.bias_init = bias_init
         if bias_init_args is None:
             bias_init_args = ()
@@ -90,20 +91,22 @@ class Population(object):
         if bias_learning_rule_kwargs is None:
             bias_learning_rule_kwargs = {}
         if bias_learning_rule is None:
-            self.bias_learning_rule_class = BiasLearningRule
+            bias_learning_rule_class = BiasLearningRule
         else:
             include_bias = True
             if bias_learning_rule == 'Backprop':
-                self.bias_learning_rule_class = BackpropBias
+                bias_learning_rule_class = BackpropBias
+                self.bias.requires_grad = True
             elif bias_learning_rule in globals() and issubclass(globals()[bias_learning_rule], BiasLearningRule):
-                self.bias_learning_rule_class = globals()[bias_learning_rule]
+                bias_learning_rule_class = globals()[bias_learning_rule]
             else:
                 raise RuntimeError \
                     ('Population: bias_learning_rule: %s must be imported and subclass of BiasLearningRule' %
                      bias_learning_rule)
         self.include_bias = include_bias
-        self.bias_learning_rule = self.bias_learning_rule_class(self, **bias_learning_rule_kwargs)
-        self.network.backward_methods.add(self.bias_learning_rule_class.backward)
+        self.network.parameter_list.append(self.bias)
+        self.bias_learning_rule = bias_learning_rule_class(self, **bias_learning_rule_kwargs)
+        self.network.backward_methods.add(bias_learning_rule_class.backward)
 
         # Initialize storage containers
         self.activity_history_list = []
@@ -120,101 +123,18 @@ class Population(object):
         self.state = torch.zeros(self.size)
         self.sample_activity = []
 
-    def append_projection(self, pre_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
-                          weight_constraint_kwargs=None, weight_bounds=None, direction='forward', compartment=None,
-                          learning_rule='Backprop', learning_rule_kwargs=None):
+    def append_projection(self, projection):
         """
-
-        :param pre_pop: :class:'Population'
-        :param weight_init: str
-        :param weight_init_args: tuple
-        :param weight_constraint: str
-        :param weight_constraint_kwargs: dict
-        :param weight_bounds: tuple of float
-        :param direction: str in ['forward', 'backward', 'recurrent', 'F', 'B', 'R']
-        :param compartment: None or str in ['soma', 'dend']
-        :param learning_rule: str
-        :param learning_rule_kwargs: dict
+        Register Projection parameters as Network module parameters. Enables convenient attribute access syntax.
+        :param projection: :class:'Projection'
         """
-        # Create projection object
-        if not self.projections:
-            include_bias = self.include_bias
-        else:
-            include_bias = False
-        projection = nn.Linear(pre_pop.size, self.size, bias=include_bias)
-        projection.pre = pre_pop
-        projection.post = self
+        self.network.backward_methods.add(projection.learning_rule.__class__.backward)
 
-        # Specify bias, stored as an attribute of the projection class
-        if not self.projections and self.include_bias:
-            if self.bias_learning_rule_class != BackpropBias:
-                projection.bias.requires_grad = False
-            if self.bias_init is not None:
-                if not hasattr(projection.bias.data, self.bias_init):
-                    raise RuntimeError(
-                        'Population.append_projection: callable for bias_init: %s must be a method of Tensor' %
-                        bias_init)
-                if self.bias_init_args is None:
-                    self.bias_init_args = ()
-
-        # Set learning rule as callable of the projection
-        projection.weight_bounds = weight_bounds
-
-        # Set learning rule as callable of the projection
-        if learning_rule_kwargs is None:
-            learning_rule_kwargs = {}
-        if learning_rule is None:
-            projection.learning_rule_class = LearningRule
-        elif learning_rule in globals() and issubclass(globals()[learning_rule], LearningRule):
-            projection.learning_rule_class = globals()[learning_rule]
-        else:
-            raise RuntimeError \
-                ('Population.append_projection: learning_rule: %s must be imported and instance of LearningRule' %
-                 learning_rule)
-        projection.learning_rule  = projection.learning_rule_class(projection, **learning_rule_kwargs)
-        if projection.learning_rule_class != Backprop:
-            projection.weight.requires_grad = False
-        self.network.backward_methods.add(projection.learning_rule_class.backward)
-
-        # Set projection parameters
-        projection.weight_init = weight_init
-        if weight_init is not None and not hasattr(projection.weight.data, weight_init):
-            raise RuntimeError \
-                ('Population.append_projection: callable for weight_init: %s must be a method of Tensor' % weight_init)
-        if weight_init_args is None:
-            weight_init_args = ()
-        projection.weight_init_args = weight_init_args
-
-        projection.weight_constraint = weight_constraint
-        if weight_constraint_kwargs is None:
-            weight_constraint_kwargs = {}
-        projection.weight_constraint_kwargs = weight_constraint_kwargs
-        if weight_constraint is not None:
-            if not (weight_constraint in globals() and callable(globals()[weight_constraint])):
-                raise RuntimeError \
-                    ('Population.append_projection: weight_constraint: %s must be imported and callable' %
-                     weight_constraint)
-            projection.constrain_weight = \
-                lambda projection: \
-                    globals()[weight_constraint](projection, **projection.weight_constraint_kwargs)
-
-        if direction not in ['forward', 'backward', 'recurrent', 'F', 'B', 'R']:
-            raise RuntimeError('Population.append_projection: direction (%s) must be forward, backward, or recurrent' %
-                               direction)
-        projection.direction = direction
-        if projection.direction in ['backward', 'B']:
-            self.backward_projections.append(projection)
-
-        if compartment is not None and compartment not in ['soma', 'dend']:
-            raise RuntimeError('Population.append_projection: compartment (%s) must be None, soma, or dend' %
-                               compartment)
-        projection.compartment = compartment
-
-        if pre_pop.layer.name not in self.projections:
-            self.projections[pre_pop.layer.name] = {}
-            self.__dict__[pre_pop.layer.name] = AttrDict()
-        self.projections[pre_pop.layer.name][pre_pop.name] = projection
-        self.__dict__[pre_pop.layer.name][pre_pop.name] = projection
+        if projection.pre.layer.name not in self.projections:
+            self.projections[projection.pre.layer.name] = {}
+            self.__dict__[projection.pre.layer.name] = AttrDict()
+        self.projections[projection.pre.layer.name][projection.pre.name] = projection
+        self.__dict__[projection.pre.layer.name][projection.pre.name] = projection
 
         self.network.module_list.append(projection)
 
@@ -222,14 +142,6 @@ class Population(object):
         for projections in self.projections.values():
             for projection in projections.values():
                 yield projection
-
-    @property
-    def bias(self):
-        if self.include_bias:
-            projection = next(iter(self))
-            return projection.bias
-        else:
-            return torch.zeros(self.size)
 
     @property
     def activity_history(self):
@@ -260,6 +172,79 @@ class Input(Population):
         self.reinit()
 
 
+class Projection(nn.Linear):
+    def __init__(self, pre_pop, post_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
+                 weight_constraint_kwargs=None, weight_bounds=None, direction='forward', compartment=None,
+                 learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None):
+        """
+
+        :param pre_pop: :class:'Population'
+        :param post_pop: :class:'Population'
+        :param weight_init: str
+        :param weight_init_args: tuple
+        :param weight_constraint: str
+        :param weight_constraint_kwargs: dict
+        :param weight_bounds: tuple of float
+        :param direction: str in ['forward', 'backward', 'recurrent', 'F', 'B', 'R']
+        :param compartment: None or str in ['soma', 'dend']
+        :param learning_rule: str
+        :param learning_rule_kwargs: dict
+        :param device:
+        :param dtype:
+        """
+        super().__init__(pre_pop.size, post_pop.size, bias=False, device=device, dtype=dtype)
+
+        self.pre = pre_pop
+        self.post = post_pop
+
+        self.weight_init = weight_init
+        if weight_init_args is None:
+            weight_init_args = ()
+        self.weight_init_args = weight_init_args
+
+        if weight_constraint is None:
+            self.constrain_weight = None
+        elif not (weight_constraint in globals() and callable(globals()[weight_constraint])):
+            raise RuntimeError \
+                ('Projection: weight_constraint: %s must be imported and callable' %
+                 weight_constraint)
+        else:
+            if weight_constraint_kwargs is None:
+                weight_constraint_kwargs = {}
+            self.constrain_weight = \
+                lambda projection=self, kwargs=weight_constraint_kwargs: \
+                    globals()[weight_constraint](projection, **weight_constraint_kwargs)
+
+        self.weight_bounds = weight_bounds
+
+        if direction not in ['forward', 'backward', 'recurrent', 'F', 'B', 'R']:
+            raise RuntimeError('Projection: direction (%s) must be forward, backward, or recurrent' %
+                               direction)
+        self.direction = direction
+        if self.direction in ['backward', 'B']:
+            self.post.backward_projections.append(self)
+
+        if compartment is not None and compartment not in ['soma', 'dend']:
+            raise RuntimeError('Projection: compartment (%s) must be None, soma, or dend' %
+                               compartment)
+        self.compartment = compartment
+
+        # Set learning rule as callable of the projection
+        if learning_rule_kwargs is None:
+            learning_rule_kwargs = {}
+        if learning_rule is None:
+            learning_rule_class = LearningRule
+        elif learning_rule in globals() and issubclass(globals()[learning_rule], LearningRule):
+            learning_rule_class = globals()[learning_rule]
+        else:
+            raise RuntimeError \
+                ('Projection: learning_rule: %s must be imported and instance of LearningRule' %
+                 learning_rule)
+        self.learning_rule  = learning_rule_class(self, **learning_rule_kwargs)
+        if learning_rule_class != Backprop:
+            self.weight.requires_grad = False
+
+
 class Network(nn.Module):
     def __init__(self, layer_config, projection_config, learning_rate, optimizer=SGD, optimizer_kwargs=None,
                  criterion=MSELoss, criterion_kwargs=None, seed=None, tau=1, forward_steps=1, backward_steps=1,
@@ -282,7 +267,7 @@ class Network(nn.Module):
         super().__init__()
         self.learning_rate = learning_rate
         if not callable(criterion):
-            raise RuntimeError('EIANN: criterion (%s) must be imported and callable' % criterion)
+            raise RuntimeError('Network: criterion (%s) must be imported and callable' % criterion)
         if criterion_kwargs is None:
             criterion_kwargs = {}
         self.criterion_kwargs = criterion_kwargs
@@ -297,6 +282,7 @@ class Network(nn.Module):
 
         self.backward_methods = set()
         self.module_list = nn.ModuleList()
+        self.parameter_list = nn.ParameterList()
 
         self.layers = {}
         for i, (layer_name, pop_config) in enumerate(layer_config.items()):
@@ -319,9 +305,10 @@ class Network(nn.Module):
                     for pre_pop_name, projection_kwargs in \
                             projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
                         pre_pop = pre_layer.populations[pre_pop_name]
-                        post_pop.append_projection(pre_pop, **projection_kwargs)
+                        projection = Projection(pre_pop, post_pop, **projection_kwargs)
+                        post_pop.append_projection(projection)
                         if verbose:
-                            print('EIANN: appending a projection from %s %s -> %s %s' %
+                            print('Network: appending a projection from %s %s -> %s %s' %
                                   (pre_pop.layer.name, pre_pop.name, post_pop.layer.name, post_pop.name))
 
         if optimizer is not None:
@@ -329,7 +316,7 @@ class Network(nn.Module):
                 if optimizer in globals() and callable(globals()[optimizer]):
                     optimizer = globals()[optimizer]
                 else:
-                    raise RuntimeError('EIANN: optimizer (%s) must be imported and callable' % optimizer)
+                    raise RuntimeError('Network: optimizer (%s) must be imported and callable' % optimizer)
             if optimizer_kwargs is None:
                 optimizer_kwargs = {}
             self.optimizer_kwargs = optimizer_kwargs
@@ -344,11 +331,36 @@ class Network(nn.Module):
         for i, post_layer in enumerate(self):
             if i > 0:
                 for post_pop in post_layer:
-                    if post_pop.include_bias and post_pop.bias_init is not None:
-                        getattr(post_pop.bias.data, post_pop.bias_init)(*post_pop.bias_init_args)
+                    total_fan_in = 0
                     for projection in post_pop:
+                        fan_in = projection.pre.size
+                        total_fan_in += fan_in
                         if projection.weight_init is not None:
-                            getattr(projection.weight.data, projection.weight_init)(*projection.weight_init_args)
+                            if projection.weight_init == 'half_kaining':
+                                 half_kaining_init(projection.weight.data, fan_in, *projection.weight_init_args,
+                                                   bounds=projection.weight_bounds)
+                            elif projection.weight_init == 'scaled_kaining':
+                                scaled_kaining_init(projection.weight.data, fan_in, *projection.weight_init_args)
+                            else:
+                                try:
+                                    getattr(projection.weight.data,
+                                            projection.weight_init)(*projection.weight_init_args)
+                                except:
+                                    raise RuntimeError('Network.init_weights_and_biases: callable for weight_init: %s '
+                                                       'must be half_kaining, scaled_kaining, or a method of Tensor' %
+                                                       projection.weight_init)
+                    if post_pop.include_bias:
+                        if post_pop.bias_init is None:
+                            scaled_kaining_init(post_pop.bias.data, total_fan_in)
+                        elif post_pop.bias_init == 'scaled_kaining':
+                            scaled_kaining_init(post_pop.bias.data, total_fan_in, *post_pop.bias_init_args)
+                        else:
+                            try:
+                                getattr(post_pop.bias.data, post_pop.bias_init)(*post_pop.bias_init_args)
+                            except:
+                                raise RuntimeError('Network.init_weights_and_biases: callable for bias_init: %s '
+                                                   'must be scaled_kaining, or a method of Tensor' % post_pop.bias_init)
+
         self.constrain_weights_and_biases()
 
     def constrain_weights_and_biases(self):
@@ -360,8 +372,8 @@ class Network(nn.Module):
                     for projection in post_pop:
                         if projection.weight_bounds is not None:
                             projection.weight.data = projection.weight.data.clamp(*projection.weight_bounds)
-                        if projection.weight_constraint is not None:
-                            projection.constrain_weight(projection)
+                        if projection.constrain_weight is not None:
+                            projection.constrain_weight()
 
     def reset_history(self):
         self.sample_order = []
@@ -550,7 +562,7 @@ class BCM(LearningRule):
             if i > 0:
                 for population in layer:
                     for projection in population:
-                        if projection.learning_rule_class == cls:
+                        if projection.learning_rule.__class__ == cls:
                             population.prev_theta = population.theta.clone()
                             delta_theta = (-population.theta + population.activity ** 2. /
                                            projection.learning_rule.k) / projection.learning_rule.theta_tau
@@ -683,7 +695,7 @@ class BTSP(LearningRule):
         output_pop.prev_state = output_pop.state.detach().clone()
         output_pop.dend_to_soma = torch.zeros(output_pop.size)
         for projection in output_pop:
-            if projection.learning_rule_class == cls:
+            if projection.learning_rule.__class__ == cls:
                 output_pop.plateau = torch.zeros(output_pop.size)
                 for i in range(output_pop.size):
                     if output_pop.dendritic_state[i] >  projection.learning_rule.pos_loss_th:
@@ -706,7 +718,7 @@ class BTSP(LearningRule):
         for layer in reversed_layers:
             for pop in layer:
                 for projection in pop.backward_projections:
-                    if projection.learning_rule_class == cls:
+                    if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size)
                         pop.dend_to_soma = torch.zeros(pop.size)
                         # sort cells by dendritic state

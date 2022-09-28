@@ -1,5 +1,6 @@
 import torch
 import itertools
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -64,6 +65,21 @@ def get_diag_argmax_row_indexes(data):
         avail_row_indexes.remove(row_index)
         avail_col_indexes.remove(col_index)
     return final_row_indexes
+
+
+def scaled_kaining_init(data, fan_in, scale=1):
+    kaining_bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+    data.uniform_(-scale*kaining_bound, scale*kaining_bound)
+
+
+def half_kaining_init(data, fan_in, scale=1, bounds=None):
+    kaining_bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+    if bounds is None or (bounds[0] >= 0):
+        data.uniform(bounds[0], scale*kaining_bound)
+    elif bounds[1] <= 0:
+        data.uniform(-scale * kaining_bound, bounds[1])
+    else:
+        raise RuntimeError('half_kaining_init: bounds should be either >=0 or <=0: %s' % str(bounds))
 
 
 def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
