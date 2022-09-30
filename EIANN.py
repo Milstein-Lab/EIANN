@@ -479,11 +479,11 @@ class Network(nn.Module):
 
 
 def normalize_weight(projection, scale, autapses=False, axis=1):
-    projection.weight.data /= torch.sum(torch.abs(projection.weight.data), axis=axis).unsqueeze(1)
-    projection.weight.data *= scale
     if not autapses and projection.pre == projection.post:
         for i in range(projection.post.size):
             projection.weight.data[i, i] = 0.
+    projection.weight.data /= torch.sum(torch.abs(projection.weight.data), axis=axis).unsqueeze(1)
+    projection.weight.data *= scale
 
 
 class LearningRule(object):

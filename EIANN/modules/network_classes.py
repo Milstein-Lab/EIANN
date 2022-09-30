@@ -6,6 +6,7 @@ from torch.nn.functional import softplus, relu
 from tqdm import tqdm
 import modules.learning_rules as rules
 
+
 class EIANN(nn.Module):
     def __init__(self, layer_config, projection_config, learning_rate, optimizer=SGD, optimizer_kwargs=None,
                  criterion=nn.MSELoss, criterion_kwargs=None, seed=None, tau=1, forward_steps=1, backward_steps=1,

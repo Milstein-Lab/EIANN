@@ -69,15 +69,15 @@ def get_diag_argmax_row_indexes(data):
 
 def scaled_kaining_init(data, fan_in, scale=1):
     kaining_bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-    data.uniform_(-scale*kaining_bound, scale*kaining_bound)
+    data.uniform_(-scale * kaining_bound, scale * kaining_bound)
 
 
 def half_kaining_init(data, fan_in, scale=1, bounds=None):
     kaining_bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-    if bounds is None or (bounds[0] >= 0):
-        data.uniform(bounds[0], scale*kaining_bound)
-    elif bounds[1] <= 0:
-        data.uniform(-scale * kaining_bound, bounds[1])
+    if bounds is None or (bounds[0] is not None and bounds[0] >= 0):
+        data.uniform_(bounds[0], scale * kaining_bound)
+    elif bounds[1] is not None and bounds[1] <= 0:
+        data.uniform_(-scale * kaining_bound, bounds[1])
     else:
         raise RuntimeError('half_kaining_init: bounds should be either >=0 or <=0: %s' % str(bounds))
 
