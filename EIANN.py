@@ -443,6 +443,13 @@ class Network(nn.Module):
         else:
             epoch_iter = range(epochs)
 
+        # Save weights & biases & activity
+        if store_history:
+            for layer in self:
+                for population in layer:
+                    for projection in population:
+                        projection.weight_history_ls = [projection.weight.detach().clone()]
+
         for epoch in epoch_iter:
             sample_indexes = torch.randperm(num_samples)
             self.sample_order.extend(sample_indexes)
@@ -455,9 +462,11 @@ class Network(nn.Module):
                 self.loss = self.criterion(output, sample_target)
                 self.loss_history.append(self.loss.detach())
 
+                # Step weights
                 for backward in self.backward_methods:
                     backward(self, output, sample_target)
 
+                # Step bias
                 for i, post_layer in enumerate(self):
                     if i > 0:
                         for post_pop in post_layer:
@@ -465,11 +474,25 @@ class Network(nn.Module):
                                 post_pop.bias_learning_rule.step()
                             for projection in post_pop:
                                 projection.learning_rule.step()
+
                 self.constrain_weights_and_biases()
+
+                # Save weights & biases & activity
+                if store_history:
+                    for layer in self:
+                        for population in layer:
+                            for projection in population:
+                                projection.weight_history_ls.append(projection.weight.detach().clone())
 
         self.sample_order = torch.LongTensor(self.sample_order)
         self.sorted_sample_indexes = torch.LongTensor(self.sorted_sample_indexes)
         self.loss_history = torch.Tensor(self.loss_history)
+
+        if store_history:
+            for layer in self:
+                for population in layer:
+                    for projection in population:
+                        projection.weight_history = torch.stack(projection.weight_history_ls)
 
         return self.loss
 
