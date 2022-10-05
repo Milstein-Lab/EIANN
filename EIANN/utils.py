@@ -3,12 +3,14 @@ import yaml
 import itertools
 import os
 import numpy as np
+import math
 from . import plot as plot
+from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-plt.rcParams.update({'font.size': 8,
-                     'axes.spines.right': False,
-                     'axes.spines.top': False,
-                     'axes.linewidth': 1,
+plt.rcParams.update({'font.size': 10,
+                     #'axes.spines.right': False,
+                     #'axes.spines.top': False,
+                     #'axes.linewidth': 1,
                      'axes.labelpad': 0,
                      'xtick.major.size': 3.5,
                      'xtick.major.width': 1,
@@ -16,7 +18,8 @@ plt.rcParams.update({'font.size': 8,
                      'ytick.major.width': 1,
                      'legend.frameon': False,
                      'legend.handletextpad': 0.1,
-                     'figure.figsize': [14.0, 4.0],})
+                     #'figure.figsize': [14.0, 4.0],
+                    })
 
 
 def nested_convert_scalars(data):
@@ -106,14 +109,6 @@ def n_hot_patterns(n, length):
     idx = torch.where(pattern_hotness == n)[0]
     n_hot_patterns = all_permutations[idx]
     return n_hot_patterns
-
-
-def normalize_weight(projection, scale, autapses=False, axis=1):
-    projection.weight.data /= torch.sum(torch.abs(projection.weight.data), axis=axis).unsqueeze(1)
-    projection.weight.data *= scale
-    if not autapses and projection.pre == projection.post:
-        for i in range(projection.post.size):
-            projection.weight.data[i, i] = 0.
 
 
 def get_scaled_rectified_sigmoid(th, peak, x=None, ylim=None):
@@ -261,32 +256,48 @@ def test_EIANN_config(network, dataloader, epochs, supervised=True):
     plot.plot_EIANN_activity(network, num_samples=num_samples, supervised=supervised, label='Final')
 
 
-def test_EIANN_CL_config(network, dataset, target, epochs, split=0.75, supervised=True):
+def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=True, generator=None):
 
-    for sample in dataset:
-        network.forward(sample, store_history=True)
-    plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=supervised, label='Initial')
+    num_samples = len(dataloader)
+    sample_order = []
+    for sample_idx, sample_data, sample_target in dataloader:
+        sample_order.append(sample_idx)
+        network.forward(sample_data, store_history=True)
+    network.sorted_sample_indexes = torch.argsort(torch.tensor(sample_order))
+    plot.plot_EIANN_activity(network, num_samples=num_samples, supervised=supervised, label='Initial')
     network.reset_history()
 
-    phase1_num_samples = round(dataset.shape[0] * split)
+    target = torch.stack([sample_target for _, _, sample_target in dataloader.dataset])
+    phase1_num_samples = round(len(dataloader) * split)
+    phase1_sample_indexes = torch.arange(phase1_num_samples)
+    _, phase1_dataset, phase1_target = map(torch.stack, zip(*dataloader.dataset[:phase1_num_samples]))
+    phase1_dataloader = DataLoader(list(zip(phase1_sample_indexes, phase1_dataset, phase1_target)), shuffle=True,
+                                   generator=generator)
 
-    network.train(dataset[:phase1_num_samples], target[:phase1_num_samples], epochs, store_history=True, shuffle=True,
-                  status_bar=True)
-    loss_history, epoch_argmax_accuracy = analyze_EIANN_loss(network, target[:phase1_num_samples],
-                                                             supervised=supervised, plot=True)
+    network.train(phase1_dataloader, epochs, store_history=True, status_bar=True)
+    loss_history, epoch_argmax_accuracy = analyze_EIANN_loss(network, phase1_target, supervised=supervised, plot=True)
     network.reset_history()
 
-    for sample in dataset:
-        network.forward(sample, store_history=True)
-    plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=supervised, label='After Phase 1')
+    sample_order = []
+    for sample_idx, sample_data, sample_target in dataloader:
+        sample_order.append(sample_idx)
+        network.forward(sample_data, store_history=True)
+    network.sorted_sample_indexes = torch.argsort(torch.tensor(sample_order))
+    plot.plot_EIANN_activity(network, num_samples=num_samples, supervised=supervised, label='After Phase 1')
     network.reset_history()
 
-    network.train(dataset[phase1_num_samples:], target[phase1_num_samples:], epochs, store_history=True, shuffle=True,
-                  status_bar=True)
-    loss_history, epoch_argmax_accuracy = analyze_EIANN_loss(network, target[phase1_num_samples:],
-                                                             supervised=supervised, plot=True)
+    phase2_num_samples = len(dataloader) - phase1_num_samples
+    phase2_sample_indexes = torch.arange(phase2_num_samples)
+    _, phase2_dataset, phase2_target = map(torch.stack, zip(*dataloader.dataset[phase1_num_samples:]))
+    phase2_dataloader = DataLoader(list(zip(phase2_sample_indexes, phase2_dataset, phase2_target)), shuffle=True,
+                                   generator=generator)
+    network.train(phase2_dataloader, epochs, store_history=True, status_bar=True)
+    loss_history, epoch_argmax_accuracy = analyze_EIANN_loss(network, phase2_target, supervised=supervised, plot=True)
     network.reset_history()
 
-    for sample in dataset:
-        network.forward(sample, store_history=True)
-    plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=supervised, label='After Phase 2')
+    sample_order = []
+    for sample_idx, sample_data, sample_target in dataloader:
+        sample_order.append(sample_idx)
+        network.forward(sample_data, store_history=True)
+    network.sorted_sample_indexes = torch.argsort(torch.tensor(sample_order))
+    plot.plot_EIANN_activity(network, num_samples=num_samples, supervised=supervised, label='After Phase 2')

@@ -499,8 +499,8 @@ class Projection(nn.Linear):
             self.constrain_weight = None
         else:
             if isinstance(weight_constraint, str):
-                if weight_constraint in globals():
-                    weight_constraint = globals()[weight_constraint]
+                if hasattr(rules, weight_constraint):
+                    weight_constraint = getattr(rules, weight_constraint)
                 elif hasattr(external, weight_constraint):
                     weight_constraint = getattr(external, weight_constraint)
             if not callable(weight_constraint):

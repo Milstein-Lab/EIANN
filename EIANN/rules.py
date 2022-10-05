@@ -80,7 +80,7 @@ class BCM(LearningRule):
             if i > 0:
                 for population in layer:
                     for projection in population:
-                        if projection.learning_rule_class == cls:
+                        if projection.learning_rule.__class__ == cls:
                             population.prev_theta = population.theta.clone()
                             delta_theta = (-population.theta + population.activity ** 2. /
                                            projection.learning_rule.k) / projection.learning_rule.theta_tau
@@ -185,7 +185,7 @@ class BTSP(LearningRule):
         output_pop.prev_state = output_pop.state.detach().clone()
         output_pop.dend_to_soma = torch.zeros(output_pop.size)
         for projection in output_pop:
-            if projection.learning_rule_class == cls:
+            if projection.learning_rule.__class__ == cls:
                 output_pop.plateau = torch.zeros(output_pop.size)
                 for i in range(output_pop.size):
                     if output_pop.dendritic_state[i] >  projection.learning_rule.pos_loss_th:
@@ -208,7 +208,7 @@ class BTSP(LearningRule):
         for layer in reversed_layers:
             for pop in layer:
                 for projection in pop.backward_projections:
-                    if projection.learning_rule_class == cls:
+                    if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size)
                         pop.dend_to_soma = torch.zeros(pop.size)
                         # sort cells by dendritic state
@@ -244,6 +244,13 @@ class DendriticLoss(LearningRule):
 
     backward = BTSP.backward
 
+
+def normalize_weight(projection, scale, autapses=False, axis=1):
+    projection.weight.data /= torch.sum(torch.abs(projection.weight.data), axis=axis).unsqueeze(1)
+    projection.weight.data *= scale
+    if not autapses and projection.pre == projection.post:
+        for i in range(projection.post.size):
+            projection.weight.data[i, i] = 0.
 
 
 
