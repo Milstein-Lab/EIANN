@@ -1,6 +1,6 @@
 import unittest
 import EIANN as ei
-import EIANN_utils as eiu
+import EIANN.utils as eiu
 
 class TestEIANN_0hidden(unittest.TestCase):
 

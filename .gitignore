@@ -1,9 +1,0 @@
-notebooks/.ipynb_checkpoints/**
-.ipynb_checkpoints/**
-.idea/**
-.DS_store
-__pycache__/**
-/notebooks
-.DS_Store
-EIANN/modules/__pychache__
-EIANN/notebooks/ipynb_checkpoints

@@ -1,2 +1,2 @@
-# dentate_circuit_learning
-Models of learning in the dentate gyrus
+# EIANN
+Python module extending PyTorch to train networks containing E and I cell types with biologically-plausible learning rules.
