@@ -1,0 +1,5 @@
+.idea/
+EIANN/datasets
+EIANN/notebooks/.ipynb_checkpoints
+EIANN/__pycache__
+UNKNOWN.egg-info/

@@ -301,3 +301,16 @@ def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=Tru
         network.forward(sample_data, store_history=True)
     network.sorted_sample_indexes = torch.argsort(torch.tensor(sample_order))
     plot.plot_EIANN_activity(network, num_samples=num_samples, supervised=supervised, label='After Phase 2')
+
+
+def compute_accuracy(network, test_dataloader):
+    '''
+    Compute total accuracy (% correct) on given dataset
+    '''
+    images, labels = next(iter(test_dataloader))
+    images = images.view(images.shape[0], network.Input.E.size)  # remove color channel + flatten image
+    output = network.forward(images).detach()
+    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / images.shape[0]
+    percent_correct = torch.round(percent_correct, decimals=2)
+    print(f'Final accuracy = {percent_correct}%')
+    # return percent_correct
