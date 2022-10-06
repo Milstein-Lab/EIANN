@@ -511,8 +511,8 @@ def plot_combined_loss_landscape(network1, network2, test_dataloader, num_points
         plt.scatter(PC1_network1[0], PC2_network1[0], s=80, color='b', edgecolor='k', label='Start')
         plt.scatter(PC1_network2[0], PC2_network2[0], s=80, color='b', edgecolor='k')
 
-        plt.scatter(PC1_network1[-1], PC2_network1[-1], s=80, color='orange', edgecolor='k', label='End')
-        plt.scatter(PC1_network2[-1], PC2_network2[-1], s=80, color='orange', edgecolor='k')
+        plt.scatter(PC1_network1[-1], PC2_network1[-1], s=80, color='orange', edgecolor='k', label=f'End1')
+        plt.scatter(PC1_network2[-1], PC2_network2[-1], s=80, color='cyan', edgecolor='k', label='End2')
 
         plt.legend()
         plt.xlabel('PC1')
