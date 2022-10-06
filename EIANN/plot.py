@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from sklearn.decomposition import PCA
 from tqdm import tqdm
+from copy import copy
 from . import utils as utils
 
 
@@ -424,6 +425,95 @@ def plot_loss_landscape(network, test_dataloader, num_points=20, plot_line_loss=
         plt.scatter(PC1, PC2, s=0.1, color='k')
         plt.scatter(PC1[0], PC2[0], s=80, color='b',edgecolor='k',label='Start')
         plt.scatter(PC1[-1], PC2[-1], s=80, color='orange',edgecolor='k',label='End')
+        plt.legend()
+        plt.xlabel('PC1')
+        plt.ylabel('PC2')
+        plt.show()
+
+def plot_combined_loss_landscape(network1, network2, test_dataloader, num_points=20, plot_line_loss=False):
+
+    # Combine weights to compute combined PCA
+    flat_weight_history1, weight_sizes = get_flat_weight_history(network1)
+    flat_weight_history2, weight_sizes = get_flat_weight_history(network2)
+    flat_weight_history_combined = torch.cat([flat_weight_history1, flat_weight_history2], dim=0)
+
+    # Center the data (mean=0, std=1)
+    w_mean = torch.mean(flat_weight_history_combined, axis=0)
+    w_std = torch.std(flat_weight_history_combined, axis=0)
+    centered_weight_history = (flat_weight_history_combined - w_mean) / (w_std + 1e-10)  # add epsilon to avoid NaNs
+
+    # Get weights in gridplane defined by PC dimensions
+    pca = PCA(n_components=2)
+    pca.fit(centered_weight_history)
+    weight_hist_pca_space = pca.transform(centered_weight_history)
+
+    PC1 = weight_hist_pca_space[:, 0]
+    PC2 = weight_hist_pca_space[:, 1]
+    range_extension = 0.3  # proportion to sample further on each side of the grid
+    PC1_extension = (np.max(PC1) - np.min(PC1)) * range_extension
+    PC2_extension = (np.max(PC2) - np.min(PC2)) * range_extension
+    PC1_range = np.linspace(np.min(PC1) - PC1_extension, np.max(PC1) + PC1_extension, num_points)
+    PC2_range = np.linspace(np.min(PC2) - PC2_extension, np.max(PC2) + PC2_extension, num_points)
+    PC1_mesh, PC2_mesh = np.meshgrid(PC1_range, PC2_range)
+
+    # Convert PC coordinates into full weight vectors
+    flat_PC1_vals = PC1_mesh.reshape(1, num_points ** 2)
+    flat_PC2_vals = PC2_mesh.reshape(1, num_points ** 2)
+    meshgrid_points = np.concatenate([flat_PC1_vals, flat_PC2_vals]).T
+
+    gridpoints_weightspace = pca.inverse_transform(meshgrid_points)
+    gridpoints_weightspace = torch.tensor(gridpoints_weightspace) * w_std + w_mean
+
+    # Compute loss for points in grid
+    test_network = copy(network1) # create copy to avoid modifying original networks
+    losses = torch.zeros(num_points ** 2)
+    for i, gridpoint_flat in enumerate(tqdm(gridpoints_weightspace)):
+        weight_mat_ls = unflatten_weights(gridpoint_flat, weight_sizes)
+        losses[i] = compute_loss(test_network, weight_mat_ls, test_dataloader)
+    loss_grid = losses.reshape([PC1_range.size, PC2_range.size])
+
+    plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
+
+    PC1_network1 = PC1[0:flat_weight_history1.shape[0]]
+    PC2_network1 = PC2[0:flat_weight_history1.shape[0]]
+
+    PC1_network2 = PC1[flat_weight_history1.shape[0]:]
+    PC2_network2 = PC2[flat_weight_history1.shape[0]:]
+
+    if plot_line_loss:
+        # Compute loss for points in weight history
+        loss_history = torch.zeros(flat_weight_history.shape[0])
+        for i, flat_weights in enumerate(tqdm(flat_weight_history)):
+            weight_mat_ls = unflatten_weights(flat_weights, weight_sizes)
+            loss_history[i] = compute_loss(test_network, weight_mat_ls, test_dataloader)
+
+        # Plot loss heatmap
+        vmax = torch.max(torch.cat([loss_history, loss_grid.flatten()]))
+        vmin = torch.min(torch.cat([loss_history, loss_grid.flatten()]))
+
+        fig = plt.figure()
+        im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax, vmin=vmin,
+                        extent=[np.min(PC1_range), np.max(PC1_range),
+                                np.max(PC2_range), np.min(PC2_range)])
+        plt.colorbar(im)
+        plt.scatter(PC1, PC2, c=loss_history, cmap='Reds', edgecolors='k', linewidths=0., vmax=vmax, vmin=vmin)
+        plt.xlabel('PC1')
+        plt.ylabel('PC2')
+        plt.show()
+    else:
+        fig = plt.figure()
+        im = plt.imshow(loss_grid, cmap='Reds',
+                        extent=[np.min(PC1_range), np.max(PC1_range),
+                                np.max(PC2_range), np.min(PC2_range)])
+        plt.colorbar(im)
+        plt.scatter(PC1, PC2, s=0.1, color='k')
+
+        plt.scatter(PC1_network1[0], PC2_network1[0], s=80, color='b', edgecolor='k', label='Start')
+        plt.scatter(PC1_network2[0], PC2_network2[0], s=80, color='b', edgecolor='k')
+
+        plt.scatter(PC1_network1[-1], PC2_network1[-1], s=80, color='orange', edgecolor='k', label='End')
+        plt.scatter(PC1_network2[-1], PC2_network2[-1], s=80, color='orange', edgecolor='k')
+
         plt.legend()
         plt.xlabel('PC1')
         plt.ylabel('PC2')

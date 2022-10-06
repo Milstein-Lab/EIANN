@@ -1,12 +1,14 @@
 import torch
 import torch.nn as nn
+from torch.nn import MSELoss
 from torch.nn.functional import softplus, relu
 from torch.optim import Adam, SGD
-from torch.nn import MSELoss
+import numpy as np
+from tqdm import tqdm
+
 from .utils import half_kaining_init, scaled_kaining_init
 import EIANN.rules as rules
 import EIANN.external as external
-import numpy as np
 
 
 class Network(nn.Module):
@@ -207,7 +209,6 @@ class Network(nn.Module):
         num_samples = len(dataloader)
 
         if status_bar:
-            from tqdm import tqdm
             epoch_iter = tqdm(range(epochs))
         else:
             epoch_iter = range(epochs)
@@ -255,6 +256,7 @@ class Network(nn.Module):
                             #     population.bias_history_ls.append(population.bias.detach().clone())
                             for projection in population:
                                 projection.weight_history_ls.append(projection.weight.detach().clone())
+
             epoch_sample_order = torch.concat(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
             self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(epoch_sample_order)))
