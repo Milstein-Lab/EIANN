@@ -4,7 +4,6 @@ from torch.nn import MSELoss
 from torch.nn.functional import softplus, relu
 from torch.optim import Adam, SGD
 import numpy as np
-from tqdm import tqdm
 
 from .utils import half_kaining_init, scaled_kaining_init
 import EIANN.rules as rules
@@ -208,11 +207,6 @@ class Network(nn.Module):
         """
         num_samples = len(dataloader)
 
-        if status_bar:
-            epoch_iter = tqdm(range(epochs))
-        else:
-            epoch_iter = range(epochs)
-
         # Save weights & biases & activity
         if store_history:
             for layer in self:
@@ -222,9 +216,21 @@ class Network(nn.Module):
                     for projection in population:
                         projection.weight_history_ls = [projection.weight.detach().clone()]
 
+        if status_bar:
+            from tqdm.autonotebook import tqdm
+
+        if status_bar:
+            epoch_iter = tqdm(range(epochs), desc='Epochs')
+        else:
+            epoch_iter = range(epochs)
+
         for epoch in epoch_iter:
             epoch_sample_order = []
-            for sample_idx, sample_data, sample_target in dataloader:
+            if status_bar:
+                dataloader_iter = tqdm(dataloader, desc='Samples', leave=epoch == epochs - 1)
+            else:
+                dataloader_iter = dataloader
+            for sample_idx, sample_data, sample_target in dataloader_iter:
                 sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
                 epoch_sample_order.append(sample_idx)

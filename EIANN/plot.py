@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from sklearn.decomposition import PCA
+import math
 from tqdm import tqdm
 from copy import copy
 from . import utils as utils
@@ -178,24 +179,27 @@ def plot_performance(network):
 
 
 def plot_MNIST_examples(network, dataloader):
-    '''
+    """
     Test network performance on one example image from each MNIST class
-    '''
+    :param network:
+    :param dataloader:
+    """
     fig = plt.figure()
     axes = gs.GridSpec(nrows=1, ncols=10,
                        left=0.05, right=0.98,
                        wspace=0.5, hspace=0.5)
 
     # Compute accuracy on the test set
-    images, labels = next(iter(dataloader))
-    images_flat = images.view(images.shape[0], network.Input.E.size)  # remove color channel + flatten image
+    indexes, images, targets = next(iter(dataloader))
+    image_dim = int(math.sqrt(images.shape[1]))
+    labels = torch.argmax(targets, axis=1)
 
     for i in range(10):
         ax = fig.add_subplot(axes[0, i])
         idx = torch.where(labels == i)[0][0]
-        im = ax.imshow(images[idx, 0], cmap='Greys')
+        im = ax.imshow(images[idx].reshape((image_dim, image_dim)), cmap='Greys')
         ax.axis('off')
-        output = network.forward(images_flat[idx])
+        output = network.forward(images[idx])
         if labels[idx] == torch.argmax(output):
             color = 'k'
         else:
