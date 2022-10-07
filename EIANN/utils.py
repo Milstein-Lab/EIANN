@@ -242,11 +242,7 @@ def analyze_EIANN_loss(network, target, supervised=True, plot=False):
 def test_EIANN_config(network, dataloader, epochs, supervised=True):
 
     num_samples = len(dataloader)
-    sample_order = []
-    for sample_idx, sample_data, sample_target in dataloader:
-        sample_order.append(sample_idx)
-        network.forward(sample_data, store_history=True)
-    network.sorted_sample_indexes = torch.argsort(torch.tensor(sample_order))
+    network.test(dataloader, store_history=True, status_bar=True)
     plot.plot_EIANN_activity(network, num_samples=num_samples, supervised=supervised, label='Initial')
     network.reset_history()
 
@@ -259,11 +255,7 @@ def test_EIANN_config(network, dataloader, epochs, supervised=True):
 def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=True, generator=None):
 
     num_samples = len(dataloader)
-    sample_order = []
-    for sample_idx, sample_data, sample_target in dataloader:
-        sample_order.append(sample_idx)
-        network.forward(sample_data, store_history=True)
-    network.sorted_sample_indexes = torch.argsort(torch.tensor(sample_order))
+    network.test(dataloader, store_history=True, status_bar=True)
     plot.plot_EIANN_activity(network, num_samples=num_samples, supervised=supervised, label='Initial')
     network.reset_history()
 
@@ -273,16 +265,11 @@ def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=Tru
     _, phase1_dataset, phase1_target = map(torch.stack, zip(*dataloader.dataset[:phase1_num_samples]))
     phase1_dataloader = DataLoader(list(zip(phase1_sample_indexes, phase1_dataset, phase1_target)), shuffle=True,
                                    generator=generator)
-
     network.train(phase1_dataloader, epochs, store_history=True, status_bar=True)
     loss_history, epoch_argmax_accuracy = analyze_EIANN_loss(network, phase1_target, supervised=supervised, plot=True)
     network.reset_history()
 
-    sample_order = []
-    for sample_idx, sample_data, sample_target in dataloader:
-        sample_order.append(sample_idx)
-        network.forward(sample_data, store_history=True)
-    network.sorted_sample_indexes = torch.argsort(torch.tensor(sample_order))
+    network.test(dataloader, store_history=True, status_bar=True)
     plot.plot_EIANN_activity(network, num_samples=num_samples, supervised=supervised, label='After Phase 1')
     network.reset_history()
 
@@ -295,11 +282,7 @@ def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=Tru
     loss_history, epoch_argmax_accuracy = analyze_EIANN_loss(network, phase2_target, supervised=supervised, plot=True)
     network.reset_history()
 
-    sample_order = []
-    for sample_idx, sample_data, sample_target in dataloader:
-        sample_order.append(sample_idx)
-        network.forward(sample_data, store_history=True)
-    network.sorted_sample_indexes = torch.argsort(torch.tensor(sample_order))
+    network.test(dataloader, store_history=True, status_bar=True)
     plot.plot_EIANN_activity(network, num_samples=num_samples, supervised=supervised, label='After Phase 2')
 
 

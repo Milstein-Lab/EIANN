@@ -1,19 +1,25 @@
-from EIANN import Network
-from EIANN.utils import read_from_yaml, write_to_yaml, test_EIANN_config
-from nested.utils import Context, param_array_to_dict
-from nested.optimize_utils import update_source_contexts
+import torch
+from torch.utils.data import DataLoader
 import os
 from copy import deepcopy
+import numpy as np
+
+from EIANN import Network
+from EIANN.utils import read_from_yaml, write_to_yaml, analyze_EIANN_loss
+from EIANN.plot import plot_EIANN_activity
+from nested.utils import Context, param_array_to_dict
+from nested.optimize_utils import update_source_contexts
 
 
 context = Context()
 
 
 def config_worker():
-    context.start_instance = int(context.start_instance)
+    context.seed_start = int(context.seed_start)
     context.num_instances = int(context.num_instances)
     context.network_id = int(context.network_id)
     context.task_id = int(context.task_id)
+    context.data_seed_start = int(context.data_seed_start)
     context.epochs = int(context.epochs)
     if 'debug' not in context():
         context.debug = False
@@ -33,9 +39,11 @@ def config_worker():
 
 
 def get_random_seeds():
-    return [[int.from_bytes((context.network_id, context.task_id, instance_id), byteorder='big')
-            for instance_id in
-             range(context.start_instance, context.start_instance + context.num_instances)]]
+    network_seeds = [int.from_bytes((context.network_id, context.task_id, instance_id), byteorder='big')
+                     for instance_id in range(context.seed_start, context.seed_start + context.num_instances)]
+    data_seeds = [int.from_bytes((context.network_id, instance_id), byteorder='big')
+                     for instance_id in range(context.data_seed_start, context.data_seed_start + context.num_instances)]
+    return [network_seeds, data_seeds]
 
 
 def update_EIANN_config_1_hidden_backprop_relu_SGD(x, context):
@@ -256,10 +264,12 @@ def update_EIANN_config_1_hidden_BTSP_A(x, context):
     context.projection_config['Output']['FBI']['Output']['E']['weight_init_args'] = (FBI_E_weight,)
 
 
-def compute_features(x, seed, model_id=None, export=False, plot=False):
+def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False):
     """
 
     :param x: array of float
+    :param seed: int
+    :param data_seed: int
     :param model_id: str
     :param export: bool
     :return: dict
@@ -270,26 +280,30 @@ def compute_features(x, seed, model_id=None, export=False, plot=False):
     dataset = torch.eye(input_size)
     target = torch.eye(dataset.shape[0])
 
+    sample_indexes = torch.arange(len(dataset))
+    data_generator = torch.Generator()
+    dataloader = DataLoader(list(zip(sample_indexes, dataset, target)), shuffle=True, generator=data_generator)
+
     epochs = context.epochs
 
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
 
     if plot:
-        for sample in dataset:
-            network.forward(sample, store_history=True)
-        plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=context.supervised, label='Initial')
+        network.test(dataloader, store_history=True, status_bar=context.status_bar)
+        plot_EIANN_activity(network, num_samples=len(dataloader), supervised=context.supervised, label='Initial')
         network.reset_history()
 
-    network.train(dataset, target, epochs, store_history=True, shuffle=True, status_bar=context.status_bar)
+    data_generator.manual_seed(data_seed)
+    network.train(dataloader, epochs, store_history=True, status_bar=context.status_bar)
 
     loss_history, epoch_argmax_accuracy = \
         analyze_EIANN_loss(network, target, supervised=context.supervised, plot=plot)
 
-    final_epoch_loss = torch.mean(loss_history[-target.shape[0]:])
+    final_epoch_loss = torch.mean(loss_history[-len(dataloader):])
     final_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
 
     if plot:
-        plot_EIANN_activity(network, num_samples=dataset.shape[0], supervised=context.supervised, label='Final')
+        plot_EIANN_activity(network, num_samples=len(dataloader), supervised=context.supervised, label='Final')
 
     if context.debug:
         print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
