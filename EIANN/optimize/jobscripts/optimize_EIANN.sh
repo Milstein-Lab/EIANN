@@ -6,8 +6,8 @@ export CONFIG_FILE_PATH="$1"
 sbatch <<EOT
 #!/bin/bash -l
 #SBATCH -J $JOB_NAME
-#SBATCH -o /scratch1/06441/aaronmil/logs/dentate_circuit_learning/$JOB_NAME.%j.o
-#SBATCH -e /scratch1/06441/aaronmil/logs/dentate_circuit_learning/$JOB_NAME.%j.e
+#SBATCH -o /scratch1/06441/aaronmil/logs/EIANN/$JOB_NAME.%j.o
+#SBATCH -e /scratch1/06441/aaronmil/logs/EIANN/$JOB_NAME.%j.e
 #SBATCH -p normal
 #SBATCH -N 18
 #SBATCH -n 1008
@@ -17,9 +17,9 @@ sbatch <<EOT
 
 set -x
 
-cd $WORK2/dentate_circuit_learning
+cd $WORK2/EIANN/EIANN
 
 ibrun -n 1008 python3 -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
-  --output-dir=$SCRATCH/data/dentate_circuit_learning --pop_size=200 --max_iter=50 --path_length=3 --disp \
+  --output-dir=$SCRATCH/data/EIANN --pop_size=200 --max_iter=50 --path_length=3 --disp \
   --framework=pc
 EOT
