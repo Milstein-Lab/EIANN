@@ -205,16 +205,11 @@ class Network(nn.Module):
         :param store_history: bool
         :param status_bar: bool
         """
-        num_samples = len(dataloader)
+        self.num_samples = len(dataloader)
 
         # Save weights & biases & activity
         if store_history:
-            for layer in self:
-                for population in layer:
-                    # if hasattr(population,'bias'):
-                    #     population.bias_history_ls.append(population.bias.detach().clone())
-                    for projection in population:
-                        projection.weight_history_ls = [projection.weight.detach().clone()]
+            self.param_history = [self.state_dict()]
 
         if status_bar:
             from tqdm.autonotebook import tqdm
@@ -230,6 +225,7 @@ class Network(nn.Module):
                 dataloader_iter = tqdm(dataloader, desc='Samples', leave=epoch == epochs - 1)
             else:
                 dataloader_iter = dataloader
+
             for sample_idx, sample_data, sample_target in dataloader_iter:
                 sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
@@ -254,31 +250,17 @@ class Network(nn.Module):
 
                 self.constrain_weights_and_biases()
 
-                # Save weights & biases & activity
+                 # Save weights & biases & activity
                 if store_history:
-                    for layer in self:
-                        for population in layer:
-                            # if hasattr(population,'bias'):
-                            #     population.bias_history_ls.append(population.bias.detach().clone())
-                            for projection in population:
-                                projection.weight_history_ls.append(projection.weight.detach().clone())
+                    self.param_history.append(self.state_dict())
 
             epoch_sample_order = torch.concat(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
-            self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(epoch_sample_order)))
+            self.sorted_sample_indexes.extend(torch.add(epoch * self.num_samples, torch.argsort(epoch_sample_order)))
 
         self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
         self.loss_history = torch.stack(self.loss_history)
-
-        if store_history:
-            for layer in self:
-                for population in layer:
-                    # if hasattr(population,'bias'):
-                    #     population.bias_history_ls.append(population.bias.detach().clone())
-                    for projection in population:
-                        projection.weight_history = torch.stack(projection.weight_history_ls)
-
         return loss.detach()
 
     def __iter__(self):
