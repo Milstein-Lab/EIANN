@@ -29,6 +29,7 @@ projection_config:
     E:
       Input:
         E:
+          weight_init: half_kaining
           weight_bounds: !!python/tuple
           - 0
           - null
@@ -36,6 +37,7 @@ projection_config:
           learning_rule: Backprop
       H1:
         FBI:
+          weight_init: half_kaining
           weight_bounds: !!python/tuple
           - null
           - 0
@@ -44,6 +46,7 @@ projection_config:
     FBI:
       H1:
         E:
+          weight_init: half_kaining
           weight_bounds: !!python/tuple
           - 0
           - null
@@ -53,6 +56,7 @@ projection_config:
     E:
       H1:
         E:
+          weight_init: half_kaining
           weight_bounds: !!python/tuple
           - 0
           - null
@@ -60,6 +64,7 @@ projection_config:
           learning_rule: Backprop
       Output:
         FBI:
+          weight_init: half_kaining
           weight_bounds: !!python/tuple
           - null
           - 0
@@ -68,6 +73,7 @@ projection_config:
     FBI:
       Output:
         E:
+          weight_init: half_kaining
           weight_bounds: !!python/tuple
           - 0
           - null
@@ -78,5 +84,5 @@ training_kwargs:
   forward_steps: 10
   backward_steps: 2
   learning_rate: 0.3
-  verbose: false
+  verbose: False
   optimizer: SGD

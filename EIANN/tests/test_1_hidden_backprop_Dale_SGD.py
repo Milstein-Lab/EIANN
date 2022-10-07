@@ -18,7 +18,6 @@ target = torch.eye(dataset.shape[0])
 
 sample_indexes = torch.arange(len(dataset))
 data_generator = torch.Generator()
-data_generator.manual_seed(data_seed)
 dataloader = DataLoader(list(zip(sample_indexes, dataset, target)), shuffle=shuffle, generator=data_generator)
 
 network_config = read_from_yaml('../optimize/data/20220915_EIANN_1_hidden_backprop_softplus_SGD_config.yaml')
@@ -29,5 +28,7 @@ projection_config = network_config['projection_config']
 training_kwargs = network_config['training_kwargs']
 
 network = Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
+
+data_generator.manual_seed(data_seed)
 test_EIANN_config(network, dataloader, epochs, supervised=False)
 

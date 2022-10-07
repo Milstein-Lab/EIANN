@@ -59,7 +59,7 @@ default_params:
 kwargs:
   network_id: 1
   task_id: 1
-  start_instance: 1
+  seed_start: 1
   num_instances: 5
   supervised: True
   status_bar: False

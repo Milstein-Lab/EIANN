@@ -39,13 +39,14 @@ default_params:
 kwargs:
   network_id: 1
   task_id: 1
-  start_instance: 1
+  seed_start: 1
   num_instances: 5
+  data_seed_start: 1
   supervised: False
   status_bar: False
   epochs: 300
   num_epochs_argmax_accuracy: 50
-  network_config_file_path: optimize/config/EIANN_1_hidden_Gjorgieva_anti_Hebb_config_B.yaml
+  network_config_file_path: config/EIANN_1_hidden_Gjorgieva_anti_Hebb_config_B.yaml
   I_floor_weight: -0.01
 update_context:
 - source: optimize.nested_optimize_EIANN_1_hidden

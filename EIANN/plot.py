@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from sklearn.decomposition import PCA
 import math
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 from copy import copy
 from . import utils as utils
 
