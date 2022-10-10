@@ -31,6 +31,7 @@ class Network(nn.Module):
         """
         super().__init__()
         self.learning_rate = learning_rate
+
         if isinstance(criterion, str):
             if criterion in globals():
                 criterion = globals()[criterion]
@@ -54,6 +55,7 @@ class Network(nn.Module):
         self.module_list = nn.ModuleList()
         self.parameter_list = nn.ParameterList()
 
+        # Build network populations
         self.layers = {}
         for i, (layer_name, pop_config) in enumerate(layer_config.items()):
             layer = Layer(layer_name)
@@ -66,6 +68,7 @@ class Network(nn.Module):
                     pop = Population(self, layer, pop_name, **pop_kwargs)
                 layer.append_population(pop)
 
+        # Build network projections
         for post_layer_name in projection_config:
             post_layer = self.layers[post_layer_name]
             for post_pop_name in projection_config[post_layer_name]:
@@ -77,6 +80,8 @@ class Network(nn.Module):
                         pre_pop = pre_layer.populations[pre_pop_name]
                         projection = Projection(pre_pop, post_pop, **projection_kwargs)
                         post_pop.append_projection(projection)
+                        post_pop.incoming_projections[projection.name] = projection
+                        pre_pop.outgoing_projections[projection.name] = projection
                         if verbose:
                             print('Network: appending a projection from %s %s -> %s %s' %
                                   (pre_pop.layer.name, pre_pop.name, post_pop.layer.name, post_pop.name))
@@ -436,6 +441,8 @@ class Population(object):
         self._activity_history = None
         self.projections = {}
         self.backward_projections = []
+        self.outgoing_projections = {}
+        self.incoming_projections = {}
         self.reinit()
 
     def reinit(self):
@@ -492,6 +499,7 @@ class Input(Population):
         self.activity_history_list = []
         self._activity_history = None
         self.projections = {}
+        self.outgoing_projections = {}
         self.reinit()
 
 
@@ -519,6 +527,7 @@ class Projection(nn.Linear):
 
         self.pre = pre_pop
         self.post = post_pop
+        self.name = f'{post_pop.layer.name}{post_pop.name}_{pre_pop.layer.name}{pre_pop.name}'
 
         self.weight_init = weight_init
         if weight_init_args is None:
