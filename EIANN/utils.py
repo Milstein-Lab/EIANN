@@ -1,11 +1,11 @@
 import torch
+from torch.utils.data import DataLoader
+import numpy as np
+import math
 import yaml
 import itertools
 import os
-import numpy as np
-import math
-from . import plot as plot
-from torch.utils.data import DataLoader
+from tqdm.autonotebook import tqdm
 import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 10,
                      #'axes.spines.right': False,
@@ -20,6 +20,8 @@ plt.rcParams.update({'font.size': 10,
                      'legend.handletextpad': 0.1,
                      #'figure.figsize': [14.0, 4.0],
                     })
+
+from . import plot as plot
 
 
 def nested_convert_scalars(data):
@@ -292,6 +294,8 @@ def compute_batch_accuracy(network, test_dataloader):
     :param network:
     :param test_dataloader:
     """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
     indexes, data, targets = next(iter(test_dataloader))
     labels = torch.argmax(targets, axis=1)
     output = network.forward(data).detach()
@@ -299,3 +303,82 @@ def compute_batch_accuracy(network, test_dataloader):
     percent_correct = torch.round(percent_correct, decimals=2)
     print(f'Batch accuracy = {percent_correct}%')
 
+
+def get_optimal_sorting(network, test_dataloader, plot=False):
+    '''
+    Measure test loss on re-sorted activity at every point in the training history
+    '''
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    output_layer = list(network)[-1]
+    output_pop = output_layer.E
+
+    optimal_loss_history = []
+    sorting_history = []
+    history_len = output_pop.activity_history.shape[0]
+    idx, test_data, test_target = next(iter(test_dataloader))
+    for t in tqdm(range(history_len)):
+        network.load_state_dict(network.param_history[t])
+        output = network.forward(test_data)  # row=patterns, col=units
+
+        # Get average output for each label class
+        avg_output = torch.zeros_like(output)
+        num_units = test_target.shape[1]
+        for label in range(num_units):
+            targets = torch.argmax(test_target, dim=1)  # convert from 1-hot vector to int label
+            label_idx = torch.where(targets == label)  # find all instances of given label
+            avg_output[label, :] = torch.mean(output[label_idx], dim=0)
+
+        # Find optimal output unit (col) sorting given average responses
+        optimal_sorting = get_diag_argmax_row_indexes(avg_output.T)
+        sorted_activity = avg_output[:, optimal_sorting]
+        optimal_loss = network.criterion(sorted_activity, test_target)
+        optimal_loss_history.append(optimal_loss)
+        sorting_history.append(optimal_sorting)
+
+    # Pick timepoint with lowest sorted loss
+    optimal_loss_history = torch.stack(optimal_loss_history)
+    min_loss_idx = torch.argmin(optimal_loss_history)
+    min_loss_sorting = sorting_history[min_loss_idx]
+
+    if plot:
+        plt.scatter(min_loss_idx,torch.min(optimal_loss_history),color='red')
+        plt.plot(optimal_loss_history)
+        plt.title('optimal loss history (re-sorted for each point)')
+        plt.show()
+
+    return min_loss_sorting
+
+
+def recompute_history(network, output_sorting):
+    '''
+    Re-compute activity history, loss history, and weight+bias history
+    with new sorting of the output units
+    '''
+    output_layer = list(network)[-1]
+    output_pop = output_layer.E
+
+    # Sort activity history
+    output_pop.activity_history.data = output_pop.activity_history[:, :, output_sorting]
+
+    for t in range(len(network.param_history)):
+        # Recompute loss history
+        output = output_pop.activity_history[t-1, -1, :]
+        target = network.target_history[t-1]
+        network.loss_history[t-1] = network.criterion(output, target)
+
+        # Sort weights going to and from the output population
+        for proj in output_pop.incoming_projections.values():
+            sorted_weights = network.param_history[t][f'module_dict.{proj.name}.weight'][output_sorting,:]
+            network.param_history[t][f'module_dict.{proj.name}.weight'] = sorted_weights
+
+        for proj in output_pop.outgoing_projections.values():
+            sorted_weights = network.param_history[t][f'module_dict.{proj.name}.weight'][:,output_sorting]
+            network.param_history[t][f'module_dict.{proj.name}.weight'] = sorted_weights
+
+        # Sort output bias
+        sorted_bias = network.param_history[t][f'parameter_dict.{output_pop.fullname}_bias'][output_sorting]
+        network.param_history[t][f'parameter_dict.{output_pop.fullname}_bias'] = sorted_bias
+
+    # Update network with re-sorted weights from final state
+    network.load_state_dict(network.param_history[-1])
