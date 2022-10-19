@@ -265,6 +265,7 @@ class Network(nn.Module):
             epoch_iter = range(epochs)
 
         self.target_history = []
+
         for epoch in epoch_iter:
             epoch_sample_order = []
             if status_bar:
@@ -276,11 +277,11 @@ class Network(nn.Module):
                 sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
                 epoch_sample_order.append(sample_idx)
-                self.target_history.append(sample_target)
                 output = self.forward(sample_data, store_history)
 
                 loss = self.criterion(output, sample_target)
                 self.loss_history.append(loss.detach())
+                self.target_history.append(sample_target)
 
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
