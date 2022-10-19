@@ -4,6 +4,7 @@ from torch.nn import MSELoss
 from torch.nn.functional import softplus, relu
 from torch.optim import Adam, SGD
 import numpy as np
+from copy import deepcopy
 
 from .utils import half_kaining_init, scaled_kaining_init
 import EIANN.rules as rules
@@ -51,9 +52,11 @@ class Network(nn.Module):
         self.backward_steps = backward_steps
 
         self.backward_methods = set()
-        self.module_list = nn.ModuleList()
-        self.parameter_list = nn.ParameterList()
 
+        self.module_dict = nn.ModuleDict()
+        self.parameter_dict = nn.ParameterDict()
+
+        # Build network populations
         self.layers = {}
         for i, (layer_name, pop_config) in enumerate(layer_config.items()):
             layer = Layer(layer_name)
@@ -66,6 +69,7 @@ class Network(nn.Module):
                     pop = Population(self, layer, pop_name, **pop_kwargs)
                 layer.append_population(pop)
 
+        # Build network projections
         for post_layer_name in projection_config:
             post_layer = self.layers[post_layer_name]
             for post_pop_name in projection_config[post_layer_name]:
@@ -77,6 +81,8 @@ class Network(nn.Module):
                         pre_pop = pre_layer.populations[pre_pop_name]
                         projection = Projection(pre_pop, post_pop, **projection_kwargs)
                         post_pop.append_projection(projection)
+                        post_pop.incoming_projections[projection.name] = projection
+                        pre_pop.outgoing_projections[projection.name] = projection
                         if verbose:
                             print('Network: appending a projection from %s %s -> %s %s' %
                                   (pre_pop.layer.name, pre_pop.name, post_pop.layer.name, post_pop.name))
@@ -248,12 +254,7 @@ class Network(nn.Module):
 
         # Save weights & biases & activity
         if store_weights:
-            for layer in self:
-                for population in layer:
-                    # if hasattr(population,'bias'):
-                    #     population.bias_history_ls.append(population.bias.detach().clone())
-                    for projection in population:
-                        projection.weight_history_ls = [projection.weight.detach().clone()]
+            self.param_history = [deepcopy(self.state_dict())]
 
         if status_bar:
             from tqdm.autonotebook import tqdm
@@ -263,12 +264,15 @@ class Network(nn.Module):
         else:
             epoch_iter = range(epochs)
 
+        self.target_history = []
+
         for epoch in epoch_iter:
             epoch_sample_order = []
             if status_bar and len(dataloader) > epochs:
                 dataloader_iter = tqdm(dataloader, desc='Samples', leave=epoch == epochs - 1)
             else:
                 dataloader_iter = dataloader
+
             for sample_idx, sample_data, sample_target in dataloader_iter:
                 sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
@@ -277,6 +281,7 @@ class Network(nn.Module):
 
                 loss = self.criterion(output, sample_target)
                 self.loss_history.append(loss.detach())
+                self.target_history.append(sample_target)
 
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
@@ -293,14 +298,9 @@ class Network(nn.Module):
 
                 self.constrain_weights_and_biases()
 
-                # Save weights & biases & activity
+                 # Save weights & biases & activity
                 if store_weights:
-                    for layer in self:
-                        for population in layer:
-                            # if hasattr(population,'bias'):
-                            #     population.bias_history_ls.append(population.bias.detach().clone())
-                            for projection in population:
-                                projection.weight_history_ls.append(projection.weight.detach().clone())
+                    self.param_history.append(deepcopy(self.state_dict()))
 
             epoch_sample_order = torch.concat(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
@@ -309,14 +309,6 @@ class Network(nn.Module):
         self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
         self.loss_history = torch.stack(self.loss_history)
-
-        if store_weights:
-            for layer in self:
-                for population in layer:
-                    # if hasattr(population,'bias'):
-                    #     population.bias_history_ls.append(population.bias.detach().clone())
-                    for projection in population:
-                        projection.weight_history = torch.stack(projection.weight_history_ls)
 
         return loss.detach()
 
@@ -397,6 +389,7 @@ class Population(object):
         self.layer = layer
         self.name = name
         self.size = size
+        self.fullname = layer.name+self.name
 
         # Set callable activation function
         if isinstance(activation, str):
@@ -444,7 +437,8 @@ class Population(object):
                          bias_learning_rule)
 
         self.include_bias = include_bias
-        self.network.parameter_list.append(self.bias)
+        self.network.parameter_dict[self.fullname+'_bias'] = self.bias
+
         self.bias_learning_rule = bias_learning_rule_class(self, **bias_learning_rule_kwargs)
         self.network.backward_methods.add(bias_learning_rule_class.backward)
 
@@ -453,6 +447,8 @@ class Population(object):
         self._activity_history = None
         self.projections = {}
         self.backward_projections = []
+        self.outgoing_projections = {}
+        self.incoming_projections = {}
         self.reinit()
 
     def reinit(self):
@@ -476,7 +472,7 @@ class Population(object):
         self.projections[projection.pre.layer.name][projection.pre.name] = projection
         self.__dict__[projection.pre.layer.name][projection.pre.name] = projection
 
-        self.network.module_list.append(projection)
+        self.network.module_dict[projection.name] = projection
 
     def __iter__(self):
         for projections in self.projections.values():
@@ -499,6 +495,12 @@ class Population(object):
 
         return self._activity_history
 
+    @property
+    def bias_history(self):
+        param_history = self.network.param_history
+        _bias_history = [param_history[t][f'parameter_dict.{self.fullname}_bias'] for t in range(len(param_history))]
+        return torch.stack(_bias_history)
+
 
 class Input(Population):
     def __init__(self, network, layer, name, size, *args, **kwargs):
@@ -509,6 +511,7 @@ class Input(Population):
         self.activity_history_list = []
         self._activity_history = None
         self.projections = {}
+        self.outgoing_projections = {}
         self.reinit()
 
 
@@ -536,7 +539,9 @@ class Projection(nn.Linear):
 
         self.pre = pre_pop
         self.post = post_pop
+        self.name = f'{post_pop.layer.name}{post_pop.name}_{pre_pop.layer.name}{pre_pop.name}'
 
+        # Initialize weight parameters
         self.weight_init = weight_init
         if weight_init_args is None:
             weight_init_args = ()
@@ -596,3 +601,9 @@ class Projection(nn.Linear):
         self.learning_rule  = learning_rule_class(self, **learning_rule_kwargs)
         if learning_rule_class != rules.Backprop:
             self.weight.requires_grad = False
+
+    @property
+    def weight_history(self):
+        param_history = self.post.network.param_history
+        _weight_history = [param_history[t][f'module_dict.{self.name}.weight'] for t in range(len(param_history))]
+        return torch.stack(_weight_history)

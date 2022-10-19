@@ -1,6 +1,0 @@
-.idea/
-EIANN/datasets/*
-EIANN/notebooks/.ipynb_checkpoints/*
-EIANN/notebooks/.DS_Store
-EIANN/__pycache__/*
-UNKNOWN.egg-info/

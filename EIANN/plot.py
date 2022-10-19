@@ -9,7 +9,23 @@ from copy import copy
 from . import utils as utils
 
 
+def update_plot_defaults():
+    plt.rcParams.update({'font.size': 15,
+                     'axes.spines.right': False,
+                     'axes.spines.top': False,
+                     'axes.linewidth':1.2,
+                     'xtick.major.size': 6,
+                     'xtick.major.width': 1.2,
+                     'ytick.major.size': 6,
+                     'ytick.major.width': 1.2,
+                     'legend.frameon': False,
+                     'legend.handletextpad': 0.1,
+                     'figure.figsize': [14.0, 4.0],})
+
+
+# *******************************************************************
 # Network summary functions
+# *******************************************************************
 def plot_simple_EIANN_config_summary(network, num_samples, start_index=None, sorted_output_idx=None, label=None):
     """
 
@@ -221,7 +237,9 @@ def plot_MNIST_examples(network, dataloader):
     fig.show()
 
 
+# *******************************************************************
 # Loss landscape functions
+# *******************************************************************
 def plot_weight_history_PCs(network):
     '''
     Function performs PCA on a given set of weights and
@@ -281,13 +299,96 @@ def plot_weight_history_PCs(network):
     fig.show()
 
 
+
+def plot_param_history_PCs(flat_param_history):
+    '''
+    Function performs PCA on a given set of parameters (drawn from the network state_dict()) and
+        1. plots the explained variance
+        2. the trajectory of the weights in the PC space during the course of learning
+        3. the loading scores of the weights
+
+    Parameters
+    flat_param_history: torch tensor, size: [time_steps x total number of parameters]
+
+    Returns
+    '''
+    # Center the data (mean=0, std=1)
+    p_mean = torch.mean(flat_param_history, axis=0)
+    p_std = torch.std(flat_param_history, axis=0)
+    flat_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
+
+    pca = PCA(n_components=5)
+    pca.fit(flat_param_history)
+    params_pca_space = pca.transform(flat_param_history)
+
+    # Plot explained variance
+    fig, ax = plt.subplots(1, 3)
+    explained_variance = pca.explained_variance_ratio_
+    percent_exp_var = np.round(explained_variance * 100, decimals=2)
+    labels = ['PC' + str(x) for x in range(1, len(percent_exp_var) + 1)]
+    ax[0].bar(x=range(1, len(percent_exp_var) + 1), height=percent_exp_var, tick_label=labels)
+    ax[0].set_ylabel('Percentage of variance explained')
+    ax[0].set_xlabel('Principal Component')
+    ax[0].set_title('Scree Plot')
+
+    # Plot weights in PC space
+    PC1 = params_pca_space[:, 0]
+    PC2 = params_pca_space[:, 1]
+    ax[1].scatter(PC1, PC2)
+    ax[1].scatter(PC1[0], PC2[0], color='blue', label='before training')
+    ax[1].scatter(PC1[-1], PC2[-1], color='red', label='after training')
+    ax[1].set_xlabel(f'PC1 - {percent_exp_var[0]}%')
+    ax[1].set_ylabel(f'PC2 - {percent_exp_var[1]}%')
+    ax[1].legend()
+
+    # Plot loading scores for PC1 to determine which/how many weights are important for variance along PC1
+    sorted_loadings = -np.sort(-np.abs(pca.components_[0]))  # Loadings sorted in descending order of abs magnitude
+    sorted_idx = np.argsort(-np.abs(pca.components_[0]))
+
+    most_important_weights_flat = sorted_idx[0:10]  #
+    most_important_weights_idx = []  # index of important weights in original weight matrix
+
+    ax[2].plot(sorted_loadings)
+    ax[2].set_xlabel('sorted weights')
+    ax[2].set_ylabel('Loading \n(alignment with weight)')
+    ax[2].set_title('PC1 weight components')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def get_flat_param_history(network):
+    """
+    Flattens all parameters (weights, biases, and other registered paramters)
+    into a single vector for every point in the training history
+
+    :param: network: EIANN network
+    :return: matrix of flattened parameter vectors for every point in the training hisotry
+    :return: list containing tuples of (num weights, weight matrix shape)
+    """
+
+    flat_param_history = []
+    param_metadata = {}
+
+    for i, state_dict in enumerate(network.param_history):
+        param_vector = []
+        for name, param in state_dict.items():
+            param_vector.append(param.flatten())
+            if i == 0:
+                param_metadata[name] = (param.numel(), param.shape)
+        flat_param_history.append(torch.cat(param_vector))
+    flat_param_history = torch.stack(flat_param_history)
+
+    return flat_param_history, param_metadata
+
+
 def get_flat_weight_history(network):
     """
     Flattens all weights into a single vector for every point in the training history
 
-    :param: network: EIANN_archive network with weights stored as Projection attributes
-    :return: matrix of flattened weight vector for every point in the training hisotry
-    :return: list containing tuples of (num weights, weight matrix shape)
+    :param: network: EIANN network with weights stored as Projection attributes
+    :return: tuple: matrix of flattened weight vectors for every point in the training hisotry
+                    list containing tuples of (num weights, weight matrix shape)
     """
     flat_weight_history = []
     weight_sizes = []
@@ -301,6 +402,7 @@ def get_flat_weight_history(network):
     flat_weight_history = torch.cat(flat_weight_history,dim=1)
 
     return flat_weight_history, weight_sizes
+
 
 def flatten_weights(network):
     """
@@ -325,6 +427,7 @@ def flatten_weights(network):
 
     return flat_weights, weight_sizes
 
+
 def unflatten_weights(flat_weights, weight_sizes):
     '''
     Convert flat weight vector to list of tensors (with correct dimensions)
@@ -342,133 +445,80 @@ def unflatten_weights(flat_weights, weight_sizes):
 
     return weight_mat_ls
 
-def compute_loss(network, weight_mat_ls, test_dataloader):
-    '''
-    Calculate the loss for the network given a specified set of weights and test dataset
 
-    :param: network: EIANN_archive network with weights stored as Projection attributes
-    :param: weight_mat_ls: list containing desired weight matrices for the network
+def unflatten_params(flat_params, param_metadata):
+    '''
+    Convert flat vector of parameters to list of tensors (with correct dimensions)
+
+    :param: flat_params: flat vector of parameters
+    :param: param_metadata: list containing tuples of (num params, param dimensions)
+    :return: list containing reshaped param matrices
+    '''
+    state_dict = {}
+    idx_start = 0
+    for param_name in param_metadata:
+        length, shape = param_metadata[param_name]
+        p = flat_params[idx_start:idx_start + length]
+        state_dict[param_name] = p.reshape(shape).type(torch.float32)
+        idx_start += length
+
+    return state_dict
+
+
+def compute_loss(network, state_dict, test_dataloader):
+    '''
+    Calculate the loss for the network given a specified set of parameters and test dataset
+
+    :param: network: EIANN_archive network
+    :param: state_dict: network state dict containing desired parameters to test
     :param: test_dataloader: dataloader with (data,target) to use for computing loss.
     :return: loss
     '''
     # Insert weight matrices into network
-    i = 0
-    for layer in network:
-        for population in layer:
-            for projection in population:
-                with torch.no_grad():
-                    projection.weight.data = weight_mat_ls[i]
-                i += 1
+    network.load_state_dict(state_dict)
 
     # Compute loss on dataset
     loss = 0
     for batch in test_dataloader:
-        batch_data, batch_target = batch
+        idx, batch_data, batch_target = batch
         output = network.forward(batch_data).detach()
         loss += network.criterion(output, batch_target)
     loss /= len(test_dataloader)
 
     return loss
 
-def plot_loss_landscape(network, test_dataloader, num_points=20, plot_line_loss=False):
+
+def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, plot_line_loss=False):
     '''
-    :param network:
+    :param test_dataloader:
+    :param network1:
+    :param network2:
+
     :return:
     '''
-    flat_weight_history, weight_sizes = get_flat_weight_history(network)
+    flat_param_history, param_metadata = get_flat_param_history(network1)
+    history_len1 = flat_param_history.shape[0]
+
+    if network2 is not None:
+        flat_param_history2, param_metadata2 = get_flat_param_history(network2)
+        flat_param_history = torch.cat([flat_param_history, flat_param_history2])
+
+        assert param_metadata == param_metadata2, "Network architecture must match"
 
     # Center the data (mean=0, std=1)
-    w_mean = torch.mean(flat_weight_history, axis=0)
-    w_std = torch.std(flat_weight_history, axis=0)
-    centered_weight_history = (flat_weight_history - w_mean) / (w_std + 1e-10) # add epsilon to avoid NaNs
+    p_mean = torch.mean(flat_param_history, axis=0)
+    p_std = torch.std(flat_param_history, axis=0)
+    centered_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
 
     # Get weights in gridplane defined by PC dimensions
     pca = PCA(n_components=2)
-    pca.fit(centered_weight_history)
-    weight_hist_pca_space = pca.transform(centered_weight_history)
+    pca.fit(centered_param_history)
+    param_hist_pca_space = pca.transform(centered_param_history)
 
-    PC1 = weight_hist_pca_space[:, 0]
-    PC2 = weight_hist_pca_space[:, 1]
-    range_extension = 0.3 #proportion to sample further on each side of the grid
-    PC1_extension = (np.max(PC1) - np.min(PC1)) * range_extension
-    PC2_extension = (np.max(PC2) - np.min(PC2)) * range_extension
-    PC1_range = np.linspace(np.min(PC1) - PC1_extension, np.max(PC1) + PC1_extension, num_points)
-    PC2_range = np.linspace(np.min(PC2) - PC2_extension, np.max(PC2) + PC2_extension, num_points)
-    PC1_mesh, PC2_mesh = np.meshgrid(PC1_range, PC2_range)
-
-    # Convert PC coordinates into full weight vectors
-    flat_PC1_vals = PC1_mesh.reshape(1, num_points**2)
-    flat_PC2_vals = PC2_mesh.reshape(1, num_points**2)
-    meshgrid_points = np.concatenate([flat_PC1_vals, flat_PC2_vals]).T
-
-    gridpoints_weightspace = pca.inverse_transform(meshgrid_points)
-    gridpoints_weightspace = torch.tensor(gridpoints_weightspace) * w_std + w_mean
-
-    # Compute loss for points in grid
-    losses = torch.zeros(num_points**2)
-    for i,gridpoint_flat in enumerate(tqdm(gridpoints_weightspace)):
-        weight_mat_ls = unflatten_weights(gridpoint_flat, weight_sizes)
-        losses[i] = compute_loss(network, weight_mat_ls, test_dataloader)
-    loss_grid = losses.reshape([PC1_range.size, PC2_range.size])
-
-    plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
-
-    if plot_line_loss:
-        # Compute loss for points in weight history
-        loss_history = torch.zeros(flat_weight_history.shape[0])
-        for i, flat_weights in enumerate(tqdm(flat_weight_history)):
-            weight_mat_ls = unflatten_weights(flat_weights, weight_sizes)
-            loss_history[i] = compute_loss(network, weight_mat_ls, test_dataloader)
-
-        # Plot loss heatmap
-        vmax = torch.max(torch.cat([loss_history, loss_grid.flatten()]))
-        vmin = torch.min(torch.cat([loss_history, loss_grid.flatten()]))
-
-        fig = plt.figure()
-        im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax, vmin=vmin,
-                        extent=[np.min(PC1_range), np.max(PC1_range),
-                                np.max(PC2_range), np.min(PC2_range)])
-        plt.colorbar(im)
-        plt.scatter(PC1, PC2, c=loss_history, cmap='Reds', edgecolors='k', linewidths=0., vmax=vmax, vmin=vmin)
-        plt.xlabel('PC1')
-        plt.ylabel('PC2')
-        fig.show()
-    else:
-        fig = plt.figure()
-        im = plt.imshow(loss_grid, cmap='Reds',
-                        extent=[np.min(PC1_range), np.max(PC1_range),
-                                np.max(PC2_range), np.min(PC2_range)])
-        plt.colorbar(im)
-        plt.scatter(PC1, PC2, s=0.1, color='k')
-        plt.scatter(PC1[0], PC2[0], s=80, color='b',edgecolor='k',label='Start')
-        plt.scatter(PC1[-1], PC2[-1], s=80, color='orange',edgecolor='k',label='End')
-        plt.legend()
-        plt.xlabel('PC1')
-        plt.ylabel('PC2')
-        fig.show()
-
-def plot_combined_loss_landscape(network1, network2, test_dataloader, num_points=20, plot_line_loss=False):
-
-    # Combine weights to compute combined PCA
-    flat_weight_history1, weight_sizes = get_flat_weight_history(network1)
-    flat_weight_history2, weight_sizes = get_flat_weight_history(network2)
-    flat_weight_history_combined = torch.cat([flat_weight_history1, flat_weight_history2], dim=0)
-
-    # Center the data (mean=0, std=1)
-    w_mean = torch.mean(flat_weight_history_combined, axis=0)
-    w_std = torch.std(flat_weight_history_combined, axis=0)
-    centered_weight_history = (flat_weight_history_combined - w_mean) / (w_std + 1e-10)  # add epsilon to avoid NaNs
-
-    # Get weights in gridplane defined by PC dimensions
-    pca = PCA(n_components=2)
-    pca.fit(centered_weight_history)
-    weight_hist_pca_space = pca.transform(centered_weight_history)
-
-    PC1 = weight_hist_pca_space[:, 0]
-    PC2 = weight_hist_pca_space[:, 1]
-    range_extension = 0.3  # proportion to sample further on each side of the grid
-    PC1_extension = (np.max(PC1) - np.min(PC1)) * range_extension
-    PC2_extension = (np.max(PC2) - np.min(PC2)) * range_extension
+    PC1 = param_hist_pca_space[:, 0]
+    PC2 = param_hist_pca_space[:, 1]
+    PC1_extension = (np.max(PC1) - np.min(PC1)) * extension
+    PC2_extension = (np.max(PC2) - np.min(PC2)) * extension
     PC1_range = np.linspace(np.min(PC1) - PC1_extension, np.max(PC1) + PC1_extension, num_points)
     PC2_range = np.linspace(np.min(PC2) - PC2_extension, np.max(PC2) + PC2_extension, num_points)
     PC1_mesh, PC2_mesh = np.meshgrid(PC1_range, PC2_range)
@@ -478,31 +528,32 @@ def plot_combined_loss_landscape(network1, network2, test_dataloader, num_points
     flat_PC2_vals = PC2_mesh.reshape(1, num_points ** 2)
     meshgrid_points = np.concatenate([flat_PC1_vals, flat_PC2_vals]).T
 
-    gridpoints_weightspace = pca.inverse_transform(meshgrid_points)
-    gridpoints_weightspace = torch.tensor(gridpoints_weightspace) * w_std + w_mean
+    gridpoints_paramspace = pca.inverse_transform(meshgrid_points)
+    gridpoints_paramspace = torch.tensor(gridpoints_paramspace) * p_std + p_mean
 
     # Compute loss for points in grid
-    test_network = copy(network1) # create copy to avoid modifying original networks
+    test_network = copy(network1)  # create copy to avoid modifying original networks
     losses = torch.zeros(num_points ** 2)
-    for i, gridpoint_flat in enumerate(tqdm(gridpoints_weightspace)):
-        weight_mat_ls = unflatten_weights(gridpoint_flat, weight_sizes)
-        losses[i] = compute_loss(test_network, weight_mat_ls, test_dataloader)
+    for i, gridpoint_flat in enumerate(tqdm(gridpoints_paramspace)):
+        state_dict = unflatten_params(gridpoint_flat, param_metadata)
+        losses[i] = compute_loss(test_network, state_dict, test_dataloader)
     loss_grid = losses.reshape([PC1_range.size, PC2_range.size])
 
     plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
 
-    PC1_network1 = PC1[0:flat_weight_history1.shape[0]]
-    PC2_network1 = PC2[0:flat_weight_history1.shape[0]]
+    if network2 is not None:
+        PC1_network1 = PC1[0:history_len1]
+        PC2_network1 = PC2[0:history_len1]
 
-    PC1_network2 = PC1[flat_weight_history1.shape[0]:]
-    PC2_network2 = PC2[flat_weight_history1.shape[0]:]
+        PC1_network2 = PC1[history_len1:]
+        PC2_network2 = PC2[history_len1:]
 
     if plot_line_loss:
         # Compute loss for points in weight history
         loss_history = torch.zeros(flat_weight_history.shape[0])
-        for i, flat_weights in enumerate(tqdm(flat_weight_history)):
-            weight_mat_ls = unflatten_weights(flat_weights, weight_sizes)
-            loss_history[i] = compute_loss(test_network, weight_mat_ls, test_dataloader)
+        for i, flat_params in enumerate(tqdm(flat_param_history)):
+            state_dict = unflatten_params(flat_params, param_metadata)
+            loss_history[i] = compute_loss(network, state_dict, test_dataloader)
 
         # Plot loss heatmap
         vmax = torch.max(torch.cat([loss_history, loss_grid.flatten()]))
@@ -525,16 +576,26 @@ def plot_combined_loss_landscape(network1, network2, test_dataloader, num_points
         plt.colorbar(im)
         plt.scatter(PC1, PC2, s=0.1, color='k')
 
-        plt.scatter(PC1_network1[0], PC2_network1[0], s=80, color='b', edgecolor='k', label='Start')
-        plt.scatter(PC1_network2[0], PC2_network2[0], s=80, color='b', edgecolor='k')
+        if network2 is not None:
+            plt.scatter(PC1_network1[0], PC2_network1[0], s=80, color='b', edgecolor='k', label='Start')
+            plt.scatter(PC1_network2[0], PC2_network2[0], s=80, color='b', edgecolor='k')
 
-        plt.scatter(PC1_network1[-1], PC2_network1[-1], s=80, color='orange', edgecolor='k', label='End')
-        plt.scatter(PC1_network2[-1], PC2_network2[-1], s=80, color='orange', edgecolor='k')
-
+            if not hasattr(network1, 'name'):
+                network1.name = '1'
+            if not hasattr(network2, 'name'):
+                network2.name = '2'
+            plt.scatter(PC1_network1[-1], PC2_network1[-1], s=80, color='orange', edgecolor='k',
+                        label=f'End {network1.name}')
+            plt.scatter(PC1_network2[-1], PC2_network2[-1], s=80, color='cyan', edgecolor='k',
+                        label=f'End {network2.name}')
+        else:
+            plt.scatter(PC1[0], PC2[0], s=80, color='b', edgecolor='k', label='Start')
+            plt.scatter(PC1[-1], PC2[-1], s=80, color='orange', edgecolor='k', label='End')
         plt.legend()
         plt.xlabel('PC1')
         plt.ylabel('PC2')
         fig.show()
+
 
 def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
     '''
@@ -564,15 +625,22 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
     fig.show()
 
 
-def update_plot_defaults():
-    plt.rcParams.update({'font.size': 15,
-                     'axes.spines.right': False,
-                     'axes.spines.top': False,
-                     'axes.linewidth':1.2,
-                     'xtick.major.size': 6,
-                     'xtick.major.width': 1.2,
-                     'ytick.major.size': 6,
-                     'ytick.major.width': 1.2,
-                     'legend.frameon': False,
-                     'legend.handletextpad': 0.1,
-                     'figure.figsize': [14.0, 4.0],})
+
+def plot_test_loss_history(network, test_dataloader):
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    idx, test_data, test_target = next(iter(test_dataloader))
+    test_loss_history = []
+    for t in range(len(network.param_history)):
+        network.load_state_dict(network.param_history[t])
+        output = network.forward(test_data)
+
+        test_loss_history.append(network.criterion(output, test_target).detach())
+
+    network.test_loss_history = torch.stack(test_loss_history)
+
+    fig = plt.figure()
+    plt.plot(network.test_loss_history)
+    plt.xlabel('Training steps')
+    plt.ylabel('Test loss')
+    fig.show()
