@@ -1,21 +1,15 @@
 layer_config:
   Input:
     E:
-      size: 784
+      size: 21
   H1:
     E:
-      size: 500
       activation: relu
-  H2:
-    E:
-      size: 500
-      activation: relu
+      size: 7
   Output:
     E:
-      size: 10
       activation: relu
-
-
+      size: 21
 projection_config:
   H1:
     E:
@@ -23,24 +17,16 @@ projection_config:
         E:
           direction: F
           learning_rule: Backprop
-  H2:
+  Output:
     E:
       H1:
         E:
           direction: F
           learning_rule: Backprop
-  Output:
-    E:
-      H2:
-        E:
-          direction: F
-          learning_rule: Backprop
-
-
 training_kwargs:
-  tau: 1
-  forward_steps: 1
   backward_steps: 1
-  learning_rate: 0.1
-  verbose: false
+  forward_steps: 1
+  learning_rate: 5.
   optimizer: SGD
+  tau: 1
+  verbose: true

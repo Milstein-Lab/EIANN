@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
 import pprint
 from EIANN import Network
-from EIANN.utils import read_from_yaml, test_EIANN_config
+from EIANN.utils import read_from_yaml, test_simple_EIANN_config
 
 epochs=300
 data_seed=0
@@ -30,5 +30,5 @@ training_kwargs = network_config['training_kwargs']
 network = Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
 
 data_generator.manual_seed(data_seed)
-test_EIANN_config(network, dataloader, epochs, supervised=False)
+test_simple_EIANN_config(network, dataloader, epochs, supervised=False)
 

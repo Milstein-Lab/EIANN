@@ -10,22 +10,31 @@ from . import utils as utils
 
 
 # Network summary functions
-def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
+def plot_simple_EIANN_config_summary(network, num_samples, start_index=None, sorted_output_idx=None, label=None):
+    """
 
-    reversed_layers = list(network)
-    reversed_layers.reverse()
-    output_pop = next(iter(reversed_layers[0]))
+    :param network:
+    :param num_samples: int
+    :param start_index: int
+    :parm sorted_output_idx: tensor of int
+    :param label: str
+    """
+    output_layer = list(network)[-1]
+    output_pop = next(iter(output_layer))
+
+    if sorted_output_idx is None:
+        sorted_output_idx = torch.arange(0, output_pop.size)
 
     if len(network.sorted_sample_indexes) > 0:
         sorted_sample_indexes = network.sorted_sample_indexes
     else:
         sorted_sample_indexes = torch.arange(0, output_pop.activity_history.shape[0])
 
-    output = output_pop.activity_history[sorted_sample_indexes, -1, :][-num_samples:, :].T
-    if not supervised and output.shape[0] == output.shape[1]:
-        sorted_idx = utils.get_diag_argmax_row_indexes(output)
+    if start_index is None:
+        end_index = len(sorted_sample_indexes)
+        start_index = end_index - num_samples
     else:
-        sorted_idx = torch.arange(output.shape[0])
+        end_index = start_index + num_samples
 
     if label is None:
         label_str = ''
@@ -40,7 +49,7 @@ def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
             projection_count += len(list(population))
         max_rows = max(max_rows, projection_count)
 
-    fig1, axes = plt.subplots(max_rows, cols, figsize=(3.*cols, 3.*max_rows))
+    fig1, axes = plt.subplots(max_rows, cols, figsize=(3.2*cols, 3.*max_rows))
     for i, layer in enumerate(network):
         if i > 0:
             col = i - 1
@@ -57,7 +66,9 @@ def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
                     else:
                         this_axis = axes[row, col]
                     if projection.post == output_pop:
-                        im = this_axis.imshow(projection.weight.data[sorted_idx, :], aspect='auto')
+                        im = this_axis.imshow(projection.weight.data[sorted_output_idx, :], aspect='auto')
+                    elif projection.pre == output_pop:
+                        im = this_axis.imshow(projection.weight.data[:, sorted_output_idx], aspect='auto')
                     else:
                         im = this_axis.imshow(projection.weight.data, aspect='auto')
                     fig1.colorbar(im, ax=this_axis)
@@ -76,13 +87,14 @@ def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
                 row += 1
     fig1.suptitle('%sweights' % label_str)
     fig1.tight_layout()
+    fig1.show()
 
     max_rows = 1
     cols = len(network.layers)
     for layer in network:
         max_rows = max(max_rows, len(layer.populations))
 
-    fig2, axes = plt.subplots(max_rows, cols, figsize=(3. * cols, 3. * max_rows))
+    fig2, axes = plt.subplots(max_rows, cols, figsize=(3.2 * cols, 3. * max_rows))
     for col, layer in enumerate(network):
         for row, population in enumerate(layer):
             if cols == 1:
@@ -96,10 +108,10 @@ def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
                 this_axis = axes[row, col]
             if population == output_pop:
                 im = this_axis.imshow(population.activity_history[sorted_sample_indexes, -1, :][
-                                      -num_samples:, sorted_idx].T, aspect='auto')
+                                      start_index:end_index, sorted_output_idx].T, aspect='auto')
             else:
                 im = this_axis.imshow(population.activity_history[sorted_sample_indexes, -1, :][
-                                      -num_samples:, :].T, aspect='auto')
+                                      start_index:end_index, :].T, aspect='auto')
             fig2.colorbar(im, ax=this_axis)
             this_axis.set_xlabel('Input pattern ID')
             this_axis.set_ylabel('Unit ID')
@@ -114,9 +126,10 @@ def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
             row += 1
     fig2.suptitle('%sactivity' % label_str)
     fig2.tight_layout()
+    fig2.show()
 
     cols = len(network.layers) - 1
-    fig3, axes = plt.subplots(max_rows, cols, figsize=(3. * cols, 3. * max_rows))
+    fig3, axes = plt.subplots(max_rows, cols, figsize=(3.2 * cols, 3. * max_rows))
     for i, layer in enumerate(network):
         if i > 0:
             col = i - 1
@@ -131,7 +144,7 @@ def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
                 else:
                     this_axis = axes[row, col]
                 for i in range(population.size):
-                    this_axis.plot(torch.mean(population.activity_history[-num_samples:, :, i], axis=0))
+                    this_axis.plot(torch.mean(population.activity_history[start_index:end_index, :, i], axis=0))
                 this_axis.set_xlabel('Equilibration time steps')
                 this_axis.set_ylabel('Unit ID')
                 this_axis.set_title('%s.%s' % (layer.name, population.name))
@@ -145,8 +158,7 @@ def plot_EIANN_activity(network, num_samples, supervised=True, label=None):
                 row += 1
     fig3.suptitle('%sactivity dynamics' % label_str)
     fig3.tight_layout()
-
-    plt.show()
+    fig3.show()
 
     print('%spopulation biases:' % label_str)
     for i, layer in enumerate(network):
@@ -175,7 +187,7 @@ def plot_performance(network):
     # ax.set_ylabel('% correct argmax')
     # ax.set_xlabel('training steps /10')
 
-    plt.show()
+    fig.show()
 
 
 def plot_MNIST_examples(network, dataloader):
@@ -206,7 +218,7 @@ def plot_MNIST_examples(network, dataloader):
             color = 'red'
         ax.text(0, 35, f'pred.={torch.argmax(output)}', color=color)
     plt.suptitle('Example images',y=0.7)
-    plt.show()
+    fig.show()
 
 
 # Loss landscape functions
@@ -266,7 +278,8 @@ def plot_weight_history_PCs(network):
     ax[2].set_title('PC1 weight components')
 
     plt.tight_layout()
-    plt.show()
+    fig.show()
+
 
 def get_flat_weight_history(network):
     """
@@ -419,7 +432,7 @@ def plot_loss_landscape(network, test_dataloader, num_points=20, plot_line_loss=
         plt.scatter(PC1, PC2, c=loss_history, cmap='Reds', edgecolors='k', linewidths=0., vmax=vmax, vmin=vmin)
         plt.xlabel('PC1')
         plt.ylabel('PC2')
-        plt.show()
+        fig.show()
     else:
         fig = plt.figure()
         im = plt.imshow(loss_grid, cmap='Reds',
@@ -432,7 +445,7 @@ def plot_loss_landscape(network, test_dataloader, num_points=20, plot_line_loss=
         plt.legend()
         plt.xlabel('PC1')
         plt.ylabel('PC2')
-        plt.show()
+        fig.show()
 
 def plot_combined_loss_landscape(network1, network2, test_dataloader, num_points=20, plot_line_loss=False):
 
@@ -503,7 +516,7 @@ def plot_combined_loss_landscape(network1, network2, test_dataloader, num_points
         plt.scatter(PC1, PC2, c=loss_history, cmap='Reds', edgecolors='k', linewidths=0., vmax=vmax, vmin=vmin)
         plt.xlabel('PC1')
         plt.ylabel('PC2')
-        plt.show()
+        fig.show()
     else:
         fig = plt.figure()
         im = plt.imshow(loss_grid, cmap='Reds',
@@ -521,7 +534,7 @@ def plot_combined_loss_landscape(network1, network2, test_dataloader, num_points
         plt.legend()
         plt.xlabel('PC1')
         plt.ylabel('PC2')
-        plt.show()
+        fig.show()
 
 def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
     '''
@@ -548,7 +561,8 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
     ax.tick_params(axis='z', pad=10)
 
     plt.tight_layout()
-    plt.show()
+    fig.show()
+
 
 def update_plot_defaults():
     plt.rcParams.update({'font.size': 15,

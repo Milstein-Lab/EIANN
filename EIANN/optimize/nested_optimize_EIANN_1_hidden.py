@@ -3,10 +3,12 @@ from torch.utils.data import DataLoader
 import os
 from copy import deepcopy
 import numpy as np
+import h5py
 
 from EIANN import Network
-from EIANN.utils import read_from_yaml, write_to_yaml, analyze_EIANN_loss
-from EIANN.plot import plot_EIANN_activity
+from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
+    sort_unsupervised_by_best_epoch
+from EIANN.plot import plot_simple_EIANN_config_summary
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
 
@@ -21,6 +23,7 @@ def config_worker():
     context.task_id = int(context.task_id)
     context.data_seed_start = int(context.data_seed_start)
     context.epochs = int(context.epochs)
+    context.status_bar = bool(context.status_bar)
     if 'debug' not in context():
         context.debug = False
     else:
@@ -290,20 +293,31 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     if plot:
         network.test(dataloader, store_history=True, status_bar=context.status_bar)
-        plot_EIANN_activity(network, num_samples=len(dataloader), supervised=context.supervised, label='Initial')
+        plot_simple_EIANN_config_summary(network, num_samples=len(dataloader), label='Initial')
         network.reset_history()
 
     data_generator.manual_seed(data_seed)
     network.train(dataloader, epochs, store_history=True, status_bar=context.status_bar)
 
-    loss_history, epoch_argmax_accuracy = \
-        analyze_EIANN_loss(network, target, supervised=context.supervised, plot=plot)
+    if not context.supervised:
+        sorted_idx = sort_unsupervised_by_best_epoch(network, target, plot=plot)
+    else:
+        sorted_idx = torch.arange(0, len(target))
 
-    final_epoch_loss = torch.mean(loss_history[-len(dataloader):])
-    final_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
+    best_epoch_index, epoch_loss, epoch_argmax_accuracy = \
+        analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=sorted_idx, plot=plot)
 
+    best_epoch_loss = epoch_loss[best_epoch_index]
+    if best_epoch_index + context.num_epochs_argmax_accuracy > epochs:
+        best_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
+    else:
+        best_argmax_accuracy = \
+            torch.mean(epoch_argmax_accuracy[best_epoch_index:best_epoch_index + context.num_epochs_argmax_accuracy])
+
+    start_index = best_epoch_index * len(dataloader)
     if plot:
-        plot_EIANN_activity(network, num_samples=len(dataloader), supervised=context.supervised, label='Final')
+        plot_simple_EIANN_config_summary(network, num_samples=len(dataloader), start_index=start_index,
+                                         sorted_output_idx=sorted_idx, label='Final')
 
     if context.debug:
         print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
@@ -311,18 +325,42 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         context.update(locals())
 
     if export:
-        config_dict = {'layer_config': context.layer_config,
-                       'projection_config': context.projection_config,
-                       'training_kwargs': context.training_kwargs}
-        if context.export_network_config_file_path is None:
-            raise Exception('nested_optimize_EIANN_1_hidden: missing required export_network_config_file_path')
-        write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
-        if context.disp:
-            print('nested_optimize_EIANN_1_hidden: pid: %i exported network config to %s' %
-                  (os.getpid(), context.export_network_config_file_path))
+        if context.export_network_config_file_path is not None:
+            config_dict = {'layer_config': context.layer_config,
+                           'projection_config': context.projection_config,
+                           'training_kwargs': context.training_kwargs}
+            write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
+            if context.disp:
+                print('nested_optimize_EIANN_1_hidden: pid: %i exported network config to %s' %
+                      (os.getpid(), context.export_network_config_file_path))
+        if context.temp_output_path is not None:
 
-    return {'loss': final_epoch_loss,
-            'accuracy': final_argmax_accuracy}
+            end_index = start_index + len(dataloader)
+            output_layer = list(network)[-1]
+            output_pop = next(iter(output_layer))
+
+            with h5py.File(context.temp_output_path, 'a') as f:
+                if context.label is None:
+                    label = str(len(f))
+                else:
+                    label = context.label
+                group = f.create_group(label)
+                model_group = group.create_group(str(seed))
+                activity_group = model_group.create_group('activity')
+                metrics_group = model_group.create_group('metrics')
+                for post_layer in network:
+                    post_layer_activity = activity_group.create_group(post_layer.name)
+                    for post_pop in post_layer:
+                        activity_data = \
+                            post_pop.activity_history[network.sorted_sample_indexes, -1, :][start_index:end_index, :].T
+                        if post_pop == output_pop:
+                            activity_data = activity_data[sorted_idx,:]
+                        post_layer_activity.create_dataset(post_pop.name, data=activity_data)
+                metrics_group.create_dataset('loss', data=epoch_loss)
+                metrics_group.create_dataset('accuracy', data=epoch_argmax_accuracy)
+
+    return {'loss': best_epoch_loss,
+            'accuracy': best_argmax_accuracy}
 
 
 def filter_features(primitives, current_features, model_id=None, export=False, plot=False):

@@ -87,7 +87,7 @@ class TestEIANN_0hidden(unittest.TestCase):
         self.network.layers['Output'].populations['E'].projections['Input']['E'].bias == None
 
     def test_plotting(self):
-        eiu.test_EIANN_config(self.network,
+        eiu.test_simple_EIANN_config(self.network,
                           dataset=n_hot_patterns(n=2, length=7),
                           target=torch.eye(dataset.shape[0]),
                           epochs=300)

@@ -234,19 +234,20 @@ class Network(nn.Module):
 
         return loss.detach()
 
-    def train(self, dataloader, epochs, store_history=False, status_bar=False):
+    def train(self, dataloader, epochs, store_history=False, store_weights=False, status_bar=False):
         """
 
         :param dataloader: :class:'DataLoader';
             returns index (int), sample_data (tensor of float), and sample_target (tensor of float)
         :param epochs: int
         :param store_history: bool
+        :param store_weights: bool
         :param status_bar: bool
         """
         num_samples = len(dataloader)
 
         # Save weights & biases & activity
-        if store_history:
+        if store_weights:
             for layer in self:
                 for population in layer:
                     # if hasattr(population,'bias'):
@@ -264,7 +265,7 @@ class Network(nn.Module):
 
         for epoch in epoch_iter:
             epoch_sample_order = []
-            if status_bar:
+            if status_bar and len(dataloader) > epochs:
                 dataloader_iter = tqdm(dataloader, desc='Samples', leave=epoch == epochs - 1)
             else:
                 dataloader_iter = dataloader
@@ -293,7 +294,7 @@ class Network(nn.Module):
                 self.constrain_weights_and_biases()
 
                 # Save weights & biases & activity
-                if store_history:
+                if store_weights:
                     for layer in self:
                         for population in layer:
                             # if hasattr(population,'bias'):
@@ -309,7 +310,7 @@ class Network(nn.Module):
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
         self.loss_history = torch.stack(self.loss_history)
 
-        if store_history:
+        if store_weights:
             for layer in self:
                 for population in layer:
                     # if hasattr(population,'bias'):

@@ -61,6 +61,8 @@ backprop_relu_SGD:
 backprop_softplus_SGD:
   learning_rate: 9.99980526071132
   softplus_beta: 99.78563100135408
-backprop_softplus_SGD_fast:
-  learning_rate: 10
-  softplus_beta: 50
+vanilla_backprop_softplus_SGD:
+  learning_rate: 5.
+  softplus_beta: 10.
+vanilla_backprop_relu_SGD:
+  learning_rate: 5.
