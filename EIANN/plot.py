@@ -10,7 +10,7 @@ from . import utils as utils
 
 
 def update_plot_defaults():
-    plt.rcParams.update({'font.size': 15,
+    plt.rcParams.update({'font.size': 12,
                      'axes.spines.right': False,
                      'axes.spines.top': False,
                      'axes.linewidth':1.2,
@@ -20,7 +20,7 @@ def update_plot_defaults():
                      'ytick.major.width': 1.2,
                      'legend.frameon': False,
                      'legend.handletextpad': 0.1,
-                     'figure.figsize': [14.0, 4.0],})
+                     'figure.figsize': [10.0, 3.0],})
 
 
 # *******************************************************************
@@ -234,7 +234,7 @@ def plot_MNIST_examples(network, dataloader):
             color = 'red'
         ax.text(0, 35, f'pred.={torch.argmax(output)}', color=color)
     plt.suptitle('Example images',y=0.7)
-    fig.show()
+    # fig.show()
 
 
 # *******************************************************************
@@ -296,11 +296,10 @@ def plot_weight_history_PCs(network):
     ax[2].set_title('PC1 weight components')
 
     plt.tight_layout()
-    fig.show()
+    # fig.show()
 
 
-
-def plot_param_history_PCs(flat_param_history):
+def plot_param_history_PCs(flat_param_history, show=True):
     '''
     Function performs PCA on a given set of parameters (drawn from the network state_dict()) and
         1. plots the explained variance
@@ -354,10 +353,11 @@ def plot_param_history_PCs(flat_param_history):
     ax[2].set_title('PC1 weight components')
 
     plt.tight_layout()
-    plt.show()
+    # if show:
+    #     plt.show()
 
 
-def get_flat_param_history(network):
+def get_flat_param_history(param_history):
     """
     Flattens all parameters (weights, biases, and other registered paramters)
     into a single vector for every point in the training history
@@ -370,7 +370,7 @@ def get_flat_param_history(network):
     flat_param_history = []
     param_metadata = {}
 
-    for i, state_dict in enumerate(network.param_history):
+    for i, state_dict in enumerate(param_history):
         param_vector = []
         for name, param in state_dict.items():
             param_vector.append(param.flatten())
@@ -496,11 +496,11 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
 
     :return:
     '''
-    flat_param_history, param_metadata = get_flat_param_history(network1)
+    flat_param_history, param_metadata = get_flat_param_history(network1.param_history)
     history_len1 = flat_param_history.shape[0]
 
     if network2 is not None:
-        flat_param_history2, param_metadata2 = get_flat_param_history(network2)
+        flat_param_history2, param_metadata2 = get_flat_param_history(network2.param_history)
         flat_param_history = torch.cat([flat_param_history, flat_param_history2])
 
         assert param_metadata == param_metadata2, "Network architecture must match"
@@ -567,7 +567,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         plt.scatter(PC1, PC2, c=loss_history, cmap='Reds', edgecolors='k', linewidths=0., vmax=vmax, vmin=vmin)
         plt.xlabel('PC1')
         plt.ylabel('PC2')
-        fig.show()
+        # fig.show()
     else:
         fig = plt.figure()
         im = plt.imshow(loss_grid, cmap='Reds',
@@ -594,7 +594,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         plt.legend()
         plt.xlabel('PC1')
         plt.ylabel('PC2')
-        fig.show()
+        # fig.show()
 
 
 def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
@@ -607,23 +607,21 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
     PC1_mesh: torch tensor, size: [1 x num_points(specified in get_loss_landscape] (?)
     PC2_mesh: torch tensor, size: [1 x num_points(specified in get_loss_landscape]
     '''
-    fig = plt.figure(figsize=(10, 7.5))
+    fig = plt.figure(figsize=(8, 5))
     ax = fig.add_subplot(projection='3d')
 
     ax.plot_surface(PC1_mesh, PC2_mesh, loss_grid.numpy(), cmap='terrain', alpha=0.9)
 
-    fontsize = 20
     ax.view_init(elev=30, azim=-50)
-    ax.set_xlabel(r'PC1', fontsize=fontsize, labelpad=9)
-    ax.set_ylabel(r'PC2', fontsize=fontsize, labelpad=10)
-    ax.set_zlabel(r'Loss', fontsize=fontsize, labelpad=25)
+    ax.set_xlabel(r'PC1', labelpad=9)
+    ax.set_ylabel(r'PC2', labelpad=10)
+    ax.set_zlabel(r'Loss', labelpad=25)
     ax.tick_params(axis='x', pad=0)
     ax.tick_params(axis='y', pad=0)
     ax.tick_params(axis='z', pad=10)
 
     plt.tight_layout()
-    fig.show()
-
+    # fig.show()
 
 
 def plot_test_loss_history(network, test_dataloader):
@@ -643,4 +641,4 @@ def plot_test_loss_history(network, test_dataloader):
     plt.plot(network.test_loss_history)
     plt.xlabel('Training steps')
     plt.ylabel('Test loss')
-    fig.show()
+    # plt.show()
