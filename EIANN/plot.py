@@ -237,6 +237,45 @@ def plot_MNIST_examples(network, dataloader):
     # fig.show()
 
 
+def plot_network_dynamics(network):
+    '''
+    Plots activity dynamics for every population in the network
+    '''
+    rows = len(network.layers)
+    cols = np.max([len(layer.populations) for layer in network])
+
+    fig = plt.figure(figsize=(8, 6))
+    axes = gs.GridSpec(nrows=rows, ncols=cols,
+                       left=0.05, right=0.98,
+                       top=0.83, bottom=0.1,
+                       wspace=0.3, hspace=0.8)
+
+    for row, layer in enumerate(network):
+        for col, population in enumerate(layer):
+            ax = fig.add_subplot(axes[row, col])
+            # average_activity_dynamics = torch.mean(population.activity_history, dim=0)
+            average_activity_dynamics = torch.mean(population.activity_history[-50:], dim=0)
+            ax.plot(average_activity_dynamics)
+            ax.set_title(f'{population.fullname} dynamics')
+
+
+def plot_sparsity_history(network):
+    rows = len(network.layers)
+    cols = np.max([len(layer.populations) for layer in network])
+
+    fig = plt.figure(figsize=(8, 6))
+    axes = gs.GridSpec(nrows=rows, ncols=cols,
+                       left=0.05, right=0.98,
+                       top=0.83, bottom=0.1,
+                       wspace=0.3, hspace=0.8)
+
+    for row, layer in enumerate(network):
+        for col, population in enumerate(layer):
+            ax = fig.add_subplot(axes[row, col])
+            ax.plot(population.sparsity_history)
+            ax.set_title(f'{population.fullname} sparsity during training')
+
+
 # *******************************************************************
 # Loss landscape functions
 # *******************************************************************
@@ -567,10 +606,17 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         plt.scatter(PC1, PC2, c=loss_history, cmap='Reds', edgecolors='k', linewidths=0., vmax=vmax, vmin=vmin)
         plt.xlabel('PC1')
         plt.ylabel('PC2')
-        # fig.show()
     else:
         fig = plt.figure()
-        im = plt.imshow(loss_grid, cmap='Reds',
+
+        if network2 is not None:
+            vmax_net = 1.1*torch.max(torch.cat([network1.test_loss_history, network2.test_loss_history]))
+        else:
+            vmax_net = 1.1*torch.max(network1.test_loss_history)
+        vmax_grid = torch.max(loss_grid)
+        vmax = torch.min(vmax_grid,vmax_net)
+
+        im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax,
                         extent=[np.min(PC1_range), np.max(PC1_range),
                                 np.max(PC2_range), np.min(PC2_range)])
         plt.colorbar(im)
@@ -594,7 +640,6 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         plt.legend()
         plt.xlabel('PC1')
         plt.ylabel('PC2')
-        # fig.show()
 
 
 def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
@@ -641,4 +686,3 @@ def plot_test_loss_history(network, test_dataloader):
     plt.plot(network.test_loss_history)
     plt.xlabel('Training steps')
     plt.ylabel('Test loss')
-    # plt.show()
