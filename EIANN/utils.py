@@ -433,3 +433,32 @@ def recompute_history(network, output_sorting):
 
     # Update network with re-sorted weights from final state
     network.load_state_dict(network.param_history[-1])
+
+
+def get_update_history(network):
+    dParam_history = {name: [] for name in network.state_dict()}
+
+    for i in range(len(network.param_history) - 1):
+        state_dict1 = network.param_history[i]
+        state_dict2 = network.param_history[i + 1]
+
+        for param_name, param_val1, param_val2 in zip(state_dict1.keys(), state_dict1.values(), state_dict2.values()):
+            d_param = param_val2 - param_val1
+            dParam_history[param_name].append(d_param)
+
+    for name, value in dParam_history.items():
+        dParam_history[name] = torch.stack(value)
+
+    return dParam_history
+
+
+def compute_sparsity_history(network):
+    '''
+    Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
+    '''
+    for layer in network:
+        for population in layer:
+            n = population.size
+            population_activity = population.activity_history[:,-1]
+            activity_fraction = (torch.sum(population_activity,dim=1) / n) ** 2 / torch.sum((population_activity**2 / n),dim=1)
+            population.sparsity_history = (1 - activity_fraction) / (1 - 1 / n)

@@ -507,6 +507,7 @@ class Input(Population):
         self.network = network
         self.layer = layer
         self.name = name
+        self.fullname = layer.name+self.name
         self.size = size
         self.activity_history_list = []
         self._activity_history = None
