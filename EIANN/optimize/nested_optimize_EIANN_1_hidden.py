@@ -118,6 +118,24 @@ def update_EIANN_config_1_hidden_Gjorgieva_Hebb_A(x, context):
         Output_FBI_Output_FBI_weight_scale
 
 
+def update_EIANN_config_1_hidden_1_inh_Gjorgieva_Hebb(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    E_E_learning_rate = param_dict['E_E_learning_rate']
+    Output_E_H1_E_weight_scale = param_dict['Output_E_H1_E_weight_scale']
+    Output_E_Output_FBI_weight_scale = param_dict['Output_E_Output_FBI_weight_scale']
+    H1_E_Input_E_weight_scale = param_dict['H1_E_Input_E_weight_scale']
+    H1_E_H1_FBI_weight_scale = param_dict['H1_E_H1_FBI_weight_scale']
+
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['weight_constraint_kwargs']['scale'] = H1_E_Input_E_weight_scale
+    context.projection_config['H1']['E']['H1']['FBI']['weight_init_args'] = (-H1_E_H1_FBI_weight_scale,)
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['Output']['E']['H1']['E']['weight_constraint_kwargs']['scale'] = \
+        Output_E_H1_E_weight_scale
+    context.projection_config['Output']['E']['Output']['FBI']['weight_init_args'] = (-Output_E_Output_FBI_weight_scale,)
+
+
 def update_EIANN_config_1_hidden_Gjorgieva_anti_Hebb_A(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
 
