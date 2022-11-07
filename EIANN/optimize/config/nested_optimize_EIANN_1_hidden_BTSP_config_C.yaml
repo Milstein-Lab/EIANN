@@ -6,10 +6,10 @@ bounds:
     - 0.1
     - 2.
   H1_E_Input_E_BTSP_learning_rate:
-    - 0.01
+    - 0.001
     - 0.25
   H1_E_Output_E_BTSP_learning_rate:
-    - 0.01
+    - 0.001
     - 0.25
   H1_E_BTSP_pos_loss_th:
     - 0.05
@@ -36,13 +36,13 @@ bounds:
     - -2.
     - -0.01
   H1_E_H1_I_dend_learning_rate:
-    - 0.01
+    - 0.001
     - 0.25
   Output_E_H1_E_max_weight:
     - 1.5
     - 5.
   Output_E_BTSP_learning_rate:
-    - 0.01
+    - 0.001
     - 0.25
   Output_E_BTSP_pos_loss_th:
     - 0.05
@@ -70,6 +70,7 @@ kwargs:
   epochs: 300
   num_epochs_argmax_accuracy: 50
   network_config_file_path: config/EIANN_1_hidden_BTSP_config_B.yaml
+  eval_accuracy: final
 update_context:
 - source: optimize.nested_optimize_EIANN_1_hidden
   function: update_EIANN_config_1_hidden_BTSP_C

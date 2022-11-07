@@ -36,6 +36,26 @@ BTSP_B:
   Output_E_BTSP_pos_loss_th: 0.42656820115854327
   Output_E_H1_E_max_weight: 3.6814016853422746
   Output_E_Output_FBI_weight: -2.992071832110626
+BTSP_C:
+  FBI_E_weight: 1.0
+  FB_BTSP_max_init_weight_factor: 1.8401451301457086
+  FB_BTSP_min_init_weight_factor: 0.5009890925749413
+  FF_BTSP_max_init_weight_factor: 0.14552491737042889
+  H1_E_BTSP_neg_loss_th: -0.1399113157901962
+  H1_E_BTSP_pos_loss_th: 0.058629221926316165
+  H1_E_H1_FBI_weight: -0.14893008982892925
+  H1_E_H1_I_dend_init_weight: -0.0729273801872078
+  H1_E_H1_I_dend_learning_rate: 0.016568794697015887
+  H1_E_Input_E_BTSP_learning_rate: 0.014908846943569054
+  H1_E_Input_E_max_weight: 3.6674649143250684
+  H1_E_Output_E_BTSP_learning_rate: 0.23529960775121478
+  H1_E_Output_E_max_weight: 3.2546436758110624
+  H1_I_dend_H1_E_weight: 1.0
+  Output_E_BTSP_learning_rate: 0.1095275403927442
+  Output_E_BTSP_neg_loss_th: -0.07066867031147635
+  Output_E_BTSP_pos_loss_th: 0.2859157430001106
+  Output_E_H1_E_max_weight: 4.0044106456776305
+  Output_E_Output_FBI_weight: -4.024421505567719
 Gjorgieva_Hebb_A:
   E_E_learning_rate: 0.29434780488671874
   E_I_learning_rate: 0.11205994529904711

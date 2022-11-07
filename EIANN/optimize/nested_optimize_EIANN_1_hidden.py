@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-import os
+import os, sys
 from copy import deepcopy
 import numpy as np
 import h5py
@@ -34,6 +34,10 @@ def config_worker():
         context.verbose = bool(context.verbose)
     if 'export_network_config_file_path' not in context():
         context.export_network_config_file_path = None
+    if 'eval_accuracy' not in context():
+        context.eval_accuracy = 'final'
+    else:
+        context.eval_accuracy = str(context.eval_accuracy)
 
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
@@ -445,6 +449,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     network.train(dataloader, epochs, store_history=True, status_bar=context.status_bar)
 
     if not context.supervised:
+        #TODO: this should depend on value of eval_accuracy
         sorted_idx = sort_unsupervised_by_best_epoch(network, target, plot=plot)
     else:
         sorted_idx = torch.arange(0, len(target))
@@ -458,8 +463,20 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     else:
         best_argmax_accuracy = \
             torch.mean(epoch_argmax_accuracy[best_epoch_index:best_epoch_index + context.num_epochs_argmax_accuracy])
+    final_epoch_loss = epoch_loss[-1]
+    final_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
 
-    start_index = best_epoch_index * len(dataloader)
+    if context.eval_accuracy == 'final':
+        start_index = (epochs - 1) * len(dataloader)
+        results = {'loss': final_epoch_loss,
+                   'accuracy': final_argmax_accuracy}
+    elif context.eval_accuracy == 'best':
+        start_index = best_epoch_index * len(dataloader)
+        results = {'loss': best_epoch_loss,
+                   'accuracy': best_argmax_accuracy}
+    else:
+        raise Exception('nested_optimize_EIANN_1_hidden: eval_accuracy must be final or best, not %s' %
+                        context.eval_accuracy)
     if plot:
         plot_simple_EIANN_config_summary(network, num_samples=len(dataloader), start_index=start_index,
                                          sorted_output_idx=sorted_idx, label='Final')
@@ -504,8 +521,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                 metrics_group.create_dataset('loss', data=epoch_loss)
                 metrics_group.create_dataset('accuracy', data=epoch_argmax_accuracy)
 
-    return {'loss': best_epoch_loss,
-            'accuracy': best_argmax_accuracy}
+    return results
 
 
 def filter_features(primitives, current_features, model_id=None, export=False, plot=False):
