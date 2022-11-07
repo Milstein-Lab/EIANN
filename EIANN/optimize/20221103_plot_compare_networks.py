@@ -1,22 +1,22 @@
 from plot_compare_networks_utils import *
 
 
-model_list = ['van_BP', 'BP_1_inh', 'BTSP_B']
+model_list = ['van_BP', 'BP_1_inh', 'BTSP_C']
 
 title_dict = {'van_BP': 'Backprop',
               'BP_1_inh': 'Backprop (EI)',
-              'BTSP_B': 'Top-Down Dendritic Gating'}
+              'BTSP_C': 'Top-Down Dendritic Gating'}
 
 data_file_path_dict = \
-    {'BTSP_B': 'data/20221103_EIANN_1_hidden_exported_data.hdf5',
+    {'BTSP_C': 'data/20221103_EIANN_1_hidden_exported_data.hdf5',
      'BP_1_inh': 'data/20221103_EIANN_1_hidden_exported_data.hdf5',
      'van_BP': 'data/20221103_EIANN_1_hidden_exported_data.hdf5'}
 
 legend_dict =  {'BP_1_inh': ('Backprop (EI)', 'b'),
                 'van_BP': ('Backprop', 'k'),
-                'BTSP_B': ('Dendritic Gating', 'r')}
+                'BTSP_C': ('Dendritic Gating', 'r')}
 
-example_index_dict = {'van_BP': 0, 'BP_1_inh': 0, 'BTSP_B': 0}
+example_index_dict = {'van_BP': 0, 'BP_1_inh': 0, 'BTSP_C': 0}
 
 activity_dict, metrics_dict = unpack_data(model_list, data_file_path_dict)
 
