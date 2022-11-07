@@ -16,6 +16,13 @@ from nested.optimize_utils import update_source_contexts
 context = Context()
 
 
+def config_controller():
+    if 'debug' not in context():
+        context.debug = False
+    else:
+        context.debug = bool(context.debug)
+
+
 def config_worker():
     context.seed_start = int(context.seed_start)
     context.num_instances = int(context.num_instances)
@@ -50,6 +57,9 @@ def get_random_seeds():
                      for instance_id in range(context.seed_start, context.seed_start + context.num_instances)]
     data_seeds = [int.from_bytes((context.network_id, instance_id), byteorder='big')
                      for instance_id in range(context.data_seed_start, context.data_seed_start + context.num_instances)]
+    if context.debug:
+        print(network_seeds, data_seeds)
+        sys.stdout.flush()
     return [network_seeds, data_seeds]
 
 
@@ -460,10 +470,12 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     best_epoch_loss = epoch_loss[best_epoch_index]
     if best_epoch_index + context.num_epochs_argmax_accuracy > epochs:
         best_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
+        best_epoch_loss = torch.mean(epoch_loss[-context.num_epochs_argmax_accuracy:])
     else:
         best_argmax_accuracy = \
             torch.mean(epoch_argmax_accuracy[best_epoch_index:best_epoch_index + context.num_epochs_argmax_accuracy])
-    final_epoch_loss = epoch_loss[-1]
+        best_epoch_loss = torch.mean(epoch_loss[best_epoch_index:best_epoch_index + context.num_epochs_argmax_accuracy])
+    final_epoch_loss = torch.mean(epoch_loss[-context.num_epochs_argmax_accuracy:])
     final_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
 
     if context.eval_accuracy == 'final':
