@@ -254,7 +254,7 @@ def plot_network_dynamics(network):
         for col, population in enumerate(layer):
             ax = fig.add_subplot(axes[row, col])
             # average_activity_dynamics = torch.mean(population.activity_history, dim=0)
-            average_activity_dynamics = torch.mean(population.activity_history[-50:], dim=0)
+            average_activity_dynamics = torch.mean(population.activity_history[-21:], dim=(0,2))
             ax.plot(average_activity_dynamics)
             ax.set_title(f'{population.fullname} dynamics')
 
@@ -271,9 +271,12 @@ def plot_sparsity_history(network):
 
     for row, layer in enumerate(network):
         for col, population in enumerate(layer):
-            ax = fig.add_subplot(axes[row, col])
-            ax.plot(population.sparsity_history)
-            ax.set_title(f'{population.fullname} sparsity during training')
+            if 'Dend' not in population.name:
+                ax = fig.add_subplot(axes[row, col])
+                sparsity = torch.mean(population.sparsity_history[:,-1,:],dim=1)
+                ax.plot(sparsity)
+                ax.set_ylim(bottom=0.4,top=1)
+                ax.set_title(f'{population.fullname} sparsity during training')
 
 
 # *******************************************************************
@@ -338,7 +341,7 @@ def plot_weight_history_PCs(network):
     # fig.show()
 
 
-def plot_param_history_PCs(flat_param_history, show=True):
+def plot_param_history_PCs(flat_param_history):
     '''
     Function performs PCA on a given set of parameters (drawn from the network state_dict()) and
         1. plots the explained variance
@@ -380,20 +383,20 @@ def plot_param_history_PCs(flat_param_history, show=True):
     ax[1].legend()
 
     # Plot loading scores for PC1 to determine which/how many weights are important for variance along PC1
-    sorted_loadings = -np.sort(-np.abs(pca.components_[0]))  # Loadings sorted in descending order of abs magnitude
+    sorted_loadings1 = -np.sort(-np.abs(pca.components_[0]))  # Loadings sorted in descending order of abs magnitude
     sorted_idx = np.argsort(-np.abs(pca.components_[0]))
 
     most_important_weights_flat = sorted_idx[0:10]  #
     most_important_weights_idx = []  # index of important weights in original weight matrix
 
-    ax[2].plot(sorted_loadings)
+    ax[2].plot(sorted_loadings1)
     ax[2].set_xlabel('sorted weights')
     ax[2].set_ylabel('Loading \n(alignment with weight)')
     ax[2].set_title('PC1 weight components')
 
     plt.tight_layout()
-    # if show:
-    #     plt.show()
+
+    return fig, sorted_loadings1
 
 
 def get_flat_param_history(param_history):
@@ -527,7 +530,7 @@ def compute_loss(network, state_dict, test_dataloader):
     return loss
 
 
-def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, plot_line_loss=False):
+def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, vmax=1.2, plot_line_loss=False):
     '''
     :param test_dataloader:
     :param network1:
@@ -610,9 +613,9 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         fig = plt.figure()
 
         if network2 is not None:
-            vmax_net = 1.1*torch.max(torch.cat([network1.test_loss_history, network2.test_loss_history]))
+            vmax_net = vmax*torch.max(torch.cat([network1.test_loss_history, network2.test_loss_history]))
         else:
-            vmax_net = 1.1*torch.max(network1.test_loss_history)
+            vmax_net = vmax*torch.max(network1.test_loss_history)
         vmax_grid = torch.max(loss_grid)
         vmax = torch.min(vmax_grid,vmax_net)
 
@@ -640,6 +643,88 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         plt.legend()
         plt.xlabel('PC1')
         plt.ylabel('PC2')
+
+    return fig
+
+
+def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataloader, networksnum_points=20, extension=0.2):
+    flat_param_history_all = []
+
+    for network_name in param_history_dict:
+        for i in param_history_dict[network_name]:
+            flat_param_history, param_metadata = get_flat_param_history(param_history_dict[network_name][i])
+            flat_param_history_all.append(flat_param_history)
+    flat_param_history_all = torch.cat(flat_param_history_all)
+
+    history_len = flat_param_history.shape[0]
+    num_networks = ut.count_dict_elements(param_history_dict)
+    flat_param_history = flat_param_history_all
+
+
+    # Center the data (mean=0, std=1)
+    p_mean = torch.mean(flat_param_history, axis=0)
+    p_std = torch.std(flat_param_history, axis=0)
+    centered_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
+
+
+    # Get weights in gridplane defined by PC dimensions
+    pca = PCA(n_components=2)
+    pca.fit(centered_param_history)
+    param_hist_pca_space = pca.transform(centered_param_history)
+
+    PC1 = param_hist_pca_space[:, 0]
+    PC2 = param_hist_pca_space[:, 1]
+    PC1_extension = (np.max(PC1) - np.min(PC1)) * extension
+    PC2_extension = (np.max(PC2) - np.min(PC2)) * extension
+    PC1_range = np.linspace(np.min(PC1) - PC1_extension, np.max(PC1) + PC1_extension, num_points)
+    PC2_range = np.linspace(np.min(PC2) - PC2_extension, np.max(PC2) + PC2_extension, num_points)
+    PC1_mesh, PC2_mesh = np.meshgrid(PC1_range, PC2_range)
+
+
+    # Convert PC coordinates into full weight vectors
+    flat_PC1_vals = PC1_mesh.reshape(1, num_points ** 2)
+    flat_PC2_vals = PC2_mesh.reshape(1, num_points ** 2)
+    meshgrid_points = np.concatenate([flat_PC1_vals, flat_PC2_vals]).T
+
+    gridpoints_paramspace = pca.inverse_transform(meshgrid_points)
+    gridpoints_paramspace = torch.tensor(gridpoints_paramspace) * p_std + p_mean
+
+
+    # Compute loss for points in grid
+    test_network = copy(test_network)  # create copy to avoid modifying original networks
+    losses = torch.zeros(num_points ** 2)
+    for i, gridpoint_flat in enumerate(tqdm(gridpoints_paramspace)):
+        state_dict = unflatten_params(gridpoint_flat, param_metadata)
+        losses[i] = compute_loss(test_network, state_dict, test_dataloader)
+    loss_grid = losses.reshape([PC1_range.size, PC2_range.size])
+
+    plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
+
+    lines_PC1 = []
+    lines_PC2 = []
+    for i in range(0, len(PC1), history_len):
+        lines_PC1.append(PC1[i:i + history_len])
+        lines_PC2.append(PC2[i:i + history_len])
+
+    fig = plt.figure()
+    im = plt.imshow(loss_grid, cmap='Reds',
+                    extent=[np.min(PC1_range), np.max(PC1_range),
+                            np.max(PC2_range), np.min(PC2_range)])
+    plt.colorbar(im)
+
+    plt.scatter(PC1, PC2, s=0.1, color='k')
+
+    # plt.scatter(PC1_network1[0], PC2_network1[0], s=80, color='b', edgecolor='k', label='Start')
+    # plt.scatter(PC1_network2[0], PC2_network2[0], s=80, color='b', edgecolor='k')
+
+    # plt.scatter(PC1_network1[-1], PC2_network1[-1], s=80, color='orange', edgecolor='k',
+    #             label=f'End {network1.name}')
+    # plt.scatter(PC1_network2[-1], PC2_network2[-1], s=80, color='cyan', edgecolor='k',
+    #             label=f'End {network2.name}')
+
+    plt.legend()
+    plt.xlabel('PC1')
+    plt.ylabel('PC2')
 
 
 def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
@@ -669,14 +754,14 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
     # fig.show()
 
 
-def plot_test_loss_history(network, test_dataloader):
+def plot_test_loss_history(network, test_dataloader, store_history=False):
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
 
     idx, test_data, test_target = next(iter(test_dataloader))
     test_loss_history = []
     for t in range(len(network.param_history)):
         network.load_state_dict(network.param_history[t])
-        output = network.forward(test_data)
+        output = network.forward(test_data,store_history=store_history)
 
         test_loss_history.append(network.criterion(output, test_target).detach())
 

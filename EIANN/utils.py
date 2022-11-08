@@ -452,13 +452,34 @@ def get_update_history(network):
     return dParam_history
 
 
-def compute_sparsity_history(network):
+def compute_sparsity_history(activity_history):
     '''
     Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
     '''
-    for layer in network:
-        for population in layer:
-            n = population.size
-            population_activity = population.activity_history[:,-1]
-            activity_fraction = (torch.sum(population_activity,dim=1) / n) ** 2 / torch.sum((population_activity**2 / n),dim=1)
-            population.sparsity_history = (1 - activity_fraction) / (1 - 1 / n)
+    population_activity = activity_history #dims: 0=history, 1=dynamics, 2=patterns, 3=units
+    n = population_activity.shape[3]
+    activity_fraction = (torch.sum(population_activity,dim=3) / n) ** 2 / (torch.sum((population_activity**2 / n),dim=3)+1e-10)
+    sparsity_history = (1 - activity_fraction) / (1 - 1 / n)
+    return sparsity_history
+
+
+def compute_selectivity_history(activity_history):
+    '''
+    Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
+    '''
+    population_activity = activity_history #dims: 0=history, 1=dynamics, 2=patterns, 3=units
+    n = population_activity.shape[2]
+    activity_fraction = (torch.sum(population_activity,dim=2) / n) ** 2 / (torch.sum((population_activity**2 / n),dim=2)+1e-10)
+    selectivity_history = (1 - activity_fraction) / (1 - 1 / n)
+    return selectivity_history
+
+
+def count_dict_elements(dict1, leaf=0):
+    nodes = dict1.keys()
+    for node in nodes:
+        subnode = dict1[node]
+        if isinstance(subnode, dict):
+            leaf = count_dict_elements(subnode, leaf)
+        else:
+            leaf += 1
+    return leaf
