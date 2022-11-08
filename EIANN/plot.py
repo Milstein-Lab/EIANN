@@ -279,7 +279,22 @@ def plot_sparsity_history(network):
                 ax.set_title(f'{population.fullname} sparsity during training')
 
 
-# *******************************************************************
+def plot_simple_EIANN_weight_history_diagnostic(network):
+    fig, axes = plt.subplots(5, sharex=True)
+    axes[0].plot(network.loss_history)
+    axes[0].set_title('Loss')
+    axes[1].plot(torch.mean(network.Output.E.H1.E.weight_history[:, :, 0], axis=1))
+    axes[1].set_title('Output.E.H1.E')
+    axes[2].plot(torch.mean(network.H1.E.Output.E.weight_history[:, :, 0], axis=1))
+    axes[2].set_title('H1.E.Output.E')
+    axes[3].plot(torch.mean(network.H1.E.Input.E.weight_history[:, :, 0], axis=1))
+    axes[3].set_title('H1.E.Input.E')
+    axes[4].plot(torch.mean(network.H1.E.H1.Dend_I.weight_history[:, :, 0], axis=1))
+    axes[4].set_title('H1.E.H1.Dend_I')
+    fig.show()
+
+
+    # *******************************************************************
 # Loss landscape functions
 # *******************************************************************
 def plot_weight_history_PCs(network):

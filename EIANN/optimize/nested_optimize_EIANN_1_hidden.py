@@ -8,7 +8,7 @@ import h5py
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
     sort_unsupervised_by_best_epoch
-from EIANN.plot import plot_simple_EIANN_config_summary
+from EIANN.plot import plot_simple_EIANN_config_summary, plot_simple_EIANN_weight_history_diagnostic
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
 
@@ -45,6 +45,10 @@ def config_worker():
         context.eval_accuracy = 'final'
     else:
         context.eval_accuracy = str(context.eval_accuracy)
+    if 'store_weights' not in context():
+        context.store_weights = False
+    else:
+        context.store_weights = bool(context.store_weights)
 
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
@@ -456,7 +460,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         network.reset_history()
 
     data_generator.manual_seed(data_seed)
-    network.train(dataloader, epochs, store_history=True, status_bar=context.status_bar)
+    network.train(dataloader, epochs, store_history=True, store_weights=context.store_weights,
+                  status_bar=context.status_bar)
 
     if not context.supervised:
         #TODO: this should depend on value of eval_accuracy
@@ -467,7 +472,6 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     best_epoch_index, epoch_loss, epoch_argmax_accuracy = \
         analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=sorted_idx, plot=plot)
 
-    best_epoch_loss = epoch_loss[best_epoch_index]
     if best_epoch_index + context.num_epochs_argmax_accuracy > epochs:
         best_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
         best_epoch_loss = torch.mean(epoch_loss[-context.num_epochs_argmax_accuracy:])
@@ -497,6 +501,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
                                                                          network.Output.E.activity))
         context.update(locals())
+        if plot:
+            plot_simple_EIANN_weight_history_diagnostic(network)
 
     if export:
         if context.export_network_config_file_path is not None:
