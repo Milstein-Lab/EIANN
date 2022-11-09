@@ -20,7 +20,9 @@ def update_plot_defaults():
                      'ytick.major.width': 1.2,
                      'legend.frameon': False,
                      'legend.handletextpad': 0.1,
-                     'figure.figsize': [10.0, 3.0],})
+                     'figure.figsize': [10.0, 3.0],
+                     'svg.fonttype': 'none',
+                     'text.usetex': False})
 
 
 # *******************************************************************
@@ -572,6 +574,9 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
     pca.fit(centered_param_history)
     param_hist_pca_space = pca.transform(centered_param_history)
 
+    explained_variance = pca.explained_variance_ratio_
+    percent_exp_var = np.round(explained_variance * 100, decimals=2)
+
     PC1 = param_hist_pca_space[:, 0]
     PC2 = param_hist_pca_space[:, 1]
     PC1_extension = (np.max(PC1) - np.min(PC1)) * extension
@@ -637,6 +642,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax,
                         extent=[np.min(PC1_range), np.max(PC1_range),
                                 np.max(PC2_range), np.min(PC2_range)])
+
         plt.colorbar(im)
         plt.scatter(PC1, PC2, s=0.1, color='k')
 
@@ -656,8 +662,8 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
             plt.scatter(PC1[0], PC2[0], s=80, color='b', edgecolor='k', label='Start')
             plt.scatter(PC1[-1], PC2[-1], s=80, color='orange', edgecolor='k', label='End')
         plt.legend()
-        plt.xlabel('PC1')
-        plt.ylabel('PC2')
+        plt.xlabel(f'PC1 \n({percent_exp_var[0]}% var. explained)')
+        plt.ylabel(f'PC2 \n({percent_exp_var[1]}% var. explained)')
 
     return fig
 

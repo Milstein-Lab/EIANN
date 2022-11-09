@@ -161,6 +161,8 @@ class Network(nn.Module):
                 population.reinit()
                 population.activity_history_list = []
                 population._activity_history = None
+                population.dendrite_history = []
+                population.plateau_history = []
 
     def forward(self, sample, store_history=False):
 
@@ -199,6 +201,10 @@ class Network(nn.Module):
             for layer in self:
                 for pop in layer:
                     pop.activity_history_list.append(pop.sample_activity)
+
+                    if hasattr(pop, 'dendritic_state'):
+                        pop.dendrite_history.append(pop.dendritic_state.clone())
+                        pop.plateau_history.append(pop.plateau.clone())
 
         return next(iter(layer)).activity
 
@@ -445,6 +451,8 @@ class Population(object):
         # Initialize storage containers
         self.activity_history_list = []
         self._activity_history = None
+        self.dendrite_history = []
+        self.plateau_history = []
         self.projections = {}
         self.backward_projections = []
         self.outgoing_projections = {}
