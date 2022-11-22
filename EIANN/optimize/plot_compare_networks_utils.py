@@ -271,7 +271,7 @@ def plot_metrics(metrics_dict, legend_dict, model_list):
         ax.plot(epochs, mean_accuracy, label=legend_dict[model_name][0], color=legend_dict[model_name][1])
         ax.fill_between(epochs, mean_accuracy - std_accuracy, mean_accuracy + std_accuracy,
                         color=legend_dict[model_name][1], alpha=0.25)
-        ax.set_xlabel('Training blocks')
+        ax.set_xlabel('Epochs')
         ax.set_ylabel('% Correct')
         ax.set_ylim([0, 110])
         ax.set_title('Accuracy')
@@ -295,7 +295,7 @@ def plot_metrics_CL(metrics_dict, legend_dict, model_list):
             ax.plot(epochs, mean_accuracy, label=legend_dict[model_name][0], color=legend_dict[model_name][1])
             ax.fill_between(epochs, mean_accuracy - std_accuracy, mean_accuracy + std_accuracy,
                             color=legend_dict[model_name][1], alpha=0.25)
-            ax.set_xlabel('Training blocks')
+            ax.set_xlabel('Epochs')
             ax.set_ylabel('% Correct')
             ax.set_ylim([0, 110])
             ax.set_title('Accuracy during phase %i' % phase)

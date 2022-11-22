@@ -185,12 +185,12 @@ def plot_simple_EIANN_config_summary(network, num_samples, start_index=None, sor
                 print(layer.name, population.name, population.bias)
 
 
-def plot_performance(network):
+def plot_train_loss_history(network):
     '''
     Plot loss and accuracy history from training
     '''
     fig = plt.figure()
-    axes = gs.GridSpec(nrows=2, ncols=2,
+    axes = gs.GridSpec(nrows=1, ncols=1,
                        left=0.05, right=0.98,
                        top=0.83, bottom=0.1,
                        wspace=0.3, hspace=0.5)
@@ -206,6 +206,26 @@ def plot_performance(network):
     # ax.set_xlabel('training steps /10')
 
     fig.show()
+
+
+def plot_test_loss_history(network, test_dataloader, store_history=False, stepsize=1):
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    idx, test_data, test_target = next(iter(test_dataloader))
+    test_loss_history = []
+    timepoints = torch.arange(0, len(network.param_history), stepsize)
+    for t in tqdm(timepoints):
+        network.load_state_dict(network.param_history[t])
+        output = network.forward(test_data,store_history=store_history)
+
+        test_loss_history.append(network.criterion(output, test_target).detach())
+
+    network.test_loss_history = torch.stack(test_loss_history)
+
+    fig = plt.figure()
+    plt.plot(network.test_loss_history)
+    plt.xlabel(f'Training steps * {stepsize}')
+    plt.ylabel('Test loss')
 
 
 def plot_MNIST_examples(network, dataloader):
@@ -224,9 +244,9 @@ def plot_MNIST_examples(network, dataloader):
     image_dim = int(math.sqrt(images.shape[1]))
     labels = torch.argmax(targets, axis=1)
 
-    for i in range(10):
-        ax = fig.add_subplot(axes[0, i])
-        idx = torch.where(labels == i)[0][0]
+    for label in range(10):
+        ax = fig.add_subplot(axes[0, label])
+        idx = torch.where(labels == label)[0][0]
         im = ax.imshow(images[idx].reshape((image_dim, image_dim)), cmap='Greys')
         ax.axis('off')
         output = network.forward(images[idx])
@@ -236,7 +256,7 @@ def plot_MNIST_examples(network, dataloader):
             color = 'red'
         ax.text(0, 35, f'pred.={torch.argmax(output)}', color=color)
     plt.suptitle('Example images',y=0.7)
-    # fig.show()
+    fig.show()
 
 
 def plot_network_dynamics(network):
@@ -296,7 +316,7 @@ def plot_simple_EIANN_weight_history_diagnostic(network):
     fig.show()
 
 
-    # *******************************************************************
+# *******************************************************************
 # Loss landscape functions
 # *******************************************************************
 def plot_weight_history_PCs(network):
@@ -773,22 +793,3 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
 
     plt.tight_layout()
     # fig.show()
-
-
-def plot_test_loss_history(network, test_dataloader, store_history=False):
-    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
-
-    idx, test_data, test_target = next(iter(test_dataloader))
-    test_loss_history = []
-    for t in range(len(network.param_history)):
-        network.load_state_dict(network.param_history[t])
-        output = network.forward(test_data,store_history=store_history)
-
-        test_loss_history.append(network.criterion(output, test_target).detach())
-
-    network.test_loss_history = torch.stack(test_loss_history)
-
-    fig = plt.figure()
-    plt.plot(network.test_loss_history)
-    plt.xlabel('Training steps')
-    plt.ylabel('Test loss')
