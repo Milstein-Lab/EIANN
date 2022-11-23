@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 import matplotlib as mpl
 
+import EIANN.utils as ut
+
 mpl.rcParams['svg.fonttype'] = 'none'
 mpl.rcParams['text.usetex'] = False
 mpl.rcParams['font.size'] = 12.
@@ -101,14 +103,13 @@ def unpack_data_CL(model_list, data_file_path_dict):
     return  activity_dict, metrics_dict
 
 
-def plot_activity(activity_dict, title_dict, example_index_dict, model_list, label_pop=True):
+def plot_activity(activity_dict, title_dict, example_index_dict, model_list):
     """
 
     :param activity_dict:
     :param title_dict:
     :param example_index_dict:
     :param model_list:
-    :param label_pop: bool
     """
 
     pop_label_dict = {'E': 'Exc', 'FBI': 'Inh'}
@@ -131,10 +132,8 @@ def plot_activity(activity_dict, title_dict, example_index_dict, model_list, lab
                 im = ax.imshow(activity_dict[model_name][layer][pop][example_index], aspect='equal',
                                interpolation='none', vmin=0.)
                 cbar = plt.colorbar(im, ax=ax)
-                if label_pop:
-                    ax.set_title('%s (%s)' % (layer_label_dict[layer], pop_label_dict[pop]))
-                else:
-                    ax.set_title('%s' % (layer_label_dict[layer]))
+
+                ax.set_title('%s (%s)' % (layer_label_dict[layer], pop_label_dict[pop]))
                 ax.set_xlabel('Input pattern')
                 ax.set_ylabel('Unit ID')
                 if activity_dict[model_name][layer][pop][example_index].shape[0] == 1:
@@ -142,19 +141,17 @@ def plot_activity(activity_dict, title_dict, example_index_dict, model_list, lab
                 # clean_axes(ax)
         fig.suptitle(title_dict[model_name])
         fig.show()
-
         fig.savefig(f'figures/{model_name}_activity.svg',dpi=300)
         fig.savefig(f'figures/{model_name}_activity.png',dpi=300)
 
 
-def plot_activity_CL(activity_dict, title_dict, example_index_dict, model_list, label_pop=True):
+def plot_activity_CL(activity_dict, title_dict, example_index_dict, model_list):
     """
 
     :param activity_dict:
     :param title_dict:
     :param example_index_dict:
     :param model_list:
-    :param label_pop: bool
     """
 
     pop_label_dict = {'E': 'Exc', 'FBI': 'Inh'}
@@ -176,14 +173,11 @@ def plot_activity_CL(activity_dict, title_dict, example_index_dict, model_list, 
                     if pop not in activity_dict[model_name][phase_key][layer]:
                         continue
                     ax = fig.add_subplot(axes[i,li])
-                    im = ax.imshow(activity_dict[model_name][phase_key][layer][pop][example_index], aspect='equal',
+                    im = ax.imshow(activity_dict[model_name][phase_key][layer][pop][example_index], aspect='auto',
                                    interpolation='none', vmin=0.)
                     cbar = plt.colorbar(im, ax=ax)
 
-                    if label_pop:
-                        ax.set_title('%s (%s)' % (layer_label_dict[layer], pop_label_dict[pop]))
-                    else:
-                        ax.set_title('%s' % (layer_label_dict[layer]))
+                    ax.set_title('%s (%s)' % (layer_label_dict[layer], pop_label_dict[pop]))
                     ax.set_xlabel('Input pattern')
                     ax.set_ylabel('Unit ID')
                     if activity_dict[model_name][phase_key][layer][pop][example_index].shape[0] == 1:
@@ -191,51 +185,6 @@ def plot_activity_CL(activity_dict, title_dict, example_index_dict, model_list, 
                     # clean_axes(ax)
             fig.suptitle('%s\n\nAfter phase %i' % (title_dict[model_name], phase))
             fig.show()
-
-            fig.savefig(f'figures/{model_name}_{phase}_activity.svg', dpi=300)
-            fig.savefig(f'figures/{model_name}_{phase}_activity.png', dpi=300)
-
-
-def plot_input_patterns_CL(activity_dict, split=0.75):
-    """
-
-    :param activity_dict:
-    :param split: float
-    """
-
-    pop_label_dict = {'E': 'Exc', 'FBI': 'Inh'}
-    layer_label_dict = {'Input': 'Input layer', 'H1': 'Hidden layer', 'Output': 'Output layer'}
-
-    model_name = next(iter(activity_dict.keys()))
-    phase_key = next(iter(activity_dict[model_name].keys()))
-    layer = 'Input'
-    pop = 'E'
-    example_index = 0
-    li = 0
-
-    input_patterns = activity_dict[model_name][phase_key][layer][pop][example_index]
-    num_units = input_patterns.shape[0]
-    num_samples = input_patterns.shape[1]
-    phase_1_num_samples = round(num_samples * split)
-    phase_indexes = {1: (0, phase_1_num_samples),
-                     2: (phase_1_num_samples, num_samples)}
-
-    fig = plt.figure(figsize=(10, 7))
-    axes = gs.GridSpec(nrows=2, ncols=3,
-                       left=0.07, right=0.98,
-                       top=0.83, bottom=0.1,
-                       wspace=0.3, hspace=0.5)
-    for i, phase in enumerate(range(1, 3)):
-        ax = fig.add_subplot(axes[li ,i])
-        im = ax.imshow(input_patterns[:, phase_indexes[phase][0]:phase_indexes[phase][1]], aspect='equal',
-                       interpolation='none', vmin=0.)
-        ax.set_xticks([0, phase_indexes[phase][1] - phase_indexes[phase][0] - 1])
-        ax.set_xticklabels(['%i' % phase_indexes[phase][0], '%i' % (phase_indexes[phase][1] - 1)])
-
-        ax.set_title('Phase %i\n\n%s' % (phase, layer_label_dict[layer]))
-        ax.set_xlabel('Input pattern')
-        ax.set_ylabel('Unit ID')
-    fig.show()
 
 
 def analyze_hidden_representations(activity_dict, layer='H1', pop='E'):
@@ -247,20 +196,30 @@ def analyze_hidden_representations(activity_dict, layer='H1', pop='E'):
     :return: tuple of dict of list of float
     """
     sparsity_dict = {}
+    selectivity_dict = {}
     discriminability_dict = {}
 
     for model_name in activity_dict:
         sparsity_dict[model_name] = []
+        selectivity_dict[model_name] = []
         discriminability_dict[model_name] = []
 
         num_patterns = activity_dict[model_name][layer][pop][0].shape[1]
         num_units = activity_dict[model_name][layer][pop][0].shape[0]
         for pop_activity in activity_dict[model_name][layer][pop]:
+            # Compute sparsity
             activity_fraction = (np.sum(pop_activity, axis=0) / num_units) ** 2 / \
                                 np.sum(pop_activity ** 2 / num_units, axis=0)
             sparsity = (1 - activity_fraction) / (1 - 1 / num_units)
             sparsity[np.where(np.sum(pop_activity, axis=0) == 0.)] = 0.
             sparsity_dict[model_name].append(np.nanmean(sparsity))
+
+            # Compute selectivity
+            activity_fraction = (np.sum(pop_activity.T, axis=0) / num_patterns) ** 2 / \
+                                np.sum(pop_activity.T ** 2 / num_patterns, axis=0)
+            selectivity = (1 - activity_fraction) / (1 - 1 / num_patterns)
+            selectivity[np.where(np.sum(pop_activity.T, axis=0) == 0.)] = 0.
+            selectivity_dict[model_name].append(np.nanmean(selectivity))
 
             # Compute discriminability
             silent_pattern_idx = np.where(np.count_nonzero(pop_activity, axis=0) == 0)[0]
@@ -280,6 +239,14 @@ def analyze_hidden_representations(activity_dict, layer='H1', pop='E'):
     sparsity = (1 - activity_fraction) / (1 - 1 / num_units)
     sparsity_dict['ideal'] = np.nanmean(sparsity)
 
+    # Compute ideal selectivity
+    ideal_2hot_activity = n_hot_patterns(2, 7)
+    pop_activity = ideal_2hot_activity.T
+    activity_fraction = (np.sum(pop_activity, axis=0) / num_patterns) ** 2 / \
+                        np.sum(pop_activity ** 2 / num_patterns, axis=0)
+    selectivity = (1 - activity_fraction) / (1 - 1 / num_patterns)
+    selectivity_dict['ideal'] = np.nanmean(selectivity)
+
     # Compute ideal discriminability
     similarity_matrix = cosine_similarity(ideal_2hot_activity.T)
     similarity_matrix_idx = np.tril_indices_from(similarity_matrix, -1)  # extract all values below diagonal
@@ -287,7 +254,7 @@ def analyze_hidden_representations(activity_dict, layer='H1', pop='E'):
     discriminability = 1 - similarity
     discriminability_dict['ideal'] = np.mean(discriminability)
 
-    return sparsity_dict, discriminability_dict
+    return sparsity_dict, selectivity_dict, discriminability_dict
 
 
 def plot_activation_funcs():
@@ -312,9 +279,7 @@ def plot_activation_funcs():
 
 def plot_metrics(metrics_dict, legend_dict, model_list):
 
-    orig_font_size = mpl.rcParams['font.size']
-    mpl.rcParams['font.size'] = 14.
-    fig, ax = plt.subplots(figsize=(5., 4.))
+    fig, ax = plt.subplots()
     for model_name in model_list:
         mean_accuracy = np.mean(metrics_dict[model_name]['accuracy'], axis=0)
         std_accuracy = np.std(metrics_dict[model_name]['accuracy'], axis=0)
@@ -322,7 +287,7 @@ def plot_metrics(metrics_dict, legend_dict, model_list):
         ax.plot(epochs, mean_accuracy, label=legend_dict[model_name][0], color=legend_dict[model_name][1])
         ax.fill_between(epochs, mean_accuracy - std_accuracy, mean_accuracy + std_accuracy,
                         color=legend_dict[model_name][1], alpha=0.25)
-        ax.set_xlabel('Epochs')
+        ax.set_xlabel('Training blocks')
         ax.set_ylabel('% Correct')
         ax.set_ylim([0, 110])
         ax.set_title('Accuracy')
@@ -330,9 +295,9 @@ def plot_metrics(metrics_dict, legend_dict, model_list):
     clean_axes(ax)
     fig.tight_layout()
     fig.show()
-    fig.savefig('figures/accuracy.svg', dpi=300)
-    fig.savefig('figures/accuracy.png', dpi=300)
-    mpl.rcParams['font.size'] = orig_font_size
+
+    fig.savefig('figures/accuracy.svg',dpi=300)
+    fig.savefig('figures/accuracy.png',dpi=300)
 
 
 def plot_metrics_CL(metrics_dict, legend_dict, model_list):
@@ -347,7 +312,7 @@ def plot_metrics_CL(metrics_dict, legend_dict, model_list):
             ax.plot(epochs, mean_accuracy, label=legend_dict[model_name][0], color=legend_dict[model_name][1])
             ax.fill_between(epochs, mean_accuracy - std_accuracy, mean_accuracy + std_accuracy,
                             color=legend_dict[model_name][1], alpha=0.25)
-            ax.set_xlabel('Epochs')
+            ax.set_xlabel('Training blocks')
             ax.set_ylabel('% Correct')
             ax.set_ylim([0, 110])
             ax.set_title('Accuracy during phase %i' % phase)
@@ -355,49 +320,26 @@ def plot_metrics_CL(metrics_dict, legend_dict, model_list):
         clean_axes(ax)
         fig.tight_layout()
         fig.show()
-        fig.savefig(f'figures/accuracy_{phase}.svg',dpi=300)
-        fig.savefig(f'figures/accuracy_{phase}.png',dpi=300)
 
-    orig_font_size = mpl.rcParams['font.size']
-    mpl.rcParams['font.size'] = 14.
-    fig, ax = plt.subplots(2,1,figsize=(4,5))
+    fig, ax1 = plt.subplots()
     xlim = [-0.75, len(model_list) - 0.25]
     key = 'final_accuracy'
     for x, model_name in enumerate(model_list):
         mean_accuracy = np.mean(metrics_dict[model_name][key])
         std_accuracy = np.std(metrics_dict[model_name][key])
-        ax[1].bar(x, mean_accuracy, yerr=std_accuracy, width=0.5,
-                color=legend_dict[model_name][1], alpha=0.7)
-    ax[1].set_xlim(xlim)
-    ax[1].set_ylim([0, 100])
-    ax[1].set_ylabel('% Correct')
-    ax[1].set_title('Final accuracy')
-    ax[1].set_xticks(np.arange(len(model_list)))
-    label_list = [legend_dict[model_name][0] for model_name in model_list]
-    ax[1].set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
-    clean_axes(ax[1])
+        ax1.bar(x, mean_accuracy, yerr=std_accuracy, width=0.5, color=legend_dict[model_name][1])
 
-    xlim = [-0.75, len(model_list) - 0.25]
-    key = 'phase1_accuracy'
-    for x, model_name in enumerate(model_list):
-        final_accuracy_phase1 = np.array(metrics_dict[model_name][key])[:,-1]
-        mean_accuracy = np.mean(final_accuracy_phase1)
-        std_accuracy = np.std(final_accuracy_phase1)
-        ax[0].bar(x, mean_accuracy, yerr=std_accuracy, width=0.5,
-                color=legend_dict[model_name][1], alpha=0.7)
-    ax[0].set_xlim(xlim)
-    ax[0].set_ylim([0, 100])
-    ax[0].set_ylabel('% Correct')
-    ax[0].set_title('Phase 1 accuracy')
-    ax[0].set_xticks(np.arange(len(model_list)))
+    ax1.set_xlim(xlim)
+    ax1.set_ylim([0, 100])
+    ax1.set_ylabel('% Correct')
+
+    ax1.set_title('Final accuracy')
+    ax1.set_xticks(np.arange(len(model_list)))
     label_list = [legend_dict[model_name][0] for model_name in model_list]
-    ax[0].set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
-    clean_axes(ax[0])
+    ax1.set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
+    clean_axes(ax1)
     fig.tight_layout()
     fig.show()
-    fig.savefig(f'figures/accuracy_bar_CL.svg', dpi=300)
-    fig.savefig(f'figures/accuracy_bar_CL.png', dpi=300)
-    mpl.rcParams['font.size'] = orig_font_size
 
 
 def n_hot_patterns(n,length):
@@ -408,37 +350,49 @@ def n_hot_patterns(n,length):
     return n_hot_patterns.T
 
 
-def plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list):
+def plot_summary_comparison(sparsity_dict, selectivity_dict, discriminability_dict, legend_dict, model_list):
 
-    fig, axes = plt.subplots(1, 2, figsize=(7.5, 4.75))
+    fig, axes = plt.subplots(1, 3, figsize=(10, 5))
     ax1 = axes[0]
     ax2 = axes[1]
+    ax3 = axes[2]
 
     xlim = [-0.75, len(model_list) - 0.25]
     ax1.plot(xlim, np.ones_like(xlim) * sparsity_dict['ideal'], '--', color='grey')
-    ax2.plot(xlim, np.ones_like(xlim) * discriminability_dict['ideal'], '--', color='grey')
+    ax2.plot(xlim, np.ones_like(xlim) * selectivity_dict['ideal'], '--', color='grey')
+    ax3.plot(xlim, np.ones_like(xlim) * discriminability_dict['ideal'], '--', color='grey')
 
     for x, model_name in enumerate(model_list):
         ax1.bar(x, np.mean(sparsity_dict[model_name]), yerr=np.std(sparsity_dict[model_name]), width=0.5,
-                color=legend_dict[model_name][1])
-        ax2.bar(x, np.mean(discriminability_dict[model_name]), yerr=np.std(discriminability_dict[model_name]),
-                width=0.5, color=legend_dict[model_name][1])
+                color=legend_dict[model_name][1],alpha=0.7)
+        ax2.bar(x, np.mean(selectivity_dict[model_name]), yerr=np.std(selectivity_dict[model_name]),
+                width=0.5, color=legend_dict[model_name][1],alpha=0.7)
+        ax3.bar(x, np.mean(discriminability_dict[model_name]), yerr=np.std(discriminability_dict[model_name]),
+                width=0.5, color=legend_dict[model_name][1],alpha=0.7)
 
     ax1.set_xlim(xlim)
     ax1.set_ylim([0, 1])
     ax2.set_xlim(xlim)
     ax2.set_ylim([0, 1])
+    ax3.set_xlim(xlim)
+    ax3.set_ylim([0, 1])
 
     ax1.set_title('Sparsity')
-    ax2.set_title('Discriminability')
+    ax2.set_title('Selectivity')
+    ax3.set_title('Discriminability')
+
     ax1.set_xticks(np.arange(len(model_list)))
     ax2.set_xticks(np.arange(len(model_list)))
+    ax3.set_xticks(np.arange(len(model_list)))
     label_list = [legend_dict[model_name][0] for model_name in model_list]
     ax1.set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
     ax2.set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
+    ax3.set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
     clean_axes(axes)
     fig.tight_layout()
     fig.show()
+    fig.savefig('figures/sparsity_selectivty_bar.svg',dpi=300)
+    fig.savefig('figures/sparsity_selectivty_bar.png',dpi=300)
 
 
 def plot_lateral_weights(weight_dict, title_dict, model_list, show=False, save=False):

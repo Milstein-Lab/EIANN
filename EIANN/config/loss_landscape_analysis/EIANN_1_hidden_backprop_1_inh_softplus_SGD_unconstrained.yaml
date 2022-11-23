@@ -24,63 +24,36 @@ layer_config:
       activation: softplus
       activation_kwargs:
         beta: 100
+
 projection_config:
   H1:
     E:
       Input:
         E:
-          weight_init: half_kaining
-          weight_bounds: !!python/tuple
-          - 0
-          - null
           direction: F
           learning_rule: Backprop
       H1:
         FBI:
-          weight_init: half_kaining
-          weight_bounds: !!python/tuple
-          - null
-          - 0
           direction: R
           learning_rule: Backprop
     FBI:
       H1:
         E:
-          weight_init: fill_
-          weight_init_args: !!python/tuple
-          - 1
-          weight_bounds: !!python/tuple
-          - 0
-          - null
           direction: F
           learning_rule: Backprop
   Output:
     E:
       H1:
         E:
-          weight_init: half_kaining
-          weight_bounds: !!python/tuple
-          - 0
-          - null
           direction: F
           learning_rule: Backprop
       Output:
         FBI:
-          weight_init: half_kaining
-          weight_bounds: !!python/tuple
-          - null
-          - 0
           direction: R
           learning_rule: Backprop
     FBI:
       Output:
         E:
-          weight_init: fill_
-          weight_init_args: !!python/tuple
-          - 1
-          weight_bounds: !!python/tuple
-          - 0
-          - null
           direction: F
           learning_rule: Backprop
 

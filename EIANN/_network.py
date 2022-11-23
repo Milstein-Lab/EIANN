@@ -31,7 +31,8 @@ class Network(nn.Module):
         :param verbose: bool
         """
         super().__init__()
-        self.learning_rate = learning_rate
+
+        # Load loss criterion
         if isinstance(criterion, str):
             if criterion in globals():
                 criterion = globals()[criterion]
@@ -44,15 +45,17 @@ class Network(nn.Module):
         self.criterion_kwargs = criterion_kwargs
         self.criterion = criterion(**criterion_kwargs)
 
-        self.seed = seed
-        if self.seed is not None:
-            torch.manual_seed(self.seed)
+        # Load other learning hyperparameters
+        self.learning_rate = learning_rate
         self.tau = tau
         self.forward_steps = forward_steps
         self.backward_steps = backward_steps
 
-        self.backward_methods = set()
+        self.seed = seed
+        if self.seed is not None:
+            torch.manual_seed(self.seed)
 
+        self.backward_methods = set()
         self.module_dict = nn.ModuleDict()
         self.parameter_dict = nn.ParameterDict()
 
@@ -161,6 +164,8 @@ class Network(nn.Module):
                 population.reinit()
                 population.activity_history_list = []
                 population._activity_history = None
+                population.dendrite_history = []
+                population.plateau_history = []
 
     def forward(self, sample, store_history=False):
 
@@ -190,7 +195,7 @@ class Network(nn.Module):
                                     delta_state = delta_state + projection(pre_pop.activity)
                                 elif projection.direction in ['recurrent', 'R']:
                                     delta_state = delta_state + projection(pre_pop.prev_activity)
-                            post_pop.state = post_pop.state + delta_state / self.tau
+                            post_pop.state = post_pop.state + delta_state / post_pop.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
                         if store_history:
                             post_pop.sample_activity.append(post_pop.activity.detach().clone())
@@ -199,6 +204,10 @@ class Network(nn.Module):
             for layer in self:
                 for pop in layer:
                     pop.activity_history_list.append(pop.sample_activity)
+
+                    if hasattr(pop, 'dendritic_state'):
+                        pop.dendrite_history.append(pop.dendritic_state.clone())
+                        pop.plateau_history.append(pop.plateau.clone())
 
         return next(iter(layer)).activity
 
@@ -366,9 +375,9 @@ class Layer(object):
 
 
 class Population(object):
-    def __init__(self, network, layer, name, size, activation, activation_kwargs=None, include_bias=False,
-                 bias_init=None, bias_init_args=None, bias_bounds=None, bias_learning_rule=None,
-                 bias_learning_rule_kwargs=None):
+    def __init__(self, network, layer, name, size, activation, activation_kwargs=None, tau=None,
+                 include_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None,
+                 bias_learning_rule=None, bias_learning_rule_kwargs=None):
         """
         Class for population of neurons
         :param network: :class:'Network'
@@ -390,6 +399,9 @@ class Population(object):
         self.name = name
         self.size = size
         self.fullname = layer.name+self.name
+        self.tau = tau
+        if tau is None:
+            self.tau = network.tau
 
         # Set callable activation function
         if isinstance(activation, str):
@@ -445,6 +457,8 @@ class Population(object):
         # Initialize storage containers
         self.activity_history_list = []
         self._activity_history = None
+        self.dendrite_history = []
+        self.plateau_history = []
         self.projections = {}
         self.backward_projections = []
         self.outgoing_projections = {}
