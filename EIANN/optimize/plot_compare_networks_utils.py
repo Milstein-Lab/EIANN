@@ -101,13 +101,14 @@ def unpack_data_CL(model_list, data_file_path_dict):
     return  activity_dict, metrics_dict
 
 
-def plot_activity(activity_dict, title_dict, example_index_dict, model_list):
+def plot_activity(activity_dict, title_dict, example_index_dict, model_list, label_pop=True):
     """
 
     :param activity_dict:
     :param title_dict:
     :param example_index_dict:
     :param model_list:
+    :param label_pop: bool
     """
 
     pop_label_dict = {'E': 'Exc', 'FBI': 'Inh'}
@@ -127,11 +128,13 @@ def plot_activity(activity_dict, title_dict, example_index_dict, model_list):
                 if pop not in activity_dict[model_name][layer]:
                     continue
                 ax = fig.add_subplot(axes[i,li])
-                im = ax.imshow(activity_dict[model_name][layer][pop][example_index], aspect='auto',
+                im = ax.imshow(activity_dict[model_name][layer][pop][example_index], aspect='equal',
                                interpolation='none', vmin=0.)
                 cbar = plt.colorbar(im, ax=ax)
-
-                ax.set_title('%s (%s)' % (layer_label_dict[layer], pop_label_dict[pop]))
+                if label_pop:
+                    ax.set_title('%s (%s)' % (layer_label_dict[layer], pop_label_dict[pop]))
+                else:
+                    ax.set_title('%s' % (layer_label_dict[layer]))
                 ax.set_xlabel('Input pattern')
                 ax.set_ylabel('Unit ID')
                 if activity_dict[model_name][layer][pop][example_index].shape[0] == 1:
@@ -141,15 +144,15 @@ def plot_activity(activity_dict, title_dict, example_index_dict, model_list):
         fig.show()
 
 
-def plot_activity_CL(activity_dict, title_dict, example_index_dict, model_list):
+def plot_activity_CL(activity_dict, title_dict, example_index_dict, model_list, label_pop=True):
     """
 
     :param activity_dict:
     :param title_dict:
     :param example_index_dict:
     :param model_list:
+    :param label_pop: bool
     """
-
     pop_label_dict = {'E': 'Exc', 'FBI': 'Inh'}
     layer_label_dict = {'Input': 'Input layer', 'H1': 'Hidden layer', 'Output': 'Output layer'}
 
@@ -169,11 +172,14 @@ def plot_activity_CL(activity_dict, title_dict, example_index_dict, model_list):
                     if pop not in activity_dict[model_name][phase_key][layer]:
                         continue
                     ax = fig.add_subplot(axes[i,li])
-                    im = ax.imshow(activity_dict[model_name][phase_key][layer][pop][example_index], aspect='auto',
+                    im = ax.imshow(activity_dict[model_name][phase_key][layer][pop][example_index], aspect='equal',
                                    interpolation='none', vmin=0.)
                     cbar = plt.colorbar(im, ax=ax)
 
-                    ax.set_title('%s (%s)' % (layer_label_dict[layer], pop_label_dict[pop]))
+                    if label_pop:
+                        ax.set_title('%s (%s)' % (layer_label_dict[layer], pop_label_dict[pop]))
+                    else:
+                        ax.set_title('%s' % (layer_label_dict[layer]))
                     ax.set_xlabel('Input pattern')
                     ax.set_ylabel('Unit ID')
                     if activity_dict[model_name][phase_key][layer][pop][example_index].shape[0] == 1:
@@ -181,6 +187,48 @@ def plot_activity_CL(activity_dict, title_dict, example_index_dict, model_list):
                     # clean_axes(ax)
             fig.suptitle('%s\n\nAfter phase %i' % (title_dict[model_name], phase))
             fig.show()
+
+
+def plot_input_patterns_CL(activity_dict, split=0.75):
+    """
+
+    :param activity_dict:
+    :param split: float
+    """
+
+    pop_label_dict = {'E': 'Exc', 'FBI': 'Inh'}
+    layer_label_dict = {'Input': 'Input layer', 'H1': 'Hidden layer', 'Output': 'Output layer'}
+
+    model_name = next(iter(activity_dict.keys()))
+    phase_key = next(iter(activity_dict[model_name].keys()))
+    layer = 'Input'
+    pop = 'E'
+    example_index = 0
+    li = 0
+
+    input_patterns = activity_dict[model_name][phase_key][layer][pop][example_index]
+    num_units = input_patterns.shape[0]
+    num_samples = input_patterns.shape[1]
+    phase_1_num_samples = round(num_samples * split)
+    phase_indexes = {1: (0, phase_1_num_samples),
+                     2: (phase_1_num_samples, num_samples)}
+
+    fig = plt.figure(figsize=(10, 7))
+    axes = gs.GridSpec(nrows=2, ncols=3,
+                       left=0.07, right=0.98,
+                       top=0.83, bottom=0.1,
+                       wspace=0.3, hspace=0.5)
+    for i, phase in enumerate(range(1, 3)):
+        ax = fig.add_subplot(axes[li ,i])
+        im = ax.imshow(input_patterns[:, phase_indexes[phase][0]:phase_indexes[phase][1]], aspect='equal',
+                       interpolation='none', vmin=0.)
+        ax.set_xticks([0, phase_indexes[phase][1] - phase_indexes[phase][0] - 1])
+        ax.set_xticklabels(['%i' % phase_indexes[phase][0], '%i' % (phase_indexes[phase][1] - 1)])
+
+        ax.set_title('Phase %i\n\n%s' % (phase, layer_label_dict[layer]))
+        ax.set_xlabel('Input pattern')
+        ax.set_ylabel('Unit ID')
+    fig.show()
 
 
 def analyze_hidden_representations(activity_dict, layer='H1', pop='E'):
@@ -257,7 +305,9 @@ def plot_activation_funcs():
 
 def plot_metrics(metrics_dict, legend_dict, model_list):
 
-    fig, ax = plt.subplots()
+    orig_font_size = mpl.rcParams['font.size']
+    mpl.rcParams['font.size'] = 14.
+    fig, ax = plt.subplots(figsize=(5., 4.))
     for model_name in model_list:
         mean_accuracy = np.mean(metrics_dict[model_name]['accuracy'], axis=0)
         std_accuracy = np.std(metrics_dict[model_name]['accuracy'], axis=0)
@@ -273,6 +323,7 @@ def plot_metrics(metrics_dict, legend_dict, model_list):
     clean_axes(ax)
     fig.tight_layout()
     fig.show()
+    mpl.rcParams['font.size'] = orig_font_size
 
 
 def plot_metrics_CL(metrics_dict, legend_dict, model_list):
@@ -296,7 +347,9 @@ def plot_metrics_CL(metrics_dict, legend_dict, model_list):
         fig.tight_layout()
         fig.show()
 
-    fig, ax1 = plt.subplots()
+    orig_font_size = mpl.rcParams['font.size']
+    mpl.rcParams['font.size'] = 14.
+    fig, ax1 = plt.subplots(figsize=(4., 4.))
     xlim = [-0.75, len(model_list) - 0.25]
     key = 'final_accuracy'
     for x, model_name in enumerate(model_list):
@@ -315,6 +368,7 @@ def plot_metrics_CL(metrics_dict, legend_dict, model_list):
     clean_axes(ax1)
     fig.tight_layout()
     fig.show()
+    mpl.rcParams['font.size'] = orig_font_size
 
 
 def n_hot_patterns(n,length):
