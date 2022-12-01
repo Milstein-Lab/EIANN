@@ -5,6 +5,7 @@ from torch.nn.functional import softplus, relu
 from torch.optim import Adam, SGD
 import numpy as np
 from copy import deepcopy
+import time
 
 from .utils import half_kaining_init, scaled_kaining_init
 import EIANN.rules as rules
@@ -399,9 +400,10 @@ class Population(object):
         self.name = name
         self.size = size
         self.fullname = layer.name+self.name
-        self.tau = tau
         if tau is None:
             self.tau = network.tau
+        else:
+            self.tau = tau
 
         # Set callable activation function
         if isinstance(activation, str):

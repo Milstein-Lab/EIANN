@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from .utils import get_scaled_rectified_sigmoid
+import time
 
 
 class LearningRule(object):
@@ -134,10 +135,8 @@ class BTSP(LearningRule):
         discount[plateau < 0] = self.neg_loss_ET_discount
         IS = torch.abs(plateau).unsqueeze(1)
         ET = torch.outer(discount, self.projection.pre.activity)
-
         delta_weight = IS * ((self.w_max - self.projection.weight) * ET - \
                        self.projection.weight * self.dep_ratio * self.q_dep(ET))
-
         self.projection.weight.data += self.learning_rate * delta_weight
 
     @classmethod
