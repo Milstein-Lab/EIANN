@@ -501,8 +501,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
                                                                          network.Output.E.activity))
         context.update(locals())
-        if plot:
-            plot_simple_EIANN_weight_history_diagnostic(network)
+        #if plot:
+        #    plot_simple_EIANN_weight_history_diagnostic(network)
 
     if export:
         if context.export_network_config_file_path is not None:

@@ -3,6 +3,8 @@ import torch
 import torch.nn.functional as F
 import itertools
 
+from EIANN.utils import n_hot_patterns
+
 import numpy as np
 import click
 import h5py
@@ -99,6 +101,57 @@ def unpack_data_CL(model_list, data_file_path_dict):
                 metrics_dict[description]['final_accuracy'].append(seed_group['metrics']['final_accuracy'][0])
 
     return  activity_dict, metrics_dict
+
+
+def plot_n_choose_k_task(n=7, k=2):
+
+    layer_label_dict = {'Input': 'Input layer', 'H1': 'Hidden layer', 'Output': 'Target Output'}
+
+    fig = plt.figure(figsize=(10, 7))
+    axes = gs.GridSpec(nrows=2, ncols=3,
+                       left=0.07, right=0.98,
+                       top=0.83, bottom=0.1,
+                       wspace=0.3, hspace=0.5)
+
+    activity_dict = {}
+    hidden_activity = n_hot_patterns(n=k, length=n)
+    activity_dict['H1'] = torch.tensor(hidden_activity)
+    input_size = hidden_activity.shape[1]
+    activity_dict['Input'] = torch.eye(input_size)
+    activity_dict['Output'] = torch.eye(input_size)
+
+    for li, layer in enumerate(['Input', 'H1', 'Output']):
+        ax = fig.add_subplot(axes[0, li])
+        im = ax.imshow(activity_dict[layer], aspect='equal',
+                       interpolation='none', vmin=0.)
+        cbar = plt.colorbar(im, ax=ax)
+        ax.set_title('%s' % (layer_label_dict[layer]))
+        ax.set_xlabel('Input pattern')
+        ax.set_ylabel('Unit ID')
+        # clean_axes(ax)
+    fig.show()
+
+
+def plot_initial_activity(activity_dict):
+
+    layer_label_dict = {'Input': 'Input layer', 'H1': 'Hidden layer', 'Output': 'Output layer'}
+
+    fig = plt.figure(figsize=(10, 7))
+    axes = gs.GridSpec(nrows=2, ncols=3,
+                       left=0.07, right=0.98,
+                       top=0.83, bottom=0.1,
+                       wspace=0.3, hspace=0.5)
+
+    for li, layer in enumerate(['Input', 'H1', 'Output']):
+        ax = fig.add_subplot(axes[0, li])
+        im = ax.imshow(activity_dict[layer], aspect='equal',
+                       interpolation='none', vmin=0.)
+        cbar = plt.colorbar(im, ax=ax)
+        ax.set_title('%s' % (layer_label_dict[layer]))
+        ax.set_xlabel('Input pattern')
+        ax.set_ylabel('Unit ID')
+        # clean_axes(ax)
+    fig.show()
 
 
 def plot_activity(activity_dict, title_dict, example_index_dict, model_list, label_pop=True):
@@ -313,7 +366,7 @@ def plot_activation_funcs():
 def plot_metrics(metrics_dict, legend_dict, model_list):
 
     orig_font_size = mpl.rcParams['font.size']
-    mpl.rcParams['font.size'] = 14.
+    # mpl.rcParams['font.size'] = 14.
     fig, ax = plt.subplots(figsize=(5., 4.))
     for model_name in model_list:
         mean_accuracy = np.mean(metrics_dict[model_name]['accuracy'], axis=0)
@@ -359,7 +412,7 @@ def plot_metrics_CL(metrics_dict, legend_dict, model_list):
         fig.savefig(f'figures/accuracy_{phase}.png',dpi=300)
 
     orig_font_size = mpl.rcParams['font.size']
-    mpl.rcParams['font.size'] = 14.
+    # mpl.rcParams['font.size'] = 14.
     fig, ax = plt.subplots(2,1,figsize=(4,5))
     xlim = [-0.75, len(model_list) - 0.25]
     key = 'final_accuracy'

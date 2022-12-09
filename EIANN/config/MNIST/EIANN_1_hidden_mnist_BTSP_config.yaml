@@ -43,7 +43,7 @@ projection_config:
         FBI:
           weight_init: fill_
           weight_init_args: !!python/tuple
-          - -0.1857735617689173
+          - -0.01857735617689173
           direction: R
           learning_rule: null
         Dend_I:
@@ -80,7 +80,7 @@ projection_config:
         E:
           weight_init: fill_
           weight_init_args: !!python/tuple
-          - 1.0
+          - 0.01
           direction: F
           learning_rule: null
     Dend_I:
@@ -88,7 +88,7 @@ projection_config:
         E:
           weight_init: fill_
           weight_init_args: !!python/tuple
-          - 1.0
+          - 0.01
           direction: B
           learning_rule: null
   Output:
@@ -112,7 +112,7 @@ projection_config:
         FBI:
           weight_init: fill_
           weight_init_args: !!python/tuple
-          - -3.668729508940908
+          - -0.3668729508940908
           direction: R
           learning_rule: null
     FBI:
@@ -120,7 +120,7 @@ projection_config:
         E:
           weight_init: fill_
           weight_init_args: !!python/tuple
-          - 1.0
+          - 0.1
           direction: F
           learning_rule: null
 

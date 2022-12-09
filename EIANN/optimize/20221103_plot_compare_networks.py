@@ -23,15 +23,24 @@ example_index_dict = {'van_BP': 0, 'BP_1_inh': 0, 'Hebb': 0, 'BTSP_C': 0}
 
 activity_dict, metrics_dict = unpack_data(model_list, data_file_path_dict)
 
+plot_n_choose_k_task()
+
 plot_activity(activity_dict, title_dict, example_index_dict, model_list[:1], label_pop=False)
 plot_activity(activity_dict, title_dict, example_index_dict, model_list[1:])
 
 plot_activation_funcs()
 
+plot_metrics(metrics_dict, legend_dict, model_list[:1])
+plot_metrics(metrics_dict, legend_dict, model_list[:2])
+plot_metrics(metrics_dict, legend_dict, model_list[:3])
 plot_metrics(metrics_dict, legend_dict, model_list)
+
 
 sparsity_dict, discriminability_dict = analyze_hidden_representations(activity_dict)
 
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:1])
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:2])
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:3])
 plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list)
 
 plt.show()
