@@ -189,6 +189,7 @@ def plot_train_loss_history(network):
     '''
     Plot loss and accuracy history from training
     '''
+    network.loss_history = network.loss_history.cpu()
     fig = plt.figure()
     axes = gs.GridSpec(nrows=1, ncols=1,
                        left=0.05, right=0.98,
@@ -212,6 +213,8 @@ def plot_test_loss_history(network, test_dataloader, store_history=False, stepsi
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
 
     idx, test_data, test_target = next(iter(test_dataloader))
+    test_data = test_data.to(network.device)
+    test_target = test_target.to(network.device)
     test_loss_history = []
     timepoints = torch.arange(0, len(network.param_history), stepsize)
     for t in tqdm(timepoints):
@@ -221,6 +224,7 @@ def plot_test_loss_history(network, test_dataloader, store_history=False, stepsi
         test_loss_history.append(network.criterion(output, test_target).detach())
 
     network.test_loss_history = torch.stack(test_loss_history)
+    network.test_loss_history = network.test_loss_history.cpu()
 
     fig = plt.figure()
     plt.plot(np.arange(0, len(network.test_loss_history) * stepsize, stepsize), network.test_loss_history)

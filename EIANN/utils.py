@@ -373,6 +373,8 @@ def compute_batch_accuracy(network, test_dataloader):
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
 
     indexes, data, targets = next(iter(test_dataloader))
+    data = data.to(network.device)
+    targets = targets.to(network.device)
     labels = torch.argmax(targets, axis=1)
     output = network.forward(data).detach()
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
