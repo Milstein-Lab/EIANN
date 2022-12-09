@@ -223,8 +223,7 @@ def plot_test_loss_history(network, test_dataloader, store_history=False, stepsi
 
         test_loss_history.append(network.criterion(output, test_target).detach())
 
-    network.test_loss_history = torch.stack(test_loss_history)
-    network.test_loss_history = network.test_loss_history.cpu()
+    network.test_loss_history = torch.stack(test_loss_history).cpu()
 
     fig = plt.figure()
     plt.plot(np.arange(0, len(network.test_loss_history) * stepsize, stepsize), network.test_loss_history)

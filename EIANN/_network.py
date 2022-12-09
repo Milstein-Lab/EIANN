@@ -323,6 +323,93 @@ class Network(nn.Module):
 
         return loss.detach()
 
+    def train_and_validate(self, train_dataloader, val_dataloader, epochs, val_interval=(0,-1,50),
+                           store_history=False, store_weights=False, status_bar=False):
+        '''
+        Starting at validate_start, it will probe with the validate_data every validate_interval until >= validate_stop
+        '''
+        num_samples = len(train_dataloader)
+
+        # Save weights & biases & activity
+        if store_weights:
+            self.param_history = [deepcopy(self.state_dict())]
+
+        if status_bar:
+            from tqdm.autonotebook import tqdm
+
+        if status_bar:
+            epoch_iter = tqdm(range(epochs), desc='Epochs')
+        else:
+            epoch_iter = range(epochs)
+
+        self.target_history = []
+        val_output_history = []
+        val_loss_history = []
+        step_range = torch.arange(epochs*num_samples)
+        train_step = 0
+
+        for epoch in epoch_iter:
+            epoch_sample_order = []
+            if status_bar and len(train_dataloader) > epochs:
+                dataloader_iter = tqdm(train_dataloader, desc='Samples', leave=epoch == epochs - 1)
+            else:
+                dataloader_iter = train_dataloader
+
+            for sample_idx, sample_data, sample_target in dataloader_iter:
+                sample_data = torch.squeeze(sample_data).to(self.device)
+                sample_target = torch.squeeze(sample_target).to(self.device)
+                epoch_sample_order.append(sample_idx)
+                output = self.forward(sample_data, store_history)
+
+                loss = self.criterion(output, sample_target)
+                self.loss_history.append(loss.detach())
+                self.target_history.append(sample_target)
+
+                # Update state variables required for weight and bias updates
+                for backward in self.backward_methods:
+                    backward(self, output, sample_target)
+                train_step += 1
+
+                # Step weights and biases
+                for i, post_layer in enumerate(self):
+                    if i > 0:
+                        for post_pop in post_layer:
+                            if post_pop.include_bias:
+                                post_pop.bias_learning_rule.step()
+                            for projection in post_pop:
+                                projection.learning_rule.step()
+
+                self.constrain_weights_and_biases()
+
+                # Save weights & biases & activity
+                if store_weights:
+                    self.param_history.append(deepcopy(self.state_dict()))
+
+                # Compute validation loss
+                if train_step>=step_range[val_interval[0]] and train_step<=step_range[val_interval[1]] \
+                        and train_step % val_interval[2]==0:
+                    assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
+                    idx, val_data, val_target = next(iter(val_dataloader))
+                    val_data = val_data.to(self.device)
+                    val_target = val_target.to(self.device)
+                    output = self.forward(val_data)
+                    val_output_history.append(output.detach())
+                    val_loss_history.append(self.criterion(output, val_target).detach())
+
+            epoch_sample_order = torch.concat(epoch_sample_order)
+            self.sample_order.extend(epoch_sample_order)
+            self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(epoch_sample_order)))
+
+        self.sample_order = torch.stack(self.sample_order)
+        self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
+        self.loss_history = torch.stack(self.loss_history).cpu()
+        self.val_output_history = torch.stack(val_output_history).cpu()
+        self.val_loss_history = torch.stack(val_loss_history).cpu()
+
+        return loss.detach()
+
+
+
     def __iter__(self):
         for layer in self.layers.values():
             yield layer

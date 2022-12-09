@@ -468,7 +468,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     # Put data in dataloader
     data_generator = torch.Generator()
     train_dataloader = torch.utils.data.DataLoader(MNIST_train, shuffle=True, generator=data_generator)
-    train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:1000], shuffle=True, generator=data_generator)
+    train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:10000], shuffle=True, generator=data_generator)
+    val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
 
     epochs = context.epochs
@@ -481,8 +482,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         network.reset_history()
 
     data_generator.manual_seed(data_seed)
-    network.train(dataloader, epochs, store_history=True, store_weights=context.store_weights,
-                  status_bar=context.status_bar)
+    # network.train(dataloader, epochs, store_history=True, store_weights=context.store_weights,
+    #               status_bar=context.status_bar)
+    network.train_and_validate(train_sub_dataloader,
+                               val_dataloader,
+                               epochs=epochs,
+                               val_interval=(-100, -1, 10),
+                               store_history=True,
+                               store_weights=context.store_weights,
+                               status_bar=context.status_bar)
 
     if not context.supervised:
         #TODO: this should depend on value of eval_accuracy
