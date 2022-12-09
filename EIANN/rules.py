@@ -146,15 +146,30 @@ class BTSP(LearningRule):
         :param layer:
         """
         # update activity
+        network = next(iter(layer)).network
+        pre_pop_set = set()
         for pop in layer:
-            if pop.backward_projections:
-                pop.delta_state = torch.zeros(pop.size)
-                if hasattr(pop, 'dend_to_soma'):
-                    pop.delta_state += pop.dend_to_soma
-                for projection in pop.backward_projections:
-                    if projection.compartment in [None, 'soma']:
-                        pop.delta_state += projection(projection.pre.activity)
-                pop.activity = pop.activation(pop.prev_state + pop.delta_state)
+            for projection in pop.backward_projections:
+                if projection.compartment in [None, 'soma']:
+                    pre_pop_set.add(projection.pre)
+        for t in range(network.forward_steps):
+            for pre_pop in pre_pop_set:
+                pre_pop.prev_activity = pre_pop.activity
+            for pop in layer:
+                if pop.backward_projections:
+                    # pop.forward_soma_state already contains bias and inputs updated during the forward phase
+                    delta_state = -pop.state + pop.forward_soma_state
+                    if hasattr(pop, 'dend_to_soma'):
+                        delta_state = delta_state + pop.dend_to_soma
+                    for projection in pop.backward_projections:
+                        if projection.compartment in [None, 'soma']:
+                            pre_pop = projection.pre
+                            if projection.direction in ['forward', 'F']:
+                                delta_state = delta_state + projection(pre_pop.activity)
+                            elif projection.direction in ['recurrent', 'R']:
+                                delta_state = delta_state + projection(pre_pop.prev_activity)
+                    pop.state = pop.state + delta_state / pop.tau
+                    pop.activity = pop.activation(pop.state)
 
         # update dendritic state
         for pop in layer:
@@ -181,7 +196,7 @@ class BTSP(LearningRule):
         output_layer = reversed_layers.pop(0)
         output_pop = next(iter(output_layer))
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
-        output_pop.prev_state = output_pop.state.detach().clone()
+        output_pop.forward_soma_state = output_pop.state.detach().clone()
         output_pop.dend_to_soma = torch.zeros(output_pop.size)
         for projection in output_pop:
             if projection.learning_rule.__class__ == cls:
@@ -191,7 +206,7 @@ class BTSP(LearningRule):
                         output_pop.plateau[i] = output_pop.dendritic_state[i]
                         output_pop.dend_to_soma[i] = output_pop.dendritic_state[i]
                         output_pop.activity[i] = \
-                            output_pop.activation(output_pop.prev_state[i] + output_pop.dend_to_soma[i])
+                            output_pop.activation(output_pop.forward_soma_state[i] + output_pop.dend_to_soma[i])
                     elif output_pop.dendritic_state[i] < projection.learning_rule.neg_loss_th:
                         output_pop.plateau[i] = output_pop.dendritic_state[i]
                 break
@@ -200,7 +215,7 @@ class BTSP(LearningRule):
         for layer in reversed_layers:
             for pop in layer:
                 if pop.backward_projections:
-                    pop.prev_state = pop.state.detach().clone()
+                    pop.forward_soma_state = pop.state.detach().clone()
             cls.backward_update_layer_activity(layer)
 
         # update dendritic state variables
@@ -210,15 +225,28 @@ class BTSP(LearningRule):
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size)
                         pop.dend_to_soma = torch.zeros(pop.size)
-                        # sort cells by dendritic state
-                        _, pop_indexes = torch.sort(pop.dendritic_state, descending=True, stable=True)
-                        for i in pop_indexes:
+                        j = 0
+                        nudged_indexes = []
+                        while j < pop.size:
+                            # sort cells by dendritic state
+                            _, sorted_indexes = torch.sort(pop.dendritic_state, descending=True, stable=True)
+                            not_nudged = torch.isin(sorted_indexes, torch.Tensor(nudged_indexes), invert=True)
+                            valid_indexes = (not_nudged).nonzero(as_tuple=True)[0]
+                            k = valid_indexes[0].item()
+                            i = sorted_indexes[k]
                             if pop.dendritic_state[i] > projection.learning_rule.pos_loss_th:
                                 pop.plateau[i] = pop.dendritic_state[i]
                                 pop.dend_to_soma[i] = pop.dendritic_state[i]
+                                nudged_indexes.append(i)
                                 cls.backward_update_layer_activity(layer)
-                            elif pop.dendritic_state[i] < projection.learning_rule.neg_loss_th:
-                                pop.plateau[i] = pop.dendritic_state[i]
+                                j += 1
+                            else:
+                                below_neg_loss_th_subset_indexes = \
+                                    (pop.dendritic_state[valid_indexes] <
+                                     projection.learning_rule.neg_loss_th).nonzero(as_tuple=True)[0]
+                                subset_valid_indexes = valid_indexes[below_neg_loss_th_subset_indexes]
+                                pop.plateau[subset_valid_indexes] = pop.dendritic_state[subset_valid_indexes]
+                                break
                         break
 
 

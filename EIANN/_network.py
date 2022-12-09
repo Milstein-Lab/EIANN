@@ -192,10 +192,11 @@ class Network(nn.Module):
                             delta_state = -post_pop.state + post_pop.bias
                             for projection in post_pop:
                                 pre_pop = projection.pre
-                                if projection.direction in ['forward', 'F']:
-                                    delta_state = delta_state + projection(pre_pop.activity)
-                                elif projection.direction in ['recurrent', 'R']:
-                                    delta_state = delta_state + projection(pre_pop.prev_activity)
+                                if projection.update_phase in ['forward', 'F']:
+                                    if projection.direction in ['forward', 'F']:
+                                        delta_state = delta_state + projection(pre_pop.activity)
+                                    elif projection.direction in ['recurrent', 'R']:
+                                        delta_state = delta_state + projection(pre_pop.prev_activity)
                             post_pop.state = post_pop.state + delta_state / post_pop.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
                         if store_history:
@@ -205,10 +206,6 @@ class Network(nn.Module):
             for layer in self:
                 for pop in layer:
                     pop.activity_history_list.append(pop.sample_activity)
-
-                    if hasattr(pop, 'dendritic_state'):
-                        pop.dendrite_history.append(pop.dendritic_state.clone())
-                        pop.plateau_history.append(pop.plateau.clone())
 
         return next(iter(layer)).activity
 
@@ -309,6 +306,13 @@ class Network(nn.Module):
                 self.constrain_weights_and_biases()
 
                  # Save weights & biases & activity
+                if store_history:
+                    for layer in self:
+                        for pop in layer:
+                            # TODO: store activity of populations updated during the backward phase
+                            if hasattr(pop, 'plateau'):
+                                pop.plateau_history.append(pop.plateau.clone())
+
                 if store_weights:
                     self.param_history.append(deepcopy(self.state_dict()))
 
@@ -534,8 +538,8 @@ class Input(Population):
 
 class Projection(nn.Linear):
     def __init__(self, pre_pop, post_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
-                 weight_constraint_kwargs=None, weight_bounds=None, direction='forward', compartment=None,
-                 learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None):
+                 weight_constraint_kwargs=None, weight_bounds=None, direction='forward', update_phase='forward',
+                 compartment=None, learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None):
         """
 
         :param pre_pop: :class:'Population'
@@ -545,7 +549,8 @@ class Projection(nn.Linear):
         :param weight_constraint: str
         :param weight_constraint_kwargs: dict
         :param weight_bounds: tuple of float
-        :param direction: str in ['forward', 'backward', 'recurrent', 'F', 'B', 'R']
+        :param direction: str in ['forward', 'recurrent', 'F', 'R']
+        :param update_phase: str in ['forward', 'backward', 'F', B']
         :param compartment: None or str in ['soma', 'dend']
         :param learning_rule: str
         :param learning_rule_kwargs: dict
@@ -584,16 +589,17 @@ class Projection(nn.Linear):
 
         self.weight_bounds = weight_bounds
 
-        if direction not in ['forward', 'backward', 'recurrent', 'F', 'B', 'R']:
-            raise RuntimeError('Projection: direction (%s) must be forward, backward, or recurrent' %
-                               direction)
+        if direction not in ['forward', 'recurrent', 'F', 'R']:
+            raise RuntimeError('Projection: direction (%s) must be forward or recurrent' % direction)
         self.direction = direction
-        if self.direction in ['backward', 'B']:
+        if update_phase not in ['forward', 'backward', 'F', 'B']:
+            raise RuntimeError('Projection: update_phase (%s) must be forward or backward' % update_phase)
+        if update_phase in ['backward', 'B']:
             self.post.backward_projections.append(self)
+        self.update_phase = update_phase
 
         if compartment is not None and compartment not in ['soma', 'dend']:
-            raise RuntimeError('Projection: compartment (%s) must be None, soma, or dend' %
-                               compartment)
+            raise RuntimeError('Projection: compartment (%s) must be None, soma, or dend' % compartment)
         self.compartment = compartment
 
         # Set learning rule as callable of the projection
