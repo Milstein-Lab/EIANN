@@ -343,8 +343,15 @@ class Network(nn.Module):
             epoch_iter = range(epochs)
 
         self.target_history = []
+
+        # Load validation data & initialize intermediate variables
         val_output_history = []
         val_loss_history = []
+        val_accuracy_history = []
+        assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
+        idx, val_data, val_target = next(iter(val_dataloader))
+        val_data = val_data.to(self.device)
+        val_target = val_target.to(self.device)
         step_range = torch.arange(epochs*num_samples)
         train_step = 0
 
@@ -368,7 +375,6 @@ class Network(nn.Module):
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
                     backward(self, output, sample_target)
-                train_step += 1
 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
@@ -387,14 +393,13 @@ class Network(nn.Module):
 
                 # Compute validation loss
                 if train_step>=step_range[val_interval[0]] and train_step<=step_range[val_interval[1]] \
-                        and train_step % val_interval[2]==0:
-                    assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
-                    idx, val_data, val_target = next(iter(val_dataloader))
-                    val_data = val_data.to(self.device)
-                    val_target = val_target.to(self.device)
-                    output = self.forward(val_data)
-                    val_output_history.append(output.detach())
-                    val_loss_history.append(self.criterion(output, val_target).detach())
+                        and train_step%val_interval[2]==0:
+                    output = self.forward(val_data).detach()
+                    val_output_history.append(output)
+                    val_loss_history.append(self.criterion(output, val_target))
+                    accuracy = 100 * torch.sum(torch.argmax(output,dim=1)==torch.argmax(val_target,dim=1)) / output.shape[0]
+                    val_accuracy_history.append(accuracy)
+                train_step += 1
 
             epoch_sample_order = torch.concat(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
@@ -405,6 +410,8 @@ class Network(nn.Module):
         self.loss_history = torch.stack(self.loss_history).cpu()
         self.val_output_history = torch.stack(val_output_history).cpu()
         self.val_loss_history = torch.stack(val_loss_history).cpu()
+        self.val_accuracy_history = torch.stack(val_accuracy_history).cpu()
+        self.val_target = val_target.cpu()
 
         return loss.detach()
 

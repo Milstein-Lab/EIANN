@@ -9,7 +9,7 @@ import h5py
 
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
-    sort_unsupervised_by_best_epoch
+    sort_by_val_history
 from EIANN.plot import plot_simple_EIANN_config_summary, plot_simple_EIANN_weight_history_diagnostic
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
@@ -477,54 +477,51 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
 
     if plot:
-        network.test(dataloader, store_history=True, status_bar=context.status_bar)
-        plot_simple_EIANN_config_summary(network, num_samples=len(dataloader), label='Initial')
+        network.test(train_dataloader, store_history=True, status_bar=context.status_bar)
+        plot_simple_EIANN_config_summary(network, num_samples=len(train_dataloader), label='Initial')
         network.reset_history()
 
     data_generator.manual_seed(data_seed)
-    # network.train(dataloader, epochs, store_history=True, store_weights=context.store_weights,
-    #               status_bar=context.status_bar)
     network.train_and_validate(train_sub_dataloader,
                                val_dataloader,
                                epochs=epochs,
-                               val_interval=(-100, -1, 10),
+                               val_interval=context.val_interval, # e.g. (-100, -1, 10)
                                store_history=True,
                                store_weights=context.store_weights,
                                status_bar=context.status_bar)
 
-    if not context.supervised:
-        #TODO: this should depend on value of eval_accuracy
-        sorted_idx = sort_unsupervised_by_best_epoch(network, target, plot=plot)
+    if not context.supervised: #reorder output units if using unsupervised/Hebbian rule
+        sorted_loss_history, min_loss_idx, min_loss_sorting, sorted_accuracy_history = sort_by_val_history(network, plot=plot)
+        network.val_loss_history = sorted_loss_history
+        network.val_accuracy_history = sorted_accuracy_history
     else:
-        sorted_idx = torch.arange(0, len(target))
+        min_loss_idx = torch.argmin(network.val_loss_history)
 
-    best_epoch_index, epoch_loss, epoch_argmax_accuracy = \
-        analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=sorted_idx, plot=plot)
-
-    if best_epoch_index + context.num_epochs_argmax_accuracy > epochs:
-        best_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
-        best_epoch_loss = torch.mean(epoch_loss[-context.num_epochs_argmax_accuracy:])
+    # Select for stability by computing mean accuracy in a window after the best epoch
+    if min_loss_idx + context.argmax_accuracy_window/context.val_interval[2] > len(network.val_loss_history): # if best loss too close to the end
+        best_accuracy_window = torch.mean(network.val_accuracy_history[-context.argmax_accuracy_window:])
+        best_loss_window = torch.mean(network.val_loss_history[-context.argmax_accuracy_window:])
     else:
-        best_argmax_accuracy = \
-            torch.mean(epoch_argmax_accuracy[best_epoch_index:best_epoch_index + context.num_epochs_argmax_accuracy])
-        best_epoch_loss = torch.mean(epoch_loss[best_epoch_index:best_epoch_index + context.num_epochs_argmax_accuracy])
-    final_epoch_loss = torch.mean(epoch_loss[-context.num_epochs_argmax_accuracy:])
-    final_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
+        best_accuracy_window = torch.mean(network.val_accuracy_history[min_loss_idx:min_loss_idx+context.argmax_accuracy_window])
+        best_loss_window = torch.mean(network.val_loss_history[min_loss_idx:min_loss_idx+context.argmax_accuracy_window])
+
+    final_loss = torch.mean(network.val_loss_history[-context.argmax_accuracy_window:])
+    final_argmax_accuracy = torch.mean(network.val_accuracy_history[-context.argmax_accuracy_window:])
 
     if context.eval_accuracy == 'final':
         start_index = (epochs - 1) * len(dataloader)
-        results = {'loss': final_epoch_loss,
+        results = {'loss': final_loss,
                    'accuracy': final_argmax_accuracy}
     elif context.eval_accuracy == 'best':
-        start_index = best_epoch_index * len(dataloader)
-        results = {'loss': best_epoch_loss,
-                   'accuracy': best_argmax_accuracy}
+        start_index = min_loss_idx*context.val_interval[2] + len(train_sub_dataloader[:context.val_interval[0]])
+        results = {'loss': best_loss_window,
+                   'accuracy': best_accuracy_window}
     else:
         raise Exception('nested_optimize_EIANN_1_hidden: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
     if plot:
-        plot_simple_EIANN_config_summary(network, num_samples=len(dataloader), start_index=start_index,
-                                         sorted_output_idx=sorted_idx, label='Final')
+        plot_simple_EIANN_config_summary(network, num_samples=len(train_sub_dataloader), start_index=start_index,
+                                         sorted_output_idx=min_loss_sorting, label='Final')
 
     if context.debug:
         print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
@@ -544,7 +541,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       (os.getpid(), context.export_network_config_file_path))
         if context.temp_output_path is not None:
 
-            end_index = start_index + len(dataloader)
+            end_index = start_index + context.argmax_accuracy_window[]
             output_layer = list(network)[-1]
             output_pop = next(iter(output_layer))
 
@@ -565,8 +562,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                         if post_pop == output_pop:
                             activity_data = activity_data[sorted_idx,:]
                         post_layer_activity.create_dataset(post_pop.name, data=activity_data)
-                metrics_group.create_dataset('loss', data=epoch_loss)
-                metrics_group.create_dataset('accuracy', data=epoch_argmax_accuracy)
+                metrics_group.create_dataset('loss', data=network.val_loss_history)
+                metrics_group.create_dataset('accuracy', data=network.val_accuracy_history)
 
     return results
 
