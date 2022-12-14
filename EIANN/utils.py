@@ -315,7 +315,9 @@ def test_simple_EIANN_config(network, dataloader, epochs, supervised=True):
         analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=sorted_output_idx, plot=True)
     start_index = best_epoch_index * num_samples
     plot.plot_simple_EIANN_config_summary(network, start_index=start_index, num_samples=num_samples,
-                                           sorted_output_idx=sorted_output_idx, label='Final')
+                                           sorted_output_idx=sorted_output_idx, label='Best')
+    plot.plot_simple_EIANN_config_summary(network, num_samples=num_samples, sorted_output_idx=sorted_output_idx,
+                                          label='Final')
 
 
 def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=True, generator=None):

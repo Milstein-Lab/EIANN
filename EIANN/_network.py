@@ -163,10 +163,7 @@ class Network(nn.Module):
         for layer in self:
             for population in layer:
                 population.reinit()
-                population.activity_history_list = []
-                population._activity_history = None
-                population.dendrite_history = []
-                population.plateau_history = []
+                population.reset_history()
 
     def forward(self, sample, store_history=False):
 
@@ -200,12 +197,12 @@ class Network(nn.Module):
                             post_pop.state = post_pop.state + delta_state / post_pop.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
                         if store_history:
-                            post_pop.sample_activity.append(post_pop.activity.detach().clone())
+                            post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
 
         if store_history:
             for layer in self:
                 for pop in layer:
-                    pop.activity_history_list.append(pop.sample_activity)
+                    pop.activity_history_list.append(pop.forward_steps_activity)
 
         return next(iter(layer)).activity
 
@@ -292,7 +289,7 @@ class Network(nn.Module):
 
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
-                    backward(self, output, sample_target)
+                    backward(self, output, sample_target, store_history)
 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
@@ -305,14 +302,7 @@ class Network(nn.Module):
 
                 self.constrain_weights_and_biases()
 
-                 # Save weights & biases & activity
-                if store_history:
-                    for layer in self:
-                        for pop in layer:
-                            # TODO: store activity of populations updated during the backward phase
-                            if hasattr(pop, 'plateau'):
-                                pop.plateau_history.append(pop.plateau.clone())
-
+                # Store history of weights and biases
                 if store_weights:
                     self.param_history.append(deepcopy(self.state_dict()))
 
@@ -461,23 +451,31 @@ class Population(object):
         self.network.backward_methods.add(bias_learning_rule_class.backward)
 
         # Initialize storage containers
-        self.activity_history_list = []
-        self._activity_history = None
-        self.dendrite_history = []
-        self.plateau_history = []
         self.projections = {}
         self.backward_projections = []
         self.outgoing_projections = {}
         self.incoming_projections = {}
         self.reinit()
+        self.reset_history()
 
     def reinit(self):
-        '''
+        """
         Method for resetting state variables of a population
-        '''
+        """
         self.activity = torch.zeros(self.size)
         self.state = torch.zeros(self.size)
-        self.sample_activity = []
+        self.forward_steps_activity = []
+
+    def reset_history(self):
+        """
+
+        """
+        self.activity_history_list = []
+        self._activity_history = None
+        self.backward_activity_history_list = []
+        self._backward_activity_history = None
+        self.plateau_history_list = []
+        self._plateau_history = None
 
     def append_projection(self, projection):
         """
@@ -503,20 +501,61 @@ class Population(object):
     def activity_history(self):
         if self._activity_history is None:
             if self.activity_history_list:
-                self._activity_history = torch.stack([torch.stack(sample_activity)
-                                                      for sample_activity in self.activity_history_list])
+                self._activity_history = \
+                    torch.stack([torch.stack(forward_steps_activity)
+                                 for forward_steps_activity in self.activity_history_list])
                 self.activity_history_list = []
         else:
             if self.activity_history_list:
-                self._activity_history = torch.cat([self._activity_history,
-                                                    torch.stack([torch.stack(sample_activity)
-                                                                 for sample_activity in self.activity_history_list])])
+                self._activity_history = \
+                    torch.cat([self._activity_history,
+                               torch.stack([torch.stack(forward_steps_activity)
+                                            for forward_steps_activity in self.activity_history_list])])
                 self.activity_history_list = []
 
         return self._activity_history
 
     @property
+    def backward_activity_history(self):
+        if not hasattr(self, '_backward_activity_history'):
+            return None
+        if self._backward_activity_history is None:
+            if self.backward_activity_history_list:
+                self._backward_activity_history = \
+                    torch.stack([torch.stack(backward_steps_activity)
+                                 for backward_steps_activity in self.backward_activity_history_list])
+                self.backward_activity_history_list = []
+        else:
+            if self.backward_activity_history_list:
+                self._backward_activity_history = \
+                    torch.cat([self._backward_activity_history,
+                               torch.stack([torch.stack(backward_steps_activity)
+                                            for backward_steps_activity in self.backward_activity_history_list])])
+                self.backward_activity_history_list = []
+
+        return self._backward_activity_history
+
+    @property
+    def plateau_history(self):
+        if not hasattr(self, '_plateau_history'):
+            return None
+        if self._plateau_history is None:
+            if self.plateau_history_list:
+                self._plateau_history = torch.stack(self.plateau_history_list)
+                self.plateau_history_list = []
+        else:
+            if self.plateau_history_list:
+                self._plateau_history = torch.cat([self._plateau_history, torch.stack(self.plateau_history_list)])
+                self.plateau_history_list = []
+
+        return self._plateau_history
+
+    @property
     def bias_history(self):
+        """
+        TODO: cache the bias_history so this doesn't have to rebuilt from scratch at each call
+        :return:
+        """
         param_history = self.network.param_history
         _bias_history = [param_history[t][f'parameter_dict.{self.fullname}_bias'] for t in range(len(param_history))]
         return torch.stack(_bias_history)
@@ -529,11 +568,14 @@ class Input(Population):
         self.name = name
         self.fullname = layer.name+self.name
         self.size = size
-        self.activity_history_list = []
-        self._activity_history = None
         self.projections = {}
         self.outgoing_projections = {}
         self.reinit()
+        self.reset_history()
+
+    def reset_history(self):
+        self.activity_history_list = []
+        self._activity_history = None
 
 
 class Projection(nn.Linear):
