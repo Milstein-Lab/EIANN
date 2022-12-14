@@ -6,10 +6,11 @@ layer_config:
     E:
       size: 500
       activation: relu
+      bias_learning_rule: Backprop
   Output:
     E:
       size: 1
-      activation: relu
+      activation: linear
 
 
 projection_config:
@@ -31,6 +32,7 @@ training_kwargs:
   tau: 1
   forward_steps: 1
   backward_steps: 1
-  learning_rate: 0.05
+  learning_rate: 0.0001
   verbose: false
-  optimizer: SGD
+  optimizer: Adam
+  criterion: MSELoss

@@ -485,20 +485,24 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     network.train_and_validate(train_sub_dataloader,
                                val_dataloader,
                                epochs=epochs,
-                               val_interval=context.val_interval, # e.g. (-100, -1, 10)
+                               val_interval=context.val_interval, # e.g. (-200, -1, 10)
                                store_history=True,
                                store_weights=context.store_weights,
                                status_bar=context.status_bar)
 
     if not context.supervised: #reorder output units if using unsupervised/Hebbian rule
-        sorted_loss_history, min_loss_idx, min_loss_sorting, sorted_accuracy_history = sort_by_val_history(network, plot=plot)
-        network.val_loss_history = sorted_loss_history
-        network.val_accuracy_history = sorted_accuracy_history
+        min_loss_idx, min_loss_sorting = sort_by_val_history(network, plot=plot)
     else:
         min_loss_idx = torch.argmin(network.val_loss_history)
 
+    sorted_val_loss_history, sorted_accuracy_history = recompute_validation_loss_and_accuracy(network, target, output_sorting_idx=min_loss_sorting, plot=plot)
+    network.val_loss_history = sorted_loss_history
+    network.val_accuracy_history = sorted_accuracy_history
+
     # Select for stability by computing mean accuracy in a window after the best epoch
-    if min_loss_idx + context.argmax_accuracy_window/context.val_interval[2] > len(network.val_loss_history): # if best loss too close to the end
+    val_stepsize = context.val_interval[2]
+    val_start_idx = context.val_interval[0]
+    if min_loss_idx + context.argmax_accuracy_window/val_stepsize > len(network.val_loss_history): # if best loss too close to the end
         best_accuracy_window = torch.mean(network.val_accuracy_history[-context.argmax_accuracy_window:])
         best_loss_window = torch.mean(network.val_loss_history[-context.argmax_accuracy_window:])
     else:
@@ -513,7 +517,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         results = {'loss': final_loss,
                    'accuracy': final_argmax_accuracy}
     elif context.eval_accuracy == 'best':
-        start_index = min_loss_idx*context.val_interval[2] + len(train_sub_dataloader[:context.val_interval[0]])
+        start_index = min_loss_idx*val_stepsize + len(train_sub_dataloader[:val_start_idx])
         results = {'loss': best_loss_window,
                    'accuracy': best_accuracy_window}
     else:

@@ -226,7 +226,7 @@ def plot_test_loss_history(network, test_dataloader, store_history=False, stepsi
     network.test_loss_history = torch.stack(test_loss_history).cpu()
 
     fig = plt.figure()
-    plt.plot(np.arange(0, len(network.test_loss_history) * stepsize, stepsize), network.test_loss_history)
+    plt.plot(np.arange(0, len(network.test_loss_history) / stepsize, stepsize), network.test_loss_history)
     plt.xlabel(f'Training steps')
     plt.ylabel('Test loss')
 

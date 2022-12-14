@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
-from torch.nn import MSELoss
-from torch.nn.functional import softplus, relu
+from torch.nn import MSELoss, BCELoss
+from torch.nn.functional import softplus, relu, sigmoid, elu
 from torch.optim import Adam, SGD
 import numpy as np
 from copy import deepcopy
 import time
 
-from .utils import half_kaining_init, scaled_kaining_init
+from EIANN.utils import half_kaining_init, scaled_kaining_init, linear
 import EIANN.rules as rules
 import EIANN.external as external
 
