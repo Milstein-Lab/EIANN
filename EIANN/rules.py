@@ -208,7 +208,7 @@ class BTSP(LearningRule):
         output_pop.dend_to_soma = torch.zeros(output_pop.size)
         for projection in output_pop:
             if projection.learning_rule.__class__ == cls:
-                pos_indexes = (output_pop.dendritic_state>  projection.learning_rule.pos_loss_th).nonzero(as_tuple=True)
+                pos_indexes = (output_pop.dendritic_state > projection.learning_rule.pos_loss_th).nonzero(as_tuple=True)
                 output_pop.plateau[pos_indexes] = output_pop.dendritic_state[pos_indexes]
                 output_pop.dend_to_soma[pos_indexes] = output_pop.dendritic_state[pos_indexes]
                 output_pop.activity[pos_indexes] = \
