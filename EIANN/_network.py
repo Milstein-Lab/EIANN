@@ -61,6 +61,7 @@ class Network(nn.Module):
         self.backward_methods = set()
         self.module_dict = nn.ModuleDict()
         self.parameter_dict = nn.ParameterDict()
+        self.optimizer_params_list = []
 
         # Build network populations
         self.layers = {}
@@ -103,7 +104,9 @@ class Network(nn.Module):
                 raise RuntimeError('Network: optimizer (%s) must be imported and callable' % optimizer)
             if optimizer_kwargs is None:
                 optimizer_kwargs = {}
-            optimizer = optimizer(self.parameters(), lr=self.learning_rate, **optimizer_kwargs)
+            # optimizer = optimizer(self.parameters(), lr=self.learning_rate, **optimizer_kwargs)
+            optimizer = optimizer(self.optimizer_params_list, **optimizer_kwargs)
+
         self.optimizer = optimizer
         self.init_weights_and_biases()
         self.sample_order = []
@@ -548,10 +551,14 @@ class Population(object):
                          bias_learning_rule)
 
         self.include_bias = include_bias
-        self.network.parameter_dict[self.fullname+'_bias'] = self.bias
 
         self.bias_learning_rule = bias_learning_rule_class(self, **bias_learning_rule_kwargs)
         self.network.backward_methods.add(bias_learning_rule_class.backward)
+
+        self.network.parameter_dict[self.fullname+'_bias'] = self.bias
+        self.network.optimizer_params_list.append({'params': self.bias,
+                                                   'lr':self.bias_learning_rule.learning_rate})
+
 
         # Initialize storage containers
         self.projections = {}
@@ -595,6 +602,8 @@ class Population(object):
         self.__dict__[projection.pre.layer.name][projection.pre.name] = projection
 
         self.network.module_dict[projection.name] = projection
+        self.network.optimizer_params_list.append({'params': projection.weight,
+                                                   'lr':projection.learning_rule.learning_rate})
 
     def __iter__(self):
         for projections in self.projections.values():
