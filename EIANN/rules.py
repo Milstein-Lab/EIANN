@@ -204,8 +204,8 @@ class BTSP(LearningRule):
         output_pop = next(iter(output_layer))
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
         output_pop.forward_soma_state = output_pop.state.detach().clone()
-        output_pop.plateau = torch.zeros(output_pop.size, device=pop.network.device)
-        output_pop.dend_to_soma = torch.zeros(output_pop.size, device=pop.network.device)
+        output_pop.plateau = torch.zeros(output_pop.size, device=output_pop.network.device)
+        output_pop.dend_to_soma = torch.zeros(output_pop.size, device=output_pop.network.device)
         for projection in output_pop:
             if projection.learning_rule.__class__ == cls:
                 pos_indexes = (output_pop.dendritic_state > projection.learning_rule.pos_loss_th).nonzero(as_tuple=True)
