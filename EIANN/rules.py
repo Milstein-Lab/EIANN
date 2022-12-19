@@ -148,7 +148,7 @@ class BTSP(LearningRule):
         # update activity
         for pop in layer:
             if pop.backward_projections:
-                pop.delta_state = torch.zeros(pop.size)
+                pop.delta_state = torch.zeros(pop.size, device=pop.network.device)
                 if hasattr(pop, 'dend_to_soma'):
                     pop.delta_state += pop.dend_to_soma
                 for projection in pop.backward_projections:
@@ -162,7 +162,7 @@ class BTSP(LearningRule):
             for projection in pop.backward_projections:
                 if projection.compartment == 'dend':
                     if count == 0:
-                        pop.dendritic_state = torch.zeros(pop.size)
+                        pop.dendritic_state = torch.zeros(pop.size, device=pop.network.device)
                         count += 1
                     pop.dendritic_state += projection(projection.pre.activity)
             if count > 0:
@@ -182,10 +182,10 @@ class BTSP(LearningRule):
         output_pop = next(iter(output_layer))
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
         output_pop.prev_state = output_pop.state.detach().clone()
-        output_pop.dend_to_soma = torch.zeros(output_pop.size)
+        output_pop.dend_to_soma = torch.zeros(output_pop.size, device=network.device)
         for projection in output_pop:
             if projection.learning_rule.__class__ == cls:
-                output_pop.plateau = torch.zeros(output_pop.size)
+                output_pop.plateau = torch.zeros(output_pop.size, device=network.device)
                 for i in range(output_pop.size):
                     if output_pop.dendritic_state[i] >  projection.learning_rule.pos_loss_th:
                         output_pop.plateau[i] = output_pop.dendritic_state[i]
@@ -208,8 +208,8 @@ class BTSP(LearningRule):
             for pop in layer:
                 for projection in pop.backward_projections:
                     if projection.learning_rule.__class__ == cls:
-                        pop.plateau = torch.zeros(pop.size)
-                        pop.dend_to_soma = torch.zeros(pop.size)
+                        pop.plateau = torch.zeros(pop.size, device=network.device)
+                        pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
                         # sort cells by dendritic state
                         _, pop_indexes = torch.sort(pop.dendritic_state, descending=True, stable=True)
                         for i in pop_indexes:

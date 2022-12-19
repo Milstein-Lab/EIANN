@@ -199,6 +199,57 @@ def get_diag_argmax_row_indexes(data):
     return final_row_indexes
 
 
+def sort_by_val_history(network, plot=False):
+    '''
+    Find the sorting giving the best argmax across the full validation history
+
+    :param network:
+    :param plot:
+    :return: min_loss_idx: index of the point with lowest loss (index relative only to the validation points, not the full training)
+    :return: min_loss_sorting: optimal sorting indices for the point with lowest loss
+    '''
+    output_layer = list(network)[-1]
+    output_pop = next(iter(output_layer))
+
+    num_patterns = network.val_target.shape[0]
+
+    sorting_history = []
+    optimal_loss_history = []
+    optimal_accuracy_history = []
+    sorted_idx_history = []
+
+    for output in network.val_output_history:
+        # Get average output for each label class
+        avg_output = torch.zeros(num_units, num_units)
+        targets = torch.argmax(network.val_target, dim=1)  # convert from 1-hot vector to int label
+        for label in range(num_units):
+            label_idx = torch.where(targets == label)  # find all instances of given label
+            avg_output[label, :] = torch.mean(output[label_idx], dim=0)
+
+        # Find optimal output unit (column) sorting given average responses
+        optimal_sorting = get_diag_argmax_row_indexes(avg_output.T)
+        sorted_activity = output[:, optimal_sorting]
+        optimal_loss = network.criterion(sorted_activity, network.val_target)
+        optimal_loss_history.append(optimal_loss)
+        optimal_accuracy = 100 * torch.sum(
+            torch.argmax(sorted_activity, dim=1) == torch.argmax(network.val_target, dim=1)) / num_patterns
+        optimal_accuracy_history.append(optimal_accuracy)
+        sorting_history.append(optimal_sorting)
+
+    # Pick timepoint with lowest sorted loss
+    optimal_loss_history = torch.stack(optimal_loss_history)
+    min_loss_idx = torch.argmin(optimal_loss_history)
+    min_loss_sorting = sorting_history[min_loss_idx]
+
+    if plot:
+        plt.scatter(min_loss_idx, torch.min(optimal_loss_history), color='red')
+        plt.plot(optimal_loss_history)
+        plt.title('optimal loss history (re-sorted for each point)')
+        plt.show()
+
+    return min_loss_idx, min_loss_sorting
+
+
 def sort_unsupervised_by_best_epoch(network, target, plot=False):
 
     output_layer = list(network)[-1]
@@ -243,8 +294,29 @@ def sort_unsupervised_by_best_epoch(network, target, plot=False):
     return sorted_idx
 
 
+def recompute_validation_loss_and_accuracy(network, output_sorting_idx, plot=False):
+
+    # Sort output history
+    network.val_output_history = network.val_output_history[:,:,sorted_output_idx]
+
+    # Recompute loss
+    sorted_val_loss_history = []
+    sorted_accuracy_history = []
+    num_patterns = network.val_output_history.shape[0]
+    for output in network.val_output_history:
+        loss = network.criterion(output,network.val_target).detach()
+        accuracy = 100 * torch.sum(torch.argmax(output,dim=1) == torch.argmax(target,dim=1)) / num_patterns
+
+        sorted_val_loss_history.append(loss)
+        sorted_accuracy_history.append(accuracy)
+
+    return sorted_val_loss_history, sorted_accuracy_history
+
+
 def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=None, plot=False):
     """
+    Split output activity history into "epoch" blocks (e.g. containint all 21 patterns) and compute accuracy for each
+    block (with a given sorting of output units) to find the epoch with lowest loss.
 
     :param network:
     :param target:
@@ -373,6 +445,8 @@ def compute_batch_accuracy(network, test_dataloader):
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
 
     indexes, data, targets = next(iter(test_dataloader))
+    data = data.to(network.device)
+    targets = targets.to(network.device)
     labels = torch.argmax(targets, axis=1)
     output = network.forward(data).detach()
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
@@ -400,21 +474,21 @@ def get_optimal_sorting(network, test_dataloader, plot=False):
         output = network.forward(test_data)  # row=patterns, col=units
 
         # Get average output for each label class
-        avg_output = torch.zeros_like(output)
-        num_units = test_target.shape[1]
+        num_units = network.val_target.shape[1]
+        avg_output = torch.zeros(num_units, num_units)
+        targets = torch.argmax(network.val_target, dim=1)  # convert from 1-hot vector to int label
         for label in range(num_units):
-            targets = torch.argmax(test_target, dim=1)  # convert from 1-hot vector to int label
             label_idx = torch.where(targets == label)  # find all instances of given label
             avg_output[label, :] = torch.mean(output[label_idx], dim=0)
 
-        # Find optimal output unit (col) sorting given average responses
+        # Find optimal output unit (column) sorting given average responses
         optimal_sorting = get_diag_argmax_row_indexes(avg_output.T)
         sorted_activity = avg_output[:, optimal_sorting]
-        optimal_loss = network.criterion(sorted_activity, test_target)
+        optimal_loss = network.criterion(sorted_activity, torch.eye(num_units))
         optimal_loss_history.append(optimal_loss)
         sorting_history.append(optimal_sorting)
 
-    # Pick timepoint with lowest sorted loss
+        # Pick timepoint with lowest sorted loss
     optimal_loss_history = torch.stack(optimal_loss_history)
     min_loss_idx = torch.argmin(optimal_loss_history)
     min_loss_sorting = sorting_history[min_loss_idx]
@@ -510,3 +584,10 @@ def count_dict_elements(dict1, leaf=0):
         else:
             leaf += 1
     return leaf
+
+
+def linear(x):
+    '''
+    Linear activation function
+    '''
+    return x

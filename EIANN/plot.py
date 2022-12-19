@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from sklearn.decomposition import PCA
@@ -189,6 +190,7 @@ def plot_train_loss_history(network):
     '''
     Plot loss and accuracy history from training
     '''
+    network.loss_history = network.loss_history.cpu()
     fig = plt.figure()
     axes = gs.GridSpec(nrows=1, ncols=1,
                        left=0.05, right=0.98,
@@ -212,6 +214,8 @@ def plot_test_loss_history(network, test_dataloader, store_history=False, stepsi
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
 
     idx, test_data, test_target = next(iter(test_dataloader))
+    test_data = test_data.to(network.device)
+    test_target = test_target.to(network.device)
     test_loss_history = []
     timepoints = torch.arange(0, len(network.param_history), stepsize)
     for t in tqdm(timepoints):
@@ -220,11 +224,11 @@ def plot_test_loss_history(network, test_dataloader, store_history=False, stepsi
 
         test_loss_history.append(network.criterion(output, test_target).detach())
 
-    network.test_loss_history = torch.stack(test_loss_history)
+    network.test_loss_history = torch.stack(test_loss_history).cpu()
 
     fig = plt.figure()
     plt.plot(np.arange(0, len(network.test_loss_history) * stepsize, stepsize), network.test_loss_history)
-    plt.xlabel(f'Training steps')
+    plt.xlabel('Training steps')
     plt.ylabel('Test loss')
 
 
@@ -793,3 +797,47 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
 
     plt.tight_layout()
     # fig.show()
+
+
+def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False, num_points = 1000):
+    assert len(test_dataloader)==1, "Dataloader must have a single large batch"
+
+    # Compute accuracy on test data
+    idx, data, target = next(iter(test_dataloader))
+    output = network(data)
+    prediction = torch.heaviside(output - 0.5, torch.tensor(0.))
+    test_accuracy = 100 * torch.sum(prediction == target) / len(target)
+    print(f"Test Accuracy {test_accuracy} %")
+
+    # Plot decision boundary (test a grid of X values)
+    extension = 2.
+    x1 = data[:, 0].numpy()
+    x2 = data[:, 1].numpy()
+    # x1_extension = (np.max(x1) - np.min(x1)) * extension
+    # x2_extension = (np.max(x2) - np.min(x2)) * extension
+    x1_extension = 1.5
+    x2_extension = 1.5
+    x1_range = np.linspace(np.min(x1) - x1_extension, np.max(x1) + x1_extension, num_points)
+    x2_range = np.linspace(np.min(x2) - x2_extension, np.max(x2) + x2_extension, num_points)
+    x1_mesh, x2_mesh = np.meshgrid(x1_range, x2_range)
+
+    flat_x1_vals = x1_mesh.reshape(1, num_points ** 2)
+    flat_x2_vals = x2_mesh.reshape(1, num_points ** 2)
+    meshgrid_points = np.concatenate([flat_x1_vals, flat_x2_vals]).T
+
+    meshgrid_points = torch.tensor(meshgrid_points).type(torch.float32)
+    outputs = network(meshgrid_points).detach()
+    output_grid = outputs.reshape([x1_range.size, x2_range.size]).flipud()
+
+    if hard_boundary:
+        output_grid = np.heaviside(output_grid-0.5,0)
+
+    fig, ax = plt.subplots(figsize=(4, 4))
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["orange", "white", "blue"])
+    ax.scatter(data[:, 0], data[:, 1], c=target, edgecolors='w', cmap=cmap)
+    im = plt.imshow(output_grid, cmap=cmap, vmin=0, vmax=1, alpha=0.6, interpolation='nearest',
+                    extent=[np.min(x1_range), np.max(x1_range), np.min(x2_range), np.max(x2_range)])
+    cax = fig.add_axes([ax.get_position().x1 + 0.04, ax.get_position().y0, 0.03, ax.get_position().height])
+    cbar = plt.colorbar(im, cax=cax)
+    cbar.outline.set_visible(False)
+    plt.show()

@@ -11,7 +11,6 @@ layer_config:
       size: 10
       activation: relu
 
-
 projection_config:
   H1:
     E:

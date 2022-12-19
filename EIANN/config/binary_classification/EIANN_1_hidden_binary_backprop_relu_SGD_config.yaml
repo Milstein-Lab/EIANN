@@ -4,12 +4,15 @@ layer_config:
       size: 2
   H1:
     E:
-      size: 500
+      size: 30
       activation: relu
+      bias_learning_rule: Backprop
   Output:
     E:
       size: 1
-      activation: relu
+      activation: softplus
+      activation_kwargs:
+        beta: 100
 
 
 projection_config:
@@ -34,3 +37,4 @@ training_kwargs:
   learning_rate: 0.05
   verbose: false
   optimizer: SGD
+  criterion: MSELoss

@@ -1,21 +1,21 @@
 import torch
 import torch.nn as nn
-from torch.nn import MSELoss
-from torch.nn.functional import softplus, relu
+from torch.nn import MSELoss, BCELoss
+from torch.nn.functional import softplus, relu, sigmoid, elu
 from torch.optim import Adam, SGD
 import numpy as np
 from copy import deepcopy
 import time
 
-from .utils import half_kaining_init, scaled_kaining_init
+from EIANN.utils import half_kaining_init, scaled_kaining_init, linear
 import EIANN.rules as rules
 import EIANN.external as external
 
 
 class Network(nn.Module):
     def __init__(self, layer_config, projection_config, learning_rate, optimizer=SGD, optimizer_kwargs=None,
-                 criterion=MSELoss, criterion_kwargs=None, seed=None, tau=1, forward_steps=1, backward_steps=1,
-                 verbose=False):
+                 criterion=MSELoss, criterion_kwargs=None, seed=None, device='cpu', tau=1, forward_steps=1,
+                 backward_steps=1, verbose=False):
         """
 
         :param layer_config: nested dict
@@ -32,6 +32,7 @@ class Network(nn.Module):
         :param verbose: bool
         """
         super().__init__()
+        self.device = device
 
         # Load loss criterion
         if isinstance(criterion, str):
@@ -83,7 +84,7 @@ class Network(nn.Module):
                     for pre_pop_name, projection_kwargs in \
                             projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
                         pre_pop = pre_layer.populations[pre_pop_name]
-                        projection = Projection(pre_pop, post_pop, **projection_kwargs)
+                        projection = Projection(pre_pop, post_pop, device=device, **projection_kwargs)
                         post_pop.append_projection(projection)
                         post_pop.incoming_projections[projection.name] = projection
                         pre_pop.outgoing_projections[projection.name] = projection
@@ -162,7 +163,7 @@ class Network(nn.Module):
         self.loss_history = []
         for layer in self:
             for population in layer:
-                population.reinit()
+                population.reinit(self.device)
                 population.activity_history_list = []
                 population._activity_history = None
                 population.dendrite_history = []
@@ -172,7 +173,7 @@ class Network(nn.Module):
 
         for i, layer in enumerate(self):
             for pop in layer:
-                pop.reinit()
+                pop.reinit(self.device)
             if i == 0:
                 input_pop = next(iter(layer))
                 input_pop.activity = torch.squeeze(sample)
@@ -284,8 +285,8 @@ class Network(nn.Module):
                 dataloader_iter = dataloader
 
             for sample_idx, sample_data, sample_target in dataloader_iter:
-                sample_data = torch.squeeze(sample_data)
-                sample_target = torch.squeeze(sample_target)
+                sample_data = torch.squeeze(sample_data).to(self.device)
+                sample_target = torch.squeeze(sample_target).to(self.device)
                 epoch_sample_order.append(sample_idx)
                 output = self.forward(sample_data, store_history)
 
@@ -319,6 +320,97 @@ class Network(nn.Module):
         self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
         self.loss_history = torch.stack(self.loss_history)
+        return
+
+    def train_and_validate(self, train_dataloader, val_dataloader, epochs, val_interval=(0,-1,50),
+                           store_history=False, store_weights=False, status_bar=False):
+        '''
+        Starting at validate_start, it will probe with the validate_data every validate_interval until >= validate_stop
+        '''
+        num_samples = len(train_dataloader)
+
+        # Save weights & biases & activity
+        if store_weights:
+            self.param_history = [deepcopy(self.state_dict())]
+
+        if status_bar:
+            from tqdm.autonotebook import tqdm
+
+        if status_bar:
+            epoch_iter = tqdm(range(epochs), desc='Epochs')
+        else:
+            epoch_iter = range(epochs)
+
+        self.target_history = []
+
+        # Load validation data & initialize intermediate variables
+        val_output_history = []
+        val_loss_history = []
+        val_accuracy_history = []
+        assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
+        idx, val_data, val_target = next(iter(val_dataloader))
+        val_data = val_data.to(self.device)
+        val_target = val_target.to(self.device)
+        step_range = torch.arange(epochs*num_samples)
+        train_step = 0
+
+        for epoch in epoch_iter:
+            epoch_sample_order = []
+            if status_bar and len(train_dataloader) > epochs:
+                dataloader_iter = tqdm(train_dataloader, desc='Samples', leave=epoch == epochs - 1)
+            else:
+                dataloader_iter = train_dataloader
+
+            for sample_idx, sample_data, sample_target in dataloader_iter:
+                sample_data = torch.squeeze(sample_data).to(self.device)
+                sample_target = torch.squeeze(sample_target).to(self.device)
+                epoch_sample_order.append(sample_idx)
+                output = self.forward(sample_data, store_history)
+
+                loss = self.criterion(output, sample_target)
+                self.loss_history.append(loss.detach())
+                self.target_history.append(sample_target)
+
+                # Update state variables required for weight and bias updates
+                for backward in self.backward_methods:
+                    backward(self, output, sample_target)
+
+                # Step weights and biases
+                for i, post_layer in enumerate(self):
+                    if i > 0:
+                        for post_pop in post_layer:
+                            if post_pop.include_bias:
+                                post_pop.bias_learning_rule.step()
+                            for projection in post_pop:
+                                projection.learning_rule.step()
+
+                self.constrain_weights_and_biases()
+
+                # Save weights & biases & activity
+                if store_weights:
+                    self.param_history.append(deepcopy(self.state_dict()))
+
+                # Compute validation loss
+                if train_step>=step_range[val_interval[0]] and train_step<=step_range[val_interval[1]] \
+                        and train_step%val_interval[2]==0:
+                    output = self.forward(val_data).detach()
+                    val_output_history.append(output)
+                    val_loss_history.append(self.criterion(output, val_target))
+                    accuracy = 100 * torch.sum(torch.argmax(output,dim=1)==torch.argmax(val_target,dim=1)) / output.shape[0]
+                    val_accuracy_history.append(accuracy)
+                train_step += 1
+
+            epoch_sample_order = torch.concat(epoch_sample_order)
+            self.sample_order.extend(epoch_sample_order)
+            self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(epoch_sample_order)))
+
+        self.sample_order = torch.stack(self.sample_order)
+        self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
+        self.loss_history = torch.stack(self.loss_history).cpu()
+        self.val_output_history = torch.stack(val_output_history).cpu()
+        self.val_loss_history = torch.stack(val_loss_history).cpu()
+        self.val_accuracy_history = torch.stack(val_accuracy_history).cpu()
+        self.val_target = val_target.cpu()
 
         return loss.detach()
 
@@ -420,6 +512,7 @@ class Population(object):
 
         # Set bias parameters
         self.bias = nn.Parameter(torch.zeros(self.size), requires_grad=False)
+        self.bias = self.bias.to(network.device)
         self.bias_init = bias_init
         if bias_init_args is None:
             bias_init_args = ()
@@ -465,14 +558,14 @@ class Population(object):
         self.backward_projections = []
         self.outgoing_projections = {}
         self.incoming_projections = {}
-        self.reinit()
+        self.reinit(network.device)
 
-    def reinit(self):
+    def reinit(self, device):
         '''
         Method for resetting state variables of a population
         '''
-        self.activity = torch.zeros(self.size)
-        self.state = torch.zeros(self.size)
+        self.activity = torch.zeros(self.size, device=device)
+        self.state = torch.zeros(self.size, device=device)
         self.sample_activity = []
 
     def append_projection(self, projection):
@@ -529,7 +622,7 @@ class Input(Population):
         self._activity_history = None
         self.projections = {}
         self.outgoing_projections = {}
-        self.reinit()
+        self.reinit(network.device)
 
 
 class Projection(nn.Linear):
