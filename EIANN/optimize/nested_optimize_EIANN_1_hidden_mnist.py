@@ -212,11 +212,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     # Load dataset
     tensor_flatten = T.Compose([T.ToTensor(), T.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=True, download=True,
-                                                     transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/',
-                                                    train=False, download=False,
-                                                    transform=tensor_flatten)
+    MNIST_train_dataset = torchvision.datasets.MNIST(root=context.output_dir+'/datasets/MNIST_data/', train=True,
+                                                     download=True, transform=tensor_flatten)
+    MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir+'/datasets/MNIST_data/', train=False,
+                                                    download=False, transform=tensor_flatten)
 
     # Add index to train & test data
     MNIST_train = []
