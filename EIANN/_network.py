@@ -26,6 +26,7 @@ class Network(nn.Module):
         :param criterion: callable
         :param criterion_kwargs: dict
         :param seed: int or sequence of int
+        :param device: str
         :param tau: int
         :param forward_steps: int
         :param backward_steps: int
@@ -164,10 +165,7 @@ class Network(nn.Module):
         for layer in self:
             for population in layer:
                 population.reinit(self.device)
-                population.activity_history_list = []
-                population._activity_history = None
-                population.dendrite_history = []
-                population.plateau_history = []
+                population.reset_history()
 
     def forward(self, sample, store_history=False):
 
@@ -193,23 +191,20 @@ class Network(nn.Module):
                             delta_state = -post_pop.state + post_pop.bias
                             for projection in post_pop:
                                 pre_pop = projection.pre
-                                if projection.direction in ['forward', 'F']:
-                                    delta_state = delta_state + projection(pre_pop.activity)
-                                elif projection.direction in ['recurrent', 'R']:
-                                    delta_state = delta_state + projection(pre_pop.prev_activity)
+                                if projection.update_phase in ['forward', 'F']:
+                                    if projection.direction in ['forward', 'F']:
+                                        delta_state = delta_state + projection(pre_pop.activity)
+                                    elif projection.direction in ['recurrent', 'R']:
+                                        delta_state = delta_state + projection(pre_pop.prev_activity)
                             post_pop.state = post_pop.state + delta_state / post_pop.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
                         if store_history:
-                            post_pop.sample_activity.append(post_pop.activity.detach().clone())
+                            post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
 
         if store_history:
             for layer in self:
                 for pop in layer:
-                    pop.activity_history_list.append(pop.sample_activity)
-
-                    if hasattr(pop, 'dendritic_state'):
-                        pop.dendrite_history.append(pop.dendritic_state.clone())
-                        pop.plateau_history.append(pop.plateau.clone())
+                    pop.activity_history_list.append(pop.forward_steps_activity)
 
         return next(iter(layer)).activity
 
@@ -296,7 +291,7 @@ class Network(nn.Module):
 
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
-                    backward(self, output, sample_target)
+                    backward(self, output, sample_target, store_history)
 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
@@ -309,7 +304,7 @@ class Network(nn.Module):
 
                 self.constrain_weights_and_biases()
 
-                 # Save weights & biases & activity
+                # Store history of weights and biases
                 if store_weights:
                     self.param_history.append(deepcopy(self.state_dict()))
 
@@ -320,13 +315,22 @@ class Network(nn.Module):
         self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
         self.loss_history = torch.stack(self.loss_history)
-        return
+
+        return loss.detach()
 
     def train_and_validate(self, train_dataloader, val_dataloader, epochs, val_interval=(0,-1,50),
                            store_history=False, store_weights=False, status_bar=False):
-        '''
-        Starting at validate_start, it will probe with the validate_data every validate_interval until >= validate_stop
-        '''
+        """
+        Starting at validate_start, probe with the validate_data every validate_interval until >= validate_stop
+        :param train_dataloader:
+        :param val_dataloader:
+        :param epochs:
+        :param val_interval:
+        :param store_history:
+        :param store_weights:
+        :param status_bar:
+        :return:
+        """
         num_samples = len(train_dataloader)
 
         # Save weights & biases & activity
@@ -373,7 +377,7 @@ class Network(nn.Module):
 
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
-                    backward(self, output, sample_target)
+                    backward(self, output, sample_target, store_history)
 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
@@ -386,7 +390,7 @@ class Network(nn.Module):
 
                 self.constrain_weights_and_biases()
 
-                # Save weights & biases & activity
+                # Store history of weights and biases
                 if store_weights:
                     self.param_history.append(deepcopy(self.state_dict()))
 
@@ -550,23 +554,32 @@ class Population(object):
         self.network.backward_methods.add(bias_learning_rule_class.backward)
 
         # Initialize storage containers
-        self.activity_history_list = []
-        self._activity_history = None
-        self.dendrite_history = []
-        self.plateau_history = []
         self.projections = {}
         self.backward_projections = []
         self.outgoing_projections = {}
         self.incoming_projections = {}
         self.reinit(network.device)
+        self.reset_history()
 
     def reinit(self, device):
-        '''
+        """
         Method for resetting state variables of a population
-        '''
+        :param device:
+        """
         self.activity = torch.zeros(self.size, device=device)
         self.state = torch.zeros(self.size, device=device)
-        self.sample_activity = []
+        self.forward_steps_activity = []
+
+    def reset_history(self):
+        """
+
+        """
+        self.activity_history_list = []
+        self._activity_history = None
+        self.backward_activity_history_list = []
+        self._backward_activity_history = None
+        self.plateau_history_list = []
+        self._plateau_history = None
 
     def append_projection(self, projection):
         """
@@ -592,20 +605,61 @@ class Population(object):
     def activity_history(self):
         if self._activity_history is None:
             if self.activity_history_list:
-                self._activity_history = torch.stack([torch.stack(sample_activity)
-                                                      for sample_activity in self.activity_history_list])
+                self._activity_history = \
+                    torch.stack([torch.stack(forward_steps_activity)
+                                 for forward_steps_activity in self.activity_history_list])
                 self.activity_history_list = []
         else:
             if self.activity_history_list:
-                self._activity_history = torch.cat([self._activity_history,
-                                                    torch.stack([torch.stack(sample_activity)
-                                                                 for sample_activity in self.activity_history_list])])
+                self._activity_history = \
+                    torch.cat([self._activity_history,
+                               torch.stack([torch.stack(forward_steps_activity)
+                                            for forward_steps_activity in self.activity_history_list])])
                 self.activity_history_list = []
 
         return self._activity_history
 
     @property
+    def backward_activity_history(self):
+        if not hasattr(self, '_backward_activity_history'):
+            return None
+        if self._backward_activity_history is None:
+            if self.backward_activity_history_list:
+                self._backward_activity_history = \
+                    torch.stack([torch.stack(backward_steps_activity)
+                                 for backward_steps_activity in self.backward_activity_history_list])
+                self.backward_activity_history_list = []
+        else:
+            if self.backward_activity_history_list:
+                self._backward_activity_history = \
+                    torch.cat([self._backward_activity_history,
+                               torch.stack([torch.stack(backward_steps_activity)
+                                            for backward_steps_activity in self.backward_activity_history_list])])
+                self.backward_activity_history_list = []
+
+        return self._backward_activity_history
+
+    @property
+    def plateau_history(self):
+        if not hasattr(self, '_plateau_history'):
+            return None
+        if self._plateau_history is None:
+            if self.plateau_history_list:
+                self._plateau_history = torch.stack(self.plateau_history_list)
+                self.plateau_history_list = []
+        else:
+            if self.plateau_history_list:
+                self._plateau_history = torch.cat([self._plateau_history, torch.stack(self.plateau_history_list)])
+                self.plateau_history_list = []
+
+        return self._plateau_history
+
+    @property
     def bias_history(self):
+        """
+        TODO: cache the bias_history so this doesn't have to rebuilt from scratch at each call
+        :return:
+        """
         param_history = self.network.param_history
         _bias_history = [param_history[t][f'parameter_dict.{self.fullname}_bias'] for t in range(len(param_history))]
         return torch.stack(_bias_history)
@@ -618,17 +672,20 @@ class Input(Population):
         self.name = name
         self.fullname = layer.name+self.name
         self.size = size
-        self.activity_history_list = []
-        self._activity_history = None
         self.projections = {}
         self.outgoing_projections = {}
         self.reinit(network.device)
+        self.reset_history()
+
+    def reset_history(self):
+        self.activity_history_list = []
+        self._activity_history = None
 
 
 class Projection(nn.Linear):
     def __init__(self, pre_pop, post_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
-                 weight_constraint_kwargs=None, weight_bounds=None, direction='forward', compartment=None,
-                 learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None):
+                 weight_constraint_kwargs=None, weight_bounds=None, direction='forward', update_phase='forward',
+                 compartment=None, learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None):
         """
 
         :param pre_pop: :class:'Population'
@@ -638,7 +695,8 @@ class Projection(nn.Linear):
         :param weight_constraint: str
         :param weight_constraint_kwargs: dict
         :param weight_bounds: tuple of float
-        :param direction: str in ['forward', 'backward', 'recurrent', 'F', 'B', 'R']
+        :param direction: str in ['forward', 'recurrent', 'F', 'R']
+        :param update_phase: str in ['forward', 'backward', 'F', B']
         :param compartment: None or str in ['soma', 'dend']
         :param learning_rule: str
         :param learning_rule_kwargs: dict
@@ -677,16 +735,17 @@ class Projection(nn.Linear):
 
         self.weight_bounds = weight_bounds
 
-        if direction not in ['forward', 'backward', 'recurrent', 'F', 'B', 'R']:
-            raise RuntimeError('Projection: direction (%s) must be forward, backward, or recurrent' %
-                               direction)
+        if direction not in ['forward', 'recurrent', 'F', 'R']:
+            raise RuntimeError('Projection: direction (%s) must be forward or recurrent' % direction)
         self.direction = direction
-        if self.direction in ['backward', 'B']:
+        if update_phase not in ['forward', 'backward', 'F', 'B']:
+            raise RuntimeError('Projection: update_phase (%s) must be forward or backward' % update_phase)
+        if update_phase in ['backward', 'B']:
             self.post.backward_projections.append(self)
+        self.update_phase = update_phase
 
         if compartment is not None and compartment not in ['soma', 'dend']:
-            raise RuntimeError('Projection: compartment (%s) must be None, soma, or dend' %
-                               compartment)
+            raise RuntimeError('Projection: compartment (%s) must be None, soma, or dend' % compartment)
         self.compartment = compartment
 
         # Set learning rule as callable of the projection
