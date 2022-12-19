@@ -17,9 +17,14 @@ kwargs:
   data_seed_start: 1
   supervised: True
   status_bar: False
-  epochs: 300
-  num_epochs_argmax_accuracy: 50
+  train_steps: 10000
+  epochs: 1
   network_config_file_path: config/MNIST/EIANN_1_hidden_mnist_backprop_Dale_softplus_SGD_config.yaml
+  val_interval:
+    - -200
+    - -1
+    - 10
+  num_training_steps_accuracy_window: 200
 update_context:
 - source: optimize.nested_optimize_EIANN_1_hidden_mnist
   function: update_EIANN_config_1_hidden_mnist_backprop_Dale_softplus_SGD
@@ -31,6 +36,6 @@ stages:
   get_objectives: get_objectives
 optimization_title: EIANN_1_hidden_mnist_backprop_Dale_softplus_SGD
 x0:
-  learning_rate: 9.99980526071132
+  learning_rate: 0.2
   softplus_beta: 99.78563100135408
-  H1_FBI_size: 50
+  H1_FBI_size: 5

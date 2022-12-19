@@ -9,8 +9,9 @@ import h5py
 
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
-    sort_by_val_history
-from EIANN.plot import plot_simple_EIANN_config_summary, plot_simple_EIANN_weight_history_diagnostic
+    sort_by_val_history, recompute_validation_loss_and_accuracy
+from EIANN.plot import plot_simple_EIANN_config_summary, plot_simple_EIANN_weight_history_diagnostic, \
+    plot_batch_accuracy
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
 
@@ -123,10 +124,13 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         target = torch.eye(len(MNIST_test_dataset.classes))[target]
         MNIST_test.append((idx, data, target))
 
+    context.train_steps = int(context.train_steps)
+
     # Put data in dataloader
     data_generator = torch.Generator()
     train_dataloader = torch.utils.data.DataLoader(MNIST_train, shuffle=True, generator=data_generator)
-    train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:10000], shuffle=True, generator=data_generator)
+    train_sub_dataloader = \
+        torch.utils.data.DataLoader(MNIST_train[0:context.train_steps], shuffle=True, generator=data_generator)
     val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
 
@@ -135,64 +139,60 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
 
     if plot:
-        network.test(test_dataloader, store_history=True, status_bar=context.status_bar)
-        plot_simple_EIANN_config_summary(network, num_samples=len(train_dataloader), label='Initial')
-        network.reset_history()
+        plot_batch_accuracy(network, test_dataloader, title='Initial')
 
     data_generator.manual_seed(data_seed)
     network.train_and_validate(train_sub_dataloader,
                                val_dataloader,
                                epochs=epochs,
                                val_interval=context.val_interval, # e.g. (-200, -1, 10)
-                               store_history=True,
+                               store_history=False,
                                store_weights=context.store_weights,
                                status_bar=context.status_bar)
 
     if not context.supervised: #reorder output units if using unsupervised/Hebbian rule
-        min_loss_idx, min_loss_sorting = sort_by_val_history(network, plot=plot)
+        min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
     else:
         min_loss_idx = torch.argmin(network.val_loss_history)
+        sorted_output_idx = torch.arange(0, network.val_output_history.shape[-1])
 
-    sorted_val_loss_history, sorted_accuracy_history = recompute_validation_loss_and_accuracy(network, target, output_sorting_idx=min_loss_sorting, plot=plot)
-    network.val_loss_history = sorted_loss_history
-    network.val_accuracy_history = sorted_accuracy_history
+    sorted_val_loss_history, sorted_val_accuracy_history = \
+        recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
 
-    # Select for stability by computing mean accuracy in a window after the best epoch
-    val_stepsize = context.val_interval[2]
-    val_start_idx = context.val_interval[0]
-    if min_loss_idx + context.argmax_accuracy_window/val_stepsize > len(network.val_loss_history): # if best loss too close to the end
-        best_accuracy_window = torch.mean(network.val_accuracy_history[-context.argmax_accuracy_window:])
-        best_loss_window = torch.mean(network.val_loss_history[-context.argmax_accuracy_window:])
+    # Select for stability by computing mean accuracy in a window after the best validation step
+    val_stepsize = int(context.val_interval[2])
+    val_start_idx = int(context.val_interval[0])
+    num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
+    if min_loss_idx + num_val_steps_accuracy_window > len(sorted_val_loss_history): # if best loss too close to the end
+        best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
+        best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
     else:
-        best_accuracy_window = torch.mean(network.val_accuracy_history[min_loss_idx:min_loss_idx+context.argmax_accuracy_window])
-        best_loss_window = torch.mean(network.val_loss_history[min_loss_idx:min_loss_idx+context.argmax_accuracy_window])
+        best_accuracy_window = \
+            torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx+num_val_steps_accuracy_window])
+        best_loss_window = torch.mean(sorted_val_loss_history[min_loss_idx:min_loss_idx+num_val_steps_accuracy_window])
 
-    final_loss = torch.mean(network.val_loss_history[-context.argmax_accuracy_window:])
-    final_argmax_accuracy = torch.mean(network.val_accuracy_history[-context.argmax_accuracy_window:])
+    final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
+    final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
 
     if context.eval_accuracy == 'final':
-        start_index = (epochs - 1) * len(dataloader)
         results = {'loss': final_loss,
                    'accuracy': final_argmax_accuracy}
     elif context.eval_accuracy == 'best':
-        start_index = min_loss_idx*val_stepsize + len(train_sub_dataloader[:val_start_idx])
         results = {'loss': best_loss_window,
                    'accuracy': best_accuracy_window}
     else:
         raise Exception('nested_optimize_EIANN_1_hidden: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
     if plot:
-        plot_simple_EIANN_config_summary(network, num_samples=len(train_sub_dataloader), start_index=start_index,
-                                         sorted_output_idx=min_loss_sorting, label='Final')
+        plot_batch_accuracy(network, test_dataloader, title='Final')
 
     if context.debug:
         print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
                                                                          network.Output.E.activity))
         context.update(locals())
-        if plot:
-            plot_simple_EIANN_weight_history_diagnostic(network)
 
     if export:
+        # TODO: refactor
         if context.export_network_config_file_path is not None:
             config_dict = {'layer_config': context.layer_config,
                            'projection_config': context.projection_config,
@@ -203,7 +203,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       (os.getpid(), context.export_network_config_file_path))
         if context.temp_output_path is not None:
 
-            end_index = start_index + context.argmax_accuracy_window
+            end_index = start_index + context.num_training_steps_argmax_accuracy_window
             output_layer = list(network)[-1]
             output_pop = next(iter(output_layer))
 
@@ -222,10 +222,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                         activity_data = \
                             post_pop.activity_history[network.sorted_sample_indexes, -1, :][start_index:end_index, :].T
                         if post_pop == output_pop:
-                            activity_data = activity_data[sorted_idx,:]
+                            activity_data = activity_data[sorted_output_idx,:]
                         post_layer_activity.create_dataset(post_pop.name, data=activity_data)
-                metrics_group.create_dataset('loss', data=network.val_loss_history)
-                metrics_group.create_dataset('accuracy', data=network.val_accuracy_history)
+                metrics_group.create_dataset('loss', data=sorted_val_loss_history)
+                metrics_group.create_dataset('accuracy', data=sorted_val_accuracy_history)
 
     return results
 

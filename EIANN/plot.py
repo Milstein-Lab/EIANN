@@ -840,14 +840,15 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     cax = fig.add_axes([ax.get_position().x1 + 0.04, ax.get_position().y0, 0.03, ax.get_position().height])
     cbar = plt.colorbar(im, cax=cax)
     cbar.outline.set_visible(False)
-    plt.show()
+    fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader):
+def plot_batch_accuracy(network, test_dataloader, title=None):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
     :param test_dataloader:
+    :param title: str
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
 
@@ -876,5 +877,8 @@ def plot_batch_accuracy(network, test_dataloader):
     ax.set_yticks(range(10))
     ax.set_xlabel('Labels')
     ax.set_ylabel('Output unit')
-    ax.set_title('Average output activity')
-    plt.show()
+    if title is not None:
+        ax.set_title('Average output activity - %s' % title)
+    else:
+        ax.set_title('Average output activity')
+    fig.show()

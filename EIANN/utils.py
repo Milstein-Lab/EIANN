@@ -296,23 +296,25 @@ def sort_unsupervised_by_best_epoch(network, target, plot=False):
     return sorted_idx
 
 
-def recompute_validation_loss_and_accuracy(network, output_sorting_idx, plot=False):
+def recompute_validation_loss_and_accuracy(network, sorted_output_idx, plot=False):
 
     # Sort output history
-    network.val_output_history = network.val_output_history[:,:,sorted_output_idx]
-
+    val_output_history = network.val_output_history[:, :, sorted_output_idx]
+    print(val_output_history.shape)
     # Recompute loss
     sorted_val_loss_history = []
-    sorted_accuracy_history = []
-    num_patterns = network.val_output_history.shape[0]
-    for output in network.val_output_history:
-        loss = network.criterion(output,network.val_target).detach()
-        accuracy = 100 * torch.sum(torch.argmax(output,dim=1) == torch.argmax(target,dim=1)) / num_patterns
+    sorted_val_accuracy_history = []
+    num_patterns = val_output_history.shape[1]
+    for batch_output in val_output_history:
+        loss = network.criterion(batch_output, network.val_target).detach()
+        print(batch_output.shape)
+        print(network.val_target.shape)
+        accuracy = 100 * torch.sum(torch.argmax(batch_output, dim=1) == torch.argmax(network.val_target, dim=1)) / num_patterns
 
         sorted_val_loss_history.append(loss)
-        sorted_accuracy_history.append(accuracy)
+        sorted_val_accuracy_history.append(accuracy)
 
-    return sorted_val_loss_history, sorted_accuracy_history
+    return torch.tensor(sorted_val_loss_history), torch.tensor(sorted_val_accuracy_history)
 
 
 def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=None, plot=False):
