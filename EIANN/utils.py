@@ -211,6 +211,8 @@ def sort_by_val_history(network, plot=False):
     output_layer = list(network)[-1]
     output_pop = next(iter(output_layer))
 
+    num_units = network.val_target.shape[1]
+    num_labels = num_units
     num_patterns = network.val_target.shape[0]
 
     sorting_history = []
@@ -220,9 +222,9 @@ def sort_by_val_history(network, plot=False):
 
     for output in network.val_output_history:
         # Get average output for each label class
-        avg_output = torch.zeros(num_units, num_units)
+        avg_output = torch.zeros(num_labels, num_units)
         targets = torch.argmax(network.val_target, dim=1)  # convert from 1-hot vector to int label
-        for label in range(num_units):
+        for label in range(num_labels):
             label_idx = torch.where(targets == label)  # find all instances of given label
             avg_output[label, :] = torch.mean(output[label_idx], dim=0)
 
@@ -477,9 +479,10 @@ def get_optimal_sorting(network, test_dataloader, plot=False):
 
         # Get average output for each label class
         num_units = network.val_target.shape[1]
-        avg_output = torch.zeros(num_units, num_units)
+        num_labels = num_units
+        avg_output = torch.zeros(num_labels, num_units)
         targets = torch.argmax(network.val_target, dim=1)  # convert from 1-hot vector to int label
-        for label in range(num_units):
+        for label in range(num_labels):
             label_idx = torch.where(targets == label)  # find all instances of given label
             avg_output[label, :] = torch.mean(output[label_idx], dim=0)
 
