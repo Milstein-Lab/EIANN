@@ -320,8 +320,7 @@ class Network(nn.Module):
         self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
         self.loss_history = torch.stack(self.loss_history)
-
-        return loss.detach()
+        return
 
     def train_and_validate(self, train_dataloader, val_dataloader, epochs, val_interval=(0,-1,50),
                            store_history=False, store_weights=False, status_bar=False):
@@ -414,8 +413,6 @@ class Network(nn.Module):
         self.val_target = val_target.cpu()
 
         return loss.detach()
-
-
 
     def __iter__(self):
         for layer in self.layers.values():

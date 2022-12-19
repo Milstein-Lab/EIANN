@@ -7,7 +7,7 @@ layer_config:
       size: 500
       activation: relu
     FBI:
-      size: 5
+      size: 1
       activation: relu
       tau: 2
   Output:
@@ -15,7 +15,7 @@ layer_config:
       size: 10
       activation: relu
     FBI:
-      size: 3
+      size: 0
       activation: relu
       tau: 2
 
