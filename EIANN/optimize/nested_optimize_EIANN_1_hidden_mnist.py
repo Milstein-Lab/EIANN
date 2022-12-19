@@ -91,6 +91,29 @@ def update_EIANN_config_1_hidden_mnist_backprop_Dale_softplus_SGD(x, context):
     context.training_kwargs['learning_rate'] = learning_rate
 
 
+def update_EIANN_config_1_hidden_mnist_backprop_Dale_relu_SGD(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    E_E_learning_rate = param_dict['E_E_learning_rate']
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+    H1_FBI_size = int(param_dict['H1_FBI_size'])
+
+    context.layer_config['H1']['FBI']['size'] = H1_FBI_size
+
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['H1']['E']['H1']['FBI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['FBI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['Output']['E']['Output']['FBI']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    context.projection_config['Output']['FBI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
 def update_EIANN_config_1_hidden_mnist_BTSP_D(x, context):
     """
 
