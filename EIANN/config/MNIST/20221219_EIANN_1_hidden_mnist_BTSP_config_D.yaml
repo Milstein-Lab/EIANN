@@ -1,0 +1,150 @@
+layer_config:
+  Input:
+    E:
+      size: 784
+  H1:
+    E:
+      size: 500
+      activation: relu
+    FBI:
+      size: 1
+      activation: relu
+    Dend_I:
+      size: 50
+      activation: relu
+  Output:
+    E:
+      size: 10
+      activation: relu
+    FBI:
+      size: 1
+      activation: relu
+
+projection_config:
+  H1:
+    E:
+      Input:
+        E:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - 0
+          - 0.01868230994816529
+          weight_bounds: !!python/tuple
+          - 0
+          - 2.6271244086908077
+          learning_rule: BTSP
+          learning_rule_kwargs:
+            pos_loss_th: 0.09784687841043647
+            neg_loss_th: -0.3286811033799936
+            learning_rate: 0.007971513519070807
+      H1:
+        FBI:
+          weight_init: fill_
+          weight_init_args: !!python/tuple
+          - -0.01320454234508166
+          direction: R
+          learning_rule: null
+        Dend_I:
+          weight_init: half_kaining
+          weight_init_args: !!python/tuple
+          - 0.015693539946852347
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          update_phase: B
+          compartment: dend
+          learning_rule: DendriticLoss
+          learning_rule_kwargs:
+            sign: -1
+            learning_rate: 0.17678741629227127
+      Output:
+        E:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - 0.03587144541046475
+          - 0.26314015375055133
+          weight_bounds: !!python/tuple
+          - 0
+          - 3.188187856987675
+          update_phase: B
+          compartment: dend
+          learning_rule: BTSP
+          learning_rule_kwargs:
+            pos_loss_th: 0.09784687841043647
+            neg_loss_th: -0.3286811033799936
+            learning_rate: 0.12158604517445257
+    FBI:
+      H1:
+        E:
+          weight_init: fill_
+          weight_init_args: !!python/tuple
+          - 0.1
+          direction: F
+          learning_rule: null
+    Dend_I:
+      H1:
+        E:
+          weight_init: half_kaining
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 1.6031850794519455
+          update_phase: B
+          learning_rule: GjorgievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.12088626416087091
+        Dend_I:
+          weight_init: half_kaining
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 1.6417419993432327
+          update_phase: B
+          direction: R
+          learning_rule: GjorgievaHebb
+          learning_rule_kwargs:
+            sign: -1
+            learning_rate: 0.049197464356146144
+  Output:
+    E:
+      H1:
+        E:
+          weight_init: uniform_
+          weight_init_args: !!python/tuple
+          - 0
+          - 0.08546819391699932
+          weight_bounds: !!python/tuple
+          - 0
+          - 4.006206567051037
+          direction: F
+          learning_rule: BTSP
+          learning_rule_kwargs:
+            pos_loss_th: 0.06431319592892012
+            neg_loss_th: -0.386039824588577
+            learning_rate: 0.11277464693344395
+      Output:
+        FBI:
+          weight_init: fill_
+          weight_init_args: !!python/tuple
+          - -0.3002765663599449
+          direction: R
+          learning_rule: null
+    FBI:
+      Output:
+        E:
+          weight_init: fill_
+          weight_init_args: !!python/tuple
+          - 0.1
+          direction: F
+          learning_rule: null
+
+training_kwargs:
+  tau: 3
+  forward_steps: 10
+  backward_steps: 0
+  learning_rate: 0.9553728
