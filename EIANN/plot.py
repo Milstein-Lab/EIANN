@@ -841,3 +841,40 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     cbar = plt.colorbar(im, cax=cax)
     cbar.outline.set_visible(False)
     plt.show()
+
+
+def plot_batch_accuracy(network, test_dataloader):
+    """
+    Compute total accuracy (% correct) on given dataset
+    :param network:
+    :param test_dataloader:
+    """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    indexes, data, targets = next(iter(test_dataloader))
+    data = data.to(network.device)
+    targets = targets.to(network.device)
+    labels = torch.argmax(targets, axis=1)
+    output = network.forward(data).detach()
+    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
+    percent_correct = torch.round(percent_correct, decimals=2)
+    print(f'Batch accuracy = {percent_correct}%')
+
+    # Plot average output for each label class
+    num_units = targets.shape[1]
+    num_labels = num_units
+    avg_output = torch.zeros(num_units, num_labels)
+    targets = torch.argmax(targets, dim=1)  # convert from 1-hot vector to int label
+    for label in range(num_labels):
+        label_idx = torch.where(targets == label)  # find all instances of given label
+        avg_output[:, label] = torch.mean(output[label_idx], dim=0)
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(avg_output, interpolation='none')
+    cbar = plt.colorbar(im)
+    ax.set_xticks(range(10))
+    ax.set_yticks(range(10))
+    ax.set_xlabel('Labels')
+    ax.set_ylabel('Output unit')
+    ax.set_title('Average output activity')
+    plt.show()
