@@ -300,7 +300,7 @@ def recompute_validation_loss_and_accuracy(network, sorted_output_idx, plot=Fals
 
     # Sort output history
     val_output_history = network.val_output_history[:, :, sorted_output_idx]
-    
+
     # Recompute loss
     sorted_val_loss_history = []
     sorted_val_accuracy_history = []
