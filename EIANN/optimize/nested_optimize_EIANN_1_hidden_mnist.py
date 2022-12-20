@@ -53,10 +53,37 @@ def config_worker():
     else:
         context.store_weights = bool(context.store_weights)
 
+    context.train_steps = int(context.train_steps)
+
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
+
+    # Load dataset
+    tensor_flatten = T.Compose([T.ToTensor(), T.Lambda(torch.flatten)])
+    MNIST_train_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=True,
+                                                     download=True, transform=tensor_flatten)
+    MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=False,
+                                                    download=False, transform=tensor_flatten)
+
+    # Add index to train & test data
+    MNIST_train = []
+    for idx, (data, target) in enumerate(MNIST_train_dataset):
+        target = torch.eye(len(MNIST_train_dataset.classes))[target]
+        MNIST_train.append((idx, data, target))
+
+    MNIST_test = []
+    for idx, (data, target) in enumerate(MNIST_test_dataset):
+        target = torch.eye(len(MNIST_test_dataset.classes))[target]
+        MNIST_test.append((idx, data, target))
+
+    # Put data in dataloader
+    context.data_generator = torch.Generator()
+    context.train_sub_dataloader = \
+        torch.utils.data.DataLoader(MNIST_train[0:context.train_steps], shuffle=True, generator=context.data_generator)
+    context.val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
+    context.test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
 
 
 def get_random_seeds():
@@ -208,35 +235,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     """
     update_source_contexts(x, context)
 
-    input_size = 784
-
-    # Load dataset
-    tensor_flatten = T.Compose([T.ToTensor(), T.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root=context.output_dir+'/datasets/MNIST_data/', train=True,
-                                                     download=True, transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir+'/datasets/MNIST_data/', train=False,
-                                                    download=False, transform=tensor_flatten)
-
-    # Add index to train & test data
-    MNIST_train = []
-    for idx, (data, target) in enumerate(MNIST_train_dataset):
-        target = torch.eye(len(MNIST_train_dataset.classes))[target]
-        MNIST_train.append((idx, data, target))
-
-    MNIST_test = []
-    for idx, (data, target) in enumerate(MNIST_test_dataset):
-        target = torch.eye(len(MNIST_test_dataset.classes))[target]
-        MNIST_test.append((idx, data, target))
-
-    context.train_steps = int(context.train_steps)
-
-    # Put data in dataloader
-    data_generator = torch.Generator()
-    train_dataloader = torch.utils.data.DataLoader(MNIST_train, shuffle=True, generator=data_generator)
-    train_sub_dataloader = \
-        torch.utils.data.DataLoader(MNIST_train[0:context.train_steps], shuffle=True, generator=data_generator)
-    val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
-    test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
+    data_generator = context.data_generator
+    train_sub_dataloader = context.train_sub_dataloader
+    val_dataloader = context.val_dataloader
+    test_dataloader = context.test_dataloader
 
     epochs = context.epochs
 
@@ -254,7 +256,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                                store_weights=context.store_weights,
                                status_bar=context.status_bar)
 
-    if not context.supervised: #reorder output units if using unsupervised/Hebbian rule
+    # reorder output units if using unsupervised/Hebbian rule
+    if not context.supervised:
         min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
     else:
         min_loss_idx = torch.argmin(network.val_loss_history)
@@ -287,12 +290,16 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     else:
         raise Exception('nested_optimize_EIANN_1_hidden: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
+
+    if torch.isnan(results['loss']):
+        return dict()
+
     if plot:
         plot_batch_accuracy(network, test_dataloader, title='Final')
 
     if context.debug:
-        print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
-                                                                         network.Output.E.activity))
+        print('pid: %i, seed: %i, network.val_loss_history: %s' % (os.getpid(), seed, network.val_loss_history))
+        sys.stdout.flush()
         context.update(locals())
 
     if export:

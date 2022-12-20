@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn import MSELoss, BCELoss
 from torch.nn.functional import softplus, relu, sigmoid, elu
 from torch.optim import Adam, SGD
-import numpy as np
+import sys
 from copy import deepcopy
 import time
 
@@ -402,8 +402,9 @@ class Network(nn.Module):
                         and train_step%val_interval[2]==0:
                     output = self.forward(val_data).detach()
                     val_output_history.append(output)
-                    val_loss_history.append(self.criterion(output, val_target))
-                    accuracy = 100 * torch.sum(torch.argmax(output,dim=1)==torch.argmax(val_target,dim=1)) / output.shape[0]
+                    val_loss_history.append(self.criterion(output, val_target).detach())
+                    accuracy = 100 * torch.sum(torch.argmax(output,dim=1)==torch.argmax(val_target,dim=1)) / \
+                               output.shape[0]
                     val_accuracy_history.append(accuracy)
                 train_step += 1
 

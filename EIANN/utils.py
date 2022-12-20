@@ -307,7 +307,8 @@ def recompute_validation_loss_and_accuracy(network, sorted_output_idx, plot=Fals
     num_patterns = val_output_history.shape[1]
     for batch_output in val_output_history:
         loss = network.criterion(batch_output, network.val_target).detach()
-        accuracy = 100 * torch.sum(torch.argmax(batch_output, dim=1) == torch.argmax(network.val_target, dim=1)) / num_patterns
+        accuracy = 100 * torch.sum(torch.argmax(batch_output, dim=1) ==
+                                   torch.argmax(network.val_target, dim=1)) / num_patterns
 
         sorted_val_loss_history.append(loss)
         sorted_val_accuracy_history.append(accuracy)
