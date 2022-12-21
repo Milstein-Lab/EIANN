@@ -10,8 +10,7 @@ import h5py
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
     sort_by_val_history, recompute_validation_loss_and_accuracy
-from EIANN.plot import plot_simple_EIANN_config_summary, plot_simple_EIANN_weight_history_diagnostic, \
-    plot_batch_accuracy
+from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
 
@@ -52,6 +51,8 @@ def config_worker():
         context.store_weights = False
     else:
         context.store_weights = bool(context.store_weights)
+    if 'store_weights_interval' not in context():
+        context.store_weights_interval = (0, -1, 100)
 
     context.train_steps = int(context.train_steps)
 
@@ -251,9 +252,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     network.train_and_validate(train_sub_dataloader,
                                val_dataloader,
                                epochs=epochs,
-                               val_interval=context.val_interval, # e.g. (-200, -1, 10)
+                               val_interval=context.val_interval, # e.g. (-201, -1, 10)
                                store_history=False,
                                store_weights=context.store_weights,
+                               store_weights_interval=context.store_weights_interval,
                                status_bar=context.status_bar)
 
     # reorder output units if using unsupervised/Hebbian rule
@@ -264,7 +266,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         sorted_output_idx = torch.arange(0, network.val_output_history.shape[-1])
 
     sorted_val_loss_history, sorted_val_accuracy_history = \
-        recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
+        recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
 
     # Select for stability by computing mean accuracy in a window after the best validation step
     val_stepsize = int(context.val_interval[2])
@@ -296,6 +298,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     if plot:
         plot_batch_accuracy(network, test_dataloader, title='Final')
+        plot_train_loss_history(network)
+        plot_validate_loss_history(network)
 
     if context.debug:
         print('pid: %i, seed: %i, network.val_loss_history: %s' % (os.getpid(), seed, network.val_loss_history))
@@ -303,15 +307,17 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         context.update(locals())
 
     if export:
-        # TODO: refactor
         if context.export_network_config_file_path is not None:
             config_dict = {'layer_config': context.layer_config,
                            'projection_config': context.projection_config,
                            'training_kwargs': context.training_kwargs}
             write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
             if context.disp:
-                print('nested_optimize_EIANN_1_hidden: pid: %i exported network config to %s' %
+                print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
                       (os.getpid(), context.export_network_config_file_path))
+
+        # TODO: refactor
+        """
         if context.temp_output_path is not None:
 
             end_index = start_index + context.num_training_steps_argmax_accuracy_window
@@ -337,6 +343,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                         post_layer_activity.create_dataset(post_pop.name, data=activity_data)
                 metrics_group.create_dataset('loss', data=sorted_val_loss_history)
                 metrics_group.create_dataset('accuracy', data=sorted_val_accuracy_history)
+        """
 
     return results
 

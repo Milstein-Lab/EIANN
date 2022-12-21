@@ -24,7 +24,7 @@ kwargs:
   epochs: 1
   network_config_file_path: config/MNIST/EIANN_1_hidden_mnist_backprop_Dale_relu_SGD_config.yaml
   val_interval:
-    - -200
+    - -201
     - -1
     - 10
   num_training_steps_accuracy_window: 200
