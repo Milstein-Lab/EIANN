@@ -320,6 +320,29 @@ def plot_simple_EIANN_weight_history_diagnostic(network):
     fig.show()
 
 
+def plot_hidden_weights(weights):
+    num_rows = weights.shape[0]
+    num_cols = int(num_rows ** 0.5)  # make the number of rows and columns approximately equal
+
+    axes = gs.GridSpec(num_rows, num_cols)
+    fig = plt.figure(figsize=(12, 12 * num_rows / num_cols))
+
+    for i, unit_weight_vec in enumerate(weights):
+        # Calculate the row and column indices for the current subplot
+        row_idx = i // num_cols
+        col_idx = i % num_cols
+
+        img_dim = int(unit_weight_vec.shape[0] ** 0.5)
+        img = unit_weight_vec.view(img_dim, img_dim)
+
+        # Add a subplot to the figure at the specified row and column
+        ax = fig.add_subplot(axes[row_idx, col_idx])
+        ax.imshow(img)
+        ax.axis('off')
+
+    fig.tight_layout(pad=0.2)
+
+
 # *******************************************************************
 # Loss landscape functions
 # *******************************************************************
