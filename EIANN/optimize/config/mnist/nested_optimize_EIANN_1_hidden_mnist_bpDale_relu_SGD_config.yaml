@@ -9,8 +9,8 @@ bounds:
     - 0.0001
     - 10.
   H1_FBI_size:
-    - 0.
-    - 200.
+    - 1.
+    - 100.
 default_params:
 kwargs:
   network_id: 1
