@@ -7,7 +7,7 @@ layer_config:
       size: 500
       activation: relu
     FBI:
-      size: 5
+      size: 14
       activation: relu
       tau: 2
   Output:
@@ -30,7 +30,7 @@ projection_config:
           direction: F
           learning_rule: Backprop
           learning_rule_kwargs:
-            learning_rate: 0.2
+            learning_rate: 0.22336920149416137
       H1:
         FBI:
           weight_init: half_kaining
@@ -40,7 +40,7 @@ projection_config:
           direction: R
           learning_rule: Backprop
           learning_rule_kwargs:
-            learning_rate: 0.2
+            learning_rate: 0.016298481352946637
     FBI:
       H1:
         E:
@@ -51,7 +51,7 @@ projection_config:
           direction: F
           learning_rule: Backprop
           learning_rule_kwargs:
-            learning_rate: 0.2
+            learning_rate: 0.151980561424801
   Output:
     E:
       H1:
@@ -63,7 +63,7 @@ projection_config:
           direction: F
           learning_rule: Backprop
           learning_rule_kwargs:
-            learning_rate: 0.2
+            learning_rate: 0.22336920149416137
       Output:
         FBI:
           weight_init: half_kaining
@@ -73,7 +73,7 @@ projection_config:
           direction: R
           learning_rule: Backprop
           learning_rule_kwargs:
-            learning_rate: 0.2
+            learning_rate: 0.016298481352946637
     FBI:
       Output:
         E:
@@ -84,7 +84,7 @@ projection_config:
           direction: F
           learning_rule: Backprop
           learning_rule_kwargs:
-            learning_rate: 0.2
+            learning_rate: 0.151980561424801
 training_kwargs:
   tau: 3
   forward_steps: 10
