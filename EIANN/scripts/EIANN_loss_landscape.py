@@ -42,7 +42,7 @@ seed = 42
 
 
 # Gjorgjieva network
-network_config = ut.read_from_yaml('../optimize/data/20220902_EIANN_1_hidden_Gjorgieva_Hebb_config_A.yaml')
+network_config = ut.read_from_yaml('../optimize/data/20220902_EIANN_1_hidden_Gjorgjieva_Hebb_config_A.yaml')
 layer_config = network_config['layer_config']
 projection_config = network_config['projection_config']
 training_kwargs = network_config['training_kwargs']

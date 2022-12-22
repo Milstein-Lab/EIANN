@@ -7,7 +7,7 @@ layer_config:
             size: 500
             activation: relu
         FBI:
-            size: 1
+            size: 50
             activation: relu
         Dend_I:
             size: 77
@@ -17,7 +17,7 @@ layer_config:
             size: 10
             activation: relu
         FBI:
-            size: 1
+            size: 5
             activation: relu
 projection_config:
     H1:
@@ -30,7 +30,7 @@ projection_config:
                         - 0.007299498037857259
                     weight_bounds: !!python/tuple
                         - 0
-                        - 4.062111527699183
+                        - 2.062111527699183
                     learning_rule: BTSP
                     learning_rule_kwargs:
                         pos_loss_th: 0.49208684093166405
@@ -38,11 +38,18 @@ projection_config:
                         learning_rate: 0.10676718697529568
             H1:
                 FBI:
-                    weight_init: fill_
-                    weight_init_args: !!python/tuple
-                        - -0.5474649920757904
+                    weight_init: half_kaining
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 10.474649920757904
                     direction: R
-                    learning_rule: null
+                    learning_rule: GjorgjievaHebb
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.015869788825395782
                 Dend_I:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
@@ -75,11 +82,31 @@ projection_config:
         FBI:
             H1:
                 E:
-                    weight_init: fill_
-                    weight_init_args: !!python/tuple
-                        - 0.14522843305319783
+                    weight_init: half_kaining
+                    weight_bounds: !!python/tuple
+                        - 0
+                        - null
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 1.6031850794519455
                     direction: F
-                    learning_rule: null
+                    learning_rule: GjorgjievaHebb
+                    learning_rule_kwargs:
+                        sign: 1
+                        learning_rate: 0.12088626416087091
+                FBI:
+                    weight_init: half_kaining
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 1.6031850794519455
+                    direction: R
+                    learning_rule: GjorgjievaHebb
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.12088626416087091
         Dend_I:
             H1:
                 E:
@@ -119,7 +146,7 @@ projection_config:
                         - 0.009980752282415248
                     weight_bounds: !!python/tuple
                         - 0
-                        - 3.54222435906092
+                        - 1.54222435906092
                     direction: F
                     learning_rule: BTSP
                     learning_rule_kwargs:
@@ -128,19 +155,47 @@ projection_config:
                         learning_rate: 0.007739101432199625
             Output:
                 FBI:
-                    weight_init: fill_
-                    weight_init_args: !!python/tuple
-                        - -0.8580756092106452
+                    weight_init: half_kaining
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 16.580756092106452
                     direction: R
-                    learning_rule: null
+                    learning_rule: GjorgjievaHebb
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.007739101432199625
         FBI:
             Output:
                 E:
-                    weight_init: fill_
-                    weight_init_args: !!python/tuple
-                        - 0.14522843305319783
+                    weight_init: half_kaining
+                    weight_bounds: !!python/tuple
+                        - 0
+                        - null
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 0.290456866106396
                     direction: F
-                    learning_rule: null
+                    learning_rule: GjorgjievaHebb
+                    learning_rule_kwargs:
+                        sign: 1
+                        learning_rate: 0.007739101432199625
+                FBI:
+                    weight_init: half_kaining
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 1.6031850794519455
+                    direction: R
+                    learning_rule: GjorgjievaHebb
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.007739101432199625
+
 training_kwargs:
     tau: 3
     forward_steps: 10
