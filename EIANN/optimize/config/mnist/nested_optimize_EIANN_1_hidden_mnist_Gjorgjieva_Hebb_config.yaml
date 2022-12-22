@@ -1,6 +1,6 @@
 bounds:
   H1_E_Input_E_weight_scale:
-    - 0.1
+    - 0.01
     - 5.
   H1_E_Input_E_learning_rate:
     - 0.001
@@ -9,13 +9,13 @@ bounds:
     - 0.01
     - 5.
   H1_FBI_H1_E_weight_scale:
-    - 0.1
+    - 0.01
     - 2.
   H1_FBI_H1_FBI_weight_scale:
-    - 0.1
+    - 0.01
     - 2.
   Output_E_H1_E_weight_scale:
-    - 0.1
+    - 0.01
     - 5.
   Output_E_H1_E_learning_rate:
     - 0.001
@@ -24,10 +24,10 @@ bounds:
     - 0.01
     - 5.
   Output_FBI_Output_E_weight_scale:
-    - 0.1
+    - 0.01
     - 2.
   Output_FBI_Output_FBI_weight_scale:
-    - 0.1
+    - 0.01
     - 2.
   E_I_learning_rate:
     - 0.001
