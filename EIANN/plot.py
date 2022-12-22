@@ -355,8 +355,44 @@ def plot_hidden_weights(weights):
 
         # Add a subplot to the figure at the specified row and column
         ax = fig.add_subplot(axes[row_idx, col_idx])
-        ax.imshow(img)
+        ax.imshow(img, cmap='gray')
         ax.axis('off')
+
+    fig.tight_layout(pad=0.2)
+
+
+def plot_receptive_fields(population, dataloader, num_units=None, method='act_maximization'):
+    '''
+
+    :param population:
+    :param dataloader:
+    :param num_units:
+    :param method:
+    :return:
+    '''
+    if method == 'act_weighted_avg':
+        receptive_fields = utils.compute_act_weighted_avg(population, dataloader)
+
+    elif method == 'act_maximization':
+        receptive_fields = utils.compute_receptive_fields(population, dataloader, num_units=num_units)
+
+    num_rows = receptive_fields.shape[0]
+    num_cols = int(num_rows**0.5)  # make the number of rows and columns approximately equal
+
+    axes = gs.GridSpec(num_rows, num_cols)
+    fig = plt.figure(figsize=(10, 10 * num_rows / num_cols))
+
+    for i in range(receptive_fields.shape[0]):
+        row_idx = i // num_cols
+        col_idx = i % num_cols
+
+        ax = fig.add_subplot(axes[row_idx, col_idx])
+        im = ax.imshow(receptive_fields[i].view(28, 28), cmap='gray')
+        ax.axis('off')
+        # cax = fig.add_axes([ax.get_position().x1 + 0.002, ax.get_position().y0, 0.005, ax.get_position().height])
+        # cbar = plt.colorbar(im, cax=cax)
+        # cbar.outline.set_visible(False)
+        # cbar.ax.tick_params(labelsize=10, pad=0.5, length=0)
 
     fig.tight_layout(pad=0.2)
 

@@ -8,6 +8,7 @@ import os
 from . import plot as plot
 from collections import Iterable
 import matplotlib.pyplot as plt
+from tqdm.autonotebook import tqdm
 
 
 def nested_convert_scalars(data):
@@ -613,3 +614,57 @@ def linear(x):
     Linear activation function
     '''
     return x
+
+
+# MNIST-related functions
+def compute_act_weighted_avg(population, dataloader):
+    '''
+    Compute activity-weighted average input for every unit in the population
+
+    :param population:
+    :param dataloader:
+    :return:
+    '''
+
+    idx, data, target = next(iter(dataloader))
+    network = population.network
+
+    network.forward(data)  # compute unit activities in forward pass
+    pop_activity = population.activity.detach()
+    weighted_avg_input = (data.T @ pop_activity) / pop_activity.sum(axis=0)
+
+    return weighted_avg_input.T
+
+
+def compute_receptive_fields(population, dataloader, num_units=None):
+    '''
+    Use the 'activation maximization' method to compute receptive fields for all units in the population
+
+    :param population:
+    :param dataloader:
+    :param num_units:
+    :return:
+    '''
+    idx, data, target = next(iter(dataloader))
+    learning_rate = 0.1
+    num_steps = 10000
+    network = population.network
+
+    weighted_avg_input = compute_act_weighted_avg(population, dataloader)
+
+    if num_units is None or num_units>population.size:
+        num_units = population.size
+
+    input_images = weighted_avg_input[0:num_units,:]
+    input_images.requires_grad = True
+    optimizer = torch.optim.SGD([input_images], lr=learning_rate)
+
+    for step in tqdm(range(num_steps)):
+        output = network.forward(input_images)  # compute unit activities in forward pass
+        pop_activity = population.activity[:,0:num_units]
+        loss = torch.sum(-torch.log(torch.diagonal(pop_activity) + 0.001))
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    return input_images.detach()
