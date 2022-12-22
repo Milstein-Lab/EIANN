@@ -297,7 +297,15 @@ def sort_unsupervised_by_best_epoch(network, target, plot=False):
     return sorted_idx
 
 
-def recompute_validation_loss_and_accuracy(network, sorted_output_idx, plot=False):
+def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=False, plot=False):
+    """
+
+    :param network:
+    :param sorted_output_idx:
+    :param store:
+    :param plot:
+    :return:
+    """
 
     # Sort output history
     val_output_history = network.val_output_history[:, :, sorted_output_idx]
@@ -314,7 +322,15 @@ def recompute_validation_loss_and_accuracy(network, sorted_output_idx, plot=Fals
         sorted_val_loss_history.append(loss)
         sorted_val_accuracy_history.append(accuracy)
 
-    return torch.tensor(sorted_val_loss_history), torch.tensor(sorted_val_accuracy_history)
+    sorted_val_loss_history = torch.tensor(sorted_val_loss_history)
+    sorted_val_accuracy_history = torch.tensor(sorted_val_accuracy_history)
+
+    if store:
+        network.val_output_history = val_output_history
+        network.val_loss_history = sorted_val_loss_history
+        network.val_accuracy_history = sorted_val_accuracy_history
+
+    return sorted_val_loss_history, sorted_val_accuracy_history
 
 
 def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=None, plot=False):

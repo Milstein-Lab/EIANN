@@ -24,8 +24,7 @@ BTSP_D:
     Output_E_H1_E_max_weight: 3.54222435906092
     Output_E_Output_FBI_weight: -0.8580756092106452
 BP_Dale_relu:
-    # 90% accuracy; nan loss
-    E_E_learning_rate: 4.087439746803776
-    E_I_learning_rate: 0.20456775811527042
-    H1_FBI_size: 2.5498349253030255
-    I_E_learning_rate: 0.00042892805154184016
+    E_E_learning_rate: 0.22336920149416137
+    E_I_learning_rate: 0.016298481352946637
+    H1_FBI_size: 14.593624190418007
+    I_E_learning_rate: 0.151980561424801

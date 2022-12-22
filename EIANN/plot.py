@@ -187,10 +187,11 @@ def plot_simple_EIANN_config_summary(network, num_samples, start_index=None, sor
 
 
 def plot_train_loss_history(network):
-    '''
+    """
     Plot loss and accuracy history from training
-    '''
-    network.loss_history = network.loss_history.cpu()
+    :param network:
+    """
+    # network.loss_history = network.loss_history.cpu()
     fig = plt.figure()
     axes = gs.GridSpec(nrows=1, ncols=1,
                        left=0.05, right=0.98,
@@ -199,37 +200,60 @@ def plot_train_loss_history(network):
 
     ax = fig.add_subplot(axes[0, 0])
     ax.plot(network.loss_history)
-    ax.set_ylabel('Loss')
-    ax.set_xlabel('training steps')
-
-    # ax = fig.add_subplot(axes[0, 1])
-    # ax.plot(network.accuracy)
-    # ax.set_ylabel('% correct argmax')
-    # ax.set_xlabel('training steps /10')
-
+    ax.set_ylabel('Train loss')
+    ax.set_xlabel('Training steps')
+    fig.suptitle('Train loss')
+    fig.tight_layout()
     fig.show()
 
 
-def plot_test_loss_history(network, test_dataloader, store_history=False, stepsize=1):
+def plot_validate_loss_history(network):
+    """
+    Assumes network has been trained and a val_loss_history has been stored.
+    :param network:
+    """
+    assert len(network.val_loss_history) > 0, 'Network must contain a stored val_loss_history'
+    fig = plt.figure()
+    plt.plot(network.val_history_train_steps, network.val_loss_history)
+    plt.xlabel('Training steps')
+    plt.ylabel('Validation loss')
+    fig.suptitle('Validation loss')
+    fig.tight_layout()
+    fig.show()
+
+
+def evaluate_test_loss_history(network, test_dataloader, store_history=False, plot=False):
+    """
+    Assumes network has been trained with store_weights=True. Evaluates test_loss at each train step in the
+    param_history.
+    :param network:
+    :param test_dataloader:
+    :param store_history:
+    :param plot: bool
+    """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+    assert len(network.param_history) > 0, 'Network must contain a stored param_history'
 
     idx, test_data, test_target = next(iter(test_dataloader))
     test_data = test_data.to(network.device)
     test_target = test_target.to(network.device)
     test_loss_history = []
-    timepoints = torch.arange(0, len(network.param_history), stepsize)
-    for t in tqdm(timepoints):
-        network.load_state_dict(network.param_history[t])
-        output = network.forward(test_data,store_history=store_history)
+
+    for state_dict in network.param_history:
+        network.load_state_dict(state_dict)
+        output = network.forward(test_data, store_history=store_history)
 
         test_loss_history.append(network.criterion(output, test_target).detach())
 
     network.test_loss_history = torch.stack(test_loss_history).cpu()
 
     fig = plt.figure()
-    plt.plot(np.arange(0, len(network.test_loss_history) * stepsize, stepsize), network.test_loss_history)
+    plt.plot(network.param_history_train_steps, network.test_loss_history)
     plt.xlabel('Training steps')
     plt.ylabel('Test loss')
+    fig.suptitle('Test loss')
+    fig.tight_layout()
+    fig.show()
 
 
 def plot_MNIST_examples(network, dataloader):
