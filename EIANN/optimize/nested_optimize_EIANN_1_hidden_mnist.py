@@ -341,7 +341,7 @@ def update_EIANN_config_1_hidden_mnist_BTSP_E(x, context):
     H1_Dend_I_H1_Dend_I_weight_scale = param_dict['H1_Dend_I_H1_Dend_I_weight_scale']
 
     Output_E_H1_E_max_weight_scale = param_dict['Output_E_H1_E_max_weight_scale']
-    Output_E_H1_E_max_weight = Output_E_H1_E_max_weight_scale / context.layer_config['H1']['E']['size']
+    Output_E_H1_E_max_weight = Output_E_H1_E_max_weight_scale / math.sqrt(context.layer_config['H1']['E']['size'])
     Output_E_H1_E_max_init_weight = Output_E_H1_E_max_weight * param_dict['FF_BTSP_max_init_weight_factor']
     Output_E_BTSP_learning_rate = param_dict['Output_E_BTSP_learning_rate']
     Output_E_BTSP_pos_loss_th = param_dict['Output_E_BTSP_pos_loss_th']
