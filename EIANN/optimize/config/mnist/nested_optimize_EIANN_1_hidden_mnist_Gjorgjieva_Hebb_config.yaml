@@ -50,7 +50,7 @@ kwargs:
   seed_start: 1
   num_instances: 5
   data_seed_start: 1
-  supervised: True
+  supervised: False
   status_bar: False
   train_steps: 10000
   epochs: 1

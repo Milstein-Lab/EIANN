@@ -136,12 +136,15 @@ def update_EIANN_config_1_hidden_mnist_backprop_Dale_softplus_SGD(x, context):
 def update_EIANN_config_1_hidden_mnist_backprop_Dale_relu_SGD(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
 
+    H1_FBI_size = int(param_dict['H1_FBI_size'])
+    Output_FBI_size = int(param_dict['Output_FBI_size'])
+
+    context.layer_config['H1']['FBI']['size'] = H1_FBI_size
+    context.layer_config['Output']['FBI']['size'] = Output_FBI_size
+
     E_E_learning_rate = param_dict['E_E_learning_rate']
     E_I_learning_rate = param_dict['E_I_learning_rate']
     I_E_learning_rate = param_dict['I_E_learning_rate']
-    H1_FBI_size = int(param_dict['H1_FBI_size'])
-
-    context.layer_config['H1']['FBI']['size'] = H1_FBI_size
 
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
     context.projection_config['H1']['E']['H1']['FBI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
