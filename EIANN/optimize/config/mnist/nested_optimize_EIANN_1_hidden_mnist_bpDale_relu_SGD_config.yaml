@@ -11,10 +11,13 @@ bounds:
   H1_FBI_size:
     - 1.
     - 100.
+  Output_FBI_size:
+    - 1.
+    - 10.
 default_params:
 kwargs:
   network_id: 1
-  task_id: 1
+  task_id: 2
   seed_start: 1
   num_instances: 5
   data_seed_start: 1
@@ -43,3 +46,4 @@ x0:
   E_I_learning_rate: 0.2
   I_E_learning_rate: 0.2
   H1_FBI_size: 5
+  Output_FBI_size: 5

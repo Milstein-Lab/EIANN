@@ -27,15 +27,15 @@ projection_config:
           - 1
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 3.255803
+            scale: 9.48517424257211
           weight_bounds: !!python/tuple
           - 0
           - null
           direction: F
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
             sign: 1
-            learning_rate: 0.2756839
+            learning_rate: 0.29434780488671874
       H1:
         FBI:
           weight_init: uniform_
@@ -44,15 +44,15 @@ projection_config:
           - 0
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 2.352644
+            scale: 1.301412672000941
           weight_bounds: !!python/tuple
           - null
-          - -0.15
+          - 0
           direction: R
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
-            sign: 1
-            learning_rate: 0.01415294
+            sign: -1
+            learning_rate: 0.11205994529904711
     FBI:
       H1:
         E:
@@ -62,15 +62,15 @@ projection_config:
           - 1
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 1.92508
+            scale: 2.9882012251682943
           weight_bounds: !!python/tuple
           - 0
           - null
           direction: F
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
             sign: 1
-            learning_rate: 0.3213503
+            learning_rate: 0.4840460345190343
         FBI:
           weight_init: uniform_
           weight_init_args: !!python/tuple
@@ -78,15 +78,15 @@ projection_config:
           - 0
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 1.877143
+            scale: 7.3406424124335174
           weight_bounds: !!python/tuple
           - null
-          - -0.15
+          - 0
           direction: R
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
-            sign: 1
-            learning_rate: 0.04600147
+            sign: -1
+            learning_rate: 0.19840532653703197
   Output:
     E:
       H1:
@@ -97,15 +97,15 @@ projection_config:
           - 1
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 0.8436103
+            scale: 5.36355008130285
           weight_bounds: !!python/tuple
           - 0
           - null
           direction: F
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
             sign: 1
-            learning_rate: 0.2756839
+            learning_rate: 0.29434780488671874
       Output:
         FBI:
           weight_init: uniform_
@@ -114,15 +114,15 @@ projection_config:
           - 0
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 1.589356
+            scale: 9.334091380215222
           weight_bounds: !!python/tuple
           - null
-          - -0.15
+          - 0
           direction: R
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
-            sign: 1
-            learning_rate: 0.01415294
+            sign: -1
+            learning_rate: 0.11205994529904711
     FBI:
       Output:
         E:
@@ -132,15 +132,15 @@ projection_config:
           - 1
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 7.526584
+            scale: 8.229265739454137
           weight_bounds: !!python/tuple
           - 0
           - null
           direction: F
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
             sign: 1
-            learning_rate: 0.3213503
+            learning_rate: 0.4840460345190343
         FBI:
           weight_init: uniform_
           weight_init_args: !!python/tuple
@@ -148,15 +148,15 @@ projection_config:
           - 0
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 1.979838
+            scale: 0.25475779357057554
           weight_bounds: !!python/tuple
           - null
-          - -0.15
+          - 0
           direction: R
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
-            sign: 1
-            learning_rate: 0.04600147
+            sign: -1
+            learning_rate: 0.19840532653703197
 training_kwargs:
   tau: 3
   forward_steps: 10

@@ -19,7 +19,7 @@ projection_templates:
     weight_constraint: normalize_weight
     weight_constraint_kwargs:
       scale: 9.927103
-    learning_rule: GjorgievaHebb
+    learning_rule: GjorgjievaHebb
     learning_rule_kwargs:
       sign: 1
       learning_rate: 0.2339308
@@ -30,7 +30,7 @@ projection_templates:
     weight_constraint: normalize_weight
     weight_constraint_kwargs:
       scale: 2.128817
-    learning_rule: GjorgievaHebb
+    learning_rule: GjorgjievaHebb
     learning_rule_kwargs:
       sign: -1
       learning_rate: 0.2023946

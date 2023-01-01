@@ -1,17 +1,26 @@
 bounds:
-  learning_rate:
+  E_E_learning_rate:
+    - 0.0001
+    - 10.
+  E_I_learning_rate:
+    - 0.0001
+    - 10.
+  I_E_learning_rate:
     - 0.0001
     - 10.
   softplus_beta:
     - 1.
     - 100.
   H1_FBI_size:
-    - 0.
-    - 500.
+    - 1.
+    - 100.
+  Output_FBI_size:
+    - 1.
+    - 10.
 default_params:
 kwargs:
   network_id: 1
-  task_id: 1
+  task_id: 2
   seed_start: 1
   num_instances: 5
   data_seed_start: 1
@@ -36,6 +45,9 @@ stages:
   get_objectives: get_objectives
 optimization_title: EIANN_1_hidden_mnist_backprop_Dale_softplus_SGD
 x0:
-  learning_rate: 0.2
+  E_E_learning_rate: 0.2
+  E_I_learning_rate: 0.2
+  I_E_learning_rate: 0.2
   softplus_beta: 99.78563100135408
-  H1_FBI_size: 5
+  H1_FBI_size: 50
+  Output_FBI_size: 5

@@ -29,22 +29,22 @@ bounds:
   H1_E_H1_FBI_weight:
     - -5.
     - -0.01
-  H1_I_dend_H1_E_weight_scale:
+  H1_Dend_I_H1_E_weight_scale:
     - 0.1
     - 2.
-  H1_I_dend_H1_E_learning_rate:
+  H1_Dend_I_H1_E_learning_rate:
     - 0.001
     - 0.25
-  H1_I_dend_H1_I_dend_weight_scale:
+  H1_Dend_I_H1_Dend_I_weight_scale:
     - 0.1
     - 2.
-  H1_I_dend_H1_I_dend_learning_rate:
+  H1_Dend_I_H1_Dend_I_learning_rate:
     - 0.001
     - 0.25
-  H1_E_H1_I_dend_init_weight_scale:
+  H1_E_H1_Dend_I_init_weight_scale:
     - 0.01
     - 2.
-  H1_E_H1_I_dend_learning_rate:
+  H1_E_H1_Dend_I_learning_rate:
     - 0.001
     - 0.25
   Output_E_H1_E_max_weight:
@@ -100,12 +100,12 @@ x0:
   FB_BTSP_min_init_weight_factor: 7.865047E-01
   FB_BTSP_max_init_weight_factor: 1.642126E+00
   H1_E_H1_FBI_weight: -1.050965E-01
-  H1_I_dend_H1_E_weight_scale: 1.000000E+00
-  H1_I_dend_H1_E_learning_rate: 1.626812E-02
-  H1_I_dend_H1_I_dend_weight_scale: 1.000000E+00
-  H1_I_dend_H1_I_dend_learning_rate: 1.626812E-02
-  H1_E_H1_I_dend_init_weight_scale: 1.381812E-01
-  H1_E_H1_I_dend_learning_rate: 1.626812E-02
+  H1_Dend_I_H1_E_weight_scale: 1.000000E+00
+  H1_Dend_I_H1_E_learning_rate: 1.626812E-02
+  H1_Dend_I_H1_Dend_I_weight_scale: 1.000000E+00
+  H1_Dend_I_H1_Dend_I_learning_rate: 1.626812E-02
+  H1_E_H1_Dend_I_init_weight_scale: 1.381812E-01
+  H1_E_H1_Dend_I_learning_rate: 1.626812E-02
   Output_E_H1_E_max_weight: 3.764467E+00
   Output_E_BTSP_learning_rate: 1.626812E-02
   Output_E_BTSP_pos_loss_th: 2.826361E-01

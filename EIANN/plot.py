@@ -193,15 +193,9 @@ def plot_train_loss_history(network):
     """
     # network.loss_history = network.loss_history.cpu()
     fig = plt.figure()
-    axes = gs.GridSpec(nrows=1, ncols=1,
-                       left=0.05, right=0.98,
-                       top=0.83, bottom=0.1,
-                       wspace=0.3, hspace=0.5)
-
-    ax = fig.add_subplot(axes[0, 0])
-    ax.plot(network.loss_history)
-    ax.set_ylabel('Train loss')
-    ax.set_xlabel('Training steps')
+    plt.plot(network.loss_history)
+    plt.ylabel('Train loss')
+    plt.xlabel('Training steps')
     fig.suptitle('Train loss')
     fig.tight_layout()
     fig.show()

@@ -90,7 +90,7 @@ class BCM(LearningRule):
                             break
 
 
-class GjorgievaHebb(LearningRule):
+class GjorgjievaHebb(LearningRule):
     def __init__(self, projection, sign=1, learning_rate=None):
         super().__init__(projection, learning_rate)
         self.sign = sign
@@ -156,7 +156,6 @@ class BTSP(LearningRule):
 
         # update activity for populations that receive backward projections to the soma
         for pop in layer:
-            init_dend_state = False
             if pop.backward_projections:
                 # pop.forward_soma_state already contains bias and inputs updated during the forward phase
                 delta_state = -pop.state + pop.forward_soma_state

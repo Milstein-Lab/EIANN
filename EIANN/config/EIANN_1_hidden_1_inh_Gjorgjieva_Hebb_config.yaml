@@ -32,7 +32,7 @@ projection_config:
           - 0
           - null
           direction: F
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
             sign: 1
       H1:
@@ -65,7 +65,7 @@ projection_config:
           - 0
           - null
           direction: F
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
             sign: 1
       Output:

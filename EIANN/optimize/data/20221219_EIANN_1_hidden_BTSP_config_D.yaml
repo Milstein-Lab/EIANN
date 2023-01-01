@@ -91,7 +91,7 @@ projection_config:
           weight_constraint_kwargs:
             scale: 1.6031850794519455
           update_phase: B
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
             sign: 1
             learning_rate: 0.12088626416087091
@@ -105,7 +105,7 @@ projection_config:
             scale: 1.6417419993432327
           update_phase: B
           direction: R
-          learning_rule: GjorgievaHebb
+          learning_rule: GjorgjievaHebb
           learning_rule_kwargs:
             sign: -1
             learning_rate: 0.049197464356146144

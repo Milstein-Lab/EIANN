@@ -46,18 +46,18 @@ kwargs:
   status_bar: False
   epochs: 300
   num_epochs_argmax_accuracy: 50
-  network_config_file_path: config/EIANN_1_hidden_Gjorgieva_Hebb_config_A.yaml
+  network_config_file_path: config/EIANN_1_hidden_Gjorgjieva_Hebb_config_A.yaml
   eval_accuracy: best
 update_context:
 - source: optimize.nested_optimize_EIANN_1_hidden
-  function: update_EIANN_config_1_hidden_Gjorgieva_Hebb_A
+  function: update_EIANN_config_1_hidden_Gjorgjieva_Hebb_A
 stages:
 - source: optimize.nested_optimize_EIANN_1_hidden
   get_args_static: get_random_seeds
   compute_features: compute_features
   filter_features: filter_features
   get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_Gjorgieva_Hebb_A
+optimization_title: EIANN_1_hidden_Gjorgjieva_Hebb_A
 x0:
   E_E_learning_rate: 2.339308E-01
   E_I_learning_rate: 2.023946E-01
