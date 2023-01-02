@@ -66,7 +66,7 @@ BP_Dale_softplus:
     I_E_learning_rate: 0.41311180025970323
     Output_FBI_size: 4.5231223619819385
     softplus_beta: 39.767014540829535
-BP_Dale_switch_relu:
+BP_Dale_swap_relu:
     E_E_learning_rate: 0.29002048862059354
     E_I_learning_rate: 0.0013167826472761004
     H1_FBI_size: 94.0234284190134
