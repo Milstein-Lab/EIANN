@@ -4,6 +4,8 @@ from torch.nn import MSELoss, BCELoss
 from torch.nn.functional import softplus, relu, sigmoid, elu
 from torch.optim import Adam, SGD
 import sys
+import os
+import shutil
 from copy import deepcopy
 import time
 
@@ -322,8 +324,8 @@ class Network(nn.Module):
         return loss.detach()
 
     def train_and_validate(self, train_dataloader, val_dataloader, epochs, val_interval=(0, -1, 50),
-                           store_history=False, store_weights=False, store_weights_interval=(0, -1, 1),
-                           status_bar=False):
+                           store_history=False, store_weights=False, store_weights_interval=None,
+                           export_weights_interval=None, export_weights_path=None, status_bar=False):
         """
         Starting at validate_start, probe with the validate_data every validate_interval until >= validate_stop
         :param train_dataloader:
@@ -371,6 +373,8 @@ class Network(nn.Module):
         if store_weights:
             self.param_history = []
             self.param_history_train_steps = []
+            if store_weights_interval is None:
+                store_weights_interval = val_interval
             store_weights_start_index = train_step_range[store_weights_interval[0]]
             store_weights_stop_index = train_step_range[store_weights_interval[1]]
             store_weights_stepsize = train_step_range[store_weights_interval[2]]
@@ -380,6 +384,24 @@ class Network(nn.Module):
                     (train_step - store_weights_start_index) % store_weights_stepsize == 0:
                 self.param_history.append(deepcopy(self.state_dict()))
                 self.param_history_train_steps.append(train_step)
+
+        if export_weights_path is not None:
+            if os.path.exists(export_weights_path):
+                overwrite = input('Directory already exists. Overwrite? (y/n)')
+                if overwrite == 'y':
+                    shutil.rmtree(export_weights_path)
+                    os.makedirs(export_weights_path)
+                else:
+                    export_weights_path = None
+                    print('Model not exported')
+            else:
+                os.makedirs(export_weights_path)
+
+            if export_weights_interval is None:
+                export_weights_interval = val_interval
+            export_weights_start_index = train_step_range[export_weights_interval[0]]
+            export_weights_stop_index = train_step_range[export_weights_interval[1]]
+            export_weights_stepsize = train_step_range[export_weights_interval[2]]
 
         if status_bar:
             from tqdm.autonotebook import tqdm
@@ -426,11 +448,21 @@ class Network(nn.Module):
                 self.constrain_weights_and_biases()
 
                 # Store history of weights and biases
-                if store_weights and train_step >= store_weights_start_index and \
-                        train_step <= store_weights_stop_index and \
-                        (train_step - store_weights_start_index) % store_weights_stepsize == 0:
+                if store_weights \
+                    and train_step >= store_weights_start_index \
+                    and train_step <= store_weights_stop_index\
+                    and (train_step - store_weights_start_index) % store_weights_stepsize == 0:
                     self.param_history.append(deepcopy(self.state_dict()))
                     self.param_history_train_steps.append(train_step)
+
+                # Export weights and biases to file
+                if export_weights_path is not None \
+                    and train_step >= export_weights_start_index\
+                    and train_step <= export_weights_stop_index \
+                    and (train_step - export_weights_start_index) % export_weights_stepsize == 0:
+
+                    torch.save(self.state_dict(), f"{export_weights_path}/epoch{epoch}_step{train_step}.pt")
+
 
                 # Compute validation loss
                 if train_step >= val_start_index and \

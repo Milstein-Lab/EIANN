@@ -356,7 +356,7 @@ def plot_hidden_weights(weights):
         col_idx = i % num_cols
 
         img_dim = int(unit_weight_vec.shape[0] ** 0.5)
-        img = unit_weight_vec.view(img_dim, img_dim)
+        img = unit_weight_vec.view(img_dim, img_dim).detach().cpu()
 
         # Add a subplot to the figure at the specified row and column
         ax = fig.add_subplot(axes[row_idx, col_idx])
