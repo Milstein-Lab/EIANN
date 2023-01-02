@@ -7,7 +7,7 @@ layer_config:
       size: 500
       activation: relu
     FBI:
-      size: 50
+      size: 4
       activation: relu
   Output:
     E:
@@ -24,7 +24,7 @@ projection_config:
           weight_init: half_kaining
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 9.268612119353545
+            scale: 1.2686121193535456
           weight_bounds: !!python/tuple
           - 0
           - null
@@ -38,7 +38,7 @@ projection_config:
           weight_init: half_kaining
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 9.738536101036361
+            scale: 4.738536101036362
           weight_bounds: !!python/tuple
           - null
           - 0
@@ -66,7 +66,7 @@ projection_config:
           weight_init: half_kaining
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
-            scale: 5.801491142319589
+            scale: 0.05801491142319589
           weight_bounds: !!python/tuple
           - null
           - 0
