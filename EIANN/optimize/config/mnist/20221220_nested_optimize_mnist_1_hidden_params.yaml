@@ -88,7 +88,7 @@ Gjorgjieva_Hebb_oops_supervised:
     Output_FBI_Output_E_weight_scale: 0.3554423228384386
     Output_FBI_Output_FBI_weight_scale: 0.8811566243803074
     Output_FBI_size: 3.5555895354905194
-Gjorgjieva_Hebb:
+Gjorgjieva_Hebb_A:
     E_I_learning_rate: 0.020305333347622453
     H1_E_H1_FBI_weight_scale: 4.738536101036362
     H1_E_Input_E_learning_rate: 0.0029082138223596003
@@ -96,22 +96,6 @@ Gjorgjieva_Hebb:
     H1_FBI_H1_E_weight_scale: 1.850402110115092
     H1_FBI_H1_FBI_weight_scale: 0.05801491142319589
     H1_FBI_size: 4.133236584111974
-    I_E_learning_rate: 0.0429858889652221
-    I_I_learning_rate: 0.09365706016459538
-    Output_E_H1_E_learning_rate: 0.006386751577165027
-    Output_E_H1_E_weight_scale: 2.0530137550399634
-    Output_E_Output_FBI_weight_scale: 2.6569304380570817
-    Output_FBI_Output_E_weight_scale: 0.018374911094947044
-    Output_FBI_Output_FBI_weight_scale: 0.4636152599543221
-    Output_FBI_size: 5.739420302244741
-test_Gjorgjieva_Hebb:
-    E_I_learning_rate: 0.020305333347622453
-    H1_E_H1_FBI_weight_scale: 9.738536101036362
-    H1_E_Input_E_learning_rate: 0.0029082138223596003
-    H1_E_Input_E_weight_scale: 9.2686121193535456
-    H1_FBI_H1_E_weight_scale: 1.850402110115092
-    H1_FBI_H1_FBI_weight_scale: 5.801491142319589
-    H1_FBI_size: 50
     I_E_learning_rate: 0.0429858889652221
     I_I_learning_rate: 0.09365706016459538
     Output_E_H1_E_learning_rate: 0.006386751577165027
