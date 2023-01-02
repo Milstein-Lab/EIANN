@@ -62,14 +62,14 @@ kwargs:
   num_training_steps_accuracy_window: 200
 update_context:
 - source: optimize.nested_optimize_EIANN_1_hidden_mnist
-  function: update_EIANN_config_1_hidden_mnist_Gjorgjieva_Hebb
+  function: update_EIANN_config_1_hidden_mnist_Gjorgjieva_Hebb_A
 stages:
 - source: optimize.nested_optimize_EIANN_1_hidden_mnist
   get_args_static: get_random_seeds
   compute_features: compute_features
   filter_features: filter_features
   get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_mnist_Gjorgjieva_Hebb
+optimization_title: EIANN_1_hidden_mnist_Gjorgjieva_Hebb_A
 x0:
   H1_E_H1_FBI_weight_scale: 0.01320454234508166
   H1_FBI_H1_E_weight_scale: 0.01320454234508166
