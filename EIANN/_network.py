@@ -464,9 +464,9 @@ class Network(nn.Module):
 
 
 class AttrDict(dict):
-    '''
+    """
     Enables object attribute references for Layers, Populations, and Projections.
-    '''
+    """
     def __init__(self, value=None):
         if value is None:
             pass

@@ -216,13 +216,14 @@ def plot_validate_loss_history(network):
     fig.show()
 
 
-def evaluate_test_loss_history(network, test_dataloader, store_history=False, plot=False):
+def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None, store_history=False, plot=False):
     """
     Assumes network has been trained with store_weights=True. Evaluates test_loss at each train step in the
     param_history.
     :param network:
     :param test_dataloader:
-    :param store_history:
+    :param sorted_output_idx: tensor of int
+    :param store_history: bool
     :param plot: bool
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
@@ -233,10 +234,14 @@ def evaluate_test_loss_history(network, test_dataloader, store_history=False, pl
     test_target = test_target.to(network.device)
     test_loss_history = []
 
+    if store_history:
+        network.reset_history()
+
     for state_dict in network.param_history:
         network.load_state_dict(state_dict)
         output = network.forward(test_data, store_history=store_history)
-
+        if sorted_output_idx is not None:
+            output = output[:, sorted_output_idx]
         test_loss_history.append(network.criterion(output, test_target).detach())
 
     network.test_loss_history = torch.stack(test_loss_history).cpu()
@@ -282,9 +287,9 @@ def plot_MNIST_examples(network, dataloader):
 
 
 def plot_network_dynamics(network):
-    '''
+    """
     Plots activity dynamics for every population in the network
-    '''
+    """
     rows = len(network.layers)
     cols = np.max([len(layer.populations) for layer in network])
 
@@ -362,14 +367,14 @@ def plot_hidden_weights(weights):
 
 
 def plot_receptive_fields(population, dataloader, num_units=None, method='act_maximization'):
-    '''
+    """
 
     :param population:
     :param dataloader:
     :param num_units:
     :param method:
     :return:
-    '''
+    """
     if method == 'act_weighted_avg':
         receptive_fields = utils.compute_act_weighted_avg(population, dataloader)
 
@@ -401,7 +406,7 @@ def plot_receptive_fields(population, dataloader, num_units=None, method='act_ma
 # Loss landscape functions
 # *******************************************************************
 def plot_weight_history_PCs(network):
-    '''
+    """
     Function performs PCA on a given set of weights and
         1. plots the explained variance
         2. the trajectory of the weights in the PC space during the course of learning
@@ -411,7 +416,7 @@ def plot_weight_history_PCs(network):
     weight_history: torch tensor, size: [time_steps x total number of weights]
 
     Returns
-    '''
+    """
     flat_weight_history,_ = get_flat_weight_history(network)
 
     # Center the data (mean=0, std=1)
@@ -460,7 +465,7 @@ def plot_weight_history_PCs(network):
 
 
 def plot_param_history_PCs(flat_param_history):
-    '''
+    """
     Function performs PCA on a given set of parameters (drawn from the network state_dict()) and
         1. plots the explained variance
         2. the trajectory of the weights in the PC space during the course of learning
@@ -470,7 +475,7 @@ def plot_param_history_PCs(flat_param_history):
     flat_param_history: torch tensor, size: [time_steps x total number of parameters]
 
     Returns
-    '''
+    """
     # Center the data (mean=0, std=1)
     p_mean = torch.mean(flat_param_history, axis=0)
     p_std = torch.std(flat_param_history, axis=0)
@@ -589,13 +594,13 @@ def flatten_weights(network):
 
 
 def unflatten_weights(flat_weights, weight_sizes):
-    '''
+    """
     Convert flat weight vector to list of tensors (with correct dimensions)
 
     :param: flat_weights: flat vector of weights
     :param: weight_sizes: list containing tuples of (num weights, weight matrix shape)
     :return: list containing reshaped weight matrices
-    '''
+    """
     weight_mat_ls = []
     idx_start = 0
     for length, shape in weight_sizes:
@@ -607,13 +612,13 @@ def unflatten_weights(flat_weights, weight_sizes):
 
 
 def unflatten_params(flat_params, param_metadata):
-    '''
+    """
     Convert flat vector of parameters to list of tensors (with correct dimensions)
 
     :param: flat_params: flat vector of parameters
     :param: param_metadata: list containing tuples of (num params, param dimensions)
     :return: list containing reshaped param matrices
-    '''
+    """
     state_dict = {}
     idx_start = 0
     for param_name in param_metadata:
@@ -626,14 +631,14 @@ def unflatten_params(flat_params, param_metadata):
 
 
 def compute_loss(network, state_dict, test_dataloader):
-    '''
+    """
     Calculate the loss for the network given a specified set of parameters and test dataset
 
     :param: network: EIANN_archive network
     :param: state_dict: network state dict containing desired parameters to test
     :param: test_dataloader: dataloader with (data,target) to use for computing loss.
     :return: loss
-    '''
+    """
     # Insert weight matrices into network
     network.load_state_dict(state_dict)
 
@@ -649,13 +654,13 @@ def compute_loss(network, state_dict, test_dataloader):
 
 
 def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, vmax=1.2, plot_line_loss=False):
-    '''
+    """
     :param test_dataloader:
     :param network1:
     :param network2:
 
     :return:
-    '''
+    """
     flat_param_history, param_metadata = get_flat_param_history(network1.param_history)
     history_len1 = flat_param_history.shape[0]
 
@@ -850,7 +855,7 @@ def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataload
 
 
 def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
-    '''
+    """
     Function plots loss surface from the grid based on PCs
 
     Parameters
@@ -858,7 +863,7 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
         values of loss for the given model at a given set of weights
     PC1_mesh: torch tensor, size: [1 x num_points(specified in get_loss_landscape] (?)
     PC2_mesh: torch tensor, size: [1 x num_points(specified in get_loss_landscape]
-    '''
+    """
     fig = plt.figure(figsize=(8, 5))
     ax = fig.add_subplot(projection='3d')
 
@@ -920,11 +925,12 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader, title=None):
+def plot_batch_accuracy(network, test_dataloader, sorted_output_idx=None, title=None):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
     :param test_dataloader:
+    :param sorted_output_idx: tensor of int
     :param title: str
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
@@ -932,8 +938,10 @@ def plot_batch_accuracy(network, test_dataloader, title=None):
     indexes, data, targets = next(iter(test_dataloader))
     data = data.to(network.device)
     targets = targets.to(network.device)
-    labels = torch.argmax(targets, axis=1)
+    labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
     output = network.forward(data).detach()
+    if sorted_output_idx is not None:
+        output = output[:, sorted_output_idx]
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
     percent_correct = torch.round(percent_correct, decimals=2)
     print(f'Batch accuracy = {percent_correct}%')
@@ -942,16 +950,15 @@ def plot_batch_accuracy(network, test_dataloader, title=None):
     num_units = targets.shape[1]
     num_labels = num_units
     avg_output = torch.zeros(num_units, num_labels)
-    targets = torch.argmax(targets, dim=1)  # convert from 1-hot vector to int label
     for label in range(num_labels):
-        label_idx = torch.where(targets == label)  # find all instances of given label
+        label_idx = torch.where(labels == label)  # find all instances of given label
         avg_output[:, label] = torch.mean(output[label_idx], dim=0)
 
     fig, ax = plt.subplots()
     im = ax.imshow(avg_output, interpolation='none')
     cbar = plt.colorbar(im)
-    ax.set_xticks(range(10))
-    ax.set_yticks(range(10))
+    ax.set_xticks(range(num_labels))
+    ax.set_yticks(range(num_units))
     ax.set_xlabel('Labels')
     ax.set_ylabel('Output unit')
     if title is not None:

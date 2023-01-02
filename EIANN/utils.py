@@ -69,7 +69,7 @@ def read_from_yaml(file_path, Loader=None):
 
 
 def n_choose_k(n, k):
-    '''
+    """
     Calculates number of ways to choose k things out of n, using binomial coefficients
 
     :param n: number of things to choose from
@@ -77,14 +77,14 @@ def n_choose_k(n, k):
     :param k: number of things chosen
     :type k: int
     :return: int
-    '''
+    """
     assert n>k, "k must be smaller than n"
     num_permutations = np.math.factorial(n) / (np.math.factorial(k)*np.math.factorial(n-k))
     return int(num_permutations)
 
 
 def n_hot_patterns(n, length):
-    '''
+    """
     Generates all possible binary n-hot patterns of given length
 
     :param n: number of bits set to 1
@@ -92,7 +92,7 @@ def n_hot_patterns(n, length):
     :param length: size of pattern (number of bits)
     :type length: int
     :return: torch.tensor
-    '''
+    """
     all_permutations = torch.tensor(list(itertools.product([0., 1.], repeat=length)))
     pattern_hotness = torch.sum(all_permutations,axis=1)
     idx = torch.where(pattern_hotness == n)[0]
@@ -201,14 +201,14 @@ def get_diag_argmax_row_indexes(data):
 
 
 def sort_by_val_history(network, plot=False):
-    '''
+    """
     Find the sorting giving the best argmax across the full validation history
 
     :param network:
     :param plot:
     :return: min_loss_idx: index of the point with lowest loss (index relative only to the validation points, not the full training)
     :return: min_loss_sorting: optimal sorting indices for the point with lowest loss
-    '''
+    """
     output_layer = list(network)[-1]
     output_pop = next(iter(output_layer))
 
@@ -477,9 +477,13 @@ def compute_batch_accuracy(network, test_dataloader):
 
 
 def get_optimal_sorting(network, test_dataloader, plot=False):
-    '''
+    """
     Measure test loss on re-sorted activity at every point in the training history
-    '''
+    :param network:
+    :param test_dataloader:
+    :param plot:
+    :return:
+    """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
 
     output_layer = list(network)[-1]
@@ -577,9 +581,9 @@ def get_update_history(network):
 
 
 def compute_sparsity_history(activity_history):
-    '''
+    """
     Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
-    '''
+    """
     population_activity = activity_history #dims: 0=history, 1=dynamics, 2=patterns, 3=units
     n = population_activity.shape[3]
     activity_fraction = (torch.sum(population_activity,dim=3) / n) ** 2 / (torch.sum((population_activity**2 / n),dim=3)+1e-10)
@@ -588,9 +592,9 @@ def compute_sparsity_history(activity_history):
 
 
 def compute_selectivity_history(activity_history):
-    '''
+    """
     Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
-    '''
+    """
     population_activity = activity_history #dims: 0=history, 1=dynamics, 2=patterns, 3=units
     n = population_activity.shape[2]
     activity_fraction = (torch.sum(population_activity,dim=2) / n) ** 2 / (torch.sum((population_activity**2 / n),dim=2)+1e-10)
@@ -610,21 +614,21 @@ def count_dict_elements(dict1, leaf=0):
 
 
 def linear(x):
-    '''
+    """
     Linear activation function
-    '''
+    """
     return x
 
 
 # MNIST-related functions
 def compute_act_weighted_avg(population, dataloader):
-    '''
+    """
     Compute activity-weighted average input for every unit in the population
 
     :param population:
     :param dataloader:
     :return:
-    '''
+    """
 
     idx, data, target = next(iter(dataloader))
     network = population.network
@@ -637,14 +641,14 @@ def compute_act_weighted_avg(population, dataloader):
 
 
 def compute_receptive_fields(population, dataloader, num_units=None):
-    '''
+    """
     Use the 'activation maximization' method to compute receptive fields for all units in the population
 
     :param population:
     :param dataloader:
     :param num_units:
     :return:
-    '''
+    """
     idx, data, target = next(iter(dataloader))
     learning_rate = 0.1
     num_steps = 10000
