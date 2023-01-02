@@ -71,9 +71,9 @@ stages:
   get_objectives: get_objectives
 optimization_title: EIANN_1_hidden_mnist_Gjorgjieva_Hebb_B
 x0:
-  H1_E_H1_FBI_weight_scale: 0.01320454234508166
-  H1_FBI_H1_E_weight_scale: 0.01320454234508166
-  H1_FBI_H1_FBI_weight_scale: 0.01320454234508166
+  H1_E_H1_FBI_weight_scale: 0.1320454234508166
+  H1_FBI_H1_E_weight_scale: 0.1320454234508166
+  H1_FBI_H1_FBI_weight_scale: 0.1320454234508166
   E_I_learning_rate: 0.17678741629227127
   H1_E_Input_E_learning_rate: 0.007971513519070807
   H1_E_Input_E_weight_scale: 2.6271244086908077
