@@ -635,7 +635,7 @@ def compute_act_weighted_avg(population, dataloader):
 
     network.forward(data)  # compute unit activities in forward pass
     pop_activity = population.activity.detach()
-    weighted_avg_input = (data.T @ pop_activity) / pop_activity.sum(axis=0)
+    weighted_avg_input = (data.T @ pop_activity) / (pop_activity.sum(axis=0) + 0.0001) # + epsilon to avoid div-by-0 error
 
     return weighted_avg_input.T
 
@@ -672,3 +672,5 @@ def compute_receptive_fields(population, dataloader, num_units=None):
         optimizer.step()
 
     return input_images.detach()
+
+

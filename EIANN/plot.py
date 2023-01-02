@@ -383,6 +383,8 @@ def plot_receptive_fields(population, dataloader, num_units=None, method='act_ma
 
     num_rows = receptive_fields.shape[0]
     num_cols = int(num_rows**0.5)  # make the number of rows and columns approximately equal
+    if num_cols<5:
+        num_cols = 5
 
     axes = gs.GridSpec(num_rows, num_cols)
     fig = plt.figure(figsize=(10, 10 * num_rows / num_cols))
@@ -400,6 +402,94 @@ def plot_receptive_fields(population, dataloader, num_units=None, method='act_ma
         # cbar.ax.tick_params(labelsize=10, pad=0.5, length=0)
 
     fig.tight_layout(pad=0.2)
+
+
+def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False, num_points = 1000):
+    assert len(test_dataloader)==1, "Dataloader must have a single large batch"
+
+    # Compute accuracy on test data
+    idx, data, target = next(iter(test_dataloader))
+    output = network(data)
+    prediction = torch.heaviside(output - 0.5, torch.tensor(0.))
+    test_accuracy = 100 * torch.sum(prediction == target) / len(target)
+    print(f"Test Accuracy {test_accuracy} %")
+
+    # Plot decision boundary (test a grid of X values)
+    extension = 2.
+    x1 = data[:, 0].numpy()
+    x2 = data[:, 1].numpy()
+    # x1_extension = (np.max(x1) - np.min(x1)) * extension
+    # x2_extension = (np.max(x2) - np.min(x2)) * extension
+    x1_extension = 1.5
+    x2_extension = 1.5
+    x1_range = np.linspace(np.min(x1) - x1_extension, np.max(x1) + x1_extension, num_points)
+    x2_range = np.linspace(np.min(x2) - x2_extension, np.max(x2) + x2_extension, num_points)
+    x1_mesh, x2_mesh = np.meshgrid(x1_range, x2_range)
+
+    flat_x1_vals = x1_mesh.reshape(1, num_points ** 2)
+    flat_x2_vals = x2_mesh.reshape(1, num_points ** 2)
+    meshgrid_points = np.concatenate([flat_x1_vals, flat_x2_vals]).T
+
+    meshgrid_points = torch.tensor(meshgrid_points).type(torch.float32)
+    outputs = network(meshgrid_points).detach()
+    output_grid = outputs.reshape([x1_range.size, x2_range.size]).flipud()
+
+    if hard_boundary:
+        output_grid = np.heaviside(output_grid-0.5,0)
+
+    fig, ax = plt.subplots(figsize=(4, 4))
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["orange", "white", "blue"])
+    ax.scatter(data[:, 0], data[:, 1], c=target, edgecolors='w', cmap=cmap)
+    im = plt.imshow(output_grid, cmap=cmap, vmin=0, vmax=1, alpha=0.6, interpolation='nearest',
+                    extent=[np.min(x1_range), np.max(x1_range), np.min(x2_range), np.max(x2_range)])
+    cax = fig.add_axes([ax.get_position().x1 + 0.04, ax.get_position().y0, 0.03, ax.get_position().height])
+    cbar = plt.colorbar(im, cax=cax)
+    cbar.outline.set_visible(False)
+    fig.show()
+
+
+def plot_batch_accuracy(network, test_dataloader, sorted_output_idx=None, title=None):
+    """
+    Compute total accuracy (% correct) on given dataset
+    :param network:
+    :param test_dataloader:
+    :param sorted_output_idx: tensor of int
+    :param title: str
+    """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    indexes, data, targets = next(iter(test_dataloader))
+    data = data.to(network.device)
+    targets = targets.to(network.device)
+    labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
+    output = network.forward(data).detach()
+    if sorted_output_idx is not None:
+        output = output[:, sorted_output_idx]
+    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
+    percent_correct = torch.round(percent_correct, decimals=2)
+    print(f'Batch accuracy = {percent_correct}%')
+
+    # Plot average output for each label class
+    num_units = targets.shape[1]
+    num_labels = num_units
+    avg_output = torch.zeros(num_units, num_labels)
+    for label in range(num_labels):
+        label_idx = torch.where(labels == label)  # find all instances of given label
+        avg_output[:, label] = torch.mean(output[label_idx], dim=0)
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(avg_output, interpolation='none')
+    cbar = plt.colorbar(im)
+    ax.set_xticks(range(num_labels))
+    ax.set_yticks(range(num_units))
+    ax.set_xlabel('Labels')
+    ax.set_ylabel('Output unit')
+    if title is not None:
+        ax.set_title('Average output activity - %s' % title)
+    else:
+        ax.set_title('Average output activity')
+    fig.show()
+
 
 
 # *******************************************************************
@@ -880,89 +970,3 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
     plt.tight_layout()
     # fig.show()
 
-
-def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False, num_points = 1000):
-    assert len(test_dataloader)==1, "Dataloader must have a single large batch"
-
-    # Compute accuracy on test data
-    idx, data, target = next(iter(test_dataloader))
-    output = network(data)
-    prediction = torch.heaviside(output - 0.5, torch.tensor(0.))
-    test_accuracy = 100 * torch.sum(prediction == target) / len(target)
-    print(f"Test Accuracy {test_accuracy} %")
-
-    # Plot decision boundary (test a grid of X values)
-    extension = 2.
-    x1 = data[:, 0].numpy()
-    x2 = data[:, 1].numpy()
-    # x1_extension = (np.max(x1) - np.min(x1)) * extension
-    # x2_extension = (np.max(x2) - np.min(x2)) * extension
-    x1_extension = 1.5
-    x2_extension = 1.5
-    x1_range = np.linspace(np.min(x1) - x1_extension, np.max(x1) + x1_extension, num_points)
-    x2_range = np.linspace(np.min(x2) - x2_extension, np.max(x2) + x2_extension, num_points)
-    x1_mesh, x2_mesh = np.meshgrid(x1_range, x2_range)
-
-    flat_x1_vals = x1_mesh.reshape(1, num_points ** 2)
-    flat_x2_vals = x2_mesh.reshape(1, num_points ** 2)
-    meshgrid_points = np.concatenate([flat_x1_vals, flat_x2_vals]).T
-
-    meshgrid_points = torch.tensor(meshgrid_points).type(torch.float32)
-    outputs = network(meshgrid_points).detach()
-    output_grid = outputs.reshape([x1_range.size, x2_range.size]).flipud()
-
-    if hard_boundary:
-        output_grid = np.heaviside(output_grid-0.5,0)
-
-    fig, ax = plt.subplots(figsize=(4, 4))
-    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["orange", "white", "blue"])
-    ax.scatter(data[:, 0], data[:, 1], c=target, edgecolors='w', cmap=cmap)
-    im = plt.imshow(output_grid, cmap=cmap, vmin=0, vmax=1, alpha=0.6, interpolation='nearest',
-                    extent=[np.min(x1_range), np.max(x1_range), np.min(x2_range), np.max(x2_range)])
-    cax = fig.add_axes([ax.get_position().x1 + 0.04, ax.get_position().y0, 0.03, ax.get_position().height])
-    cbar = plt.colorbar(im, cax=cax)
-    cbar.outline.set_visible(False)
-    fig.show()
-
-
-def plot_batch_accuracy(network, test_dataloader, sorted_output_idx=None, title=None):
-    """
-    Compute total accuracy (% correct) on given dataset
-    :param network:
-    :param test_dataloader:
-    :param sorted_output_idx: tensor of int
-    :param title: str
-    """
-    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
-
-    indexes, data, targets = next(iter(test_dataloader))
-    data = data.to(network.device)
-    targets = targets.to(network.device)
-    labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
-    output = network.forward(data).detach()
-    if sorted_output_idx is not None:
-        output = output[:, sorted_output_idx]
-    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
-    percent_correct = torch.round(percent_correct, decimals=2)
-    print(f'Batch accuracy = {percent_correct}%')
-
-    # Plot average output for each label class
-    num_units = targets.shape[1]
-    num_labels = num_units
-    avg_output = torch.zeros(num_units, num_labels)
-    for label in range(num_labels):
-        label_idx = torch.where(labels == label)  # find all instances of given label
-        avg_output[:, label] = torch.mean(output[label_idx], dim=0)
-
-    fig, ax = plt.subplots()
-    im = ax.imshow(avg_output, interpolation='none')
-    cbar = plt.colorbar(im)
-    ax.set_xticks(range(num_labels))
-    ax.set_yticks(range(num_units))
-    ax.set_xlabel('Labels')
-    ax.set_ylabel('Output unit')
-    if title is not None:
-        ax.set_title('Average output activity - %s' % title)
-    else:
-        ax.set_title('Average output activity')
-    fig.show()
