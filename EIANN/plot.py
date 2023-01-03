@@ -4,6 +4,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from sklearn.decomposition import PCA
+from skimage import metrics
+import scipy.stats as stats
 import math
 from tqdm.autonotebook import tqdm
 from copy import copy
@@ -343,12 +345,31 @@ def plot_simple_EIANN_weight_history_diagnostic(network):
     fig.show()
 
 
-def plot_hidden_weights(weights):
+def plot_hidden_weights(weights, sort=False):
     num_rows = weights.shape[0]
     num_cols = int(num_rows ** 0.5)  # make the number of rows and columns approximately equal
 
     axes = gs.GridSpec(num_rows, num_cols)
     fig = plt.figure(figsize=(12, 12 * num_rows / num_cols))
+
+    if sort: # Sort units by tuning structure of their receptive fields
+        structure = []
+        for unit_weight_vec in weights.detach():
+            s = metrics.structural_similarity(unit_weight_vec.numpy(),
+                                              np.random.uniform(min(unit_weight_vec), max(unit_weight_vec),
+                                                                len(unit_weight_vec)).astype('float32'))
+            structure.append(s)
+        sorted_idx = np.argsort(structure)
+        weights = weights[sorted_idx]
+
+        # ks_stats = []
+        # for unit_weight_vec in weights.detach():
+        #     ks_statistic, pvalue = stats.kstest(unit_weight_vec,
+        #                                         np.linspace(min(unit_weight_vec), max(unit_weight_vec), len(unit_weight_vec)))
+        #     ks_stats.append(-ks_statistic)
+        # sorted_idx = np.argsort(ks_stats)
+        # weights = weights[sorted_idx]
+
 
     for i, unit_weight_vec in enumerate(weights):
         # Calculate the row and column indices for the current subplot
@@ -366,7 +387,7 @@ def plot_hidden_weights(weights):
     fig.tight_layout(pad=0.2)
 
 
-def plot_receptive_fields(population, dataloader, num_units=None, method='act_maximization'):
+def plot_receptive_fields(population, dataloader, num_units=None, method='act_maximization', sort=False):
     """
 
     :param population:
@@ -381,6 +402,17 @@ def plot_receptive_fields(population, dataloader, num_units=None, method='act_ma
     elif method == 'act_maximization':
         receptive_fields = utils.compute_receptive_fields(population, dataloader, num_units=num_units)
 
+    if sort: # Sort units by tuning structure of their receptive fields
+        structure = []
+        for unit_weight_vec in receptive_fields:
+            s = metrics.structural_similarity(unit_weight_vec.numpy(),
+                                              np.random.uniform(min(unit_weight_vec), max(unit_weight_vec),
+                                                                len(unit_weight_vec)).astype('float32'))
+            structure.append(s)
+        sorted_idx = np.argsort(structure)
+        receptive_fields = receptive_fields[sorted_idx]
+
+    # Create figure
     num_rows = receptive_fields.shape[0]
     num_cols = int(num_rows**0.5)  # make the number of rows and columns approximately equal
     if num_cols<5:

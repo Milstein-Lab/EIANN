@@ -649,15 +649,17 @@ def compute_receptive_fields(population, dataloader, num_units=None):
     :param num_units:
     :return:
     """
+
     idx, data, target = next(iter(dataloader))
     learning_rate = 0.1
     num_steps = 10000
     network = population.network
 
     # turn on network gradients
-    network.backward_steps = 1
-    for param in network.parameters():
-        param.requires_grad = True
+    if network.forward(data[0]).requires_grad == False:
+        network.backward_steps = 1
+        for param in network.parameters():
+            param.requires_grad = True
 
     weighted_avg_input = compute_act_weighted_avg(population, dataloader)
 
@@ -679,3 +681,41 @@ def compute_receptive_fields(population, dataloader, num_units=None):
     return input_images.detach()
 
 
+def compute_PSD(receptive_field, plot=False):
+    '''
+    Function based on https://bertvandenbroucke.netlify.app/2019/05/24/computing-a-power-spectrum-in-python/
+    '''
+
+    # Take Fourier transform of the receptive field
+    fourier_image = np.fft.fftn(receptive_field)
+    fourier_amplitudes = np.abs(fourier_image)**2
+
+    # Get frequencies corresponding to signal PSD
+    # (bin the results of the Fourier analysis by contstructing an array of wave vector norms)
+    npix = receptive_field.shape[0] # this only works for a square image
+    kfreq = np.fft.fftfreq(npix) * npix
+    kfreq2D = np.meshgrid(kfreq, kfreq)
+    knorm = np.sqrt(kfreq2D[0]**2 + kfreq2D[1]**2)
+    knorm = knorm.flatten()
+    fourier_amplitudes = fourier_amplitudes.flatten()
+
+    # Create the frequency power spectrum
+    kbins = np.arange(0.5, npix//2+1, 1.)
+    kvals = 0.5 * (kbins[1:] + kbins[:-1])
+    Abins, _, _ = stats.binned_statistic(knrm, fourier_amplitudes,
+                                         statistic = "mean",
+                                         bins = kbins)
+    Abins *= np.pi * (kbins[1:]**2 - kbins[:-1]**2)
+    peak_spatial_frequency = np.argmax(Abins)
+    spectral_power = Abins
+    frequencies = kvals
+
+    if plot:
+        fig, ax = plt.subplots(1,2)
+        ax[0].imshow(receptive_field)
+        ax[1].loglog(kvals, Abins)
+        ax[1].set_xlabel("Spatial Frequency $k$ [pixels]")
+        ax[1].set_ylabel("Power per Spatial Frequency $P(k)$")
+        plt.show()
+
+    return frequencies, spectral_power, peak_spatial_frequency
