@@ -654,6 +654,11 @@ def compute_receptive_fields(population, dataloader, num_units=None):
     num_steps = 10000
     network = population.network
 
+    # turn on network gradients
+    network.backward_steps = 1
+    for param in network.parameters():
+        param.requires_grad = True
+
     weighted_avg_input = compute_act_weighted_avg(population, dataloader)
 
     if num_units is None or num_units>population.size:
