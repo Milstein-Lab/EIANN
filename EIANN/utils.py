@@ -245,10 +245,11 @@ def sort_by_val_history(network, plot=False):
     min_loss_sorting = sorting_history[min_loss_idx]
 
     if plot:
+        fig = plt.figure()
         plt.scatter(min_loss_idx, torch.min(optimal_loss_history), color='red')
         plt.plot(optimal_loss_history)
         plt.title('optimal loss history (re-sorted for each point)')
-        plt.show()
+        fig.show()
 
     return min_loss_idx, min_loss_sorting
 
