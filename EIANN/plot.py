@@ -353,6 +353,7 @@ def plot_hidden_weights(weights, sort=False):
     fig = plt.figure(figsize=(12, 12 * num_rows / num_cols))
 
     if sort: # Sort units by tuning structure of their receptive fields
+        print("Computing tuning strength...")
         structure = []
         for unit_weight_vec in weights.detach():
             s = metrics.structural_similarity(unit_weight_vec.numpy(),
@@ -370,7 +371,7 @@ def plot_hidden_weights(weights, sort=False):
         # sorted_idx = np.argsort(ks_stats)
         # weights = weights[sorted_idx]
 
-
+    print("Generating plots...")
     for i, unit_weight_vec in enumerate(weights):
         # Calculate the row and column indices for the current subplot
         row_idx = i // num_cols
@@ -381,10 +382,12 @@ def plot_hidden_weights(weights, sort=False):
 
         # Add a subplot to the figure at the specified row and column
         ax = fig.add_subplot(axes[row_idx, col_idx])
-        ax.imshow(img, cmap='gray')
+        im = ax.imshow(img, cmap='gray', vmin=torch.min(weights), vmax=torch.max(weights))
         ax.axis('off')
 
+    print(f"W_min = {torch.min(weights)}, W_max = {torch.max(weights)}")
     fig.tight_layout(pad=0.2)
+
 
 
 def plot_receptive_fields(population, dataloader, num_units=None, method='act_maximization', sort=False):
@@ -480,7 +483,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader, sorted_output_idx=None, title=None):
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, unsupervised=False):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -495,6 +498,11 @@ def plot_batch_accuracy(network, test_dataloader, sorted_output_idx=None, title=
     targets = targets.to(network.device)
     labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
     output = network.forward(data).detach()
+
+    # if unsupervised:
+    #
+
+
     if sorted_output_idx is not None:
         output = output[:, sorted_output_idx]
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
@@ -505,11 +513,22 @@ def plot_batch_accuracy(network, test_dataloader, sorted_output_idx=None, title=
     num_units = targets.shape[1]
     num_labels = num_units
     avg_output = torch.zeros(num_units, num_labels)
+    if population is not None:
+        avg_pop_activity = torch.zeros(population.size, num_labels)
+
     for label in range(num_labels):
         label_idx = torch.where(labels == label)  # find all instances of given label
         avg_output[:, label] = torch.mean(output[label_idx], dim=0)
 
-    fig, ax = plt.subplots()
+        if population is not None:
+            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx].detach(), dim=0)
+
+    fig = plt.figure()
+    axes = gs.GridSpec(nrows=1, ncols=2,
+                       left=0.05, right=0.98,
+                       wspace=0.3, hspace=0.5)
+
+    ax = fig.add_subplot(axes[0])
     im = ax.imshow(avg_output, interpolation='none')
     cbar = plt.colorbar(im)
     ax.set_xticks(range(num_labels))
@@ -517,11 +536,25 @@ def plot_batch_accuracy(network, test_dataloader, sorted_output_idx=None, title=
     ax.set_xlabel('Labels')
     ax.set_ylabel('Output unit')
     if title is not None:
-        ax.set_title('Average output activity - %s' % title)
+        ax.set_title(f'Average output activity - {title}')
     else:
         ax.set_title('Average output activity')
-    fig.show()
 
+    if population is not None:
+        ax = fig.add_subplot(axes[1])
+        _, sort_idx = torch.sort(torch.argmax(avg_pop_activity,dim=1))
+        im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none',aspect='auto')
+        cax = fig.add_axes([ax.get_position().x1 + 0.04, ax.get_position().y0, 0.03, ax.get_position().height])
+        cbar = plt.colorbar(im, cax=cax)
+        ax.set_xticks(range(num_labels))
+        ax.set_xlabel('Labels')
+        ax.set_ylabel(f'{population.name} unit')
+        if title is not None:
+            ax.set_title(f'Average {population.name} activity - {title}')
+        else:
+            ax.set_title(f'Average {population.name} activity')
+
+    fig.show()
 
 
 # *******************************************************************
