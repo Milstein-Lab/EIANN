@@ -1,14 +1,19 @@
 import torch
 import numpy as np
+import math
+
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
+
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
 from skimage import metrics
 import scipy.stats as stats
-import math
+
 from tqdm.autonotebook import tqdm
 from copy import copy
+
 from . import utils as utils
 
 
@@ -389,7 +394,6 @@ def plot_hidden_weights(weights, sort=False):
     fig.tight_layout(pad=0.2)
 
 
-
 def plot_receptive_fields(population, dataloader, num_units=None, method='act_maximization', sort=False):
     """
 
@@ -555,6 +559,40 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
             ax.set_title(f'Average {population.name} activity')
 
     fig.show()
+
+
+def plot_rsm(network, test_dataloader):
+
+    idx, data, target = next(iter(test_dataloader))
+    data.to(network.device)
+    network.forward(data)
+    pop_activity = network.H1.E.activity.detach()
+
+    # Sort rows of pop_activity by label
+    _, sort_idx = torch.sort(torch.argmax(target, dim=1))
+    pop_activity = pop_activity[sort_idx]
+
+    similarity_matrix = cosine_similarity(pop_activity)
+
+    fig, ax = plt.subplots()
+    im = plt.imshow(similarity_matrix, interpolation='none')
+    cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
+    cbar = plt.colorbar(im, cax=cax)
+    cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+
+
+    num_samples = target.shape[0]
+    num_labels = target.shape[1]
+    samples_per_label = num_samples // num_labels
+    x_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
+    y_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
+    ax.set_xticklabels(range(1, num_labels + 1))
+    ax.set_yticklabels(range(1, num_labels + 1))
+    ax.set_xticks(x_ticks)
+    ax.set_yticks(y_ticks)
+    ax.set_xlabel('Label')
+    ax.set_ylabel('Label')
+    ax.set_title('Representational Similarity Matrix')
 
 
 # *******************************************************************
