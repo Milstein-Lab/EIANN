@@ -6,6 +6,8 @@ from torch.optim import Adam, SGD
 import sys
 import os
 import shutil
+import pickle
+import datetime
 from copy import deepcopy
 import time
 
@@ -325,7 +327,7 @@ class Network(nn.Module):
 
     def train_and_validate(self, train_dataloader, val_dataloader, epochs, val_interval=(0, -1, 50),
                            store_history=False, store_weights=False, store_weights_interval=None,
-                           export_weights_interval=None, export_weights_path=None, status_bar=False):
+                           save_to_file=None, status_bar=False):
         """
         Starting at validate_start, probe with the validate_data every validate_interval until >= validate_stop
         :param train_dataloader:
@@ -340,12 +342,8 @@ class Network(nn.Module):
         """
         num_samples = len(train_dataloader)
 
-        train_step = 0
-        # includes initial state before first train step
-        train_step_range = torch.arange(epochs * num_samples + 1)
-
-        assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
         # Load validation data & initialize intermediate variables
+        assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
         idx, val_data, val_target = next(iter(val_dataloader))
         val_data = val_data.to(self.device)
         val_target = val_target.to(self.device)
@@ -353,19 +351,21 @@ class Network(nn.Module):
         val_loss_history = []
         val_accuracy_history = []
         self.val_history_train_steps = []
-        val_start_index = train_step_range[val_interval[0]]
-        val_stop_index = train_step_range[val_interval[1]]
-        val_stepsize = val_interval[2]
+
+        if val_interval[1] == -1:
+            val_interval = (val_interval[0], epochs*num_samples+1, val_interval[2])
+        else:
+            val_interval = (val_interval[0], val_interval[1]+1, val_interval[2])
+        val_range = torch.arange(*val_interval)
+
+        train_step = 0
 
         # Compute validation loss
-        if train_step >= val_start_index and \
-                train_step <= val_stop_index and \
-                (train_step - val_start_index) % val_stepsize == 0:
+        if train_step in val_range:
             output = self.forward(val_data).detach()
             val_output_history.append(output)
             val_loss_history.append(self.criterion(output, val_target).detach())
-            accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
-                       output.shape[0]
+            accuracy = 100 * torch.sum(torch.argmax(output,dim=1) == torch.argmax(val_target,dim=1)) / output.shape[0]
             val_accuracy_history.append(accuracy)
             self.val_history_train_steps.append(train_step)
 
@@ -374,34 +374,12 @@ class Network(nn.Module):
             self.param_history = []
             self.param_history_train_steps = []
             if store_weights_interval is None:
-                store_weights_interval = val_interval
-            store_weights_start_index = train_step_range[store_weights_interval[0]]
-            store_weights_stop_index = train_step_range[store_weights_interval[1]]
-            store_weights_stepsize = train_step_range[store_weights_interval[2]]
-
-            if train_step >= store_weights_start_index and \
-                    train_step <= store_weights_stop_index and \
-                    (train_step - store_weights_start_index) % store_weights_stepsize == 0:
+                store_weights_range = val_range
+            else:
+                store_weights_range = torch.arange(store_weights_interval[0], store_weights_interval[1]+1, store_weights_interval[2])
+            if train_step in store_weights_range:
                 self.param_history.append(deepcopy(self.state_dict()))
                 self.param_history_train_steps.append(train_step)
-
-        if export_weights_path is not None:
-            if os.path.exists(export_weights_path):
-                overwrite = input('Directory already exists. Overwrite? (y/n)')
-                if overwrite == 'y':
-                    shutil.rmtree(export_weights_path)
-                    os.makedirs(export_weights_path)
-                else:
-                    export_weights_path = None
-                    print('Model not exported')
-            else:
-                os.makedirs(export_weights_path)
-
-            if export_weights_interval is None:
-                export_weights_interval = val_interval
-            export_weights_start_index = train_step_range[export_weights_interval[0]]
-            export_weights_stop_index = train_step_range[export_weights_interval[1]]
-            export_weights_stepsize = train_step_range[export_weights_interval[2]]
 
         if status_bar:
             from tqdm.autonotebook import tqdm
@@ -448,33 +426,19 @@ class Network(nn.Module):
                 self.constrain_weights_and_biases()
 
                 # Store history of weights and biases
-                if store_weights \
-                    and train_step >= store_weights_start_index \
-                    and train_step <= store_weights_stop_index\
-                    and (train_step - store_weights_start_index) % store_weights_stepsize == 0:
+                if store_weights and train_step in store_weights_range:
                     self.param_history.append(deepcopy(self.state_dict()))
                     self.param_history_train_steps.append(train_step)
 
-                # Export weights and biases to file
-                if export_weights_path is not None \
-                    and train_step >= export_weights_start_index\
-                    and train_step <= export_weights_stop_index \
-                    and (train_step - export_weights_start_index) % export_weights_stepsize == 0:
-
-                    torch.save(self.state_dict(), f"{export_weights_path}/epoch{epoch}_step{train_step}.pt")
-
-
                 # Compute validation loss
-                if train_step >= val_start_index and \
-                        train_step <= val_stop_index and \
-                        (train_step - val_start_index) % val_stepsize == 0:
-                    output = self.forward(val_data).detach()
-                    val_output_history.append(output)
-                    val_loss_history.append(self.criterion(output, val_target).detach())
-                    accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
-                               output.shape[0]
-                    val_accuracy_history.append(accuracy)
-                    self.val_history_train_steps.append(train_step)
+                if train_step in val_range:
+                        output = self.forward(val_data).detach()
+                        val_output_history.append(output)
+                        val_loss_history.append(self.criterion(output, val_target).detach())
+                        accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
+                                   output.shape[0]
+                        val_accuracy_history.append(accuracy)
+                        self.val_history_train_steps.append(train_step)
 
             epoch_sample_order = torch.concat(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
@@ -488,16 +452,75 @@ class Network(nn.Module):
         self.val_accuracy_history = torch.stack(val_accuracy_history).cpu()
         self.val_target = val_target.cpu()
 
-        return loss.detach()
+        if save_to_file is not None:
+            self.save(filename=save_to_file)
+
+    def save(self, path="saved_networks/", filename="datetime.datetime.now().strftime('%Y%m%d_%H%M%S')"):
+
+        if not os.path.exists(path):
+            os.makedirs(path)
+        if os.path.exists(f"{path}{filename}.pickle"):
+            overwrite = input('File already exists. Overwrite? (y/n)')
+            if overwrite == 'y':
+                # shutil.rmtree(path+filename)
+                os.remove(f"{path}{filename}.pickle")
+            else:
+                print('Model not saved')
+                return
+
+        params_to_save = ['param_history', 'sample_order', 'sorted_sample_indexes', 'loss_history',
+                          'val_output_history', 'val_loss_history', 'val_accuracy_history', 'val_target',
+                          'activity_history_list', 'bias_history_list', 'plateau_history_list']
+
+        data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
+                                 if param_name in params_to_save},
+                     'layers': {},
+                     'populations': {},
+                     'final_state_dict': self.state_dict()}
+
+        for layer in self:
+            layer_data = {param_name: value for param_name, value in layer.__dict__.items()
+                          if param_name in params_to_save}
+            data_dict['layers'][layer.name] = layer_data
+
+            for population in layer:
+                population_data = {param_name: value for param_name, value in population.__dict__.items()
+                                   if param_name in params_to_save}
+                data_dict['populations'][population.fullname] = population_data
+
+        with open(f'{path}{filename}.pickle', 'wb') as file:
+            pickle.dump(data_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+        print(f'Model saved to {path}{filename}.pickle')
+
+    def load(self, filepath):
+        with open(filepath, 'rb') as file:
+            data_dict = pickle.load(file)
+
+        network_data = data_dict['network']
+        self.__dict__.update(network_data)
+
+        for layer in self:
+            layer_data = data_dict['layers'][layer.name]
+            layer.__dict__.update(layer_data)
+
+            for population in layer:
+                population_data = data_dict['populations'][population.fullname]
+                population.__dict__.update(population_data)
+
+        self.load_state_dict(data_dict['final_state_dict'])
+
+        print(f"Model successfully loaded from '{filepath}'")
 
     def __iter__(self):
         for layer in self.layers.values():
             yield layer
 
 
+
 class AttrDict(dict):
     """
-    Enables object attribute references for Layers, Populations, and Projections.
+    Enables Layers, Populations, and Projections to be accessed as attributes of the network object.
     """
     def __init__(self, value=None):
         if value is None:
