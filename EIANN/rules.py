@@ -454,7 +454,8 @@ class DendriticLoss_2(LearningRule):
 
 def normalize_weight(projection, scale, autapses=False, axis=1):
     if not autapses and projection.pre == projection.post:
-        for i in range(projection.post.size):
-            projection.weight.data[i, i] = 0.
-    projection.weight.data /= torch.sum(torch.abs(projection.weight.data), axis=axis).unsqueeze(1)
+        projection.weight.data.fill_diagonal_(0.)
+    weight_sum = torch.sum(torch.abs(projection.weight.data), axis=axis).unsqueeze(1)
+    valid_rows = torch.nonzero(weight_sum, as_tuple=True)[0]
+    projection.weight.data[valid_rows,:] /= weight_sum[valid_rows,:]
     projection.weight.data *= scale
