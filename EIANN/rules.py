@@ -367,10 +367,9 @@ class BTSP_2(LearningRule):
             if projection.learning_rule.__class__ == cls:
                 pos_indexes = (output_pop.dendritic_state > projection.learning_rule.pos_loss_th).nonzero(as_tuple=True)
                 output_pop.plateau[pos_indexes] = output_pop.dendritic_state[pos_indexes]
-                output_pop.dend_to_soma[pos_indexes] = output_pop.dendritic_state[pos_indexes]
                 neg_indexes = (output_pop.dendritic_state < projection.learning_rule.neg_loss_th).nonzero(as_tuple=True)
                 output_pop.plateau[neg_indexes] = output_pop.dendritic_state[neg_indexes]
-                output_pop.dend_to_soma[neg_indexes] = output_pop.dendritic_state[neg_indexes]
+                output_pop.dend_to_soma = output_pop.plateau
                 output_pop.activity = output_pop.activation(output_pop.forward_soma_state + output_pop.dend_to_soma)
 
                 if store_activity:
@@ -400,7 +399,7 @@ class BTSP_2(LearningRule):
                                 neg_indexes = (pop.dendritic_state < projection.learning_rule.neg_loss_th).nonzero(
                                     as_tuple=True)
                                 pop.plateau[neg_indexes] = pop.dendritic_state[neg_indexes]
-                                pop.dend_to_soma = pop.dendritic_state
+                                pop.dend_to_soma = pop.plateau
                                 break
                         if store_activity:
                             pop.backward_step_activity.append(pop.activity.detach().clone())
