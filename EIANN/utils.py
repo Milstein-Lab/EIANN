@@ -671,6 +671,7 @@ def compute_receptive_fields(population, dataloader, num_units=None):
     input_images.requires_grad = True
     optimizer = torch.optim.SGD([input_images], lr=learning_rate)
 
+    print("Optimizing receptive field images...")
     for step in tqdm(range(num_steps)):
         output = network.forward(input_images)  # compute unit activities in forward pass
         pop_activity = population.activity[:,0:num_units]
