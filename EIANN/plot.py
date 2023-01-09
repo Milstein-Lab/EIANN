@@ -14,7 +14,7 @@ import scipy.stats as stats
 from tqdm.autonotebook import tqdm
 from copy import copy
 
-from . import utils as utils
+from . import utils
 
 
 def update_plot_defaults():
@@ -443,6 +443,65 @@ def plot_receptive_fields(population, dataloader, num_units=None, method='act_ma
     fig.tight_layout(pad=0.2)
 
 
+def plot_unit_receptive_field(population, dataloader, unit):
+
+    fig, ax = plt.subplots(1,2, figsize=(6,3))
+
+    weighted_avg_input = utils.compute_act_weighted_avg(population, dataloader)
+    unit_receptive_field = weighted_avg_input[unit]
+    ax[0].imshow(unit_receptive_field.view(28, 28), cmap='gray')
+    ax[0].set_title('Weighted Average Input')
+    ax[0].axis('off')
+
+    unit_receptive_field = utils.compute_unit_receptive_field(population, dataloader, unit)
+    ax[1].imshow(unit_receptive_field.view(28, 28), cmap='gray')
+    ax[1].set_title('Activation Maximization')
+    ax[1].axis('off')
+
+
+def plot_hidden_rf_history(network, unit=0):
+    '''
+    Plot a single unit's receptive field over time
+    '''
+
+    weight_history = network.module_dict['H1E_InputE'].weight_history[:, unit, :]
+    unit_plateaus = network.H1.E.plateau_history[:, unit]
+    plateau_scale = max(abs(max(unit_plateaus)), abs(min(unit_plateaus)))
+    label_history = torch.argmax(torch.stack(network.target_history), dim=1)
+
+    num_rows = weight_history.shape[0]
+    num_cols = 15
+    fig = plt.figure(figsize=(12, 12 * num_rows / num_cols))
+    axes = gs.GridSpec(num_rows, num_cols,
+                       top=0.975, wspace=0.1)
+
+    max_step = min(150, weight_history.shape[0])
+    step_range = np.arange(0, max_step, 1)
+    for i, train_step in enumerate(tqdm(step_range)):
+        row_idx = i // num_cols
+        col_idx = i % num_cols
+
+        weight_vec = weight_history[train_step]
+
+        ax = fig.add_subplot(axes[row_idx, col_idx])
+        im = ax.imshow(weight_vec.view(28, 28), cmap='gray',
+                       vmin=torch.min(weight_history), vmax=torch.max(weight_history))
+        ax.axis('off')
+
+        if train_step <= unit_plateaus.shape[0] and unit_plateaus[train_step] != 0:
+            ax.scatter([24], [3], s=30, c=unit_plateaus[train_step],
+                       cmap='bwr', vmin=-plateau_scale, vmax=plateau_scale)
+            ax.text(0, 5, s=str(int(label_history[train_step])), fontsize=10, color='w')
+
+        if i < num_cols and i % 2 == 0:
+            ax.set_title(f'step {network.param_history_steps[i]}', fontsize=9)
+
+    steps1 = network.param_history_steps[step_range[0]]
+    steps2 = network.param_history_steps[step_range[-1]]
+    print(f"Receptive field history: Unit {unit}, steps {steps1}-{steps2}")
+    print(f"W_min = {torch.min(weight_history)}, W_max = {torch.max(weight_history)}")
+
+
 def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False, num_points = 1000):
     assert len(test_dataloader)==1, "Dataloader must have a single large batch"
 
@@ -498,15 +557,13 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
 
-    indexes, data, targets = next(iter(test_dataloader))
+    idx, data, targets = next(iter(test_dataloader))
     data = data.to(network.device)
     targets = targets.to(network.device)
     labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
     output = network.forward(data).detach()
 
-    # if unsupervised:
-    #
-
+    # if unsupervised: # sort output units by their mean activity
 
     if sorted_output_idx is not None:
         output = output[:, sorted_output_idx]
@@ -536,7 +593,8 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
 
     ax = axes[0]
     im = ax.imshow(avg_output, interpolation='none')
-    cbar = plt.colorbar(im)
+    cax = fig.add_axes([ax.get_position().x1 + 0.04, ax.get_position().y0, 0.03, ax.get_position().height])
+    cbar = plt.colorbar(im, cax=cax)
     ax.set_xticks(range(num_labels))
     ax.set_yticks(range(num_units))
     ax.set_xlabel('Labels')
@@ -596,6 +654,58 @@ def plot_rsm(network, test_dataloader):
     ax.set_xlabel('Patterns (sorted by label)')
     ax.set_ylabel('Patterns (sorted by label)')
     ax.set_title('Representational Similarity Matrix')
+
+
+def plot_plateaus(population, start=0, end=-1):
+    fig = plt.figure(figsize=[11,7])
+    plateaus = population.plateau_history[start:end].T
+    plt.imshow(plateaus, aspect='auto',interpolation='None',
+              vmin=-1,vmax=1,cmap='bwr')
+
+    plt.ylabel(f'{population.fullname} unit')
+    plt.xlabel('Train step')
+    plt.title(f'Plateau History: step {start} to {end}')
+
+
+def plot_sorted_plateaus(population, test_dataloader):
+
+    network = population.network
+
+    # Sort history (x-axis) by label
+    label_history = torch.argmax(torch.stack(network.target_history), dim=1)
+    val, idx = torch.sort(label_history)
+    sorted_plateaus = population.plateau_history[idx, :]
+
+    # Sort units (y-axis) by preferred input, defined over test_dataloader
+    idx, data, target = next(iter(test_dataloader))
+    network.forward(data) #compute activities for test dataset
+    labels = torch.argmax(target, dim=1)
+    num_labels = target.shape[1]
+    samples_per_label = torch.zeros(num_labels)
+    avg_pop_activity = torch.zeros(population.size, num_labels)
+    for label in range(num_labels):
+        label_idx = torch.where(labels == label)[0]
+        samples_per_label[label] = len(label_idx)
+        avg_pop_activity[:, label] = torch.mean(population.activity[label_idx,:], dim=0)
+    preferred_input = torch.argmax(avg_pop_activity, dim=1)
+    val, idx = torch.sort(preferred_input)
+    sorted_plateaus = sorted_plateaus[:, idx]
+    unit_ids = idx
+
+    fig, ax = plt.subplots(figsize=[11, 7])
+    plateau_scale = max(abs(torch.max(sorted_plateaus)), abs(torch.min(sorted_plateaus)))
+    ax.imshow(sorted_plateaus.T, aspect='auto', cmap='bwr', interpolation='nearest',
+               vmin=-plateau_scale, vmax=plateau_scale)
+    ax.set_ylabel(f'{population.fullname} unit')
+    ax.set_title(f'Sorted Plateau History')
+
+    label_centers = torch.cumsum(samples_per_label, dim=0) - samples_per_label // 2
+    ax.set_xticks(label_centers)
+    ax.set_xticklabels(range(0, num_labels))
+    ax.set_xlabel('Samples (sorted by label)')
+
+    return sorted_plateaus.T, unit_ids
+
 
 
 # *******************************************************************
