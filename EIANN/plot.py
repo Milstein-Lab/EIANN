@@ -487,7 +487,8 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, unsupervised=False):
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None,
+                        unsupervised=False):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -527,12 +528,13 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         if population is not None:
             avg_pop_activity[:, label] = torch.mean(population.activity[label_idx].detach(), dim=0)
 
-    fig = plt.figure()
-    axes = gs.GridSpec(nrows=1, ncols=2,
-                       left=0.05, right=0.98,
-                       wspace=0.3, hspace=0.5)
+    if population is None:
+        fig, axes = plt.subplots()
+        axes = [axes]
+    else:
+        fig, axes = plt.subplots(1, 2)
 
-    ax = fig.add_subplot(axes[0])
+    ax = axes[0]
     im = ax.imshow(avg_output, interpolation='none')
     cbar = plt.colorbar(im)
     ax.set_xticks(range(num_labels))
@@ -545,7 +547,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         ax.set_title('Average output activity')
 
     if population is not None:
-        ax = fig.add_subplot(axes[1])
+        ax = axes[1]
         _, sort_idx = torch.sort(torch.argmax(avg_pop_activity,dim=1))
         im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none',aspect='auto')
         cax = fig.add_axes([ax.get_position().x1 + 0.04, ax.get_position().y0, 0.03, ax.get_position().height])
@@ -558,6 +560,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         else:
             ax.set_title(f'Average {population.name} activity')
 
+    fig.tight_layout()
     fig.show()
 
 

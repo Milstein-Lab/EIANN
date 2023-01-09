@@ -343,6 +343,10 @@ class Network(nn.Module):
         """
         num_samples = len(train_dataloader)
 
+        train_step = 0
+        # includes initial state before first train step
+        train_step_range = torch.arange(epochs * num_samples + 1)
+
         # Load validation data & initialize intermediate variables
         assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
         idx, val_data, val_target = next(iter(val_dataloader))
@@ -353,13 +357,8 @@ class Network(nn.Module):
         val_accuracy_history = []
         self.val_history_train_steps = []
 
-        if val_interval[1] == -1:
-            val_interval = (val_interval[0], epochs*num_samples+1, val_interval[2])
-        else:
-            val_interval = (val_interval[0], val_interval[1]+1, val_interval[2])
-        val_range = torch.arange(*val_interval)
-
-        train_step = 0
+        val_range = torch.arange(train_step_range[val_interval[0]], train_step_range[val_interval[1]] + 1,
+                                 val_interval[2])
 
         # Compute validation loss
         if train_step in val_range:
@@ -377,7 +376,9 @@ class Network(nn.Module):
             if store_weights_interval is None:
                 store_weights_range = val_range
             else:
-                store_weights_range = torch.arange(store_weights_interval[0], store_weights_interval[1]+1, store_weights_interval[2])
+                store_weights_range = torch.arange(train_step_range[store_weights_interval[0]],
+                                                   train_step_range[store_weights_interval[1]] + 1,
+                                                   store_weights_interval[2])
             if train_step in store_weights_range:
                 self.param_history.append(deepcopy(self.state_dict()))
                 self.param_history_train_steps.append(train_step)
