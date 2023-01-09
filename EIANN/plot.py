@@ -586,12 +586,12 @@ def plot_rsm(network, test_dataloader):
     samples_per_label = num_samples // num_labels
     x_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
     y_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
-    ax.set_xticklabels(range(1, num_labels + 1))
-    ax.set_yticklabels(range(1, num_labels + 1))
+    ax.set_xticklabels(range(0, num_labels))
+    ax.set_yticklabels(range(0, num_labels))
     ax.set_xticks(x_ticks)
     ax.set_yticks(y_ticks)
-    ax.set_xlabel('Label')
-    ax.set_ylabel('Label')
+    ax.set_xlabel('Patterns (sorted by label)')
+    ax.set_ylabel('Patterns (sorted by label)')
     ax.set_title('Representational Similarity Matrix')
 
 
@@ -1072,4 +1072,3 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
 
     plt.tight_layout()
     # fig.show()
-
