@@ -57,6 +57,7 @@ class Network(nn.Module):
         self.tau = tau
         self.forward_steps = forward_steps
         self.backward_steps = backward_steps
+        self.params_to_save = []
 
         self.seed = seed
         if self.seed is not None:
@@ -364,8 +365,7 @@ class Network(nn.Module):
             output = self.forward(val_data).detach()
             val_output_history.append(output)
             val_loss_history.append(self.criterion(output, val_target).detach())
-            accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
-                       output.shape[0]
+            accuracy = 100 * torch.sum(torch.argmax(output,dim=1) == torch.argmax(val_target,dim=1)) / output.shape[0]
             val_accuracy_history.append(accuracy)
             self.val_history_train_steps.append(train_step)
 
@@ -443,10 +443,10 @@ class Network(nn.Module):
                         self.val_history_train_steps.append(train_step)
 
             epoch_sample_order = torch.concat(epoch_sample_order)
-            self.sample_order.extend(epoch_sample_order)
+            sample_order.extend(epoch_sample_order)
             self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(epoch_sample_order)))
 
-        self.sample_order = torch.stack(self.sample_order)
+        self.sample_order = torch.stack(sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
         self.loss_history = torch.stack(self.loss_history).cpu()
         self.val_output_history = torch.stack(val_output_history).cpu()
@@ -455,54 +455,58 @@ class Network(nn.Module):
         self.val_target = val_target.cpu()
 
         if save_to_file is not None:
-            self.save(filename=save_to_file)
+            self.save(path=save_to_file)
 
-        return loss.detach()
+    def save(self, path=None, dir="saved_networks/", filename="datetime.datetime.now().strftime('%Y%m%d_%H%M%S')"):
 
-    def save(self, path="saved_networks/", filename="datetime.datetime.now().strftime('%Y%m%d_%H%M%S')"):
+        if path is None:
+            path = dir + filename + ".pickle"
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+        else:
+            path = path + ".pickle"
 
-        if not os.path.exists(path):
-            os.makedirs(path)
-        if os.path.exists(f"{path}{filename}.pickle"):
+        if os.path.exists(path):
             overwrite = input('File already exists. Overwrite? (y/n)')
             if overwrite == 'y':
                 # shutil.rmtree(path+filename)
-                os.remove(f"{path}{filename}.pickle")
+                os.remove(path)
             else:
                 print('Model not saved')
                 return
 
-        params_to_save = ['param_history', 'sample_order', 'sorted_sample_indexes', 'loss_history',
-                          'val_output_history', 'val_loss_history', 'val_accuracy_history', 'val_target',
-                          'activity_history_list', 'bias_history_list', 'plateau_history_list']
+        self.params_to_save.append('param_history','param_history_train_steps','sample_order','target_history','sorted_sample_indexes',
+            'loss_history','val_output_history','val_loss_history','val_accuracy_history','val_target',
+            'activity_history_list','_activity_history', '_backward_activity_history','bias_history_list','_bias_history',
+            '_plateau_history', 'plateau_history_list')
 
         data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
-                                 if param_name in params_to_save},
+                                 if param_name in self.params_to_save},
                      'layers': {},
                      'populations': {},
                      'final_state_dict': self.state_dict()}
 
         for layer in self:
             layer_data = {param_name: value for param_name, value in layer.__dict__.items()
-                          if param_name in params_to_save}
+                          if param_name in self.params_to_save}
             data_dict['layers'][layer.name] = layer_data
 
             for population in layer:
                 population_data = {param_name: value for param_name, value in population.__dict__.items()
-                                   if param_name in params_to_save}
+                                   if param_name in self.params_to_save}
                 data_dict['populations'][population.fullname] = population_data
 
-        with open(f'{path}{filename}.pickle', 'wb') as file:
+        with open(path, 'wb') as file:
             pickle.dump(data_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
-
         print(f'Model saved to {path}{filename}.pickle')
 
     def load(self, filepath):
+        print(f"Loading model data from '{filepath}'...")
         with open(filepath, 'rb') as file:
             data_dict = pickle.load(file)
 
-        network_data = data_dict['network']
-        self.__dict__.update(network_data)
+        print('Loading parameters into the network...')
+        self.__dict__.update(data_dict['network'])
 
         for layer in self:
             layer_data = data_dict['layers'][layer.name]
@@ -519,7 +523,6 @@ class Network(nn.Module):
     def __iter__(self):
         for layer in self.layers.values():
             yield layer
-
 
 
 class AttrDict(dict):

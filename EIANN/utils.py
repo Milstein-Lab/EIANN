@@ -683,8 +683,48 @@ def compute_receptive_fields(population, dataloader, num_units=None):
     return input_images.detach()
 
 
+def compute_unit_receptive_field(population, dataloader, unit):
+    """
+    Use the 'activation maximization' method to compute receptive fields for all units in the population
+
+    :param population:
+    :param dataloader:
+    :param num_units:
+    :return:
+    """
+
+    idx, data, target = next(iter(dataloader))
+    learning_rate = 0.1
+    num_steps = 10000
+    network = population.network
+
+    # turn on network gradients
+    if network.forward(data[0]).requires_grad == False:
+        network.backward_steps = 1
+        for param in network.parameters():
+            param.requires_grad = True
+
+    weighted_avg_input = compute_act_weighted_avg(population, dataloader)
+
+    input_image = weighted_avg_input[unit]
+    input_image.requires_grad = True
+    optimizer = torch.optim.SGD([input_image], lr=learning_rate)
+
+    print("Optimizing receptive field images...")
+    for step in tqdm(range(num_steps)):
+        network.forward(input_image)  # compute unit activities in forward pass
+        unit_activity = population.activity[unit]
+        loss = -torch.log(unit_activity + 0.001)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    return input_image.detach()
+
+
 def compute_PSD(receptive_field, plot=False):
     '''
+    Compute the power spectral density of a receptive field image
     Function based on https://bertvandenbroucke.netlify.app/2019/05/24/computing-a-power-spectrum-in-python/
     '''
 
