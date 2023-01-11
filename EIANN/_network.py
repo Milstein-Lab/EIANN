@@ -198,7 +198,7 @@ class Network(nn.Module):
                             delta_state = -post_pop.state + post_pop.bias
                             for projection in post_pop:
                                 pre_pop = projection.pre
-                                if projection.update_phase in ['forward', 'F']:
+                                if projection.update_phase in ['forward', 'all', 'F', 'A']:
                                     if projection.direction in ['forward', 'F']:
                                         delta_state = delta_state + projection(pre_pop.activity)
                                     elif projection.direction in ['recurrent', 'R']:
@@ -843,9 +843,9 @@ class Projection(nn.Linear):
         if direction not in ['forward', 'recurrent', 'F', 'R']:
             raise RuntimeError('Projection: direction (%s) must be forward or recurrent' % direction)
         self.direction = direction
-        if update_phase not in ['forward', 'backward', 'F', 'B']:
-            raise RuntimeError('Projection: update_phase (%s) must be forward or backward' % update_phase)
-        if update_phase in ['backward', 'B']:
+        if update_phase not in ['forward', 'backward', 'all', 'F', 'B', 'A']:
+            raise RuntimeError('Projection: update_phase (%s) must be forward, backward, or all' % update_phase)
+        if update_phase in ['backward', 'B', 'all', 'A']:
             self.post.backward_projections.append(self)
         self.update_phase = update_phase
 
