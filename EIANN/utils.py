@@ -637,8 +637,12 @@ def compute_act_weighted_avg(population, dataloader):
     network.forward(data)  # compute unit activities in forward pass
     pop_activity = population.activity.detach()
     weighted_avg_input = (data.T @ pop_activity) / (pop_activity.sum(axis=0) + 0.0001) # + epsilon to avoid div-by-0 error
+    weighted_avg_input = weighted_avg_input.T
 
-    return weighted_avg_input.T
+    network.forward(weighted_avg_input)  # compute unit activities in forward pass
+    activity_preferred_input = population.activity.detach()
+
+    return weighted_avg_input, activity_preferred_input
 
 
 def compute_receptive_fields(population, dataloader, num_units=None):
@@ -662,7 +666,7 @@ def compute_receptive_fields(population, dataloader, num_units=None):
         for param in network.parameters():
             param.requires_grad = True
 
-    weighted_avg_input = compute_act_weighted_avg(population, dataloader)
+    weighted_avg_input, activity_preferred_input = compute_act_weighted_avg(population, dataloader)
 
     if num_units is None or num_units>population.size:
         num_units = population.size
@@ -671,16 +675,18 @@ def compute_receptive_fields(population, dataloader, num_units=None):
     input_images.requires_grad = True
     optimizer = torch.optim.SGD([input_images], lr=learning_rate)
 
+    loss_history = []
     print("Optimizing receptive field images...")
     for step in tqdm(range(num_steps)):
         output = network.forward(input_images)  # compute unit activities in forward pass
         pop_activity = population.activity[:,0:num_units]
         loss = torch.sum(-torch.log(torch.diagonal(pop_activity) + 0.001))
+        loss_history.append(loss.detach())
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-    return input_images.detach()
+    return input_images.detach(), activity_preferred_input, loss_history
 
 
 def compute_unit_receptive_field(population, dataloader, unit):
