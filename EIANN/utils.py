@@ -209,8 +209,7 @@ def sort_by_val_history(network, plot=False):
     :return: min_loss_idx: index of the point with lowest loss (index relative only to the validation points, not the full training)
     :return: min_loss_sorting: optimal sorting indices for the point with lowest loss
     """
-    output_layer = list(network)[-1]
-    output_pop = next(iter(output_layer))
+    output_pop = network.output_pop
 
     num_units = network.val_target.shape[1]
     num_labels = num_units
@@ -256,8 +255,7 @@ def sort_by_val_history(network, plot=False):
 
 def sort_unsupervised_by_best_epoch(network, target, plot=False):
 
-    output_layer = list(network)[-1]
-    output_pop = next(iter(output_layer))
+    output_pop = network.output_pop
 
     dynamic_epoch_loss_history = []
     sorted_idx_history = []
@@ -345,9 +343,7 @@ def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_
     :param plot:
     :return: tuple: (int, tensor of float, tensor of float)
     """
-
-    output_layer = list(network)[-1]
-    output_pop = next(iter(output_layer))
+    output_pop = network.output_pop
 
     epoch_loss = []
     epoch_argmax_accuracy = []
@@ -486,9 +482,7 @@ def get_optimal_sorting(network, test_dataloader, plot=False):
     :return:
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
-
-    output_layer = list(network)[-1]
-    output_pop = output_layer.E
+    output_pop = network.output_pop
 
     optimal_loss_history = []
     sorting_history = []
@@ -535,8 +529,7 @@ def recompute_history(network, output_sorting):
     Re-compute activity history, loss history, and weight+bias history
     with new sorting of the output units
     """
-    output_layer = list(network)[-1]
-    output_pop = next(iter(output_layer))
+    output_pop = network.output_pop
 
     # Sort activity history
     output_pop.activity_history.data = output_pop.activity_history[:, :, output_sorting]

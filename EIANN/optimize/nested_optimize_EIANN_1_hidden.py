@@ -600,8 +600,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.temp_output_path is not None:
 
             end_index = start_index + len(dataloader)
-            output_layer = list(network)[-1]
-            output_pop = next(iter(output_layer))
+            output_pop = network.output_pop
 
             with h5py.File(context.temp_output_path, 'a') as f:
                 if context.label is None:

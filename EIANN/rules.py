@@ -200,7 +200,7 @@ class BTSP(LearningRule):
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_layer = reversed_layers.pop(0)
-        output_pop = next(iter(output_layer))
+        output_pop = network.output_pop
         for projection in output_pop:
             if projection.learning_rule.__class__ == cls:
                 output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
@@ -392,7 +392,7 @@ class BTSP_2(LearningRule):
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_layer = reversed_layers.pop(0)
-        output_pop = next(iter(output_layer))
+        output_pop = network.output_pop
         for projection in output_pop:
             if projection.learning_rule.__class__ == cls:
                 output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
