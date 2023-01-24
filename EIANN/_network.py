@@ -372,7 +372,7 @@ class Network(nn.Module):
         # Store history of weights and biases
         if store_weights:
             self.param_history = []
-            self.param_history_train_steps = []
+            self.param_history_steps = []
             if store_weights_interval is None:
                 store_weights_range = val_range
             else:
@@ -381,7 +381,7 @@ class Network(nn.Module):
                                                    store_weights_interval[2])
             if train_step in store_weights_range:
                 self.param_history.append(deepcopy(self.state_dict()))
-                self.param_history_train_steps.append(train_step)
+                self.param_history_steps.append(train_step)
 
         if status_bar:
             from tqdm.autonotebook import tqdm
@@ -430,7 +430,7 @@ class Network(nn.Module):
                 # Store history of weights and biases
                 if store_weights and train_step in store_weights_range:
                     self.param_history.append(deepcopy(self.state_dict()))
-                    self.param_history_train_steps.append(train_step)
+                    self.param_history_steps.append(train_step)
 
                 # Compute validation loss
                 if train_step in val_range:
@@ -443,10 +443,10 @@ class Network(nn.Module):
                         self.val_history_train_steps.append(train_step)
 
             epoch_sample_order = torch.concat(epoch_sample_order)
-            sample_order.extend(epoch_sample_order)
+            self.sample_order.extend(epoch_sample_order)
             self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(epoch_sample_order)))
 
-        self.sample_order = torch.stack(sample_order)
+        self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
         self.loss_history = torch.stack(self.loss_history).cpu()
         self.val_output_history = torch.stack(val_output_history).cpu()
@@ -475,10 +475,10 @@ class Network(nn.Module):
                 print('Model not saved')
                 return
 
-        self.params_to_save.append('param_history','param_history_train_steps','sample_order','target_history','sorted_sample_indexes',
+        self.params_to_save.extend(['param_history','param_history_steps','sample_order','target_history','sorted_sample_indexes',
             'loss_history','val_output_history','val_loss_history','val_accuracy_history','val_target',
             'activity_history_list','_activity_history', '_backward_activity_history','bias_history_list','_bias_history',
-            '_plateau_history', 'plateau_history_list')
+            '_plateau_history', 'plateau_history_list'])
 
         data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
                                  if param_name in self.params_to_save},
@@ -498,7 +498,7 @@ class Network(nn.Module):
 
         with open(path, 'wb') as file:
             pickle.dump(data_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
-        print(f'Model saved to {path}{filename}.pickle')
+        print(f'Model saved to {path}')
 
     def load(self, filepath):
         print(f"Loading model data from '{filepath}'...")
