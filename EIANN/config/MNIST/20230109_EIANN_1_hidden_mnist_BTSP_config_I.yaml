@@ -31,6 +31,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - 2.062111527699183
+                    update_phase: A
                     learning_rule: BTSP_3
                     learning_rule_kwargs:
                         pos_loss_th: 0.49208684093166405
@@ -45,6 +46,7 @@ projection_config:
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 10.474649920757904
+                    update_phase: A
                     direction: R
                     learning_rule: GjorgjievaHebb
                     learning_rule_kwargs:
@@ -89,6 +91,7 @@ projection_config:
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 1.6031850794519455
+                    update_phase: A
                     direction: F
                     learning_rule: GjorgjievaHebb
                     learning_rule_kwargs:
@@ -102,6 +105,7 @@ projection_config:
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 1.6031850794519455
+                    update_phase: A
                     direction: R
                     learning_rule: GjorgjievaHebb
                     learning_rule_kwargs:
@@ -147,6 +151,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - 1.54222435906092
+                    update_phase: A
                     direction: F
                     learning_rule: BTSP_3
                     learning_rule_kwargs:
@@ -162,6 +167,7 @@ projection_config:
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 16.580756092106452
+                    update_phase: A
                     direction: R
                     learning_rule: GjorgjievaHebb
                     learning_rule_kwargs:
@@ -177,6 +183,7 @@ projection_config:
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 0.290456866106396
+                    update_phase: A
                     direction: F
                     learning_rule: GjorgjievaHebb
                     learning_rule_kwargs:
@@ -190,6 +197,7 @@ projection_config:
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 1.6031850794519455
+                    update_phase: A
                     direction: R
                     learning_rule: GjorgjievaHebb
                     learning_rule_kwargs:

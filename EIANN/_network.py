@@ -69,6 +69,7 @@ class Network(nn.Module):
         self.optimizer_params_list = []
 
         # Build network populations
+        self.output_pop = None
         self.layers = {}
         for i, (layer_name, pop_config) in enumerate(layer_config.items()):
             layer = Layer(layer_name)
@@ -80,6 +81,11 @@ class Network(nn.Module):
                 else:
                     pop = Population(self, layer, pop_name, **pop_kwargs)
                 layer.append_population(pop)
+
+        # if no output_pop is designated, default to the first population specified in the final layer
+        if self.output_pop is None:
+            output_layer = list(self)[-1]
+            self.output_pop = next(iter(output_layer))
 
         # Build network projections
         for post_layer_name in projection_config:
@@ -214,7 +220,7 @@ class Network(nn.Module):
                 for pop in layer:
                     pop.activity_history_list.append(pop.forward_steps_activity)
 
-        return next(iter(layer)).activity
+        return self.output_pop.activity
 
     def test(self, dataloader, store_history=False, status_bar=False):
         """
@@ -365,7 +371,7 @@ class Network(nn.Module):
             output = self.forward(val_data).detach()
             val_output_history.append(output)
             val_loss_history.append(self.criterion(output, val_target).detach())
-            accuracy = 100 * torch.sum(torch.argmax(output,dim=1) == torch.argmax(val_target,dim=1)) / output.shape[0]
+            accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / output.shape[0]
             val_accuracy_history.append(accuracy)
             self.val_history_train_steps.append(train_step)
 
@@ -576,7 +582,7 @@ class Layer(object):
 class Population(object):
     def __init__(self, network, layer, name, size, activation, activation_kwargs=None, tau=None,
                  include_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None,
-                 bias_learning_rule=None, bias_learning_rule_kwargs=None):
+                 bias_learning_rule=None, bias_learning_rule_kwargs=None, output_pop=False):
         """
         Class for population of neurons
         :param network: :class:'Network'
@@ -591,6 +597,7 @@ class Population(object):
         :param bias_bounds: tuple of float
         :param bias_learning_rule: str; name of imported callable
         :param bias_learning_rule_kwargs: dict
+        :param output_pop: bool; a single population must be designated as the output population to compute network loss
         """
         # Constants
         self.network = network
@@ -602,6 +609,9 @@ class Population(object):
             self.tau = network.tau
         else:
             self.tau = tau
+
+        if output_pop:
+            self.network.output_pop = self
 
         # Set callable activation function
         if isinstance(activation, str):
@@ -657,7 +667,6 @@ class Population(object):
         self.network.parameter_dict[self.fullname+'_bias'] = self.bias
         self.network.optimizer_params_list.append({'params': self.bias,
                                                    'lr':self.bias_learning_rule.learning_rate})
-
 
         # Initialize storage containers
         self.projections = {}
@@ -788,6 +797,8 @@ class Input(Population):
     def reset_history(self):
         self.activity_history_list = []
         self._activity_history = None
+        self.backward_activity_history_list = []
+        self._backward_activity_history = None
 
 
 class Projection(nn.Linear):

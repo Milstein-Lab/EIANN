@@ -133,6 +133,85 @@ def update_EIANN_config_1_hidden_mnist_backprop_Dale_softplus_SGD(x, context):
     context.training_kwargs['optimizer'] = 'SGD'
 
 
+def update_EIANN_config_1_hidden_mnist_backprop_Dale_softplus_SGD_B(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    softplus_beta = param_dict['softplus_beta']
+    H1_I_size = int(param_dict['H1_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+
+    E_E_learning_rate = param_dict['E_E_learning_rate']
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+
+    context.layer_config['H1']['FFI']['size'] = H1_I_size
+    context.layer_config['H1']['FBI']['size'] = H1_I_size
+    context.layer_config['Output']['FFI']['size'] = Output_I_size
+    context.layer_config['Output']['FBI']['size'] = Output_I_size
+
+    for i, layer in enumerate(context.layer_config.values()):
+        if i > 0:
+            for pop in layer.values():
+                if 'activation' in pop and pop['activation'] == 'softplus':
+                    if 'activation_kwargs' not in pop:
+                        pop['activation_kwargs'] = {}
+                    pop['activation_kwargs']['beta'] = softplus_beta
+
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['H1']['FFI']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['E']['H1']['FFI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['E']['H1']['FBI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['FBI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['Output']['FFI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['Output']['E']['Output']['FFI']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    context.projection_config['Output']['E']['Output']['FBI']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    context.projection_config['Output']['FBI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
+def update_EIANN_config_1_hidden_mnist_backprop_Dale_softplus_SGD_C(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    softplus_beta = param_dict['softplus_beta']
+    H1_I_size = int(param_dict['H1_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+
+    E_E_learning_rate = param_dict['E_E_learning_rate']
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+
+    context.layer_config['H1']['I']['size'] = H1_I_size
+    context.layer_config['Output']['I']['size'] = Output_I_size
+
+    for i, layer in enumerate(context.layer_config.values()):
+        if i > 0:
+            for pop in layer.values():
+                if 'activation' in pop and pop['activation'] == 'softplus':
+                    if 'activation_kwargs' not in pop:
+                        pop['activation_kwargs'] = {}
+                    pop['activation_kwargs']['beta'] = softplus_beta
+
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['H1']['E']['H1']['I']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['I']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['I']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['Output']['E']['Output']['I']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    context.projection_config['Output']['I']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['Output']['I']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
 def update_EIANN_config_1_hidden_mnist_backprop_Dale_relu_SGD(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
 
@@ -818,8 +897,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.temp_output_path is not None:
 
             end_index = start_index + context.num_training_steps_argmax_accuracy_window
-            output_layer = list(network)[-1]
-            output_pop = next(iter(output_layer))
+            output_pop = network.output_pop
 
             with h5py.File(context.temp_output_path, 'a') as f:
                 if context.label is None:

@@ -46,7 +46,7 @@ def plot_simple_EIANN_config_summary(network, num_samples, start_index=None, sor
     :param label: str
     """
     output_layer = list(network)[-1]
-    output_pop = next(iter(output_layer))
+    output_pop = network.output_pop
 
     if sorted_output_idx is None:
         sorted_output_idx = torch.arange(0, output_pop.size)
