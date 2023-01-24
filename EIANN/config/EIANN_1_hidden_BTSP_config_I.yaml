@@ -42,6 +42,7 @@ projection_config:
           weight_init: fill_
           weight_init_args: !!python/tuple
           - -0.1050965
+          update_phase: A
           direction: R
           learning_rule: null
         Dend_I:
@@ -82,6 +83,7 @@ projection_config:
           weight_init_args: !!python/tuple
           - 1.0
           direction: F
+          update_phase: A
           learning_rule: null
     Dend_I:
       H1:
@@ -114,6 +116,7 @@ projection_config:
           weight_init: fill_
           weight_init_args: !!python/tuple
           - -1.999833
+          update_phase: A
           direction: R
           learning_rule: null
     FBI:
@@ -122,6 +125,7 @@ projection_config:
           weight_init: fill_
           weight_init_args: !!python/tuple
           - 1.0
+          update_phase: B
           direction: F
           learning_rule: null
 training_kwargs:

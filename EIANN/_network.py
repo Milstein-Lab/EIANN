@@ -788,6 +788,8 @@ class Input(Population):
     def reset_history(self):
         self.activity_history_list = []
         self._activity_history = None
+        self.backward_activity_history_list = []
+        self._backward_activity_history = None
 
 
 class Projection(nn.Linear):
