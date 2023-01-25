@@ -404,20 +404,27 @@ def plot_receptive_fields(population, dataloader, num_units=None, method='act_ma
     :return:
     """
     if method == 'act_weighted_avg':
-        receptive_fields = utils.compute_act_weighted_avg(population, dataloader)
+        receptive_fields, activity_preferred_input = utils.compute_act_weighted_avg(population, dataloader)
 
     elif method == 'act_maximization':
-        receptive_fields = utils.compute_receptive_fields(population, dataloader, num_units=num_units)
+        receptive_fields, activity_preferred_input = utils.compute_receptive_fields(population, dataloader, num_units=num_units)
 
     if sort: # Sort units by tuning structure of their receptive fields
         structure = []
-        for unit_weight_vec in receptive_fields:
-            s = metrics.structural_similarity(unit_weight_vec.numpy(),
-                                              np.random.uniform(min(unit_weight_vec), max(unit_weight_vec),
-                                                                len(unit_weight_vec)).astype('float32'))
+        for unit_field_vec in receptive_fields:
+            s = metrics.structural_similarity(unit_field_vec.numpy(),
+                                              np.random.uniform(min(unit_field_vec), max(unit_field_vec),
+                                                                len(unit_field_vec)).astype('float32'))
             structure.append(s)
         sorted_idx = np.argsort(structure)
         receptive_fields = receptive_fields[sorted_idx]
+
+    # Rescale the receptive fields to be between 0-1 and multiply by activity_preferred_input
+    print(receptive_fields.shape)
+    receptive_field_mins = torch.min(receptive_fields, dim=1).values
+    receptive_field_maxes = torch.max(receptive_fields, dim=1).values
+    receptive_fields = (receptive_fields.T - receptive_field_mins) / (receptive_field_maxes - receptive_field_mins)
+    receptive_fields = receptive_fields.T * activity_preferred_input.diagonal().unsqueeze(1)
 
     # Create figure
     num_rows = receptive_fields.shape[0]
@@ -428,13 +435,16 @@ def plot_receptive_fields(population, dataloader, num_units=None, method='act_ma
     axes = gs.GridSpec(num_rows, num_cols)
     fig = plt.figure(figsize=(10, 10 * num_rows / num_cols))
 
+    print(f'Min activity: {torch.min(receptive_fields)}, Max activity: {torch.max(receptive_fields)}')
+
     for i in range(receptive_fields.shape[0]):
         row_idx = i // num_cols
         col_idx = i % num_cols
 
         ax = fig.add_subplot(axes[row_idx, col_idx])
-        im = ax.imshow(receptive_fields[i].view(28, 28), cmap='gray')
+        im = ax.imshow(receptive_fields[i].view(28, 28), cmap='gray', vmin=torch.min(receptive_fields), vmax=torch.max(receptive_fields))
         ax.axis('off')
+        # cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         # cax = fig.add_axes([ax.get_position().x1 + 0.002, ax.get_position().y0, 0.005, ax.get_position().height])
         # cbar = plt.colorbar(im, cax=cax)
         # cbar.outline.set_visible(False)
@@ -459,7 +469,7 @@ def plot_unit_receptive_field(population, dataloader, unit):
     ax[1].axis('off')
 
 
-def plot_hidden_rf_history(network, unit=0):
+def plot_hidden_weight_history(network, unit=0):
     '''
     Plot a single unit's receptive field over time
     '''
@@ -498,7 +508,7 @@ def plot_hidden_rf_history(network, unit=0):
 
     steps1 = network.param_history_steps[step_range[0]]
     steps2 = network.param_history_steps[step_range[-1]]
-    print(f"Receptive field history: Unit {unit}, steps {steps1}-{steps2}")
+    print(f"Input->H1 weight history: Unit {unit}, steps {steps1}-{steps2}")
     print(f"W_min = {torch.min(weight_history)}, W_max = {torch.max(weight_history)}")
 
 
@@ -593,8 +603,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
 
     ax = axes[0]
     im = ax.imshow(avg_output, interpolation='none')
-    cax = fig.add_axes([ax.get_position().x1 + 0.04, ax.get_position().y0, 0.03, ax.get_position().height])
-    cbar = plt.colorbar(im, cax=cax)
+    cbar = plt.colorbar(im, ax=ax)
     ax.set_xticks(range(num_labels))
     ax.set_yticks(range(num_units))
     ax.set_xlabel('Labels')
@@ -608,8 +617,8 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         ax = axes[1]
         _, sort_idx = torch.sort(torch.argmax(avg_pop_activity,dim=1))
         im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none',aspect='auto')
-        cax = fig.add_axes([ax.get_position().x1 + 0.04, ax.get_position().y0, 0.03, ax.get_position().height])
-        cbar = plt.colorbar(im, cax=cax)
+        cbar = plt.colorbar(im, ax=ax)
+
         ax.set_xticks(range(num_labels))
         ax.set_xlabel('Labels')
         ax.set_ylabel(f'{population.name} unit')
