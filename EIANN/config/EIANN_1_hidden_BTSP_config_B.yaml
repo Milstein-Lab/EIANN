@@ -52,7 +52,6 @@ projection_config:
           - null
           - 0
           update_phase: B
-          direction: R
           compartment: dend
           learning_rule: DendriticLoss
           learning_rule_kwargs:

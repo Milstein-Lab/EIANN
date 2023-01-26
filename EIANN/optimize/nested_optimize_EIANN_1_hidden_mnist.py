@@ -591,26 +591,6 @@ def update_EIANN_config_1_hidden_mnist_BTSP_C2(x, context):
     :param x:
     :param context:
 
-    FB_BTSP_init_weight_factor: 1.7332552147609976
-    FF_BTSP_init_weight_factor: 0.14933762086546284
-    H1_E_BTSP_neg_loss_th: -0.3286811033799936
-    H1_E_BTSP_pos_loss_th: 0.09784687841043647
-    H1_E_H1_FBI_weight_scale: 0.01320454234508166
-    H1_E_H1_Dend_I_init_weight_scale: 0.15693539946852347
-    H1_E_H1_Dend_I_learning_rate: 0.17678741629227127
-    H1_E_Input_E_BTSP_learning_rate: 0.007971513519070807
-    H1_E_Input_E_max_weight_scale: 2.6271244086908077
-    H1_E_Output_E_BTSP_learning_rate: 0.12158604517445257
-    H1_E_Output_E_max_weight_scale: 3.188187856987675
-    H1_E_H1_FBI_weight_scale: 1.
-    H1_Dend_I_H1_E_weight_scale: 1.6031850794519455
-    Output_E_BTSP_learning_rate: 0.11277464693344395
-    Output_E_BTSP_neg_loss_th: -0.386039824588577
-    Output_E_BTSP_pos_loss_th: 0.06431319592892012
-    Output_E_H1_E_max_weight_scale: 4.006206567051037
-    Output_E_Output_FBI_weight_scale: 0.3002765663599449
-    Output_FBI_Output_E_weight_scale: 1.
-
     """
     param_dict = param_array_to_dict(x, context.param_names)
 
