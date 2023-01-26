@@ -88,7 +88,7 @@ projection_config:
           weight_init: fill_
           weight_init_args: !!python/tuple
           - 1.0
-          update_phase: A
+          update_phase: B
           direction: F
           learning_rule: null
   Output:
