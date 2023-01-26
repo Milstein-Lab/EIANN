@@ -1,0 +1,7 @@
+bpDale_softplus_1_inh_C:
+    E_E_learning_rate: 0.44471841712525084
+    E_I_learning_rate: 0.04489033345586521
+    H1_I_size: 1.0
+    I_E_learning_rate: 0.003263460906257934
+    Output_I_size: 1.0
+    softplus_beta: 12.006040341138764

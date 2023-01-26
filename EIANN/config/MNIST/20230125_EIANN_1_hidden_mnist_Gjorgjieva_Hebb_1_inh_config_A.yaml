@@ -37,7 +37,7 @@ projection_config:
                 FBI:
                     weight_init: fill_
                     weight_init_args:
-                        - 1.
+                        - -1.
                     weight_bounds: !!python/tuple
                         - null
                         - 0
@@ -74,7 +74,7 @@ projection_config:
                 FBI:
                     weight_init: fill_
                     weight_init_args:
-                        - 1.
+                        - -1.
                     weight_bounds: !!python/tuple
                         - null
                         - 0

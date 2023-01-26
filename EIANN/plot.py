@@ -254,7 +254,7 @@ def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None,
     network.test_loss_history = torch.stack(test_loss_history).cpu()
 
     fig = plt.figure()
-    plt.plot(network.param_history_train_steps, network.test_loss_history)
+    plt.plot(network.param_history_steps, network.test_loss_history)
     plt.xlabel('Training steps')
     plt.ylabel('Test loss')
     fig.suptitle('Test loss')
