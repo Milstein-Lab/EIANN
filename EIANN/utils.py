@@ -679,7 +679,32 @@ def compute_receptive_fields(population, dataloader, num_units=None):
         loss.backward()
         optimizer.step()
 
-    return input_images.detach(), activity_preferred_input, loss_history
+    receptive_fields = input_images.detach()
+
+    A = activity_preferred_input
+
+    # Normalize receptive fields to [0,1]
+    receptive_fields2 = (receptive_fields.T - receptive_fields.min(dim=1).values) / (receptive_fields.max(dim=1).values - receptive_fields.min(dim=1).values)
+    receptive_fields2 = receptive_fields2.T
+
+    network.forward(receptive_fields2)  # compute unit activities in forward pass
+    activity_preferred_input = population.activity[:,0:num_units].detach()
+    B = activity_preferred_input
+
+    # Pass receptive fields through sigmoid
+    receptive_fields3 = torch.sigmoid(receptive_fields)
+    network.forward(receptive_fields3)  # compute unit activities in forward pass
+    activity_preferred_input = population.activity[:,0:num_units].detach()
+    C = activity_preferred_input
+
+    # fig = plt.figure()
+    # plt.plot(A.diagonal(), color='k', label='avg img activity')
+    # plt.plot(B.diagonal(), color='r', label='lin norm receptive field activity')
+    # plt.plot(C.diagonal(), color='b', label='sigmoid receptive field activity')
+    # plt.legend()
+
+    return receptive_fields3, C
+    # return receptive_fields, activity_preferred_input
 
 
 def compute_unit_receptive_field(population, dataloader, unit):

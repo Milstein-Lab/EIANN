@@ -419,12 +419,12 @@ def plot_receptive_fields(population, dataloader, num_units=None, method='act_ma
         sorted_idx = np.argsort(structure)
         receptive_fields = receptive_fields[sorted_idx]
 
-    # Rescale the receptive fields to be between 0-1 and multiply by activity_preferred_input
-    print(receptive_fields.shape)
-    receptive_field_mins = torch.min(receptive_fields, dim=1).values
-    receptive_field_maxes = torch.max(receptive_fields, dim=1).values
-    receptive_fields = (receptive_fields.T - receptive_field_mins) / (receptive_field_maxes - receptive_field_mins)
-    receptive_fields = receptive_fields.T * activity_preferred_input.diagonal().unsqueeze(1)
+    # # Rescale the receptive fields to be between 0-1 and multiply by activity_preferred_input
+    # receptive_field_mins = torch.min(receptive_fields, dim=1).values
+    # receptive_field_maxes = torch.max(receptive_fields, dim=1).values
+    # receptive_fields = (receptive_fields.T - receptive_field_mins) / (receptive_field_maxes - receptive_field_mins)
+    # receptive_fields = receptive_fields.T * activity_preferred_input.diagonal().unsqueeze(1)
+    receptive_fields = receptive_fields * activity_preferred_input.diagonal().unsqueeze(1)
 
     # Create figure
     num_rows = receptive_fields.shape[0]
