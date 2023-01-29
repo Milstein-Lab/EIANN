@@ -80,7 +80,7 @@ stages:
       get_objectives: get_objectives
 optimization_title: EIANN_1_hidden_BTSP_C2
 x0:
-    FB_BTSP_init_weight_factor: 1.7332552147609976
+    FB_BTSP_init_weight_factor: 0.7332552147609976
     FF_BTSP_init_weight_factor: 0.14933762086546284
     H1_E_BTSP_neg_loss_th: -0.3286811033799936
     H1_E_BTSP_pos_loss_th: 0.09784687841043647

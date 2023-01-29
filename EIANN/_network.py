@@ -440,13 +440,13 @@ class Network(nn.Module):
 
                 # Compute validation loss
                 if train_step in val_range:
-                        output = self.forward(val_data).detach()
-                        val_output_history.append(output)
-                        val_loss_history.append(self.criterion(output, val_target).detach())
-                        accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
-                                   output.shape[0]
-                        val_accuracy_history.append(accuracy)
-                        self.val_history_train_steps.append(train_step)
+                    output = self.forward(val_data).detach()
+                    val_output_history.append(output)
+                    val_loss_history.append(self.criterion(output, val_target).detach())
+                    accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
+                               output.shape[0]
+                    val_accuracy_history.append(accuracy)
+                    self.val_history_train_steps.append(train_step)
 
             epoch_sample_order = torch.concat(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
