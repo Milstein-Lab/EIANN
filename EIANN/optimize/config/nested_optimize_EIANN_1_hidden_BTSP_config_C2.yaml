@@ -56,6 +56,9 @@ bounds:
     Output_FBI_Output_E_weight_scale:
         - 0.01
         - 5.
+    BTSP_neg_loss_ET_discount:
+        - 0.05
+        - 0.5
 default_params:
 kwargs:
     network_id: 1

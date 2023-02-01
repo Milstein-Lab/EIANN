@@ -96,3 +96,4 @@ BTSP_1_inh_C2:
     Output_E_H1_E_max_weight_scale: 4.4802454945832775
     Output_E_Output_FBI_weight_scale: 1.9404164941763633
     Output_FBI_Output_E_weight_scale: 0.6810704841817813
+    BTSP_neg_loss_ET_discount: 0.25

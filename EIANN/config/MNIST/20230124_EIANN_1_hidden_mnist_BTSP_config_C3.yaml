@@ -53,7 +53,7 @@ projection_config:
                         - 0
                     update_phase: B
                     compartment: dend
-                    learning_rule: DendriticLoss2
+                    learning_rule: DendriticLoss_2
                     learning_rule_kwargs:
                         sign: -1
                         learning_rate: 0.015920951416174885
