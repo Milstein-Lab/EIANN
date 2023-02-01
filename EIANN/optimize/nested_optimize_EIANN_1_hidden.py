@@ -475,12 +475,16 @@ def update_EIANN_config_1_hidden_BTSP_C2(x, context):
 
     Output_FBI_Output_E_weight_scale = param_dict['Output_FBI_Output_E_weight_scale']
 
+    BTSP_neg_loss_ET_discount = param_dict['BTSP_neg_loss_ET_discount']
+
     context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
     context.projection_config['H1']['E']['Input']['E']['weight_bounds'] = (0, H1_E_Input_E_max_weight)
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = H1_E_BTSP_pos_loss_th
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_th'] = H1_E_BTSP_neg_loss_th
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
         H1_E_Input_E_BTSP_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_ET_discount'] = \
+        BTSP_neg_loss_ET_discount
     context.projection_config['H1']['E']['H1']['FBI']['weight_init_args'] = (-H1_E_H1_FBI_weight_scale,)
     context.projection_config['H1']['E']['H1']['Dend_I']['weight_init_args'] = (H1_E_H1_Dend_I_init_weight_scale,)
     context.projection_config['H1']['E']['H1']['Dend_I']['learning_rule_kwargs']['learning_rate'] = \
@@ -491,6 +495,8 @@ def update_EIANN_config_1_hidden_BTSP_C2(x, context):
     context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['neg_loss_th'] = H1_E_BTSP_neg_loss_th
     context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
         H1_E_Output_E_BTSP_learning_rate
+    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['neg_loss_ET_discount'] = \
+        BTSP_neg_loss_ET_discount
 
     context.projection_config['H1']['FBI']['H1']['E']['weight_init_args'] = (H1_E_H1_FBI_weight_scale,)
     context.projection_config['H1']['Dend_I']['H1']['E']['weight_init_args'] = (H1_Dend_I_H1_E_weight_scale,)
@@ -503,6 +509,8 @@ def update_EIANN_config_1_hidden_BTSP_C2(x, context):
         Output_E_BTSP_neg_loss_th
     context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
         Output_E_BTSP_learning_rate
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['neg_loss_ET_discount'] = \
+        BTSP_neg_loss_ET_discount
     context.projection_config['Output']['E']['Output']['FBI']['weight_init_args'] = (-Output_E_Output_FBI_weight_scale,)
     context.projection_config['Output']['FBI']['Output']['E']['weight_init_args'] = (Output_FBI_Output_E_weight_scale,)
 

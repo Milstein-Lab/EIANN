@@ -1,7 +1,7 @@
 bounds:
     H1_E_Input_E_max_weight_scale:
         - 0.01
-        - 5.
+        - 20.
     FF_BTSP_init_weight_factor:
         - 0.01
         - 1.
@@ -19,7 +19,7 @@ bounds:
         - -0.05
     H1_E_Output_E_max_weight_scale:
         - 0.01
-        - 5.
+        - 20.
     FB_BTSP_init_weight_factor:
         - 0.01
         - 1.
@@ -40,7 +40,7 @@ bounds:
         - 0.25
     Output_E_H1_E_max_weight_scale:
         - 0.01
-        - 5.
+        - 20.
     Output_E_BTSP_learning_rate:
         - 0.0001
         - 0.25
@@ -56,6 +56,9 @@ bounds:
     Output_FBI_Output_E_weight_scale:
         - 0.01
         - 5.
+    BTSP_neg_loss_ET_discount:
+        - 0.05
+        - 0.5
 default_params:
 kwargs:
     network_id: 1
@@ -103,3 +106,4 @@ x0:
     Output_E_H1_E_max_weight_scale: 4.006206567051037
     Output_E_Output_FBI_weight_scale: 0.3002765663599449
     Output_FBI_Output_E_weight_scale: 1.
+    BTSP_neg_loss_ET_discount: 0.25
