@@ -633,18 +633,20 @@ def compute_act_weighted_avg(population, dataloader):
     weighted_avg_input = weighted_avg_input.T
 
     network.forward(weighted_avg_input)  # compute unit activities in forward pass
-    activity_preferred_input = population.activity.detach()
+    activity_preferred_inputs = population.activity.detach()
 
-    return weighted_avg_input, activity_preferred_input
+    return weighted_avg_input, activity_preferred_inputs
 
 
-def compute_receptive_fields(population, dataloader, num_units=None):
+def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigmoid=False):
     """
     Use the 'activation maximization' method to compute receptive fields for all units in the population
 
     :param population:
     :param dataloader:
     :param num_units:
+    :param sigmoid: if True, use sigmoid activation function for the input images;
+                    if False, returns unfiltered receptive fields and activities from act_weighted_avg images
     :return:
     """
 
@@ -659,7 +661,7 @@ def compute_receptive_fields(population, dataloader, num_units=None):
         for param in network.parameters():
             param.requires_grad = True
 
-    weighted_avg_input, activity_preferred_input = compute_act_weighted_avg(population, dataloader)
+    weighted_avg_input, activity_preferred_inputs = compute_act_weighted_avg(population, dataloader)
 
     if num_units is None or num_units>population.size:
         num_units = population.size
@@ -671,7 +673,11 @@ def compute_receptive_fields(population, dataloader, num_units=None):
     loss_history = []
     print("Optimizing receptive field images...")
     for step in tqdm(range(num_steps)):
-        output = network.forward(input_images)  # compute unit activities in forward pass
+        if sigmoid:
+            im = torch.sigmoid((input_images-0.5)*10)
+            network.forward(im)  # compute unit activities in forward pass
+        else:
+            network.forward(input_images)  # compute unit activities in forward pass
         pop_activity = population.activity[:,0:num_units]
         loss = torch.sum(-torch.log(torch.diagonal(pop_activity) + 0.001))
         loss_history.append(loss.detach())
@@ -680,31 +686,12 @@ def compute_receptive_fields(population, dataloader, num_units=None):
         optimizer.step()
 
     receptive_fields = input_images.detach()
+    if sigmoid:
+        receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
+        network.forward(receptive_fields)  # compute unit activities in forward pass
+        activity_preferred_inputs = population.activity[:,0:num_units].detach()
 
-    A = activity_preferred_input
-
-    # Normalize receptive fields to [0,1]
-    receptive_fields2 = (receptive_fields.T - receptive_fields.min(dim=1).values) / (receptive_fields.max(dim=1).values - receptive_fields.min(dim=1).values)
-    receptive_fields2 = receptive_fields2.T
-
-    network.forward(receptive_fields2)  # compute unit activities in forward pass
-    activity_preferred_input = population.activity[:,0:num_units].detach()
-    B = activity_preferred_input
-
-    # Pass receptive fields through sigmoid
-    receptive_fields3 = torch.sigmoid(receptive_fields)
-    network.forward(receptive_fields3)  # compute unit activities in forward pass
-    activity_preferred_input = population.activity[:,0:num_units].detach()
-    C = activity_preferred_input
-
-    # fig = plt.figure()
-    # plt.plot(A.diagonal(), color='k', label='avg img activity')
-    # plt.plot(B.diagonal(), color='r', label='lin norm receptive field activity')
-    # plt.plot(C.diagonal(), color='b', label='sigmoid receptive field activity')
-    # plt.legend()
-
-    return receptive_fields3, C
-    # return receptive_fields, activity_preferred_input
+    return receptive_fields, activity_preferred_inputs
 
 
 def compute_unit_receptive_field(population, dataloader, unit):

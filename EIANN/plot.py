@@ -394,7 +394,7 @@ def plot_hidden_weights(weights, sort=False):
     fig.tight_layout(pad=0.2)
 
 
-def plot_receptive_fields(population, dataloader, num_units=None, method='act_maximization', sort=False):
+def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=False):
     """
 
     :param population:
@@ -403,28 +403,25 @@ def plot_receptive_fields(population, dataloader, num_units=None, method='act_ma
     :param method:
     :return:
     """
-    if method == 'act_weighted_avg':
-        receptive_fields, activity_preferred_input = utils.compute_act_weighted_avg(population, dataloader)
-
-    elif method == 'act_maximization':
-        receptive_fields, activity_preferred_input = utils.compute_receptive_fields(population, dataloader, num_units=num_units)
 
     if sort: # Sort units by tuning structure of their receptive fields
         structure = []
         for unit_field_vec in receptive_fields:
             s = metrics.structural_similarity(unit_field_vec.numpy(),
-                                              np.random.uniform(min(unit_field_vec), max(unit_field_vec),
-                                                                len(unit_field_vec)).astype('float32'))
+                                              np.random.uniform(min(unit_field_vec), max(unit_field_vec), len(unit_field_vec)).astype('float32'))
             structure.append(s)
         sorted_idx = np.argsort(structure)
         receptive_fields = receptive_fields[sorted_idx]
 
-    # # Rescale the receptive fields to be between 0-1 and multiply by activity_preferred_input
-    # receptive_field_mins = torch.min(receptive_fields, dim=1).values
-    # receptive_field_maxes = torch.max(receptive_fields, dim=1).values
-    # receptive_fields = (receptive_fields.T - receptive_field_mins) / (receptive_field_maxes - receptive_field_mins)
-    # receptive_fields = receptive_fields.T * activity_preferred_input.diagonal().unsqueeze(1)
-    receptive_fields = receptive_fields * activity_preferred_input.diagonal().unsqueeze(1)
+    activity_preferred_inputs = activity_preferred_inputs.diagonal()
+    print(f'Min activity: {torch.min(activity_preferred_inputs)}, Max activity: {torch.max(activity_preferred_inputs)}')
+
+    # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
+    receptive_fields = receptive_fields / torch.max(receptive_fields, dim=1, keepdim=True)[0]
+
+    # Normalize activity_preferred_inputs (to use as alpha transparency)
+    # activity_preferred_inputs = (activity_preferred_inputs / torch.max(activity_preferred_inputs)).numpy()
+    receptive_fields = receptive_fields * activity_preferred_inputs.unsqueeze(1)
 
     # Create figure
     num_rows = receptive_fields.shape[0]
@@ -435,22 +432,32 @@ def plot_receptive_fields(population, dataloader, num_units=None, method='act_ma
     axes = gs.GridSpec(num_rows, num_cols)
     fig = plt.figure(figsize=(10, 10 * num_rows / num_cols))
 
-    print(f'Min activity: {torch.min(receptive_fields)}, Max activity: {torch.max(receptive_fields)}')
+    colorscale = torch.max(receptive_fields.abs())
+
+    # Create custom colormap
+    top_rgba = plt.get_cmap('gray')(np.linspace(0, 1, 256))
+    bottom_rgba = plt.get_cmap('Blues')(np.linspace(0, 1, 256))
+    colors = np.concatenate((bottom_rgba, top_rgba))
+    my_cmap = plt.matplotlib.colors.LinearSegmentedColormap.from_list('custom', colors)
 
     for i in range(receptive_fields.shape[0]):
         row_idx = i // num_cols
         col_idx = i % num_cols
 
         ax = fig.add_subplot(axes[row_idx, col_idx])
-        im = ax.imshow(receptive_fields[i].view(28, 28), cmap='gray', vmin=torch.min(receptive_fields), vmax=torch.max(receptive_fields))
+        # im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=-colorscale, vmax=colorscale,
+        #                interpolation='none', alpha=activity_preferred_inputs[i])
+        im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=-colorscale, vmax=colorscale)
         ax.axis('off')
-        # cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         # cax = fig.add_axes([ax.get_position().x1 + 0.002, ax.get_position().y0, 0.005, ax.get_position().height])
         # cbar = plt.colorbar(im, cax=cax)
         # cbar.outline.set_visible(False)
         # cbar.ax.tick_params(labelsize=10, pad=0.5, length=0)
 
     fig.tight_layout(pad=0.2)
+    if sort:
+        return structure
 
 
 def plot_unit_receptive_field(population, dataloader, unit):
