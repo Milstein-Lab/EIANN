@@ -790,7 +790,9 @@ class Input(Population):
         self.fullname = layer.name+self.name
         self.size = size
         self.projections = {}
+        self.backward_projections = []
         self.outgoing_projections = {}
+        self.incoming_projections = {}
         self.reinit(network.device)
         self.reset_history()
 

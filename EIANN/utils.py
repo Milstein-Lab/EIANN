@@ -1,11 +1,13 @@
 import torch
 from torch.utils.data import DataLoader
+from torch.nn.functional import softplus, relu, sigmoid, elu
 import numpy as np
 import math
 import yaml
 import itertools
 import os
 from . import plot as plot
+from . import external as external
 from collections import Iterable
 import matplotlib.pyplot as plt
 from tqdm.autonotebook import tqdm
@@ -692,6 +694,25 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
         activity_preferred_inputs = population.activity[:,0:num_units].detach()
 
     return receptive_fields, activity_preferred_inputs
+
+
+def set_activation(network, activation, **kwargs):
+
+    # Set callable activation function
+    if isinstance(activation, str):
+        if activation in globals():
+            activation = globals()[activation]
+        elif hasattr(external, activation):
+            activation = getattr(external, activation)
+    if not callable(activation):
+        raise RuntimeError \
+            ('Population: callable for activation: %s must be imported' % activation)
+    activation_f = lambda x: activation(x, **kwargs)
+
+    for i, layer in enumerate(network):
+        if i > 0:
+            for population in layer:
+                population.activation = activation_f
 
 
 def compute_unit_receptive_field(population, dataloader, unit):

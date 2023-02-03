@@ -24,15 +24,14 @@ projection_config:
         E:
             Input:
                 E:
-                    weight_init: uniform_
+                    weight_init: half_kaining
                     weight_init_args: !!python/tuple
-                        - 0
                         - 0.061735095235877606
                     weight_bounds: !!python/tuple
                         - 0
                         - 3.737942984542882
                     direction: F
-                    learning_rule: BTSP
+                    learning_rule: BTSP_3
                     learning_rule_kwargs:
                         pos_loss_th: 0.05104425602423604
                         neg_loss_th: -0.06319409127791972
@@ -47,28 +46,28 @@ projection_config:
                 Dend_I:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
-                        - -0.061041432117914914
+                        - 0.0
                     weight_bounds: !!python/tuple
                         - null
                         - 0
+                    weight_constraint: clone_weight
+                    weight_constraint_kwargs:
+                        source: H1.E.Output.E
+                        sign: -1
                     update_phase: B
                     compartment: dend
-                    learning_rule: DendriticLoss
-                    learning_rule_kwargs:
-                        sign: -1
-                        learning_rate: 0.015920951416174885
+                    learning_rule: null
             Output:
                 E:
-                    weight_init: uniform_
+                    weight_init: half_kaining
                     weight_init_args: !!python/tuple
-                        - 0.10904565025648146
                         - 0.26856846831362047
                     weight_bounds: !!python/tuple
                         - 0
                         - 3.106144439387247
                     update_phase: B
                     compartment: dend
-                    learning_rule: BTSP
+                    learning_rule: BTSP_3
                     learning_rule_kwargs:
                         pos_loss_th: 0.05104425602423604
                         neg_loss_th: -0.06319409127791972
@@ -79,6 +78,7 @@ projection_config:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
                         - 1.0
+                    update_phase: A
                     direction: F
                     learning_rule: null
         Dend_I:
@@ -87,22 +87,35 @@ projection_config:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
                         - 1.0
-                    update_phase: B
-                    direction: F
+                    weight_constraint: clone_weight
+                    weight_constraint_kwargs:
+                        source: Output.E.H1.E
+                        sign: 1
+                    update_phase: A
+                    learning_rule: null
+            Output:
+                FBI:
+                    weight_init: fill_
+                    weight_init_args: !!python/tuple
+                        - 0
+                    weight_constraint: clone_weight
+                    weight_constraint_kwargs:
+                        source: Output.E.Output.FBI
+                    direction: R
+                    update_phase: A
                     learning_rule: null
     Output:
         E:
             H1:
                 E:
-                    weight_init: uniform_
+                    weight_init: half_kaining
                     weight_init_args: !!python/tuple
-                        - 0
                         - 0.15660723756451086
                     weight_bounds: !!python/tuple
                         - 0
                         - 3.1607571174129747
                     direction: F
-                    learning_rule: BTSP
+                    learning_rule: BTSP_3
                     learning_rule_kwargs:
                         pos_loss_th: 0.18353579868351752
                         neg_loss_th: -0.36870478612294805
@@ -120,6 +133,7 @@ projection_config:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
                         - 1.0
+                    update_phase: A
                     direction: F
                     learning_rule: null
 training_kwargs:
