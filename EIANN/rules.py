@@ -650,7 +650,7 @@ def clone_weight(projection, source=None, sign=1, scale=1, source2=None):
     Force a projection to exactly copy the weights of another projection (or product of two projections).
     """
     if source is None:
-        raise Exception('clone_weight: missing required weight_constraint_kwarg source')
+        raise Exception('clone_weight: missing required weight_constraint_kwarg: source')
     network = projection.post.network
     source_post_layer, source_post_pop, source_pre_layer, source_pre_pop = source.split('.')
     source_projection = \
@@ -663,6 +663,10 @@ def clone_weight(projection, source=None, sign=1, scale=1, source2=None):
                 source2_pre_pop]
         source2_weight_data = source2_projection.weight.data.clone()
         source_weight_data = source_weight_data * source2_weight_data
+    if source_weight_data.shape != projection.weight.data.shape:
+        raise Exception('clone_weight: projection shapes do not match; target: %s, %s; source: %s, %s' %
+                        (projection.name, str(projection.weight.data.shape), source_projection.name,
+                         str(source_weight_data.shape)))
     projection.weight.data = source_weight_data
 
 

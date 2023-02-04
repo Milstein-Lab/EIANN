@@ -1,24 +1,25 @@
 layer_config:
     Input:
         E:
-            size: 21
+            size: 784
     H1:
         E:
-            size: 7
+            size: 500
             activation: relu
         FBI:
             size: 1
             activation: relu
         Dend_I:
-            size: 21
+            size: 1
             activation: relu
     Output:
         E:
-            size: 21
+            size: 10
             activation: relu
         FBI:
             size: 1
             activation: relu
+
 projection_config:
     H1:
         E:
@@ -44,19 +45,18 @@ projection_config:
                     direction: R
                     learning_rule: null
                 Dend_I:
-                    weight_init: fill_
+                    weight_init: half_kaining
                     weight_init_args: !!python/tuple
-                        - 0.0
+                        - 0.061041432117914914
                     weight_bounds: !!python/tuple
                         - null
                         - 0
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: H1.E.Output.E
-                        sign: -1
                     update_phase: B
                     compartment: dend
-                    learning_rule: null
+                    learning_rule: DendriticLoss_2
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.015920951416174885
             Output:
                 E:
                     weight_init: half_kaining
@@ -87,21 +87,6 @@ projection_config:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
                         - 1.0
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: Output.E.H1.E
-                        sign: 1
-                    update_phase: A
-                    learning_rule: null
-            Output:
-                FBI:
-                    weight_init: fill_
-                    weight_init_args: !!python/tuple
-                        - 0
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: Output.E.Output.FBI
-                    direction: R
                     update_phase: A
                     learning_rule: null
     Output:
@@ -136,6 +121,7 @@ projection_config:
                     update_phase: A
                     direction: F
                     learning_rule: null
+
 training_kwargs:
     tau: 3
     forward_steps: 10

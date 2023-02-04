@@ -1,24 +1,25 @@
 layer_config:
     Input:
         E:
-            size: 21
+            size: 784
     H1:
         E:
-            size: 7
+            size: 500
             activation: relu
         FBI:
             size: 1
             activation: relu
         Dend_I:
-            size: 21
+            size: 10
             activation: relu
     Output:
         E:
-            size: 21
+            size: 10
             activation: relu
         FBI:
             size: 1
             activation: relu
+
 projection_config:
     H1:
         E:
@@ -136,6 +137,7 @@ projection_config:
                     update_phase: A
                     direction: F
                     learning_rule: null
+
 training_kwargs:
     tau: 3
     forward_steps: 10
