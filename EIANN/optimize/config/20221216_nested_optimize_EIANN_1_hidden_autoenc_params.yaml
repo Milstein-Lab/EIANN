@@ -63,6 +63,27 @@ BTSP_C3:
     Output_E_H1_E_max_weight_scale: 15.387939314000443
     Output_E_Output_FBI_weight_scale: 0.9702850196390383
     Output_FBI_Output_E_weight_scale: 3.7554882240324283
+BTSP_C4:
+    BTSP_neg_loss_ET_discount: 0.05105413384596261
+    FB_BTSP_init_weight_factor: 0.923165237260758
+    FF_BTSP_init_weight_factor: 0.07697539957819177
+    H1_Dend_I_H1_E_weight_scale: 1.4953024434008488
+    H1_E_BTSP_neg_loss_th: -0.09658679217976111
+    H1_E_BTSP_pos_loss_th: 0.30446683305848327
+    H1_E_H1_Dend_I_init_weight_scale: 0.39044357669515395
+    H1_E_H1_Dend_I_learning_rate: 0.005744701235571207
+    H1_E_H1_FBI_weight_scale: 0.412736405365381
+    H1_E_Input_E_BTSP_learning_rate: 0.11231684830484921
+    H1_E_Input_E_max_weight_scale: 9.105146996679505
+    H1_E_Output_E_BTSP_learning_rate: 0.030876316205025456
+    H1_E_Output_E_max_weight_scale: 19.42058389443365
+    H1_FBI_H1_E_weight_scale: 1.9246815993774617
+    Output_E_BTSP_learning_rate: 0.038560704577977625
+    Output_E_BTSP_neg_loss_th: -0.10372536298420085
+    Output_E_BTSP_pos_loss_th: 0.22122322248558515
+    Output_E_H1_E_max_weight_scale: 12.53293842975604
+    Output_E_Output_FBI_weight_scale: 1.3246661870428336
+    Output_FBI_Output_E_weight_scale: 2.44948304871213
 BTSP_Clone_Dend_I_1:
     BTSP_neg_loss_ET_discount: 0.05288431585700456
     FB_BTSP_init_weight_factor: 0.48838792144916304
@@ -81,3 +102,19 @@ BTSP_Clone_Dend_I_1:
     Output_E_H1_E_max_weight_scale: 7.1869389288021335
     Output_E_Output_FBI_weight_scale: 1.7497159472442985
     Output_FBI_Output_E_weight_scale: 1.8721951839014739
+Gjorgjieva_Hebb_C:
+  H1_E_Input_E_learning_rate: 0.29434780488671874
+  Output_E_H1_E_learning_rate: 0.29434780488671874
+  E_I_learning_rate: 0.11205994529904711
+  H1_E_H1_FBI_weight_scale: 1.301412672000941
+  H1_E_Input_E_weight_scale: 9.48517424257211
+  H1_FBI_H1_E_weight_scale: 2.9882012251682943
+  H1_FBI_H1_FBI_weight_scale: 7.3406424124335174
+  I_E_learning_rate: 0.4840460345190343
+  I_I_learning_rate: 0.19840532653703197
+  Output_E_H1_E_weight_scale: 5.36355008130285
+  Output_E_Output_FBI_weight_scale: 9.334091380215222
+  Output_FBI_Output_E_weight_scale: 8.229265739454137
+  Output_FBI_Output_FBI_weight_scale: 0.25475779357057554
+  H1_FBI_size: 7
+  Output_FBI_size: 7

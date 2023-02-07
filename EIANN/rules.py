@@ -103,6 +103,79 @@ class GjorgjievaHebb(LearningRule):
             self.projection.weight.data -= self.learning_rate * delta_weight
 
 
+class SupervisedGjorgjievaHebb(LearningRule):
+    def __init__(self, projection, sign=1, learning_rate=None):
+        super().__init__(projection, learning_rate)
+        self.sign = sign
+
+    def step(self):
+        delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity)
+        if self.sign > 0:
+            self.projection.weight.data += self.learning_rate * delta_weight
+        else:
+            self.projection.weight.data -= self.learning_rate * delta_weight
+
+    @classmethod
+    def backward_update_layer_activity(cls, layer, store_history=False):
+        """
+        Update somatic state and activity for all populations that receive projections with update_phase in
+        ['B', 'backward', 'A', 'all'].
+        :param layer:
+        :param store_history: bool
+        """
+        for post_pop in layer:
+            post_pop.prev_activity = post_pop.activity
+        for post_pop in layer:
+            if post_pop.backward_projections or post_pop is post_pop.network.output_pop:
+                # update somatic state and activity
+                delta_state = -post_pop.state + post_pop.bias
+                if hasattr(post_pop, 'nudge'):
+                    delta_state = delta_state + post_pop.nudge
+                for projection in post_pop:
+                    pre_pop = projection.pre
+                    if projection.compartment in [None, 'soma']:
+                        if projection.direction in ['forward', 'F']:
+                            delta_state = delta_state + projection(pre_pop.activity)
+                        elif projection.direction in ['recurrent', 'R']:
+                            delta_state = delta_state + projection(pre_pop.prev_activity)
+                post_pop.state = post_pop.state + delta_state / post_pop.tau
+                post_pop.activity = post_pop.activation(post_pop.state)
+                if store_history:
+                    post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
+
+    @classmethod
+    def backward(cls, network, output, target, store_history=False):
+        """
+        Integrate top-down inputs and update dendritic state variables.
+        :param network:
+        :param output:
+        :param target:
+        :param store_history: bool
+        """
+        output_pop = network.output_pop
+        output_layer = output_pop.layer
+
+        # initialize populations that are updated during the backward phase
+        for pop in output_layer:
+            if pop.backward_projections or pop is output_pop:
+                pop.backward_steps_activity = []
+
+        # compute nudge based on target
+        for projection in output_pop:
+            if projection.learning_rule.__class__ == cls:
+                output_pop.nudge = torch.clamp(target - output, min=0, max=1)
+                break
+        # re-equilibrate soma states and activites
+        for t in range(network.forward_steps):
+            cls.backward_update_layer_activity(output_layer, store_history)
+        if store_history:
+            output_pop.nudge_history_list.append(output_pop.nudge.detach().clone())
+
+        for pop in output_layer:
+            if pop.backward_projections or pop is output_pop:
+                pop.backward_activity_history_list.append(pop.backward_steps_activity)
+
+
 class BTSP(LearningRule):
     def __init__(self, projection, pos_loss_th=2.440709E-01, neg_loss_th=-4.592181E-01, neg_loss_ET_discount=0.25,
                  dep_ratio=1., dep_th=0.01, dep_width=0.01, learning_rate=None):
