@@ -13,6 +13,7 @@ from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoc
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
+from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C
 
 
 context = Context()
