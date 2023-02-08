@@ -47,6 +47,10 @@ def config_worker():
         context.eval_accuracy = 'final'
     else:
         context.eval_accuracy = str(context.eval_accuracy)
+    if 'store_history' not in context():
+        context.store_history = False
+    else:
+        context.store_history = bool(context.store_history)
     if 'store_weights' not in context():
         context.store_weights = False
     else:
@@ -1195,7 +1199,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                                val_dataloader,
                                epochs=epochs,
                                val_interval=context.val_interval, # e.g. (-201, -1, 10)
-                               store_history=False,
+                               store_history=context.store_history,
                                store_weights=context.store_weights,
                                store_weights_interval=context.store_weights_interval,
                                status_bar=context.status_bar)

@@ -97,3 +97,24 @@ BTSP_1_inh_C2:
     Output_E_Output_FBI_weight_scale: 1.9404164941763633
     Output_FBI_Output_E_weight_scale: 0.6810704841817813
     BTSP_neg_loss_ET_discount: 0.25
+BTSP_C4:
+    BTSP_neg_loss_ET_discount: 0.071980722072547
+    FB_BTSP_init_weight_factor: 0.28429966194658374
+    FF_BTSP_init_weight_factor: 0.016285410103705527
+    H1_Dend_I_H1_E_weight_scale: 0.12075622648755382
+    H1_E_BTSP_neg_loss_th: -0.16007994030463704
+    H1_E_BTSP_pos_loss_th: 0.2740563938799849
+    H1_E_H1_Dend_I_init_weight_scale: 0.9693739864714196
+    H1_E_H1_Dend_I_learning_rate: 0.0005147156648789697
+    H1_E_H1_FBI_weight_scale: 0.266007683405056
+    H1_E_Input_E_BTSP_learning_rate: 0.0049819858608136204
+    H1_E_Input_E_max_weight_scale: 3.1311803036854005
+    H1_E_Output_E_BTSP_learning_rate: 0.00571651949915738
+    H1_E_Output_E_max_weight_scale: 7.047182904516567
+    H1_FBI_H1_E_weight_scale: 0.12960193035546463
+    Output_E_BTSP_learning_rate: 0.008933552732674589
+    Output_E_BTSP_neg_loss_th: -0.14804028893020504
+    Output_E_BTSP_pos_loss_th: 0.44666781650175513
+    Output_E_H1_E_max_weight_scale: 4.8292796658439645
+    Output_E_Output_FBI_weight_scale: 0.5436878293511395
+    Output_FBI_Output_E_weight_scale: 2.0251990089557816

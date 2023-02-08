@@ -115,6 +115,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    update_phase: A
                     direction: F
                     learning_rule: GjorgjievaHebb
                     learning_rule_kwargs:
