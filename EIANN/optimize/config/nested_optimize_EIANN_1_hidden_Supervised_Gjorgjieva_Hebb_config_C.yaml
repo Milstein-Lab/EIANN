@@ -15,28 +15,28 @@ bounds:
         - 0.0001
         - 1.
     Output_E_H1_E_weight_scale:
-        - 0.1
+        - 0.01
         - 10.
     Output_E_Output_FBI_weight_scale:
-        - 0.1
+        - 0.01
         - 10.
     Output_FBI_Output_E_weight_scale:
-        - 0.1
+        - 0.01
         - 10.
     Output_FBI_Output_FBI_weight_scale:
-        - 0.1
+        - 0.01
         - 10.
     H1_E_Input_E_weight_scale:
-        - 0.1
+        - 0.01
         - 10.
     H1_E_H1_FBI_weight_scale:
-        - 0.1
+        - 0.01
         - 10.
     H1_FBI_H1_E_weight_scale:
-        - 0.1
+        - 0.01
         - 10.
     H1_FBI_H1_FBI_weight_scale:
-        - 0.1
+        - 0.01
         - 10.
     H1_FBI_size:
         - 1

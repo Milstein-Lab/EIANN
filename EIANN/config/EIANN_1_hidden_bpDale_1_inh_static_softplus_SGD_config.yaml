@@ -5,41 +5,46 @@ layer_config:
     H1:
         E:
             size: 7
-            activation: relu
+            activation: softplus
+            activation_kwargs:
+                beta: 4.0
         FBI:
             size: 1
-            activation: relu
+            activation: softplus
+            activation_kwargs:
+                beta: 4.0
     Output:
         E:
             size: 21
-            activation: relu
+            activation: softplus
+            activation_kwargs:
+                beta: 4.0
         FBI:
             size: 1
-            activation: relu
+            activation: softplus
+            activation_kwargs:
+                beta: 4.0
 projection_config:
     H1:
         E:
             Input:
                 E:
-                    weight_init: uniform_
-                    weight_init_args: !!python/tuple
-                        - 0
-                        - 1
-                    weight_constraint: normalize_weight
-                    weight_constraint_kwargs:
-                        scale: 5.997826
+                    weight_init: half_kaining
                     weight_bounds: !!python/tuple
                         - 0
                         - null
                     direction: F
-                    learning_rule: GjorgjievaHebb
+                    learning_rule: Backprop
                     learning_rule_kwargs:
-                        sign: 1
+                        learning_rate: 0.1
             H1:
                 FBI:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
-                        - -0.9877346
+                        - -1
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
                     direction: R
                     learning_rule: null
         FBI:
@@ -47,32 +52,32 @@ projection_config:
                 E:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
-                        - 1.0
+                        - 1
+                    weight_bounds: !!python/tuple
+                        - 0
+                        - null
                     direction: F
                     learning_rule: null
     Output:
         E:
             H1:
                 E:
-                    weight_init: uniform_
-                    weight_init_args: !!python/tuple
-                        - 0
-                        - 1
-                    weight_constraint: normalize_weight
-                    weight_constraint_kwargs:
-                        scale: 0.4849485
+                    weight_init: half_kaining
                     weight_bounds: !!python/tuple
                         - 0
                         - null
                     direction: F
-                    learning_rule: GjorgjievaHebb
+                    learning_rule: Backprop
                     learning_rule_kwargs:
-                        sign: 1
+                        learning_rate: 0.1
             Output:
                 FBI:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
-                        - -0.1850915
+                        - -1
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
                     direction: R
                     learning_rule: null
         FBI:
@@ -81,10 +86,15 @@ projection_config:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
                         - 1
+                    weight_bounds: !!python/tuple
+                        - 0
+                        - null
                     direction: F
                     learning_rule: null
 training_kwargs:
     tau: 3
     forward_steps: 10
-    backward_steps: 0
-    learning_rate: 0.9553728
+    backward_steps: 2
+    learning_rate: 0.3
+    verbose: False
+    optimizer: SGD

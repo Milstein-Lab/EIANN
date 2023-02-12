@@ -25,16 +25,16 @@ bounds:
         - 1.
     H1_E_H1_FBI_weight_scale:
         - 0.01
-        - 5.
+        - 10.
     H1_FBI_H1_E_weight_scale:
         - 0.01
-        - 5.
+        - 10.
     H1_Dend_I_H1_E_weight_scale:
         - 0.01
-        - 5.
+        - 10.
     H1_E_H1_Dend_I_init_weight_scale:
         - 0.01
-        - 5.
+        - 10.
     H1_E_H1_Dend_I_learning_rate:
         - 0.0001
         - 0.25
@@ -52,10 +52,10 @@ bounds:
         - -0.05
     Output_E_Output_FBI_weight_scale:
         - 0.01
-        - 5.
+        - 10.
     Output_FBI_Output_E_weight_scale:
         - 0.01
-        - 5.
+        - 10.
     BTSP_neg_loss_ET_discount:
         - 0.05
         - 0.5
@@ -74,7 +74,7 @@ kwargs:
     eval_accuracy: final
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden
-      function: update_EIANN_config_1_hidden_BTSP_C2
+      function: update_EIANN_config_1_hidden_BTSP_C4
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden
       get_args_static: get_random_seeds

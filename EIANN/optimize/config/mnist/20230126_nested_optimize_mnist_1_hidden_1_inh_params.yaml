@@ -77,6 +77,7 @@ Gjorgjieva_Hebb_1_inh_D:
     Output_E_Output_FFI_weight_scale: 0.6354301086931348
     Output_FFI_H1_E_weight_scale: 0.12944510594404351
 BTSP_1_inh_C2:
+    # broken - BTSP rule did not equilibrate 'A' properly, and H1_FBI_H1_E_weight_scale was ignored
     FB_BTSP_init_weight_factor: 0.38361803751461665
     FF_BTSP_init_weight_factor: 0.06216962778528513
     H1_Dend_I_H1_E_weight_scale: 0.035747213382841286
@@ -98,6 +99,7 @@ BTSP_1_inh_C2:
     Output_FBI_Output_E_weight_scale: 0.6810704841817813
     BTSP_neg_loss_ET_discount: 0.25
 BTSP_C4:
+    # broken - H1_FBI_H1_E_weight_scale was ignored
     BTSP_neg_loss_ET_discount: 0.071980722072547
     FB_BTSP_init_weight_factor: 0.28429966194658374
     FF_BTSP_init_weight_factor: 0.016285410103705527

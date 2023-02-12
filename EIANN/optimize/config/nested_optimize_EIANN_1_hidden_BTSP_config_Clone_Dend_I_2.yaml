@@ -61,7 +61,7 @@ kwargs:
     status_bar: False
     epochs: 300
     num_epochs_argmax_accuracy: 50
-    network_config_file_path: config/EIANN_1_hidden_BTSP_config_Clone_Dend_I_1.yaml
+    network_config_file_path: config/EIANN_1_hidden_BTSP_config_Clone_Dend_I_2.yaml
     eval_accuracy: final
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden
@@ -72,7 +72,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_BTSP_Clone_Dend_I_1
+optimization_title: EIANN_1_hidden_BTSP_Clone_Dend_I_2
 x0:
     FB_BTSP_init_weight_factor: 0.7332552147609976
     FF_BTSP_init_weight_factor: 0.14933762086546284

@@ -1,39 +1,36 @@
 layer_config:
     Input:
         E:
-            size: 784
+            size: 21
     H1:
         E:
-            size: 500
+            size: 7
             activation: softplus
             activation_kwargs:
-                beta: 100.0
-        FBI:
-            size: 5
-            activation: softplus
-            activation_kwargs:
-                beta: 100.0
-            tau: 2
-    Output:
-        E:
-            size: 10
-            activation: softplus
-            activation_kwargs:
-                beta: 100.0
+                beta: 4.0
         FBI:
             size: 1
             activation: softplus
             activation_kwargs:
-                beta: 100.0
-            tau: 2
-
+                beta: 4.0
+    Output:
+        E:
+            size: 21
+            activation: softplus
+            activation_kwargs:
+                beta: 4.0
+        FBI:
+            size: 1
+            activation: softplus
+            activation_kwargs:
+                beta: 4.0
 projection_config:
     H1:
         E:
             Input:
                 E:
                     weight_init: half_kaining
-                    weight_bounds:
+                    weight_bounds: !!python/tuple
                         - 0
                         - null
                     direction: F
@@ -43,7 +40,7 @@ projection_config:
             H1:
                 FBI:
                     weight_init: half_kaining
-                    weight_bounds:
+                    weight_bounds: !!python/tuple
                         - null
                         - 0
                     direction: R
@@ -54,20 +51,19 @@ projection_config:
             H1:
                 E:
                     weight_init: half_kaining
-                    weight_bounds:
+                    weight_bounds: !!python/tuple
                         - 0
                         - null
                     direction: F
                     learning_rule: Backprop
                     learning_rule_kwargs:
                         learning_rate: 0.1
-
     Output:
         E:
             H1:
                 E:
                     weight_init: half_kaining
-                    weight_bounds:
+                    weight_bounds: !!python/tuple
                         - 0
                         - null
                     direction: F
@@ -77,7 +73,7 @@ projection_config:
             Output:
                 FBI:
                     weight_init: half_kaining
-                    weight_bounds:
+                    weight_bounds: !!python/tuple
                         - null
                         - 0
                     direction: R
@@ -88,18 +84,17 @@ projection_config:
             Output:
                 E:
                     weight_init: half_kaining
-                    weight_bounds:
+                    weight_bounds: !!python/tuple
                         - 0
                         - null
                     direction: F
                     learning_rule: Backprop
                     learning_rule_kwargs:
                         learning_rate: 0.1
-
 training_kwargs:
     tau: 3
     forward_steps: 10
-    backward_steps: 3
-    learning_rate: 0.2
+    backward_steps: 2
+    learning_rate: 0.3
     verbose: False
     optimizer: SGD

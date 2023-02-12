@@ -793,3 +793,34 @@ def compute_PSD(receptive_field, plot=False):
         plt.show()
 
     return frequencies, spectral_power, peak_spatial_frequency
+
+
+def reshape_backward_activity_history(pop):
+    """
+    BTSP_4 learning rule variant equilibrates for a variable number of steps during the backward phase, creating a
+    ragged array. This method fills the backward_activity_history tensor up to the maximum number of steps encountered.
+    :param pop: :class:'Population'
+    """
+    if pop.backward_activity_history_list:
+        max_backward_steps = \
+            max([len(backward_steps_activity) for backward_steps_activity in pop.backward_activity_history_list])
+        for i, backward_steps_activity in enumerate(pop.backward_activity_history_list):
+            if len(backward_steps_activity) == 0:
+                backward_steps_activity = pop.activity_history[i,-1,:].repeat(max_backward_steps, 1)
+            elif len(backward_steps_activity) == max_backward_steps:
+                backward_steps_activity = torch.stack(backward_steps_activity)
+            else:
+                backward_steps_activity = torch.stack(backward_steps_activity)
+                backward_steps_activity = torch.cat([backward_steps_activity,
+                                                     backward_steps_activity[-1,:].repeat(
+                                                         max_backward_steps - len(backward_steps_activity), 1)])
+            pop.backward_activity_history_list[i] = backward_steps_activity
+
+        if pop._backward_activity_history is None:
+            pop._backward_activity_history = torch.stack(pop.backward_activity_history_list)
+            pop.backward_activity_history_list = []
+        else:
+            pop._backward_activity_history = \
+                torch.cat([pop._backward_activity_history,
+                           torch.stack(pop.backward_activity_history_list)])
+            pop.backward_activity_history_list = []

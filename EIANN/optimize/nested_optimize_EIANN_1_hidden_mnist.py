@@ -614,6 +614,8 @@ def update_EIANN_config_1_hidden_mnist_BTSP_C2(x, context):
     H1_E_Output_E_init_weight_scale = H1_E_Output_E_max_weight_scale * FB_BTSP_init_weight_factor
 
     H1_E_H1_FBI_weight_scale = param_dict['H1_E_H1_FBI_weight_scale']
+    H1_FBI_H1_E_weight_scale = param_dict['H1_FBI_H1_E_weight_scale']
+
     H1_Dend_I_H1_E_weight_scale = param_dict['H1_Dend_I_H1_E_weight_scale']
     H1_E_H1_Dend_I_init_weight_scale = param_dict['H1_E_H1_Dend_I_init_weight_scale']
     H1_E_H1_Dend_I_learning_rate = param_dict['H1_E_H1_Dend_I_learning_rate']
@@ -651,7 +653,7 @@ def update_EIANN_config_1_hidden_mnist_BTSP_C2(x, context):
     context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['neg_loss_ET_discount'] = \
         BTSP_neg_loss_ET_discount
 
-    context.projection_config['H1']['FBI']['H1']['E']['weight_init_args'] = (H1_E_H1_FBI_weight_scale,)
+    context.projection_config['H1']['FBI']['H1']['E']['weight_init_args'] = (H1_FBI_H1_E_weight_scale,)
     context.projection_config['H1']['Dend_I']['H1']['E']['weight_init_args'] = (H1_Dend_I_H1_E_weight_scale,)
 
     context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
@@ -693,6 +695,7 @@ def update_EIANN_config_1_hidden_mnist_BTSP_Clone_Dend_I_1(x, context):
     H1_E_Output_E_init_weight_scale = H1_E_Output_E_max_weight_scale * FB_BTSP_init_weight_factor
 
     H1_E_H1_FBI_weight_scale = param_dict['H1_E_H1_FBI_weight_scale']
+    H1_FBI_H1_E_weight_scale = param_dict['H1_FBI_H1_E_weight_scale']
 
     Output_E_H1_E_max_weight_scale = param_dict['Output_E_H1_E_max_weight_scale']
     Output_E_H1_E_max_weight = Output_E_H1_E_max_weight_scale / math.sqrt(context.layer_config['H1']['E']['size'])
@@ -725,7 +728,7 @@ def update_EIANN_config_1_hidden_mnist_BTSP_Clone_Dend_I_1(x, context):
     context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['neg_loss_ET_discount'] = \
         BTSP_neg_loss_ET_discount
 
-    context.projection_config['H1']['FBI']['H1']['E']['weight_init_args'] = (H1_E_H1_FBI_weight_scale,)
+    context.projection_config['H1']['FBI']['H1']['E']['weight_init_args'] = (H1_FBI_H1_E_weight_scale,)
 
     context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
     context.projection_config['Output']['E']['H1']['E']['weight_bounds'] = (0, Output_E_H1_E_max_weight)
