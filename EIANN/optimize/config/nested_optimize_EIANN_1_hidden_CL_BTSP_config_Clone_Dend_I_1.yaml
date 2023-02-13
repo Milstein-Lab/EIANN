@@ -25,10 +25,10 @@ bounds:
         - 1.
     H1_E_H1_FBI_weight_scale:
         - 0.01
-        - 5.
+        - 10.
     H1_FBI_H1_E_weight_scale:
         - 0.01
-        - 5.
+        - 10.
     Output_E_H1_E_max_weight_scale:
         - 0.01
         - 20.
@@ -43,10 +43,10 @@ bounds:
         - -0.05
     Output_E_Output_FBI_weight_scale:
         - 0.01
-        - 5.
+        - 10.
     Output_FBI_Output_E_weight_scale:
         - 0.01
-        - 5.
+        - 10.
     BTSP_neg_loss_ET_discount:
         - 0.05
         - 0.5
