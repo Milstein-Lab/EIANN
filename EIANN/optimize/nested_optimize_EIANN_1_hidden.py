@@ -289,7 +289,7 @@ def update_EIANN_config_1_hidden_1_inh_Gjorgjieva_Hebb(x, context):
     context.projection_config['Output']['E']['Output']['FBI']['weight_init_args'] = (-Output_E_Output_FBI_weight_scale,)
 
 
-def update_EIANN_config_1_hidden_1_inh_Gjorgjieva_Hebb_C(x, context):
+def update_EIANN_config_1_hidden_Gjorgjieva_Hebb_1_inh_static_C(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
 
     H1_E_Input_E_weight_scale = param_dict['H1_E_Input_E_weight_scale'] * \

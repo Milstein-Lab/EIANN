@@ -1,0 +1,41 @@
+bounds:
+    E_E_learning_rate:
+        - 0.0001
+        - 10.
+    E_I_learning_rate:
+        - 0.0001
+        - 10.
+    I_E_learning_rate:
+        - 0.0001
+        - 10.
+    softplus_beta:
+        - 1.
+        - 100.
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 1
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    epochs: 300
+    split: 0.75
+    num_epochs_argmax_accuracy: 50
+    network_config_file_path: config/EIANN_1_hidden_bpDale_1_inh_softplus_SGD_config.yaml
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL
+      function: update_EIANN_config_1_hidden_bpDale_softplus_SGD
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_1_hidden_CL_bpDale_1_inh_softplus_SGD
+x0:
+    E_E_learning_rate: 9.99980526071132
+    E_I_learning_rate: 9.99980526071132
+    I_E_learning_rate: 9.99980526071132
+    softplus_beta: 99.78563100135408

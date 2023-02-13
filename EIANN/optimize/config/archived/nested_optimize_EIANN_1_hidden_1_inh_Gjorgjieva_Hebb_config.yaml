@@ -25,7 +25,7 @@ kwargs:
   status_bar: False
   epochs: 300
   num_epochs_argmax_accuracy: 50
-  network_config_file_path: config/EIANN_1_hidden_1_inh_Gjorgjieva_Hebb_config.yaml
+  network_config_file_path: config/EIANN_1_hidden_Gjorgjieva_Hebb_1_inh_static_config.yaml
 update_context:
 - source: optimize.nested_optimize_EIANN_1_hidden
   function: update_EIANN_config_1_hidden_1_inh_Gjorgjieva_Hebb
