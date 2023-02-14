@@ -12,6 +12,9 @@ layer_config:
         Dend_I:
             size: 21
             activation: relu
+        Dend_I_FBI:
+            size: 1
+            activation: relu
     Output:
         E:
             size: 21
@@ -93,15 +96,27 @@ projection_config:
                         sign: 1
                     update_phase: A
                     learning_rule: null
-            Output:
-                FBI:
+                Dend_I_FBI:
+                    weight_init: fill_
+                    weight_init_args: !!python/tuple
+                        - 1.0
+                    weight_constraint: clone_weight
+                    weight_constraint_kwargs:
+                        source: Output.E.Output.FBI
+                        sign: 1
+                    update_phase: A
+                    direction: R
+                    learning_rule: null
+        Dend_I_FBI:
+            H1:
+                Dend_I:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
                         - 0
                     weight_constraint: clone_weight
                     weight_constraint_kwargs:
-                        source: Output.E.Output.FBI
-                    direction: R
+                        source: Output.FBI.Output.E
+                    direction: F
                     update_phase: A
                     learning_rule: null
     Output:

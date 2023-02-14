@@ -63,3 +63,57 @@ Gjorgjieva_Hebb_1_inh_static_C:
     Output_E_H1_E_weight_scale: 7.585694360215912
     Output_E_Output_FBI_weight_scale: 3.514615155286358
     Output_FBI_Output_E_weight_scale: 4.590772621218822
+Supervised_Gjorgjieva_Hebb_1_inh_static_C:
+    # Final H1_E_Input_E weights very close to initial
+    # 100% autoenc accuracy
+    # 63% final autoenc_CL accuracy (phase2 88%)
+    H1_E_H1_FBI_weight_scale: 1.3289354510035343
+    H1_E_Input_E_learning_rate: 0.0031106347511018714
+    H1_E_Input_E_weight_scale: 1.9413328711772606
+    H1_FBI_H1_E_weight_scale: 0.27753630657580225
+    Output_E_H1_E_learning_rate: 0.7646357607977765
+    Output_E_H1_E_weight_scale: 8.314750366881684
+    Output_E_Output_FBI_weight_scale: 3.3943081868830594
+    Output_FBI_Output_E_weight_scale: 2.7140699983466927
+BTSP_C4:
+    # very few plateaus in H1.E
+    # 53% final autoenc_CL accuracy (phase2 100%)
+    BTSP_neg_loss_ET_discount: 0.06211713037821769
+    FB_BTSP_init_weight_factor: 0.3630382775941965
+    FF_BTSP_init_weight_factor: 0.7496526208281349
+    H1_Dend_I_H1_E_weight_scale: 1.9572784323618608
+    H1_E_BTSP_neg_loss_th: -0.42705459786692807
+    H1_E_BTSP_pos_loss_th: 0.2245500331456811
+    H1_E_H1_Dend_I_init_weight_scale: 1.6866819466750724
+    H1_E_H1_Dend_I_learning_rate: 0.024057731673081104
+    H1_E_H1_FBI_weight_scale: 0.6797582432156993
+    H1_E_Input_E_BTSP_learning_rate: 0.05972690273548245
+    H1_E_Input_E_max_weight_scale: 18.640715300844946
+    H1_E_Output_E_BTSP_learning_rate: 0.03468283619993962
+    H1_E_Output_E_max_weight_scale: 1.467317947897765
+    H1_FBI_H1_E_weight_scale: 0.6945095068662492
+    Output_E_BTSP_learning_rate: 0.009239016337778882
+    Output_E_BTSP_neg_loss_th: -0.07767472344757201
+    Output_E_BTSP_pos_loss_th: 0.12127069351058109
+    Output_E_H1_E_max_weight_scale: 7.599461850613245
+    Output_E_Output_FBI_weight_scale: 1.914128271549981
+    Output_FBI_Output_E_weight_scale: 4.634647234572013
+BTSP_Clone_Dend_I_1:
+    # 80% final autoenc_CL accuracy (phase2 100%)
+    BTSP_neg_loss_ET_discount: 0.05308841755118466
+    FB_BTSP_init_weight_factor: 0.6520923213097565
+    FF_BTSP_init_weight_factor: 0.014336470809976095
+    H1_E_BTSP_neg_loss_th: -0.39973873178409025
+    H1_E_BTSP_pos_loss_th: 0.1873836122098993
+    H1_E_H1_FBI_weight_scale: 0.2684441597880559
+    H1_E_Input_E_BTSP_learning_rate: 0.13964634680447138
+    H1_E_Input_E_max_weight_scale: 19.98279442204693
+    H1_E_Output_E_BTSP_learning_rate: 0.10839844486077162
+    H1_E_Output_E_max_weight_scale: 9.493631230540739
+    H1_FBI_H1_E_weight_scale: 0.5083794594793958
+    Output_E_BTSP_learning_rate: 0.06689802084663056
+    Output_E_BTSP_neg_loss_th: -0.16866930555750625
+    Output_E_BTSP_pos_loss_th: 0.12302849709209697
+    Output_E_H1_E_max_weight_scale: 4.86017837082124
+    Output_E_Output_FBI_weight_scale: 3.4258019051236386
+    Output_FBI_Output_E_weight_scale: 3.863969708725929

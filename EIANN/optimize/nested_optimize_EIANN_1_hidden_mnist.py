@@ -703,8 +703,8 @@ def update_EIANN_config_1_hidden_mnist_BTSP_Clone_Dend_I_1(x, context):
     Output_E_BTSP_learning_rate = param_dict['Output_E_BTSP_learning_rate']
     Output_E_BTSP_pos_loss_th = param_dict['Output_E_BTSP_pos_loss_th']
     Output_E_BTSP_neg_loss_th = param_dict['Output_E_BTSP_neg_loss_th']
-    Output_E_Output_FBI_weight_scale = param_dict['Output_E_Output_FBI_weight_scale']
 
+    Output_E_Output_FBI_weight_scale = param_dict['Output_E_Output_FBI_weight_scale']
     Output_FBI_Output_E_weight_scale = param_dict['Output_FBI_Output_E_weight_scale']
 
     BTSP_neg_loss_ET_discount = param_dict['BTSP_neg_loss_ET_discount']

@@ -800,6 +800,18 @@ class BTSP_4(LearningRule):
                 if pop.backward_projections or pop is output_pop:
                     pop.backward_steps_activity = []
 
+        # store the forward_activity before comparing output to target
+        for layer in network:
+            for pop in layer:
+                pop.forward_activity = pop.activity.detach().clone()
+
+        # compute and store the forward_dendritic_state before comparing output to target
+        for layer in list(network)[:-1]:
+            cls.backward_update_layer_dendritic_state(layer)
+            for pop in layer:
+                if hasattr(pop, 'dendritic_state'):
+                    pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
+
         # compute plateau events and nudge somatic state
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
         output_pop.plateau = torch.zeros(output_pop.size, device=output_pop.network.device)
@@ -815,6 +827,7 @@ class BTSP_4(LearningRule):
                 output_pop.plateau[neg_indexes] = output_pop.dendritic_state[neg_indexes]
                 # output_pop.dend_to_soma[neg_indexes] = output_pop.dendritic_state[neg_indexes]
                 break
+
         # re-equilibrate soma states and activites
         for t in range(network.forward_steps):
             cls.backward_update_layer_activity(output_layer, store_history)
@@ -896,6 +909,22 @@ class DendriticLoss_2(LearningRule):
     def step(self):
         self.projection.weight.data += self.sign * self.learning_rate * \
                                        torch.outer(self.projection.post.dendritic_state, self.projection.pre.activity)
+
+
+class DendriticLoss_3(LearningRule):
+    """
+    This variant 3 is gated by dendritic state. Consults the initial dendritic state and initial activity obtained
+    after the forward phase, before comparison to target during the backward phase. Requires BTSP_4 or equivalent rule
+    to update the attributes forward_dendritic_state and forward_activity.
+    """
+    def __init__(self, projection, sign=1, learning_rate=None):
+        super().__init__(projection, learning_rate)
+        self.sign = sign
+
+    def step(self):
+        self.projection.weight.data += self.sign * self.learning_rate * \
+                                       torch.outer(self.projection.post.forward_dendritic_state,
+                                                   self.projection.pre.forward_activity)
 
 
 def clone_weight(projection, source=None, sign=1, scale=1, source2=None):
