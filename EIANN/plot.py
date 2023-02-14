@@ -723,6 +723,112 @@ def plot_sorted_plateaus(population, test_dataloader):
     return sorted_plateaus.T, unit_ids
 
 
+def plot_total_input(population, test_dataloader):
+    '''Plot the total input to a population for each pattern in the test set'''
+    
+    network = population.network
+    idx, data, target = next(iter(test_dataloader))
+    network.forward(data)
+
+    total_input = {}
+    for name,projection in population.incoming_projections.items():
+        total_input[name] = (projection.weight.detach() @ projection.pre.activity.detach().T).mean(dim=0)
+
+    val, idx = torch.sort(-next(iter(total_input.values())))
+
+    fig, ax = plt.subplots(1,2, figsize=[11, 4])
+    total_E = []
+    total_I = []
+    for name, projection in total_input.items():
+        if torch.mean(projection)>0:
+            color = 'r'
+            total_E.append(projection)
+        else:
+            color = 'C0'
+            total_I.append(projection)
+        ax[0].plot(projection[idx], label=name, c=color)
+    total_E = torch.stack(total_E).mean(dim=0)
+    total_I = torch.stack(total_I).mean(dim=0)
+
+    ax[0].set_xlabel('Input pattern')
+    ax[0].set_ylabel('Weighted input')
+    ax[0].set_title(f'Average total E/I input to {population.fullname} (sorted)')
+    ax[0].legend()
+
+    ax[1].scatter(total_E, total_I, c='k')
+    ax[1].invert_yaxis()
+    ax[1].set_xlabel('Average total E input')
+    ax[1].set_ylabel('Average total I input')
+    ax[1].set_title(f'Average total E/I input to {population.fullname}')
+    fig.tight_layout()
+
+
+def plot_correlations(network):
+    '''Plot the correlation matrix for a layer's weights'''
+
+    for layer in network:
+        if layer.name == 'Input':
+            continue
+
+        # Compute correlations
+        activity_matrix = torch.cat([layer.E.activity.T, layer.FBI.activity.T]).detach()
+        activity_corr_mat = cosine_similarity(activity_matrix)
+
+        E_I_weights = network.module_dict[f"{layer.E.fullname}_{layer.FBI.fullname}"].weight.detach()
+        I_E_weights = network.module_dict[f"{layer.FBI.fullname}_{layer.E.fullname}"].weight.detach()
+
+        # Generate plots
+        fig, ax = plt.subplots(1, 4, figsize=[14, 3])
+
+        plot_nr = 0
+        ax[plot_nr].scatter(I_E_weights, E_I_weights.T, c='k', alpha=0.2)
+        ax[plot_nr].invert_yaxis()
+        ax[plot_nr].set_title('Weight correlations')
+        m, b = np.polyfit(I_E_weights.flatten(), E_I_weights.T.flatten(), 1)
+        x = np.linspace(0, torch.max(I_E_weights))
+        y = m * x + b
+        ax[plot_nr].plot(x, y, '--', c='red', linewidth=3)
+        # print(f'Linear regression: y = {m} x + {b}')
+        r_val, p_val = stats.pearsonr(I_E_weights.flatten(), E_I_weights.T.flatten())
+        plot_nr += 1
+
+        im = ax[plot_nr].imshow(activity_corr_mat[0:layer.E.size, 0:layer.E.size],
+                                vmin=np.min(activity_corr_mat), vmax=np.max(activity_corr_mat))
+        plt.colorbar(im, ax=ax[plot_nr])
+        ax[plot_nr].set_xticks([])
+        ax[plot_nr].set_yticks([])
+        ax[plot_nr].set_ylabel('E units')
+        ax[plot_nr].set_xlabel('E units')
+        ax[plot_nr].set_title(f'{layer.E.fullname} ')
+        plot_nr += 1
+
+        im = ax[plot_nr].imshow(activity_corr_mat[layer.E.size:, 0:layer.E.size],
+                                vmin=np.min(activity_corr_mat), vmax=np.max(activity_corr_mat))
+        plt.colorbar(im, ax=ax[plot_nr])
+        ax[plot_nr].set_xticks([])
+        ax[plot_nr].set_yticks([])
+        ax[plot_nr].set_ylabel('FBI units')
+        ax[plot_nr].set_xlabel('E units')
+        ax[plot_nr].set_title(f'E to I')
+        plot_nr += 1
+
+        im = ax[plot_nr].imshow(activity_corr_mat[layer.E.size:, layer.E.size:],
+                                vmin=np.min(activity_corr_mat), vmax=np.max(activity_corr_mat))
+        ax[plot_nr].set_title(f'{layer.FBI.fullname} ')
+        plt.colorbar(im, ax=ax[plot_nr])
+        ax[plot_nr].set_xticks([])
+        ax[plot_nr].set_yticks([])
+        ax[plot_nr].set_ylabel('FBI units')
+        ax[plot_nr].set_xlabel('FBI units')
+        plot_nr += 1
+
+        plt.suptitle(f'{layer.name} activity similarity matrix')
+
+        plt.tight_layout(pad=0.5)
+        plt.show()
+        print(f'Pearson correlation: r={r_val:.3f}, r^2={r_val ** 2:.3f}, p={p_val:.2E}')
+
+
 
 # *******************************************************************
 # Loss landscape functions
