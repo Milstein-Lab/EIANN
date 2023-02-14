@@ -1,0 +1,100 @@
+layer_config:
+  Input:
+    E:
+      size: 21
+  H1:
+    E:
+      size: 7
+      activation: softplus
+      activation_kwargs:
+        beta: 5.6437800937063365
+    FBI:
+      size: 1
+      activation: softplus
+      activation_kwargs:
+        beta: 5.6437800937063365
+  Output:
+    E:
+      size: 21
+      activation: softplus
+      activation_kwargs:
+        beta: 5.6437800937063365
+    FBI:
+      size: 1
+      activation: softplus
+      activation_kwargs:
+        beta: 5.6437800937063365
+projection_config:
+  H1:
+    E:
+      Input:
+        E:
+          weight_init: half_kaining
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: Backprop
+          learning_rule_kwargs:
+            learning_rate: 9.99831253932782
+      H1:
+        FBI:
+          weight_init: fill_
+          weight_init_args: !!python/tuple
+          - -0.10241322654911048
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          direction: R
+          learning_rule: null
+    FBI:
+      H1:
+        E:
+          weight_init: fill_
+          weight_init_args: !!python/tuple
+          - 0.040182612690555584
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: null
+  Output:
+    E:
+      H1:
+        E:
+          weight_init: half_kaining
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: Backprop
+          learning_rule_kwargs:
+            learning_rate: 9.99831253932782
+      Output:
+        FBI:
+          weight_init: fill_
+          weight_init_args: !!python/tuple
+          - -2.110604250919318
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          direction: R
+          learning_rule: null
+    FBI:
+      Output:
+        E:
+          weight_init: fill_
+          weight_init_args: !!python/tuple
+          - 1.3638829492552942
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: null
+training_kwargs:
+  tau: 3
+  forward_steps: 10
+  backward_steps: 2
+  learning_rate: 0.3
+  verbose: false
+  optimizer: SGD
