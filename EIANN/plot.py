@@ -723,48 +723,55 @@ def plot_sorted_plateaus(population, test_dataloader):
     return sorted_plateaus.T, unit_ids
 
 
-def plot_total_input(population, test_dataloader):
+def plot_total_input(population, test_dataloader, sorting='E'):
     '''Plot the total input to a population for each pattern in the test set'''
-    
+
     network = population.network
     idx, data, target = next(iter(test_dataloader))
     network.forward(data)
 
     total_input = {}
-    for name,projection in population.incoming_projections.items():
-        total_input[name] = (projection.weight.detach() @ projection.pre.activity.detach().T).mean(dim=0)
+    for name, projection in population.incoming_projections.items():
+        total_input[name] = projection.weight.detach() @ projection.pre.activity.detach().T
 
-    val, idx = torch.sort(-next(iter(total_input.values())))
+    if sorting == 'E':
+        val, idx = torch.sort(total_input['H1E_InputE'], descending=True)
+    elif sorting == 'I':
+        val, idx = torch.sort(total_input['H1E_H1FBI'], descending=False)
+    elif sorting == 'EI_balance':
+        net_input = total_input['H1E_InputE'] + total_input['H1E_H1FBI']
+        val, idx = torch.sort(net_input, descending=True)
+    elif sorting == 'activity':
+        activity = population.activity.T.detach()
+        val, idx = torch.sort(activity, descending=True)
 
-    fig, ax = plt.subplots(1,2, figsize=[11, 4])
-    total_E = []
-    total_I = []
-    for name, projection in total_input.items():
-        if torch.mean(projection)>0:
+    fig, ax = plt.subplots(1, 2, figsize=[11, 4])
+
+    for name, proj_input in total_input.items():
+        if torch.mean(proj_input) > 0:
             color = 'r'
-            total_E.append(projection)
         else:
             color = 'C0'
-            total_I.append(projection)
-        ax[0].plot(projection[idx], label=name, c=color)
-    total_E = torch.stack(total_E).mean(dim=0)
-    total_I = torch.stack(total_I).mean(dim=0)
-
+        avg_proj_input = torch.mean(torch.gather(proj_input, 1, idx), dim=0)
+        ax[0].plot(np.abs(avg_proj_input), label=name, c=color)
     ax[0].set_xlabel('Input pattern')
-    ax[0].set_ylabel('Weighted input')
+    ax[0].set_ylabel('Weighted input (abs)')
     ax[0].set_title(f'Average total E/I input to {population.fullname} (sorted)')
     ax[0].legend()
 
-    ax[1].scatter(total_E, total_I, c='k')
+    ax[1].scatter(total_input['H1E_InputE'], total_input['H1E_H1FBI'], c='k', alpha=0.2)
     ax[1].invert_yaxis()
-    ax[1].set_xlabel('Average total E input')
-    ax[1].set_ylabel('Average total I input')
-    ax[1].set_title(f'Average total E/I input to {population.fullname}')
+    ax[1].set_xlabel('Sample E input')
+    ax[1].set_ylabel('Sample I input')
+    ax[1].set_title(f'Total E/I input to {population.fullname}')
     fig.tight_layout()
 
 
-def plot_correlations(network):
+def plot_correlations(network, test_dataloader):
     '''Plot the correlation matrix for a layer's weights'''
+
+    idx, data, target = next(iter(test_dataloader))
+    network.forward(data)
 
     for layer in network:
         if layer.name == 'Input':
@@ -809,7 +816,7 @@ def plot_correlations(network):
         ax[plot_nr].set_yticks([])
         ax[plot_nr].set_ylabel('FBI units')
         ax[plot_nr].set_xlabel('E units')
-        ax[plot_nr].set_title(f'E to I')
+        ax[plot_nr].set_title(f'E/I correlation')
         plot_nr += 1
 
         im = ax[plot_nr].imshow(activity_corr_mat[layer.E.size:, layer.E.size:],
@@ -822,11 +829,39 @@ def plot_correlations(network):
         ax[plot_nr].set_xlabel('FBI units')
         plot_nr += 1
 
-        plt.suptitle(f'{layer.name} activity similarity matrix')
+        plt.suptitle(f'{layer.name} activity similarity matrix', fontsize=18)
 
         plt.tight_layout(pad=0.5)
         plt.show()
         print(f'Pearson correlation: r={r_val:.3f}, r^2={r_val ** 2:.3f}, p={p_val:.2E}')
+
+        EI_corr = activity_corr_mat[layer.E.size:, 0:layer.E.size]
+        fig, ax = plt.subplots(1, 2, figsize=[8, 2])
+        ax[0].scatter(EI_corr, I_E_weights, c='r', alpha=0.2)
+        ax[0].set_xlabel('E/I activity correlation')
+        ax[0].set_ylabel('Weight')
+        m, b = np.polyfit(EI_corr.flatten(), I_E_weights.flatten(), 1)
+        x = np.linspace(np.min(EI_corr), np.max(EI_corr), 10)
+        y = m * x + b
+        ax[0].plot(x, y, '--', c='k', linewidth=2)
+        # print(f'Linear regression: y = {m} x + {b}')
+        r_val, p_val = stats.pearsonr(EI_corr.flatten(), I_E_weights.flatten())
+        txt_E = f'Pearson correlation (E): r={r_val:.3f}, r^2={r_val ** 2:.3f}, p={p_val:.2E}'
+
+        ax[1].scatter(EI_corr, E_I_weights.T, c='b', alpha=0.2)
+        ax[1].set_xlabel('E/I activity correlation')
+        ax[1].set_ylabel('Weight')
+        ax[1].invert_yaxis()
+        m, b = np.polyfit(EI_corr.flatten(), E_I_weights.T.flatten(), 1)
+        y = m * x + b
+        ax[1].plot(x, y, '--', c='k', linewidth=2)
+        # print(f'Linear regression: y = {m} x + {b}')
+        r_val, p_val = stats.pearsonr(EI_corr.flatten(), E_I_weights.T.flatten())
+        txt_I = f'Pearson correlation (I): r={r_val:.3f}, r^2={r_val ** 2:.3f}, p={p_val:.2E}'
+        plt.tight_layout()
+        plt.show()
+        print(txt_E)
+        print(txt_I)
 
 
 
