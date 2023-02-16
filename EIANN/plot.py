@@ -726,15 +726,18 @@ def plot_sorted_plateaus(population, test_dataloader):
 def plot_total_input(population, test_dataloader, sorting='E', act_threshold=0):
     '''Plot the total input to a population for each pattern in the test set'''
 
-    #TODO: exclude units with zero activity
-
     network = population.network
+    network.reset_history()
     idx, data, target = next(iter(test_dataloader))
-    network.forward(data)
+    network.forward(data, store_history=True)
 
     total_input = {}
     for name, projection in population.incoming_projections.items():
-        total_input[name] = projection.weight.detach() @ projection.pre.activity_history[:,-2,:].detach().T
+        if projection.direction in ['F','forward']:
+            total_input[name] = projection.weight.detach() @ projection.pre.activity_history[0,-1,:,:].detach().T
+        elif projection.direction in ['R','recurrent']:
+            pre_act = torch.mean(projection.pre.activity_history[0,-4:,:,:].detach(), dim=0).detach().T
+            total_input[name] = projection.weight.detach() @ pre_act
 
     if sorting == 'E':
         val, idx = torch.sort(total_input['H1E_InputE'], descending=True)
@@ -756,13 +759,17 @@ def plot_total_input(population, test_dataloader, sorting='E', act_threshold=0):
             color = 'C0'
         sorted_input = torch.gather(proj_input, 1, idx)
         active_units = torch.where(torch.sum(population.activity.detach(), dim=0) > act_threshold)[0]
+        # net_input = total_input['H1E_InputE'] + total_input['H1E_H1FBI']
+        # active_units = torch.where(torch.max(net_input, dim=1)[0] > act_threshold)[0]
         avg_proj_input = torch.mean(sorted_input[active_units], dim=0)
-        ax[0].plot(np.abs(avg_proj_input), label=name, c=color)
+        ax[0].plot(np.abs(avg_proj_input), label=name, c=color, alpha=0.8)
     ax[0].set_xlabel('Input pattern')
     ax[0].set_ylabel('Weighted input (abs)')
     ax[0].set_title(f'Average total E/I input to {population.fullname} (sorted)')
     ax[0].legend()
 
+    # net_input = total_input['H1E_InputE'] + total_input['H1E_H1FBI']
+    # active_idx = torch.where(net_input > act_threshold)
     active_idx = torch.where(population.activity.detach().T > act_threshold)
     ax[1].scatter(total_input['H1E_InputE'][active_idx], total_input['H1E_H1FBI'][active_idx], c='k', alpha=0.2)
     ax[1].invert_yaxis()
