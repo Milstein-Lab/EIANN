@@ -70,7 +70,7 @@ kwargs:
     status_bar: False
     train_steps: 10000
     epochs: 1
-    network_config_file_path: config/MNIST/20230204_EIANN_1_hidden_mnist_BTSP_config_C4.yaml
+    network_config_file_path: config/MNIST/20230215_EIANN_1_hidden_mnist_BTSP_config_C5.yaml
     val_interval:
         - -201
         - -1
@@ -85,7 +85,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_mnist_BTSP_C4
+optimization_title: EIANN_1_hidden_mnist_BTSP_C5
 x0:
     FB_BTSP_init_weight_factor: 0.5
     FF_BTSP_init_weight_factor: 0.14933762086546284
