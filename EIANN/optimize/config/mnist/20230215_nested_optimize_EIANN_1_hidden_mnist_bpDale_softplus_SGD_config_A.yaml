@@ -18,6 +18,8 @@ bounds:
         - 1.
         - 10.
 default_params:
+    H1_FBI_size: 50
+    Output_FBI_size: 10
 kwargs:
     network_id: 1
     task_id: 2
@@ -28,7 +30,7 @@ kwargs:
     status_bar: False
     train_steps: 10000
     epochs: 1
-    network_config_file_path: config/MNIST/EIANN_1_hidden_mnist_backprop_Dale_softplus_SGD_config.yaml
+    network_config_file_path: config/MNIST/20230215_EIANN_1_hidden_mnist_bpDale_softplus_SGD_config_A.yaml
     val_interval:
         - -201
         - -1
@@ -43,11 +45,11 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_mnist_backprop_Dale_softplus_SGD
+optimization_title: EIANN_1_hidden_mnist_bpDale_softplus_SGD_A
 x0:
     E_E_learning_rate: 0.2
     E_I_learning_rate: 0.2
     I_E_learning_rate: 0.2
     softplus_beta: 99.78563100135408
     H1_FBI_size: 50
-    Output_FBI_size: 5
+    Output_FBI_size: 10

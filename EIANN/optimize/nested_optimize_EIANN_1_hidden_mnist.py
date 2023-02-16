@@ -13,7 +13,8 @@ from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoc
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
-from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C
+from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
+    update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1
 
 
 context = Context()
@@ -247,6 +248,50 @@ def update_EIANN_config_1_hidden_mnist_backprop_Dale_softplus_SGD_D(x, context):
     context.projection_config['Output']['E']['Output']['FFI']['learning_rule_kwargs']['learning_rate'] = \
         E_I_learning_rate
     context.projection_config['Output']['FFI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
+def update_EIANN_config_1_hidden_mnist_backprop_Dale_softplus_SGD_E(x, context):
+    """
+    Includes FBI <- FBI connections.
+    :param x:
+    :param context:
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    softplus_beta = param_dict['softplus_beta']
+    H1_FBI_size = int(param_dict['H1_FBI_size'])
+    Output_FBI_size = int(param_dict['Output_FBI_size'])
+
+    E_E_learning_rate = param_dict['E_E_learning_rate']
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+    I_I_learning_rate = param_dict['I_I_learning_rate']
+
+    context.layer_config['H1']['FBI']['size'] = H1_FBI_size
+    context.layer_config['Output']['FBI']['size'] = Output_FBI_size
+
+    for i, layer in enumerate(context.layer_config.values()):
+        if i > 0:
+            for pop in layer.values():
+                if 'activation' in pop and pop['activation'] == 'softplus':
+                    if 'activation_kwargs' not in pop:
+                        pop['activation_kwargs'] = {}
+                    pop['activation_kwargs']['beta'] = softplus_beta
+
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['H1']['E']['H1']['FBI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['FBI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['FBI']['H1']['FBI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['Output']['E']['Output']['FBI']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    context.projection_config['Output']['FBI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['FBI']['Output']['FBI']['learning_rule_kwargs']['learning_rate'] = \
+        I_I_learning_rate
 
     context.training_kwargs['optimizer'] = 'SGD'
 
@@ -729,80 +774,6 @@ def update_EIANN_config_1_hidden_mnist_BTSP_Clone_Dend_I_1_bad(x, context):
         BTSP_neg_loss_ET_discount
 
     context.projection_config['H1']['FBI']['H1']['E']['weight_init_args'] = (H1_E_H1_FBI_weight_scale,)
-
-    context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
-    context.projection_config['Output']['E']['H1']['E']['weight_bounds'] = (0, Output_E_H1_E_max_weight)
-    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['pos_loss_th'] = \
-        Output_E_BTSP_pos_loss_th
-    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['neg_loss_th'] = \
-        Output_E_BTSP_neg_loss_th
-    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
-        Output_E_BTSP_learning_rate
-    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['neg_loss_ET_discount'] = \
-        BTSP_neg_loss_ET_discount
-    context.projection_config['Output']['E']['Output']['FBI']['weight_init_args'] = (-Output_E_Output_FBI_weight_scale,)
-    context.projection_config['Output']['FBI']['Output']['E']['weight_init_args'] = (Output_FBI_Output_E_weight_scale,)
-
-
-def update_EIANN_config_1_hidden_mnist_BTSP_Clone_Dend_I_1(x, context):
-    """
-    This config has 1 static soma-targeting FBI cell per layer, and 1 static dend-targeting Dend_I cell in H1.
-    All incoming and outgoing Dend_I projections are cloned to duplicate activity of Output.E neurons.
-    :param x:
-    :param context:
-
-    """
-    param_dict = param_array_to_dict(x, context.param_names)
-
-    FF_BTSP_init_weight_factor = param_dict['FF_BTSP_init_weight_factor']
-    FB_BTSP_init_weight_factor = param_dict['FB_BTSP_init_weight_factor']
-
-    H1_E_Input_E_max_weight_scale = param_dict['H1_E_Input_E_max_weight_scale']
-    H1_E_Input_E_max_weight = H1_E_Input_E_max_weight_scale / math.sqrt(context.layer_config['Input']['E']['size'])
-    H1_E_Input_E_init_weight_scale = H1_E_Input_E_max_weight_scale * FF_BTSP_init_weight_factor
-    H1_E_Input_E_BTSP_learning_rate = param_dict['H1_E_Input_E_BTSP_learning_rate']
-    H1_E_Output_E_BTSP_learning_rate = param_dict['H1_E_Output_E_BTSP_learning_rate']
-    H1_E_BTSP_pos_loss_th = param_dict['H1_E_BTSP_pos_loss_th']
-    H1_E_BTSP_neg_loss_th = param_dict['H1_E_BTSP_neg_loss_th']
-    H1_E_Output_E_max_weight_scale = param_dict['H1_E_Output_E_max_weight_scale']
-    H1_E_Output_E_max_weight = H1_E_Output_E_max_weight_scale / math.sqrt(context.layer_config['Output']['E']['size'])
-    H1_E_Output_E_init_weight_scale = H1_E_Output_E_max_weight_scale * FB_BTSP_init_weight_factor
-
-    H1_E_H1_FBI_weight_scale = param_dict['H1_E_H1_FBI_weight_scale']
-    H1_FBI_H1_E_weight_scale = param_dict['H1_FBI_H1_E_weight_scale']
-
-    Output_E_H1_E_max_weight_scale = param_dict['Output_E_H1_E_max_weight_scale']
-    Output_E_H1_E_max_weight = Output_E_H1_E_max_weight_scale / math.sqrt(context.layer_config['H1']['E']['size'])
-    Output_E_H1_E_init_weight_scale = Output_E_H1_E_max_weight_scale * FF_BTSP_init_weight_factor
-    Output_E_BTSP_learning_rate = param_dict['Output_E_BTSP_learning_rate']
-    Output_E_BTSP_pos_loss_th = param_dict['Output_E_BTSP_pos_loss_th']
-    Output_E_BTSP_neg_loss_th = param_dict['Output_E_BTSP_neg_loss_th']
-
-    Output_E_Output_FBI_weight_scale = param_dict['Output_E_Output_FBI_weight_scale']
-    Output_FBI_Output_E_weight_scale = param_dict['Output_FBI_Output_E_weight_scale']
-
-    BTSP_neg_loss_ET_discount = param_dict['BTSP_neg_loss_ET_discount']
-
-    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
-    context.projection_config['H1']['E']['Input']['E']['weight_bounds'] = (0, H1_E_Input_E_max_weight)
-    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = H1_E_BTSP_pos_loss_th
-    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_th'] = H1_E_BTSP_neg_loss_th
-    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
-        H1_E_Input_E_BTSP_learning_rate
-    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_ET_discount'] = \
-        BTSP_neg_loss_ET_discount
-    context.projection_config['H1']['E']['H1']['FBI']['weight_init_args'] = (-H1_E_H1_FBI_weight_scale,)
-
-    context.projection_config['H1']['E']['Output']['E']['weight_init_args'] = (H1_E_Output_E_init_weight_scale,)
-    context.projection_config['H1']['E']['Output']['E']['weight_bounds'] = (0, H1_E_Output_E_max_weight)
-    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['pos_loss_th'] = H1_E_BTSP_pos_loss_th
-    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['neg_loss_th'] = H1_E_BTSP_neg_loss_th
-    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
-        H1_E_Output_E_BTSP_learning_rate
-    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['neg_loss_ET_discount'] = \
-        BTSP_neg_loss_ET_discount
-
-    context.projection_config['H1']['FBI']['H1']['E']['weight_init_args'] = (H1_FBI_H1_E_weight_scale,)
 
     context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
     context.projection_config['Output']['E']['H1']['E']['weight_bounds'] = (0, Output_E_H1_E_max_weight)

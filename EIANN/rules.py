@@ -959,3 +959,8 @@ def normalize_weight(projection, scale, autapses=False, axis=1):
     valid_rows = torch.nonzero(weight_sum, as_tuple=True)[0]
     projection.weight.data[valid_rows,:] /= weight_sum[valid_rows,:]
     projection.weight.data *= scale
+
+
+def no_autapses(projection):
+    if projection.pre == projection.post:
+        projection.weight.data.fill_diagonal_(0.)
