@@ -622,6 +622,18 @@ class BTSP_3(LearningRule):
         output_layer = reversed_layers.pop(0)
         output_pop = network.output_pop
 
+        # store the forward_activity before comparing output to target
+        for layer in network:
+            for pop in layer:
+                pop.forward_activity = pop.activity.detach().clone()
+
+        # compute and store the forward_dendritic_state before comparing output to target
+        for layer in list(network)[:-1]:
+            cls.backward_update_layer_dendritic_state(layer)
+            for pop in layer:
+                if hasattr(pop, 'dendritic_state'):
+                    pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
+
         # initialize populations that are updated during the backward phase
         for layer in network:
             for pop in layer:

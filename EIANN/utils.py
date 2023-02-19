@@ -804,6 +804,8 @@ def reshape_backward_activity_history(pop):
     if pop.backward_activity_history_list:
         max_backward_steps = \
             max([len(backward_steps_activity) for backward_steps_activity in pop.backward_activity_history_list])
+        if max_backward_steps == 0:
+            return
         for i, backward_steps_activity in enumerate(pop.backward_activity_history_list):
             if len(backward_steps_activity) == 0:
                 backward_steps_activity = pop.activity_history[i,-1,:].repeat(max_backward_steps, 1)
