@@ -33,3 +33,38 @@ Supervised_Gjorgjieva_Hebb_C:
     Output_FBI_Output_E_weight_scale: 3.386978514311345
     Output_FBI_Output_FBI_weight_scale: 0.13403861091253574
     Output_FBI_size: 10.0
+BTSP_Clone_Dend_I_3:
+    # H1.E is quite sparse
+    BTSP_neg_loss_ET_discount: 0.06566078458151964
+    FB_BTSP_init_weight_factor: 0.17900323135089483
+    FF_BTSP_init_weight_factor: 0.034955396381459815
+    H1_E_BTSP_neg_loss_th: -0.10907327378160911
+    H1_E_BTSP_pos_loss_th: 0.11520021233656713
+    H1_E_H1_FBI_weight_scale: 5.156451092291273
+    H1_E_Input_E_BTSP_learning_rate: 0.01730445466592013
+    H1_E_Input_E_max_weight_scale: 6.630690101534002
+    H1_E_Output_E_BTSP_learning_rate: 0.008449820648555392
+    H1_E_Output_E_max_weight_scale: 5.352950247999227
+    H1_FBI_H1_E_weight_scale: 0.48487117516542894
+    Output_E_BTSP_learning_rate: 0.001451017637863879
+    Output_E_BTSP_neg_loss_th: -0.42782516750820765
+    Output_E_BTSP_pos_loss_th: 0.37534000157923747
+    Output_E_H1_E_max_weight_scale: 3.19753333574529
+    Output_E_Output_FBI_weight_scale: 3.4314124618843724
+    Output_FBI_Output_E_weight_scale: 1.2366528506621228
+bpDale_A:
+    E_E_learning_rate: 0.3905827598087813
+    E_I_learning_rate: 0.008001383903024366
+    H1_FBI_size: 50.0
+    I_E_learning_rate: 0.00013654399551975743
+    Output_FBI_size: 10.0
+    softplus_beta: 95.28786232460796
+bpDale_E:
+    # cheated and set half of the FBI cells to off, the rest to correlated with each other
+    E_E_learning_rate: 0.31798979627037327
+    E_I_learning_rate: 0.009741172911184424
+    H1_FBI_size: 50.0
+    I_E_learning_rate: 2.4363959525587067
+    I_I_learning_rate: 0.18318220858902137
+    Output_FBI_size: 10.0
+    softplus_beta: 24.703778862732584

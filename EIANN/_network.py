@@ -212,8 +212,7 @@ class Network(nn.Module):
                                         delta_state = delta_state + projection(pre_pop.prev_activity)
                             post_pop.state = post_pop.state + delta_state / post_pop.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
-                        if store_history:
-                            post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
+                        post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
 
         if store_history:
             for layer in self:

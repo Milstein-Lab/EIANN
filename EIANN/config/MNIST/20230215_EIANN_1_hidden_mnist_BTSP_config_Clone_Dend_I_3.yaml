@@ -35,7 +35,7 @@ projection_config:
                         - 0
                         - 3.737942984542882
                     direction: F
-                    learning_rule: BTSP_4
+                    learning_rule: BTSP_3
                     learning_rule_kwargs:
                         pos_loss_th: 0.05104425602423604
                         neg_loss_th: -0.06319409127791972
@@ -71,7 +71,7 @@ projection_config:
                         - 3.106144439387247
                     update_phase: B
                     compartment: dend
-                    learning_rule: BTSP_4
+                    learning_rule: BTSP_3
                     learning_rule_kwargs:
                         pos_loss_th: 0.05104425602423604
                         neg_loss_th: -0.06319409127791972
@@ -131,7 +131,7 @@ projection_config:
                         - 0
                         - 3.1607571174129747
                     direction: F
-                    learning_rule: BTSP_4
+                    learning_rule: BTSP_3
                     learning_rule_kwargs:
                         pos_loss_th: 0.18353579868351752
                         neg_loss_th: -0.36870478612294805

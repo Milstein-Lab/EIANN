@@ -824,3 +824,42 @@ def reshape_backward_activity_history(pop):
                 torch.cat([pop._backward_activity_history,
                            torch.stack(pop.backward_activity_history_list)])
             pop.backward_activity_history_list = []
+
+
+def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, debug=False, verbose=False,
+                                 plot=False):
+    """
+
+    :param network: :class:'Network'
+    :param dataloader: :class:'torch.DataLoader'
+    :param equilibration_activity_tolerance: float in [0, 1]
+    :param debug: bool
+    :param verbose: bool
+    :param: plot: bool
+    :return: bool
+    """
+    idx, data, targets = next(iter(dataloader))
+    network.forward(data)
+
+    for layer in network:
+        for pop in layer:
+            pop_activity = torch.stack(pop.forward_steps_activity)
+            average_activity = torch.mean(pop_activity, dim=(1, 2))
+            if plot:
+                fig = plt.figure()
+                plt.plot(average_activity, label=pop.fullname)
+                plt.legend(loc='best', frameon=False, framealpha=0.5)
+                plt.xlabel('Equilibration time steps')
+                plt.ylabel('Average population activity')
+                plt.ylim((0., plt.ylim()[1]))
+                fig.show()
+            equil_mean = torch.mean(average_activity[-2:])
+            if equil_mean > 0:
+                equil_delta = torch.abs(average_activity[-1] - average_activity[-2])
+                equil_error = equil_delta/equil_mean
+                if equil_error > equilibration_activity_tolerance:
+                    if verbose:
+                        print('pop: %s failed check_equilibration_dynamics: %.2f' % (pop.fullname, equil_error))
+                    if not debug:
+                        return False
+    return True

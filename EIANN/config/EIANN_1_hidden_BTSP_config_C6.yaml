@@ -1,28 +1,24 @@
 layer_config:
     Input:
         E:
-            size: 784
+            size: 21
     H1:
         E:
-            size: 500
+            size: 7
             activation: relu
         FBI:
             size: 1
             activation: relu
         Dend_I:
-            size: 10
-            activation: relu
-        Dend_I_FBI:
             size: 1
             activation: relu
     Output:
         E:
-            size: 10
+            size: 21
             activation: relu
         FBI:
             size: 1
             activation: relu
-
 projection_config:
     H1:
         E:
@@ -33,34 +29,33 @@ projection_config:
                         - 0.061735095235877606
                     weight_bounds: !!python/tuple
                         - 0
-                        - 3.737942984542882
+                        - 1.673418
                     direction: F
-                    learning_rule: BTSP_4
+                    learning_rule: BTSP_3
                     learning_rule_kwargs:
-                        pos_loss_th: 0.05104425602423604
-                        neg_loss_th: -0.06319409127791972
-                        learning_rate: 0.006900684389813614
+                        pos_loss_th: 0.1150415
+                        neg_loss_th: -0.2575194
+                        learning_rate: 0.01917011
             H1:
                 FBI:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
-                        - -0.1857735617689173
+                        - -0.1050965
                     direction: R
                     learning_rule: null
                 Dend_I:
-                    weight_init: fill_
+                    weight_init: half_kaining
                     weight_init_args: !!python/tuple
-                        - 0.0
+                        - 0.061041432117914914
                     weight_bounds: !!python/tuple
                         - null
                         - 0
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: H1.E.Output.E
-                        sign: -1
                     update_phase: B
                     compartment: dend
-                    learning_rule: null
+                    learning_rule: DendriticLoss_3
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.01626812
             Output:
                 E:
                     weight_init: half_kaining
@@ -68,14 +63,14 @@ projection_config:
                         - 0.26856846831362047
                     weight_bounds: !!python/tuple
                         - 0
-                        - 3.106144439387247
+                        - 3.892418
                     update_phase: B
                     compartment: dend
-                    learning_rule: BTSP_4
+                    learning_rule: BTSP_3
                     learning_rule_kwargs:
-                        pos_loss_th: 0.05104425602423604
-                        neg_loss_th: -0.06319409127791972
-                        learning_rate: 0.1237506954463254
+                        pos_loss_th: 0.1150415
+                        neg_loss_th: -0.2575194
+                        learning_rate: 0.01917011
         FBI:
             H1:
                 E:
@@ -91,33 +86,6 @@ projection_config:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
                         - 1.0
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: Output.E.H1.E
-                        sign: 1
-                    update_phase: A
-                    learning_rule: null
-                Dend_I_FBI:
-                    weight_init: fill_
-                    weight_init_args: !!python/tuple
-                        - 1.0
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: Output.E.Output.FBI
-                        sign: 1
-                    update_phase: A
-                    direction: R
-                    learning_rule: null
-        Dend_I_FBI:
-            H1:
-                Dend_I:
-                    weight_init: fill_
-                    weight_init_args: !!python/tuple
-                        - 0
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: Output.FBI.Output.E
-                    direction: F
                     update_phase: A
                     learning_rule: null
     Output:
@@ -129,18 +97,18 @@ projection_config:
                         - 0.15660723756451086
                     weight_bounds: !!python/tuple
                         - 0
-                        - 3.1607571174129747
+                        - 3.764467
                     direction: F
-                    learning_rule: BTSP_4
+                    learning_rule: BTSP_3
                     learning_rule_kwargs:
-                        pos_loss_th: 0.18353579868351752
-                        neg_loss_th: -0.36870478612294805
-                        learning_rate: 0.05248973408306354
+                        pos_loss_th: 0.2826361
+                        neg_loss_th: -0.09615551
+                        learning_rate: 0.01626812
             Output:
                 FBI:
                     weight_init: fill_
                     weight_init_args: !!python/tuple
-                        - -3.668729508940908
+                        - -1.999833
                     direction: R
                     learning_rule: null
         FBI:
@@ -152,7 +120,6 @@ projection_config:
                     update_phase: A
                     direction: F
                     learning_rule: null
-
 training_kwargs:
     tau: 3
     forward_steps: 10

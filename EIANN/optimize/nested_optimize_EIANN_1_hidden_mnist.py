@@ -9,7 +9,7 @@ import h5py
 
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
-    sort_by_val_history, recompute_validation_loss_and_accuracy
+    sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
@@ -59,6 +59,10 @@ def config_worker():
         context.store_weights = bool(context.store_weights)
     if 'store_weights_interval' not in context():
         context.store_weights_interval = (0, -1, 100)
+    if 'equilibration_activity_tolerance' not in context():
+        context.equilibration_activity_tolerance = 0.2
+    else:
+        context.equilibration_activity_tolerance = float(context.equilibration_activity_tolerance)
 
     context.train_steps = int(context.train_steps)
 
@@ -1290,6 +1294,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     if torch.isnan(results['loss']):
         return dict()
+
+    if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
+                                        context.debug, context.disp):
+        if not context.debug:
+            return dict()
 
     if plot:
         plot_batch_accuracy(network, test_dataloader, sorted_output_idx=sorted_output_idx, title='Final')

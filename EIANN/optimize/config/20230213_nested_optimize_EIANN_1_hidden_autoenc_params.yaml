@@ -117,3 +117,48 @@ BTSP_Clone_Dend_I_1:
     Output_E_H1_E_max_weight_scale: 4.86017837082124
     Output_E_Output_FBI_weight_scale: 3.4258019051236386
     Output_FBI_Output_E_weight_scale: 3.863969708725929
+BTSP_C5:
+    # broken - BTSP_4 wasn't actually sorting the H1.E units!
+    # 76% final autoenc_CL accuracy (phase2 0%)
+    # H1.E.plateau amplitude increases over training?!
+    BTSP_neg_loss_ET_discount: 0.25060974215626364
+    FB_BTSP_init_weight_factor: 0.3506174744876074
+    FF_BTSP_init_weight_factor: 0.045139502810390066
+    H1_Dend_I_H1_E_weight_scale: 6.864517454213994
+    H1_E_BTSP_neg_loss_th: -0.33806511917193216
+    H1_E_BTSP_pos_loss_th: 0.0979517612195573
+    H1_E_H1_Dend_I_init_weight_scale: 2.2809347830997675
+    H1_E_H1_Dend_I_learning_rate: 0.007889704224205549
+    H1_E_H1_FBI_weight_scale: 0.32033537996834344
+    H1_E_Input_E_BTSP_learning_rate: 0.039752600042183485
+    H1_E_Input_E_max_weight_scale: 19.680242173090594
+    H1_E_Output_E_BTSP_learning_rate: 0.01817591357761746
+    H1_E_Output_E_max_weight_scale: 10.392686532683818
+    H1_FBI_H1_E_weight_scale: 3.1445175132258116
+    Output_E_BTSP_learning_rate: 0.0076529752996933355
+    Output_E_BTSP_neg_loss_th: -0.3361411739484636
+    Output_E_BTSP_pos_loss_th: 0.1658100723175087
+    Output_E_H1_E_max_weight_scale: 6.268242529048231
+    Output_E_Output_FBI_weight_scale: 2.653457299188775
+    Output_FBI_Output_E_weight_scale: 3.684906487481957
+BTSP_Clone_Dend_I_2:
+    # training will be impractically slow on mnist
+    # 76% final autoenc_CL accuracy (phase2 100%)
+    # very few plateaus in H1.E
+    BTSP_neg_loss_ET_discount: 0.07928062024354525
+    FB_BTSP_init_weight_factor: 0.5194898323633018
+    FF_BTSP_init_weight_factor: 0.6627794889097723
+    H1_E_BTSP_neg_loss_th: -0.12191089151620406
+    H1_E_BTSP_pos_loss_th: 0.493446945225047
+    H1_E_H1_FBI_weight_scale: 0.6829394770237243
+    H1_E_Input_E_BTSP_learning_rate: 0.021094172198679942
+    H1_E_Input_E_max_weight_scale: 19.172932156328997
+    H1_E_Output_E_BTSP_learning_rate: 0.06228842578045147
+    H1_E_Output_E_max_weight_scale: 1.76625661001935
+    H1_FBI_H1_E_weight_scale: 1.1411259663382092
+    Output_E_BTSP_learning_rate: 0.015105919810023028
+    Output_E_BTSP_neg_loss_th: -0.06413879410389547
+    Output_E_BTSP_pos_loss_th: 0.21780005341902864
+    Output_E_H1_E_max_weight_scale: 11.246629974989046
+    Output_E_Output_FBI_weight_scale: 2.761603916563075
+    Output_FBI_Output_E_weight_scale: 3.478070513878121

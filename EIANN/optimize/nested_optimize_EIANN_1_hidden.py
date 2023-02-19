@@ -8,7 +8,7 @@ import math
 
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
-    sort_unsupervised_by_best_epoch
+    sort_unsupervised_by_best_epoch, check_equilibration_dynamics
 from EIANN.plot import plot_simple_EIANN_config_summary, plot_simple_EIANN_weight_history_diagnostic
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
@@ -50,11 +50,25 @@ def config_worker():
         context.store_weights = False
     else:
         context.store_weights = bool(context.store_weights)
+    if 'equilibration_activity_tolerance' not in context():
+        context.equilibration_activity_tolerance = 0.2
+    else:
+        context.equilibration_activity_tolerance = float(context.equilibration_activity_tolerance)
 
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
+
+    context.input_size = 21
+    context.dataset = torch.eye(context.input_size)
+    context.target = torch.eye(context.dataset.shape[0])
+
+    context.sample_indexes = torch.arange(len(context.dataset))
+    context.data_generator = torch.Generator()
+    autoenc_train_data = list(zip(context.sample_indexes, context.dataset, context.target))
+    context.dataloader = DataLoader(autoenc_train_data, shuffle=True, generator=context.data_generator)
+    context.test_dataloader = DataLoader(autoenc_train_data, batch_size=len(context.dataset), shuffle=False)
 
 
 def get_random_seeds():
@@ -934,14 +948,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     """
     update_source_contexts(x, context)
 
-    input_size = 21
-    dataset = torch.eye(input_size)
-    target = torch.eye(dataset.shape[0])
-
-    sample_indexes = torch.arange(len(dataset))
-    data_generator = torch.Generator()
-    dataloader = DataLoader(list(zip(sample_indexes, dataset, target)), shuffle=True, generator=data_generator)
-
+    target = context.target
+    data_generator = context.data_generator
+    dataloader = context.dataloader
+    test_dataloader = context.test_dataloader
     epochs = context.epochs
 
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
@@ -954,6 +964,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     data_generator.manual_seed(data_seed)
     network.train(dataloader, epochs, store_history=True, store_weights=context.store_weights,
                   status_bar=context.status_bar)
+
+    if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
+                                        context.debug, context.disp):
+        if not context.debug:
+            return dict()
 
     if not context.supervised:
         #TODO: this should depend on value of eval_accuracy
