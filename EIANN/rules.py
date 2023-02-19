@@ -336,7 +336,7 @@ class BTSP(LearningRule):
 
 class BTSP_2(LearningRule):
     def __init__(self, projection, pos_loss_th=2.440709E-01, neg_loss_th=-4.592181E-01, neg_loss_ET_discount=0.25,
-                 dep_ratio=1., dep_th=0.01, dep_width=0.01, max_pop_fraction=0.05, learning_rate=None):
+                 dep_ratio=1., dep_th=0.01, dep_width=0.01, max_pop_fraction=0.025, learning_rate=None):
         """
         Like the original BTSP class, this method includes both positive and negative modulatory events. Only positive
         modulatory events nudge the somatic activity. This variant is tolerant to the update_phase of projections
