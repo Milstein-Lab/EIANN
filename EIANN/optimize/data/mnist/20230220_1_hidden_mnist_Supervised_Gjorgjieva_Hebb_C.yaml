@@ -1,0 +1,141 @@
+layer_config:
+  Input:
+    E:
+      size: 784
+  H1:
+    E:
+      size: 500
+      activation: relu
+    FBI:
+      size: 50
+      activation: relu
+  Output:
+    E:
+      size: 10
+      activation: relu
+    FBI:
+      size: 10
+      activation: relu
+projection_config:
+  H1:
+    E:
+      Input:
+        E:
+          weight_init: half_kaining
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 3.497654941965694
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: GjorgjievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.0032576303972320394
+      H1:
+        FBI:
+          weight_init: half_kaining
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 2.634071235712462
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          direction: R
+          learning_rule: GjorgjievaHebb
+          learning_rule_kwargs:
+            sign: -1
+            learning_rate: 0.30224787490526106
+    FBI:
+      H1:
+        E:
+          weight_init: half_kaining
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 9.097090075485056
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: GjorgjievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.006283084822686543
+        FBI:
+          weight_init: half_kaining
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 0.3705886822823724
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          direction: R
+          learning_rule: GjorgjievaHebb
+          learning_rule_kwargs:
+            sign: -1
+            learning_rate: 0.2679517570884656
+  Output:
+    E:
+      H1:
+        E:
+          weight_init: half_kaining
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 5.703518004638812
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: SupervisedGjorgjievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.03243678351188924
+      Output:
+        FBI:
+          weight_init: half_kaining
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 15.593031518205827
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          direction: R
+          learning_rule: GjorgjievaHebb
+          learning_rule_kwargs:
+            sign: -1
+            learning_rate: 0.30224787490526106
+    FBI:
+      Output:
+        E:
+          weight_init: half_kaining
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 0.5917672275579665
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          update_phase: A
+          direction: F
+          learning_rule: GjorgjievaHebb
+          learning_rule_kwargs:
+            sign: 1
+            learning_rate: 0.006283084822686543
+        FBI:
+          weight_init: half_kaining
+          weight_constraint: normalize_weight
+          weight_constraint_kwargs:
+            scale: 1.3740212640876837
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          direction: R
+          learning_rule: GjorgjievaHebb
+          learning_rule_kwargs:
+            sign: -1
+            learning_rate: 0.2679517570884656
+training_kwargs:
+  tau: 3
+  forward_steps: 10
+  backward_steps: 0
+  learning_rate: 0.9553728
