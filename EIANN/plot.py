@@ -406,9 +406,9 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=Fals
 
     if sort: # Sort units by tuning structure of their receptive fields
         structure = []
-        for unit_field_vec in receptive_fields:
-            s = metrics.structural_similarity(unit_field_vec.numpy(),
-                                              np.random.uniform(min(unit_field_vec), max(unit_field_vec), len(unit_field_vec)).astype('float32'))
+        for unit_rf in receptive_fields:
+            s = metrics.structural_similarity(unit_rf.numpy(),
+                                              np.random.uniform(min(unit_rf), max(unit_rf), len(unit_rf)).astype('float32'))
             structure.append(s)
         sorted_idx = np.argsort(structure)
         receptive_fields = receptive_fields[sorted_idx]
@@ -656,7 +656,6 @@ def plot_rsm(network, test_dataloader):
     cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
     cbar = plt.colorbar(im, cax=cax)
     cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
-
 
     num_samples = target.shape[0]
     num_labels = target.shape[1]
