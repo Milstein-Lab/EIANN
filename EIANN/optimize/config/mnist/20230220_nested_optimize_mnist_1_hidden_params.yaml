@@ -131,3 +131,10 @@ BTSP_D2_test:
     Output_FBI_Output_E_weight_scale: 0.25429227724377235
     E_I_learning_rate: 0.034692497050580445
     I_E_learning_rate: 0.034692497050580445
+bpDale_A:
+    E_E_learning_rate: 0.3905827598087813
+    E_I_learning_rate: 0.008001383903024366
+    H1_FBI_size: 50.0
+    I_E_learning_rate: 0.00013654399551975743
+    Output_FBI_size: 10.0
+    softplus_beta: 95.28786232460796
