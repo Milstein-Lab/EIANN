@@ -1,0 +1,13 @@
+network_id: 1
+task_id: 2
+seed_start: 1
+num_instances: 5
+data_seed_start: 1
+supervised: True
+status_bar: True
+train_steps: 40000
+epochs: 2
+val_interval:
+    - 0
+    - -1
+    - 10000

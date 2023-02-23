@@ -462,19 +462,23 @@ class Network(nn.Module):
         if save_to_file is not None:
             self.save(path=save_to_file)
 
-    def save(self, path=None, dir="saved_networks/", filename="datetime.datetime.now().strftime('%Y%m%d_%H%M%S')"):
+    def save(self, path=None, dir='saved_networks', file_name_base=None):
+        """
 
+        :param path: str (path to file)
+        :param dir: str (path to dir)
+        :param file_name_base: str
+        """
         if path is None:
-            path = dir + filename + ".pickle"
+            if file_name_base is None:
+                file_name_base = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            path = '%s/%s.pkl' % (dir, file_name_base)
             if not os.path.exists(dir):
                 os.makedirs(dir)
-        else:
-            path = path + ".pickle"
 
         if os.path.exists(path):
             overwrite = input('File already exists. Overwrite? (y/n)')
             if overwrite == 'y':
-                # shutil.rmtree(path+filename)
                 os.remove(path)
             else:
                 print('Model not saved')

@@ -563,12 +563,12 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None,
-                        unsupervised=False):
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
     :param test_dataloader:
+    :param population: :class:'Population' or str 'all'
     :param sorted_output_idx: tensor of int
     :param title: str
     """
@@ -581,7 +581,6 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     output = network.forward(data).detach()
 
     # if unsupervised: # sort output units by their mean activity
-
     if sorted_output_idx is not None:
         output = output[:, sorted_output_idx]
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
@@ -592,23 +591,13 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     num_units = targets.shape[1]
     num_labels = num_units
     avg_output = torch.zeros(num_units, num_labels)
-    if population is not None:
-        avg_pop_activity = torch.zeros(population.size, num_labels)
 
     for label in range(num_labels):
         label_idx = torch.where(labels == label)  # find all instances of given label
         avg_output[:, label] = torch.mean(output[label_idx], dim=0)
 
-        if population is not None:
-            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx].detach(), dim=0)
-
-    if population is None:
-        fig, axes = plt.subplots()
-        axes = [axes]
-    else:
-        fig, axes = plt.subplots(1, 2)
-
-    ax = axes[0]
+    fig, axes = plt.subplots()
+    ax = axes
     im = ax.imshow(avg_output, interpolation='none')
     cbar = plt.colorbar(im, ax=ax)
     ax.set_xticks(range(num_labels))
@@ -616,26 +605,41 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     ax.set_xlabel('Labels')
     ax.set_ylabel('Output unit')
     if title is not None:
-        ax.set_title(f'Average output activity - {title}')
+        ax.set_title(f'Average activity - {network.output_pop.fullname}\n{title}')
     else:
-        ax.set_title('Average output activity')
+        ax.set_title(f'Average activity - {network.output_pop.fullname}')
+    fig.tight_layout()
+    fig.show()
 
-    if population is not None:
-        ax = axes[1]
+    pop_list = []
+    if population == 'all':
+        for layer in network:
+            for pop in layer:
+                if pop is not network.output_pop:
+                    pop_list.append(pop)
+    elif population is not None:
+        pop_list.append(population)
+
+    for population in pop_list:
+        avg_pop_activity = torch.zeros(population.size, num_labels)
+        for label in range(num_labels):
+            label_idx = torch.where(labels == label)  # find all instances of given label
+            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx].detach(), dim=0)
+        fig, axes = plt.subplots()
+        ax = axes
         _, sort_idx = torch.sort(torch.argmax(avg_pop_activity,dim=1))
         im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none',aspect='auto')
         cbar = plt.colorbar(im, ax=ax)
 
         ax.set_xticks(range(num_labels))
         ax.set_xlabel('Labels')
-        ax.set_ylabel(f'{population.name} unit')
+        ax.set_ylabel(f'{population.fullname} unit')
         if title is not None:
-            ax.set_title(f'Average {population.name} activity - {title}')
+            ax.set_title(f'Average activity - {population.fullname}\n{title}')
         else:
-            ax.set_title(f'Average {population.name} activity')
-
-    fig.tight_layout()
-    fig.show()
+            ax.set_title(f'Average activity - {population.fullname}')
+        fig.tight_layout()
+        fig.show()
 
 
 def plot_rsm(network, test_dataloader):

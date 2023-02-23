@@ -14,7 +14,8 @@ from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_valida
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
 from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
-    update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1
+    update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
+    update_EIANN_config_1_hidden_BTSP_D2
 
 
 context = Context()
@@ -1296,7 +1297,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         return dict()
 
     if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                        context.debug, context.disp):
+                                        context.debug, context.disp, context.debug and plot):
         if not context.debug:
             return dict()
 
