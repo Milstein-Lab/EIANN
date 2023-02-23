@@ -916,7 +916,7 @@ def reshape_backward_activity_history(pop):
             pop.backward_activity_history_list = []
 
 
-def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, debug=False, verbose=False,
+def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, debug=False, disp=False,
                                  plot=False):
     """
 
@@ -924,7 +924,7 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
     :param dataloader: :class:'torch.DataLoader'
     :param equilibration_activity_tolerance: float in [0, 1]
     :param debug: bool
-    :param verbose: bool
+    :param disp: bool
     :param: plot: bool
     :return: bool
     """
@@ -948,7 +948,7 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
                 equil_delta = torch.abs(average_activity[-1] - average_activity[-2])
                 equil_error = equil_delta/equil_mean
                 if equil_error > equilibration_activity_tolerance:
-                    if verbose:
+                    if disp:
                         print('pop: %s failed check_equilibration_dynamics: %.2f' % (pop.fullname, equil_error))
                     if not debug:
                         return False

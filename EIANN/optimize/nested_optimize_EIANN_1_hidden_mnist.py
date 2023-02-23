@@ -14,7 +14,8 @@ from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_valida
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
 from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
-    update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1
+    update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
+    update_EIANN_config_1_hidden_BTSP_D2
 
 
 context = Context()
@@ -135,6 +136,46 @@ def update_EIANN_config_1_hidden_mnist_backprop_Dale_softplus_SGD(x, context):
     context.projection_config['H1']['FBI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
 
     context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['Output']['E']['Output']['FBI']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    context.projection_config['Output']['FBI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
+def update_EIANN_config_2_hidden_mnist_backprop_Dale_softplus_SGD(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    softplus_beta = param_dict['softplus_beta']
+    H1_FBI_size = int(param_dict['H1_FBI_size'])
+    Output_FBI_size = int(param_dict['Output_FBI_size'])
+
+    E_E_learning_rate = param_dict['E_E_learning_rate']
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+
+    context.layer_config['H1']['FBI']['size'] = H1_FBI_size
+    context.layer_config['H2']['FBI']['size'] = H1_FBI_size
+    context.layer_config['Output']['FBI']['size'] = Output_FBI_size
+
+    for i, layer in enumerate(context.layer_config.values()):
+        if i > 0:
+            for pop in layer.values():
+                if 'activation' in pop and pop['activation'] == 'softplus':
+                    if 'activation_kwargs' not in pop:
+                        pop['activation_kwargs'] = {}
+                    pop['activation_kwargs']['beta'] = softplus_beta
+
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['H1']['E']['H1']['FBI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['FBI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['H2']['E']['H2']['FBI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H2']['FBI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
     context.projection_config['Output']['E']['Output']['FBI']['learning_rule_kwargs']['learning_rate'] = \
         E_I_learning_rate
     context.projection_config['Output']['FBI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
@@ -1296,7 +1337,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         return dict()
 
     if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                        context.debug, context.disp):
+                                        context.debug, context.disp, context.debug and plot):
         if not context.debug:
             return dict()
 
