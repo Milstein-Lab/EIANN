@@ -45,7 +45,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_mnist_bpDale_softplus_SGD_A
+optimization_title: EIANN_2_hidden_mnist_bpDale_softplus_SGD_A2
 x0:
     E_E_learning_rate: 0.2
     E_I_learning_rate: 0.2
