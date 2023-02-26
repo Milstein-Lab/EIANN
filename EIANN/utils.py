@@ -2,6 +2,8 @@ import torch
 from torch.utils.data import DataLoader
 from torch.nn.functional import softplus, relu, sigmoid, elu
 import numpy as np
+from skimage import metrics
+from sklearn.metrics.pairwise import cosine_similarity
 import math
 import yaml
 import itertools
@@ -614,6 +616,92 @@ def linear(x):
     Linear activation function
     """
     return x
+
+
+def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False):
+    """
+    Compute representation metrics for a population of neurons
+    :param population: Population object
+    :param receptive_fields: (optional) receptive fields for each neuron
+    :return: dictionary of metrics
+    """
+
+    network = population.network
+    idx, data, target = next(iter(test_dataloader))
+    data.to(network.device)
+    network.forward(data)
+    activity = population.activity.detach()
+
+    num_patterns = activity.shape[0]
+    num_units = activity.shape[1]
+
+    # Compute sparsity
+    fraction_nonzero_units = np.count_nonzero(activity, axis=1) / num_units
+    active_pattern_idx = np.where(fraction_nonzero_units != 0.)[0] #exlcude silent patterns
+    sparsity = 1 - fraction_nonzero_units[active_pattern_idx]
+    mean_sparsity = np.mean(sparsity)
+
+    # Compute selectivity
+    fraction_nonzero_patterns = np.count_nonzero(activity, axis=0) / num_patterns
+    active_unit_idx = np.where(fraction_nonzero_patterns != 0.)[0] #exlcude silent units
+    selectivity = 1 - fraction_nonzero_patterns[active_unit_idx]
+    mean_selectivity = np.mean(selectivity)
+
+    # Compute discriminability
+    silent_pattern_idx = np.where(torch.sum(activity, dim=1) == 0.)[0]
+    activity[silent_pattern_idx,:] = np.NaN
+    similarity_matrix = cosine_similarity(activity)
+    similarity_matrix[silent_pattern_idx,:] = np.NaN
+    similarity_matrix[:,silent_pattern_idx] = np.NaN
+
+    similarity_matrix_idx = np.tril_indices_from(similarity_matrix, -1) # select values below diagonal
+    similarity = similarity_matrix[similarity_matrix_idx]
+
+    invalid_idx = np.isnan(similarity) #remove nan values
+    similarity[invalid_idx] = 1
+    # similarity = similarity[~invalid_idx]
+    discriminability = 1 - similarity
+    mean_discriminability = np.mean(discriminability)
+
+    # Compute structure
+    if receptive_fields is None:
+        receptive_fields,_ = ut.compute_maxact_receptive_fields(population, test_dataloader)
+
+    structure_sim_ls = []
+    for unit_rf in receptive_fields:
+        s = 0
+        for i in range(3): #average structural similarity metric to 3 random noise images
+            noise = np.random.uniform(min(unit_rf), max(unit_rf), len(unit_rf)).astype('float32')
+            s += metrics.structural_similarity(unit_rf.numpy(), noise)
+        structure_sim_ls.append(s/3)
+    structure = 1 - np.array(structure_sim_ls)
+    mean_structure = np.mean(structure)
+
+    if plot:
+        fig, ax = plt.subplots(2,2,figsize=[12,5])
+        ax[0,0].hist(sparsity,50)
+        ax[0,0].set_title('Sparsity distribution')
+        ax[0,0].set_ylabel('num patterns')
+        ax[0,0].set_xlabel('(1 - fraction active units)')
+
+        ax[0,1].hist(selectivity,50)
+        ax[0,1].set_title('Selectivity distribution')
+        ax[0,1].set_ylabel('num units')
+        ax[0,1].set_xlabel('(1 - fraction active patterns)')
+
+        ax[1,0].set_title('Discriminability distribution')
+        ax[1,0].hist(discriminability, 50)
+        ax[1,0].set_ylabel('pattern pairs')
+        ax[1,0].set_xlabel('(1 - cosine similarity)')
+
+        ax[1,1].hist(structure, 50)
+        ax[1,1].set_title('Structure')
+        ax[1,1].set_ylabel('num units')
+        ax[1,1].set_xlabel('(1 - similarity to random noise)')
+        plt.tight_layout()
+
+    return {'sparsity': mean_sparsity, 'selectivity': mean_selectivity,
+            'discriminability': mean_discriminability, 'structure': mean_structure}
 
 
 # MNIST-related functions
