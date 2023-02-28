@@ -6,6 +6,7 @@ from skimage import metrics
 from sklearn.metrics.pairwise import cosine_similarity
 import math
 import yaml
+import h5py
 import itertools
 import os
 from . import plot as plot
@@ -70,6 +71,49 @@ def read_from_yaml(file_path, Loader=None):
         return data
     else:
         raise Exception('File: {} does not exist.'.format(file_path))
+
+
+def export_metrics_data(metrics_dict, model_name, path):
+    """
+    Exports data from metrics_dict to hdf5 file.
+    :param metrics_dict: dictionary of metrics computed on EIANN network
+    :param model_name: string of model name for top_level hdf5 group
+    :param file_name: string name of file to save to
+    """
+
+    if '.hdf5' not in path:
+        path = path + '.hdf5'
+    with h5py.File(path, mode='a') as file:
+
+        if model_name in file:
+            overwrite = input('File already contains metrics for this model. Overwrite? (y/n)')
+            if overwrite == 'y':
+                del file[model_name]
+            else:
+                print('Model metrics not saved')
+                return
+
+        file.create_group(model_name)
+
+        for metric in metrics_dict.keys():
+            file[model_name].create_dataset(metric, data=metrics_dict[metric])
+
+
+def import_metrics_data(filename):
+    """
+    Imports metrics data from hdf5 file
+    :param file_name: string name of hdf5 file
+    :return sim_dict: dictionary of values
+    """
+    metrics_dict = {}
+    with h5py.File(filename, 'r') as file:
+
+        for model_name in file:
+            metrics_dict[model_name] = {}
+            for metric in file[model_name]:
+                metrics_dict[model_name][metric] = file[model_name][metric][:]
+
+    return metrics_dict
 
 
 def n_choose_k(n, k):
@@ -639,17 +683,14 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     fraction_nonzero_units = np.count_nonzero(activity, axis=1) / num_units
     active_pattern_idx = np.where(fraction_nonzero_units != 0.)[0] #exlcude silent patterns
     sparsity = 1 - fraction_nonzero_units[active_pattern_idx]
-    mean_sparsity = np.mean(sparsity)
 
     # Compute selectivity
     fraction_nonzero_patterns = np.count_nonzero(activity, axis=0) / num_patterns
     active_unit_idx = np.where(fraction_nonzero_patterns != 0.)[0] #exlcude silent units
     selectivity = 1 - fraction_nonzero_patterns[active_unit_idx]
-    mean_selectivity = np.mean(selectivity)
 
     # Compute discriminability
     silent_pattern_idx = np.where(torch.sum(activity, dim=1) == 0.)[0]
-    activity[silent_pattern_idx,:] = np.NaN
     similarity_matrix = cosine_similarity(activity)
     similarity_matrix[silent_pattern_idx,:] = np.NaN
     similarity_matrix[:,silent_pattern_idx] = np.NaN
@@ -661,7 +702,6 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     similarity[invalid_idx] = 1
     # similarity = similarity[~invalid_idx]
     discriminability = 1 - similarity
-    mean_discriminability = np.mean(discriminability)
 
     # Compute structure
     if receptive_fields is None:
@@ -675,7 +715,6 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
             s += metrics.structural_similarity(unit_rf.numpy(), noise)
         structure_sim_ls.append(s/3)
     structure = 1 - np.array(structure_sim_ls)
-    mean_structure = np.mean(structure)
 
     if plot:
         fig, ax = plt.subplots(2,2,figsize=[12,5])
@@ -700,8 +739,8 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
         ax[1,1].set_xlabel('(1 - similarity to random noise)')
         plt.tight_layout()
 
-    return {'sparsity': mean_sparsity, 'selectivity': mean_selectivity,
-            'discriminability': mean_discriminability, 'structure': mean_structure}
+    return {'sparsity': sparsity, 'selectivity': selectivity,
+            'discriminability': discriminability, 'structure': structure}
 
 
 # MNIST-related functions
