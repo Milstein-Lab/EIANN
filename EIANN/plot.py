@@ -712,9 +712,9 @@ def plot_sorted_plateaus(population, test_dataloader):
     unit_ids = idx
 
     fig, ax = plt.subplots(figsize=[11, 7])
-    plateau_scale = max(abs(torch.max(sorted_plateaus)), abs(torch.min(sorted_plateaus)))
+    # plateau_scale = max(abs(torch.max(sorted_plateaus)), abs(torch.min(sorted_plateaus)))
     ax.imshow(sorted_plateaus.T, aspect='auto', cmap='bwr', interpolation='nearest',
-               vmin=-plateau_scale, vmax=plateau_scale)
+               vmin=-1, vmax=1)
     ax.set_ylabel(f'{population.fullname} unit')
     ax.set_title(f'Sorted Plateau History')
 
