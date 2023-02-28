@@ -991,6 +991,8 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
     for layer in network:
         for pop in layer:
             pop_activity = torch.stack(pop.forward_steps_activity)
+            if pop_activity.shape[0] == 1:
+                return True
             average_activity = torch.mean(pop_activity, dim=(1, 2))
             if plot:
                 fig = plt.figure()

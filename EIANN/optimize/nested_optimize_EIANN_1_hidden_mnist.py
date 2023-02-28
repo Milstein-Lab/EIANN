@@ -15,7 +15,7 @@ from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
 from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
-    update_EIANN_config_1_hidden_BTSP_D2
+    update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_backprop_softplus_SGD
 
 
 context = Context()
