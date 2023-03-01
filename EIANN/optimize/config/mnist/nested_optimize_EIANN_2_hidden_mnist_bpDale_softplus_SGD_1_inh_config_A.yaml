@@ -30,7 +30,7 @@ kwargs:
     status_bar: False
     train_steps: 10000
     epochs: 1
-    network_config_file_path: config/MNIST/20230215_EIANN_1_hidden_mnist_bpDale_softplus_SGD_config_A.yaml
+    network_config_file_path: config/MNIST/20230215_EIANN_2_hidden_mnist_bpDale_softplus_SGD_config_A.yaml
     val_interval:
         - -201
         - -1
@@ -38,14 +38,14 @@ kwargs:
     num_training_steps_accuracy_window: 200
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
-      function: update_EIANN_config_1_hidden_mnist_backprop_Dale_softplus_SGD
+      function: update_EIANN_config_2_hidden_mnist_backprop_Dale_softplus_SGD
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_mnist_backprop_Dale_softplus_SGD_1_inh_A
+optimization_title: EIANN_2_hidden_mnist_backprop_Dale_softplus_SGD_1_inh_A
 x0:
     E_E_learning_rate: 0.2
     E_I_learning_rate: 0.2

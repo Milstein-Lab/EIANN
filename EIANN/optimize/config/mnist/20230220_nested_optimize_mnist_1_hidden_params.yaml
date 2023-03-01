@@ -201,3 +201,7 @@ bpDale_E2:
     I_I_learning_rate: 0.18811862201544857
     Output_FBI_size: 10.0
     softplus_beta: 7.0241243369339434
+van_bp:
+    # accuracy: 94.54869
+    learning_rate: 0.13315131781400405
+    softplus_beta: 45.610257237854945

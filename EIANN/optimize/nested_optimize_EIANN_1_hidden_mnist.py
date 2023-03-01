@@ -1331,7 +1331,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
 
     if plot:
-        plot_batch_accuracy(network, test_dataloader, title='Initial')
+        plot_batch_accuracy(network, test_dataloader, population='all', title='Initial')
 
     data_generator.manual_seed(data_seed)
     network.train_and_validate(train_sub_dataloader,
@@ -1387,7 +1387,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             return dict()
 
     if plot:
-        plot_batch_accuracy(network, test_dataloader, sorted_output_idx=sorted_output_idx, title='Final')
+        plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
+                            title='Final')
         plot_train_loss_history(network)
         plot_validate_loss_history(network)
 
