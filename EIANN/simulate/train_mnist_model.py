@@ -43,7 +43,10 @@ def load_data():
     return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
 
 
-#  python train_model.py --config_path=../optimize/data/mnist/20230220_1_hidden_mnist_BTSP_Clone_Dend_I_4.yaml --plot
+#  python train_mnist_model.py --config_path=../optimize/data/mnist/20230220_1_hidden_mnist_BTSP_Clone_Dend_I_4.yaml
+#  python train_mnist_model.py --config_path=../config/MNIST/EIANN_1_hidden_mnist_backprop_relu_SGD_config.yaml
+#  python train_mnist_model.py --config_path=../optimize/data/mnist/20230102_EIANN_1_hidden_mnist_bpDale_softplus_config.yaml
+#  python train_mnist_model.py --config_path=../optimize/data/mnist/20230214_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_C.yaml
 
 @click.command()
 @click.option("--config_path")
@@ -56,7 +59,6 @@ def load_data():
 @click.option("--network_seed", default=42)
 def main(config_path, name, export_path, plot, retrain, epochs, data_seed, network_seed):
     pt.update_plot_defaults()
-
 
     network_config = ut.read_from_yaml(config_path)
     layer_config = network_config['layer_config']
@@ -89,20 +91,7 @@ def main(config_path, name, export_path, plot, retrain, epochs, data_seed, netwo
 
     # Compute receptive fields
     population = network.H1.E
-    receptive_fields, _ = ut.compute_act_weighted_avg(population, test_dataloader)
-    # receptive_fields, _ = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
-    # if plot:
-    #     # Plot H1.E receptive fields
-    #     _, activity_preferred_inputs = ut.compute_act_weighted_avg(population, test_dataloader)
-    #     # _, activity_preferred_inputs = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=True)
-    #     pt.plot_receptive_fields(receptive_fields, activity_preferred_inputs)
-    #
-    #     # Plot Output.E receptive fields
-    #     population = network.Output.E
-    #     _, activity_preferred_inputs = ut.compute_act_weighted_avg(population, test_dataloader)
-    #     # _, activity_preferred_inputs = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=True)
-    #     receptive_fields, _ = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
-    #     pt.plot_receptive_fields(receptive_fields, activity_preferred_inputs)
+    receptive_fields, _ = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
 
     # Export metrics data to hdf5 file
     metrics_dict = ut.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields, plot=plot)
@@ -121,6 +110,17 @@ def main(config_path, name, export_path, plot, retrain, epochs, data_seed, netwo
             sorted_plateaus, unit_ids = pt.plot_sorted_plateaus(btsp_network.H1.E, test_dataloader)
         pt.plot_correlations(network, test_dataloader)
         pt.plot_total_input(network.H1.E, test_dataloader, sorting='EI_balance', act_threshold=0)
+    #     # Plot H1.E receptive fields
+    #     _, activity_preferred_inputs = ut.compute_act_weighted_avg(population, test_dataloader)
+    #     # _, activity_preferred_inputs = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=True)
+    #     pt.plot_receptive_fields(receptive_fields, activity_preferred_inputs)
+    #
+    #     # Plot Output.E receptive fields
+    #     population = network.Output.E
+    #     _, activity_preferred_inputs = ut.compute_act_weighted_avg(population, test_dataloader)
+    #     # _, activity_preferred_inputs = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=True)
+    #     receptive_fields, _ = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
+    #     pt.plot_receptive_fields(receptive_fields, activity_preferred_inputs)
 
 
 if __name__ == '__main__':

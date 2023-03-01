@@ -418,7 +418,7 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=Fals
     print(f'Min activity: {torch.min(activity_preferred_inputs)}, Max activity: {torch.max(activity_preferred_inputs)}')
 
     # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
-    receptive_fields = receptive_fields / torch.max(receptive_fields, dim=1, keepdim=True)[0]
+    receptive_fields = receptive_fields / (torch.max(receptive_fields, dim=1, keepdim=True)[0] + 1e-10)
 
     # Normalize activity_preferred_inputs (to use as alpha transparency)
     # activity_preferred_inputs = (activity_preferred_inputs / torch.max(activity_preferred_inputs)).numpy()
@@ -450,15 +450,16 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=Fals
         #                interpolation='none', alpha=activity_preferred_inputs[i])
         im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=-colorscale, vmax=colorscale)
         ax.axis('off')
-        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        # cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         # cax = fig.add_axes([ax.get_position().x1 + 0.002, ax.get_position().y0, 0.005, ax.get_position().height])
         # cbar = plt.colorbar(im, cax=cax)
         # cbar.outline.set_visible(False)
         # cbar.ax.tick_params(labelsize=10, pad=0.5, length=0)
 
     fig.tight_layout(pad=0.2)
-    if sort:
-        return structure
+    fig_height = fig.get_size_inches()[1]
+    cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
+    cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
 
 
 def plot_unit_receptive_field(population, dataloader, unit):

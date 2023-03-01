@@ -727,10 +727,11 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     structure_sim_ls = []
     for unit_rf in receptive_fields:
         s = 0
-        for i in range(3): #structural similarity to noise (averaged across 3 random noise images)
-            noise = np.random.uniform(min(unit_rf), max(unit_rf), (28,28))
-            reference_correlation = spatial_structure_similarity(noise, noise)
-            s += spatial_structure_similarity(unit_rf.view(28,28).numpy(), noise) / reference_correlation
+        if torch.all(unit_rf != 0):
+            for i in range(3): #structural similarity to noise (averaged across 3 random noise images)
+                noise = np.random.uniform(min(unit_rf), max(unit_rf), (28,28))
+                reference_correlation = spatial_structure_similarity(noise, noise)
+                s += spatial_structure_similarity(unit_rf.view(28,28).numpy(), noise) / reference_correlation
         structure_sim_ls.append(s/3)
     structure = 1 - np.array(structure_sim_ls)
 
