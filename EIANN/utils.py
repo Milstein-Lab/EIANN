@@ -2,7 +2,8 @@ import torch
 from torch.utils.data import DataLoader
 from torch.nn.functional import softplus, relu, sigmoid, elu
 import numpy as np
-from skimage import metrics
+# from skimage import metrics
+from scipy import signal
 from sklearn.metrics.pairwise import cosine_similarity
 import math
 import yaml
@@ -107,7 +108,6 @@ def import_metrics_data(filename):
     """
     metrics_dict = {}
     with h5py.File(filename, 'r') as file:
-
         for model_name in file:
             metrics_dict[model_name] = {}
             for metric in file[model_name]:
@@ -662,6 +662,23 @@ def linear(x):
     return x
 
 
+def spatial_structure_similarity(img1, img2):
+    '''
+    Compute the structural similarity of two images based on the correlation of their 2D spatial frequency distributions
+    :param img1: 2D numpy array of pixels
+    :param img2: 2D numpy array of pixels
+    :return:
+    '''
+    # Compute the 2D spatial frequency distribution of each image
+    freq1 = np.abs(np.fft.fftshift(np.fft.fft2(img1 - np.mean(img1))))
+    freq2 = np.abs(np.fft.fftshift(np.fft.fft2(img2 - np.mean(img2))))
+
+    # Compute the frequency correlation
+    spatial_structure_similarity =  signal.correlate2d(freq1, freq2, mode='valid')[0][0]
+
+    return spatial_structure_similarity
+
+
 def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False):
     """
     Compute representation metrics for a population of neurons
@@ -710,9 +727,10 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     structure_sim_ls = []
     for unit_rf in receptive_fields:
         s = 0
-        for i in range(3): #average structural similarity metric to 3 random noise images
-            noise = np.random.uniform(min(unit_rf), max(unit_rf), len(unit_rf)).astype('float32')
-            s += metrics.structural_similarity(unit_rf.numpy(), noise)
+        for i in range(3): #structural similarity to noise (averaged across 3 random noise images)
+            noise = np.random.uniform(min(unit_rf), max(unit_rf), (28,28))
+            reference_correlation = spatial_structure_similarity(noise, noise)
+            s += spatial_structure_similarity(unit_rf.view(28,28).numpy(), noise) / reference_correlation
         structure_sim_ls.append(s/3)
     structure = 1 - np.array(structure_sim_ls)
 

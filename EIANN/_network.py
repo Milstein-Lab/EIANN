@@ -484,11 +484,11 @@ class Network(nn.Module):
                 print('Model not saved')
                 return
 
-        self.params_to_save.extend(['param_history', 'param_history_steps', 'sample_order', 'target_history',
-                                    'sorted_sample_indexes', 'loss_history', 'val_output_history', 'val_loss_history',
-                                    'val_accuracy_history', 'val_target', 'activity_history_list', '_activity_history',
-                                    '_backward_activity_history', 'bias_history_list', '_bias_history',
-                                    '_plateau_history', 'plateau_history_list'])
+        self.params_to_save.extend(['param_history','param_history_steps','sample_order','target_history',
+                                    'sorted_sample_indexes','loss_history','val_output_history','val_loss_history',
+                                    'val_history_train_steps','val_accuracy_history','val_target','activity_history_list',
+                                    '_activity_history','_backward_activity_history','bias_history_list','_bias_history',
+                                    '_plateau_history','plateau_history_list'])
 
         data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
                                  if param_name in self.params_to_save},

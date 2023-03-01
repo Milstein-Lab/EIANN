@@ -391,6 +391,7 @@ def plot_hidden_weights(weights, sort=False):
         ax.axis('off')
 
     print(f"W_min = {torch.min(weights)}, W_max = {torch.max(weights)}")
+    fig.suptitle(f"H1.E <- Input.E weights", fontsize=20)
     fig.tight_layout(pad=0.2)
 
 
@@ -716,7 +717,7 @@ def plot_sorted_plateaus(population, test_dataloader):
     ax.imshow(sorted_plateaus.T, aspect='auto', cmap='bwr', interpolation='nearest',
                vmin=-1, vmax=1)
     ax.set_ylabel(f'{population.fullname} unit')
-    ax.set_title(f'Sorted Plateau History')
+    ax.set_title(f'Sorted Plateau History, {population.fullname}')
 
     label_centers = torch.cumsum(samples_per_label, dim=0) - samples_per_label // 2
     ax.set_xticks(label_centers)
