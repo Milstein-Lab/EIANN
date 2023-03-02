@@ -11,6 +11,7 @@ bpDale_softplus_1_inh_A:
     Output_FBI_size: 1.0
     softplus_beta: 41.57675861592806
 Gjorgjieva_Hebb_1_inh_A:
+    # no equilibration constraint
     # FBI only; accuracy: 30.5487
     H1_E_H1_FBI_weight_scale: 2.6120078171942684
     H1_E_Input_E_learning_rate: 0.035571099984032274

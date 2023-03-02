@@ -600,7 +600,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
 
     fig, axes = plt.subplots()
     ax = axes
-    im = ax.imshow(avg_output, interpolation='none')
+    im = ax.imshow(avg_output, aspect='auto', interpolation='none')
     cbar = plt.colorbar(im, ax=ax)
     ax.set_xticks(range(num_labels))
     ax.set_yticks(range(num_units))
@@ -619,7 +619,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
             for pop in layer:
                 if pop is not network.output_pop:
                     pop_list.append(pop)
-    elif population is not None:
+    elif population is not None and population is not network.output_pop:
         pop_list.append(population)
 
     for population in pop_list:
@@ -630,9 +630,8 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         fig, axes = plt.subplots()
         ax = axes
         _, sort_idx = torch.sort(torch.argmax(avg_pop_activity,dim=1))
-        im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none',aspect='auto')
+        im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none', aspect='auto')
         cbar = plt.colorbar(im, ax=ax)
-
         ax.set_xticks(range(num_labels))
         ax.set_xlabel('Labels')
         ax.set_ylabel(f'{population.fullname} unit')
