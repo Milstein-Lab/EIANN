@@ -454,6 +454,7 @@ class Network(nn.Module):
         self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
         self.loss_history = torch.stack(self.loss_history).cpu()
+        self.target_history = torch.stack(self.target_history).cpu()
         self.val_output_history = torch.stack(val_output_history).cpu()
         self.val_loss_history = torch.stack(val_loss_history).cpu()
         self.val_accuracy_history = torch.stack(val_accuracy_history).cpu()

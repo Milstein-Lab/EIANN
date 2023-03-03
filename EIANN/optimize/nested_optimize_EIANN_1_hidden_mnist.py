@@ -16,10 +16,12 @@ from nested.optimize_utils import update_source_contexts
 from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
     update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_backprop_softplus_SGD
-
+import EIANN.utils as utils
 
 context = Context()
 
+# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --config-file-path=optimize/config/nested_optimize_EIANN_1_hidden_mnist.yaml --param-file-path=optimize/config/fdsfdfs.yaml
+# --model-key=BTSP_C6 --output-dir=optimize/data --label=btsp --plot --export --compute_rf=True
 
 def config_controller():
     if 'debug' not in context():
@@ -64,6 +66,8 @@ def config_worker():
         context.equilibration_activity_tolerance = 0.2
     else:
         context.equilibration_activity_tolerance = float(context.equilibration_activity_tolerance)
+    if 'receptive_fields' not in context():
+        context.receptive_fields = None
 
     context.train_steps = int(context.train_steps)
 
@@ -1466,6 +1470,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                                store_weights=context.store_weights,
                                store_weights_interval=context.store_weights_interval,
                                status_bar=context.status_bar)
+    if export:
+        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+        network.save(dir=context.output_dir, file_name_base=f'{network_name}_{seed}')
 
     # reorder output units if using unsupervised/Hebbian rule
     if not context.supervised:
@@ -1476,6 +1483,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     sorted_val_loss_history, sorted_val_accuracy_history = \
         recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
+
+    sorted_train_loss_history, sorted_train_accuracy_history = \
+        recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
 
     # Select for stability by computing mean accuracy in a window after the best validation step
     val_stepsize = int(context.val_interval[2])
@@ -1531,12 +1541,17 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                 print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
                       (os.getpid(), context.export_network_config_file_path))
 
-        # TODO: refactor
-        """
         if context.temp_output_path is not None:
+            if context.receptive_fields:
+                # Compute receptive fields
+                population = network.H1.E
+                receptive_fields, _ = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
+            else:
+                receptive_fields = None
 
-            end_index = start_index + context.num_training_steps_argmax_accuracy_window
-            output_pop = network.output_pop
+            # Compute test activity and metrics
+            idx, data, target = next(iter(test_dataloader))
+            network.forward(data)
 
             with h5py.File(context.temp_output_path, 'a') as f:
                 if context.label is None:
@@ -1545,19 +1560,25 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                     label = context.label
                 group = f.create_group(label)
                 model_group = group.create_group(str(seed))
+
                 activity_group = model_group.create_group('activity')
                 metrics_group = model_group.create_group('metrics')
-                for post_layer in network:
-                    post_layer_activity = activity_group.create_group(post_layer.name)
-                    for post_pop in post_layer:
-                        activity_data = \
-                            post_pop.activity_history[network.sorted_sample_indexes, -1, :][start_index:end_index, :].T
-                        if post_pop == output_pop:
-                            activity_data = activity_data[sorted_output_idx,:]
-                        post_layer_activity.create_dataset(post_pop.name, data=activity_data)
-                metrics_group.create_dataset('loss', data=sorted_val_loss_history)
-                metrics_group.create_dataset('accuracy', data=sorted_val_accuracy_history)
-        """
+
+                for layer in network:
+                    layer_activity = activity_group.create_group(post_layer.name)
+                    for pop in layer:
+                        activity_data = pop.activity.T.detach()
+                        layer_activity.create_dataset(pop.name, data=activity_data)
+
+                metrics_group.create_dataset('val_loss', data=sorted_val_loss_history)
+                metrics_group.create_dataset('val_loss_steps', data=network.val_history_train_steps)
+                metrics_group.create_dataset('val_accuracy', data=sorted_val_accuracy_history)
+                metrics_group.create_dataset('train_loss', data=sorted_train_loss_history)
+                metrics_group.create_dataset('train_accuracy', data=sorted_val_accuracy_history)
+
+                metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
+                for metric in metrics_dict:
+                    metrics_group.create_dataset(metric, data=metrics_dict[metric])
 
     return results
 

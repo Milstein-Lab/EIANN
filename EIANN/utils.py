@@ -380,6 +380,135 @@ def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=Fal
     return sorted_val_loss_history, sorted_val_accuracy_history
 
 
+def recompute_train_loss_and_accuracy(network, sorted_output_idx, store=False, plot=False):
+    """
+
+    :param network:
+    :param sorted_output_idx:
+    :param store:
+    :param plot:
+    :return:
+    """
+
+    # Sort output history
+    output_history = network.Output.E.activity_history[:, -1, sorted_output_idx]
+    num_units = output_history.shape[1]
+    num_patterns = output_history.shape[0]
+
+    # Bin output history to compute average loss & accuracy over training
+    bin_size = 10
+    num_bins = num_patterns / bin_size
+    binned_output_history = output_history.reshape(num_bins, bin_size, num_units)
+    binned_target_history = target_history.reshape(num_bins, bin_size, num_units)
+
+    # Recompute loss
+    sorted_loss_history = []
+    sorted_accuracy_history = []
+
+    for (batch_output, batch_target) in zip(binned_output_history, binned_target_history):
+        loss = network.criterion(batch_output, batch_target).detach()
+        predictions = torch.argmax(batch_output, dim=1)
+        labels = torch.argmax(batch_target, dim=1)
+        accuracy = 100 * torch.sum(predictions == labels) / num_patterns
+
+        sorted_loss_history.append(loss)
+        sorted_accuracy_history.append(accuracy)
+
+    sorted_loss_history = torch.tensor(sorted_loss_history)
+    sorted_accuracy_history = torch.tensor(sorted_accuracy_history)
+
+    if store:
+        network.output_history = output_history
+        network.loss_history = sorted_loss_history
+        network.accuracy_history = sorted_accuracy_history
+
+    return sorted_loss_history, sorted_accuracy_history
+
+
+def get_optimal_sorting(network, test_dataloader, plot=False):
+    """
+    Measure test loss on re-sorted activity at every point in the training history
+    :param network:
+    :param test_dataloader:
+    :param plot:
+    :return:
+    """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+    output_pop = network.output_pop
+
+    optimal_loss_history = []
+    sorting_history = []
+    history_len = output_pop.activity_history.shape[0]
+    idx, test_data, test_target = next(iter(test_dataloader))
+
+    from tqdm.autonotebook import tqdm
+    for t in tqdm(range(history_len)):
+        network.load_state_dict(network.param_history[t])
+        output = network.forward(test_data)  # row=patterns, col=units
+
+        # Get average output for each label class
+        num_units = network.val_target.shape[1]
+        num_labels = num_units
+        avg_output = torch.zeros(num_labels, num_units)
+        targets = torch.argmax(network.val_target, dim=1)  # convert from 1-hot vector to int label
+        for label in range(num_labels):
+            label_idx = torch.where(targets == label)  # find all instances of given label
+            avg_output[label, :] = torch.mean(output[label_idx], dim=0)
+
+        # Find optimal output unit (column) sorting given average responses
+        optimal_sorting = get_diag_argmax_row_indexes(avg_output.T)
+        sorted_activity = avg_output[:, optimal_sorting]
+        optimal_loss = network.criterion(sorted_activity, torch.eye(num_units))
+        optimal_loss_history.append(optimal_loss)
+        sorting_history.append(optimal_sorting)
+
+        # Pick timepoint with lowest sorted loss
+    optimal_loss_history = torch.stack(optimal_loss_history)
+    min_loss_idx = torch.argmin(optimal_loss_history)
+    min_loss_sorting = sorting_history[min_loss_idx]
+
+    if plot:
+        plt.scatter(min_loss_idx,torch.min(optimal_loss_history),color='red')
+        plt.plot(optimal_loss_history)
+        plt.title('optimal loss history (re-sorted for each point)')
+        plt.show()
+
+    return min_loss_sorting
+
+
+def recompute_history(network, output_sorting):
+    """
+    Re-compute activity history, loss history, and weight+bias history
+    with new sorting of the output units
+    """
+    output_pop = network.output_pop
+
+    # Sort activity history
+    output_pop.activity_history.data = output_pop.activity_history[:, :, output_sorting]
+
+    for t in range(len(network.param_history)):
+        # Recompute loss history
+        output = output_pop.activity_history[t-1, -1, :]
+        target = network.target_history[t-1]
+        network.loss_history[t-1] = network.criterion(output, target)
+
+        # Sort weights going to and from the output population
+        for proj in output_pop.incoming_projections.values():
+            sorted_weights = network.param_history[t][f'module_dict.{proj.name}.weight'][output_sorting,:]
+            network.param_history[t][f'module_dict.{proj.name}.weight'] = sorted_weights
+
+        for proj in output_pop.outgoing_projections.values():
+            sorted_weights = network.param_history[t][f'module_dict.{proj.name}.weight'][:,output_sorting]
+            network.param_history[t][f'module_dict.{proj.name}.weight'] = sorted_weights
+
+        # Sort output bias
+        sorted_bias = network.param_history[t][f'parameter_dict.{output_pop.fullname}_bias'][output_sorting]
+        network.param_history[t][f'parameter_dict.{output_pop.fullname}_bias'] = sorted_bias
+
+    # Update network with re-sorted weights from final state
+    network.load_state_dict(network.param_history[-1])
+
+
 def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=None, plot=False):
     """
     Split output activity history into "epoch" blocks (e.g. containint all 21 patterns) and compute accuracy for each
@@ -521,90 +650,6 @@ def compute_batch_accuracy(network, test_dataloader):
     print(f'Batch accuracy = {percent_correct}%')
 
 
-def get_optimal_sorting(network, test_dataloader, plot=False):
-    """
-    Measure test loss on re-sorted activity at every point in the training history
-    :param network:
-    :param test_dataloader:
-    :param plot:
-    :return:
-    """
-    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
-    output_pop = network.output_pop
-
-    optimal_loss_history = []
-    sorting_history = []
-    history_len = output_pop.activity_history.shape[0]
-    idx, test_data, test_target = next(iter(test_dataloader))
-
-    from tqdm.autonotebook import tqdm
-    for t in tqdm(range(history_len)):
-        network.load_state_dict(network.param_history[t])
-        output = network.forward(test_data)  # row=patterns, col=units
-
-        # Get average output for each label class
-        num_units = network.val_target.shape[1]
-        num_labels = num_units
-        avg_output = torch.zeros(num_labels, num_units)
-        targets = torch.argmax(network.val_target, dim=1)  # convert from 1-hot vector to int label
-        for label in range(num_labels):
-            label_idx = torch.where(targets == label)  # find all instances of given label
-            avg_output[label, :] = torch.mean(output[label_idx], dim=0)
-
-        # Find optimal output unit (column) sorting given average responses
-        optimal_sorting = get_diag_argmax_row_indexes(avg_output.T)
-        sorted_activity = avg_output[:, optimal_sorting]
-        optimal_loss = network.criterion(sorted_activity, torch.eye(num_units))
-        optimal_loss_history.append(optimal_loss)
-        sorting_history.append(optimal_sorting)
-
-        # Pick timepoint with lowest sorted loss
-    optimal_loss_history = torch.stack(optimal_loss_history)
-    min_loss_idx = torch.argmin(optimal_loss_history)
-    min_loss_sorting = sorting_history[min_loss_idx]
-
-    if plot:
-        plt.scatter(min_loss_idx,torch.min(optimal_loss_history),color='red')
-        plt.plot(optimal_loss_history)
-        plt.title('optimal loss history (re-sorted for each point)')
-        plt.show()
-
-    return min_loss_sorting
-
-
-def recompute_history(network, output_sorting):
-    """
-    Re-compute activity history, loss history, and weight+bias history
-    with new sorting of the output units
-    """
-    output_pop = network.output_pop
-
-    # Sort activity history
-    output_pop.activity_history.data = output_pop.activity_history[:, :, output_sorting]
-
-    for t in range(len(network.param_history)):
-        # Recompute loss history
-        output = output_pop.activity_history[t-1, -1, :]
-        target = network.target_history[t-1]
-        network.loss_history[t-1] = network.criterion(output, target)
-
-        # Sort weights going to and from the output population
-        for proj in output_pop.incoming_projections.values():
-            sorted_weights = network.param_history[t][f'module_dict.{proj.name}.weight'][output_sorting,:]
-            network.param_history[t][f'module_dict.{proj.name}.weight'] = sorted_weights
-
-        for proj in output_pop.outgoing_projections.values():
-            sorted_weights = network.param_history[t][f'module_dict.{proj.name}.weight'][:,output_sorting]
-            network.param_history[t][f'module_dict.{proj.name}.weight'] = sorted_weights
-
-        # Sort output bias
-        sorted_bias = network.param_history[t][f'parameter_dict.{output_pop.fullname}_bias'][output_sorting]
-        network.param_history[t][f'parameter_dict.{output_pop.fullname}_bias'] = sorted_bias
-
-    # Update network with re-sorted weights from final state
-    network.load_state_dict(network.param_history[-1])
-
-
 def get_update_history(network):
     dParam_history = {name: [] for name in network.state_dict()}
 
@@ -697,43 +742,44 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     num_units = activity.shape[1]
 
     # Compute sparsity
-    fraction_nonzero_units = np.count_nonzero(activity, axis=1) / num_units
-    active_pattern_idx = np.where(fraction_nonzero_units != 0.)[0] #exlcude silent patterns
-    sparsity = 1 - fraction_nonzero_units[active_pattern_idx]
+    activity_fraction = (np.sum(activity, axis=1) / num_units)**2 / np.sum(pop_activity**2 / num_units, axis=1)
+    sparsity = (1 - activity_fraction) / (1 - 1 / num_units)
+    sparsity[np.where(np.sum(activity, axis=1) == 0.)] = 0.
+        # fraction_nonzero_units = np.count_nonzero(activity, axis=1) / num_units
+        # active_pattern_idx = np.where(fraction_nonzero_units != 0.)[0] #exlcude silent patterns
+        # sparsity = 1 - fraction_nonzero_units[active_pattern_idx]
 
     # Compute selectivity
-    fraction_nonzero_patterns = np.count_nonzero(activity, axis=0) / num_patterns
-    active_unit_idx = np.where(fraction_nonzero_patterns != 0.)[0] #exlcude silent units
-    selectivity = 1 - fraction_nonzero_patterns[active_unit_idx]
+    activity_fraction = (np.sum(activity, axis=0) / num_patterns)**2 / np.sum(pop_activity**2 / num_patterns, axis=1)
+    sparsity = (1 - activity_fraction) / (1 - 1 / num_patterns)
+    sparsity[np.where(np.sum(activity, axis=1) == 0.)] = 0.
+        # fraction_nonzero_patterns = np.count_nonzero(activity, axis=0) / num_patterns
+        # active_unit_idx = np.where(fraction_nonzero_patterns != 0.)[0] #exlcude silent units
+        # selectivity = 1 - fraction_nonzero_patterns[active_unit_idx]
 
     # Compute discriminability
     silent_pattern_idx = np.where(torch.sum(activity, dim=1) == 0.)[0]
     similarity_matrix = cosine_similarity(activity)
-    similarity_matrix[silent_pattern_idx,:] = np.NaN
-    similarity_matrix[:,silent_pattern_idx] = np.NaN
-
+    similarity_matrix[silent_pattern_idx,:] = 1
+    similarity_matrix[:,silent_pattern_idx] = 1
     similarity_matrix_idx = np.tril_indices_from(similarity_matrix, -1) # select values below diagonal
     similarity = similarity_matrix[similarity_matrix_idx]
-
-    invalid_idx = np.isnan(similarity) #remove nan values
-    similarity[invalid_idx] = 1
-    # similarity = similarity[~invalid_idx]
     discriminability = 1 - similarity
 
     # Compute structure
-    if receptive_fields is None:
-        receptive_fields,_ = ut.compute_maxact_receptive_fields(population, test_dataloader)
-
-    structure_sim_ls = []
-    for unit_rf in receptive_fields:
-        s = 0
-        if torch.all(unit_rf != 0):
-            for i in range(3): #structural similarity to noise (averaged across 3 random noise images)
-                noise = np.random.uniform(min(unit_rf), max(unit_rf), (28,28))
-                reference_correlation = spatial_structure_similarity(noise, noise)
-                s += spatial_structure_similarity(unit_rf.view(28,28).numpy(), noise) / reference_correlation
-        structure_sim_ls.append(s/3)
-    structure = 1 - np.array(structure_sim_ls)
+    if receptive_fields is not None:
+        structure_sim_ls = []
+        for unit_rf in receptive_fields:
+            s = 0
+            if torch.all(unit_rf != 0):
+                for i in range(3): #structural similarity to noise (averaged across 3 random noise images)
+                    noise = np.random.uniform(min(unit_rf), max(unit_rf), (28,28))
+                    reference_correlation = spatial_structure_similarity(noise, noise)
+                    s += spatial_structure_similarity(unit_rf.view(28,28).numpy(), noise) / reference_correlation
+            structure_sim_ls.append(s/3)
+        structure = 1 - np.array(structure_sim_ls)
+    else:
+        structure = None
 
     if plot:
         fig, ax = plt.subplots(2,2,figsize=[12,5])
@@ -752,11 +798,14 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
         ax[1,0].set_ylabel('pattern pairs')
         ax[1,0].set_xlabel('(1 - cosine similarity)')
 
-        ax[1,1].hist(structure, 50)
-        ax[1,1].set_title('Structure')
-        ax[1,1].set_ylabel('num units')
-        ax[1,1].set_xlabel('(1 - similarity to random noise)')
-        plt.tight_layout()
+        if receptive_fields is not None:
+            ax[1,1].hist(structure, 50)
+            ax[1,1].set_title('Structure')
+            ax[1,1].set_ylabel('num units')
+            ax[1,1].set_xlabel('(1 - similarity to random noise)')
+            plt.tight_layout()
+        else:
+            ax[1,1].axis('off')
 
     return {'sparsity': sparsity, 'selectivity': selectivity,
             'discriminability': discriminability, 'structure': structure}
@@ -974,8 +1023,8 @@ def reshape_backward_activity_history(pop):
             pop.backward_activity_history_list = []
 
 
-def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, debug=False, disp=False,
-                                 plot=False):
+def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance,
+                                 debug=False, disp=False, plot=False):
     """
 
     :param network: :class:'Network'

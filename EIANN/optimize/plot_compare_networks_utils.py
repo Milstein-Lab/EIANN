@@ -55,6 +55,7 @@ def unpack_data(model_list, data_file_path_dict):
             activity_dict[description] = {}
             metrics_dict[description] = {'loss': [], 'accuracy': []}
             first_seed_group = next(iter(f[description].values()))
+
             for post_layer in first_seed_group['activity']:
                 activity_dict[description][post_layer] = {}
                 for post_pop in first_seed_group['activity'][post_layer]:
@@ -62,9 +63,10 @@ def unpack_data(model_list, data_file_path_dict):
                     for seed_group in f[description].values():
                         activity_dict[description][post_layer][post_pop].append(
                             seed_group['activity'][post_layer][post_pop][:])
+
             for seed_group in f[description].values():
-                metrics_dict[description]['loss'].append(seed_group['metrics']['loss'][:])
-                metrics_dict[description]['accuracy'].append(seed_group['metrics']['accuracy'][:])
+                for metric in seed_group['metrics']:
+                    metrics_dict[description][metric].append(seed_group['metrics'][metric][:])
 
     return  activity_dict, metrics_dict
 
