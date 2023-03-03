@@ -25,7 +25,12 @@ context = Context()
 # mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
 #   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --compute_receptive_fields=False --store_history=True --retrain=False
+#   --export --store_history=True --retrain=False
+
+# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
+#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml \
+#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=bpDale \
+#   --export --store_history=True --retrain=False
 
 # run a single seed:
 # python -m nested.analyze --framework=serial \
