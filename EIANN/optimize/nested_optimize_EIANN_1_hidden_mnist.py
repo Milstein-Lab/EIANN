@@ -21,11 +21,13 @@ import EIANN.utils as utils
 
 context = Context()
 
+# run 5 random seeds in parallel:
 # mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
 #   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
 #   --export --compute_receptive_fields=False --store_history=True --retrain=False
 
+# run a single seed:
 # python -m nested.analyze --framework=serial \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
 #   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
