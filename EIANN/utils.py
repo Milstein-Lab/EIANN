@@ -391,8 +391,9 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx, store=False, p
     """
 
     # Sort output history
+    print(sorted_output_idx)
     output_history = network.Output.E.activity_history[:, -1, sorted_output_idx]
-    target_history = network.target_history[: sorted_output_idx]
+    target_history = network.target_history[:, sorted_output_idx]
     num_units = output_history.shape[1]
     num_patterns = output_history.shape[0]
 
@@ -417,11 +418,6 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx, store=False, p
 
     sorted_loss_history = torch.tensor(sorted_loss_history)
     sorted_accuracy_history = torch.tensor(sorted_accuracy_history)
-
-    if store:
-        network.output_history = output_history
-        network.loss_history = sorted_loss_history
-        network.accuracy_history = sorted_accuracy_history
 
     return sorted_loss_history, sorted_accuracy_history
 
