@@ -9,7 +9,8 @@ import h5py
 
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
-    sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics
+    sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
+    recompute_train_loss_and_accuracy
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
@@ -20,8 +21,11 @@ import EIANN.utils as utils
 
 context = Context()
 
-# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --config-file-path=optimize/config/nested_optimize_EIANN_1_hidden_mnist.yaml --param-file-path=optimize/config/fdsfdfs.yaml
-# --model-key=BTSP_C6 --output-dir=optimize/data --label=btsp --plot --export --compute_rf=True
+# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
+#   --config-file-path=optimize/config/nested_optimize_EIANN_1_hidden_mnist.yaml \
+#   --param-file-path=optimize/config/fdsfdfs.yaml --model-key=BTSP_C6 --output-dir=optimize/data --label=btsp --plot \
+#   --export --compute_receptive_fields=True
+
 
 def config_controller():
     if 'debug' not in context():
@@ -66,8 +70,10 @@ def config_worker():
         context.equilibration_activity_tolerance = 0.2
     else:
         context.equilibration_activity_tolerance = float(context.equilibration_activity_tolerance)
-    if 'receptive_fields' not in context():
-        context.receptive_fields = None
+    if 'compute_receptive_fields' not in context():
+        context.compute_receptive_fields = False
+    else:
+        context.compute_receptive_fields = bool(context.compute_receptive_fields)
     if 'constrain_equilibration_dynamics' not in context():
         context.constrain_equilibration_dynamics = True
     else:
@@ -1531,6 +1537,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         plot_train_loss_history(network)
         plot_validate_loss_history(network)
 
+    if context.compute_receptive_fields:
+        # Compute receptive fields
+        population = network.H1.E
+        receptive_fields, _ = utils.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
+    else:
+        receptive_fields = None
+    metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields,
+                                                        plot=plot)
+
     if context.debug:
         print('pid: %i, seed: %i, network.val_loss_history: %s' % (os.getpid(), seed, network.val_loss_history))
         sys.stdout.flush()
@@ -1547,13 +1562,6 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       (os.getpid(), context.export_network_config_file_path))
 
         if context.temp_output_path is not None:
-            if context.receptive_fields:
-                # Compute receptive fields
-                population = network.H1.E
-                receptive_fields, _ = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
-            else:
-                receptive_fields = None
-
             # Compute test activity and metrics
             idx, data, target = next(iter(test_dataloader))
             network.forward(data)
@@ -1581,7 +1589,6 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                 metrics_group.create_dataset('train_loss', data=sorted_train_loss_history)
                 metrics_group.create_dataset('train_accuracy', data=sorted_val_accuracy_history)
 
-                metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
                 for metric in metrics_dict:
                     metrics_group.create_dataset(metric, data=metrics_dict[metric])
 

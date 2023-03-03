@@ -21,6 +21,17 @@ Gjorgjieva_Hebb_1_inh_A:
     Output_E_H1_E_weight_scale: 0.3101232842851448
     Output_E_Output_FBI_weight_scale: 3.1907697777968838
     Output_FBI_Output_E_weight_scale: 1.4353712618759047
+Supervised_Gjorgjieva_Hebb_1_inh_B:
+    # no equilibration constraint
+    # accuracy: 40.3205
+    H1_E_H1_FBI_weight_scale: 1.9641937811198766
+    H1_E_Input_E_learning_rate: 0.013935117859586003
+    H1_E_Input_E_weight_scale: 0.1372733284070477
+    H1_FBI_H1_E_weight_scale: 2.8009676123227853
+    Output_E_H1_E_learning_rate: 0.05561328494128837
+    Output_E_H1_E_weight_scale: 0.5993884509607016
+    Output_E_Output_FBI_weight_scale: 2.3165356781602267
+    Output_FBI_Output_E_weight_scale: 2.0975544300192093
 BTSP_D1:
     # accuracy: 87.828995
     BTSP_neg_loss_ET_discount: 0.09096472533667882
