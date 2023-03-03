@@ -1,0 +1,31 @@
+vanilla_backprop_softplus_SGD:
+    learning_rate: 5.
+    softplus_beta: 10.
+bpDale_1_inh_softplus:
+    # 29% final autoenc_CL accuracy
+    E_E_learning_rate: 9.99769696149066
+    E_I_learning_rate: 9.92082657295738
+    I_E_learning_rate: 9.999943142695821
+    softplus_beta: 98.01406086685208
+BTSP_D1:
+    BTSP_neg_loss_ET_discount: 0.26116426262770986
+    FB_BTSP_init_weight_factor: 0.5601381085351538
+    FF_BTSP_init_weight_factor: 0.010318147004625655
+    H1_Dend_I_H1_E_weight_scale: 2.3108953524229148
+    H1_E_BTSP_neg_loss_th: -0.35328891233218096
+    H1_E_BTSP_pos_loss_th: 0.08734373901540847
+    H1_E_H1_Dend_I_init_weight_scale: 3.7993678106469817
+    H1_E_H1_Dend_I_learning_rate: 0.09415290230209968
+    H1_E_H1_FBI_weight_scale: 0.29275189871594187
+    H1_E_Input_E_BTSP_learning_rate: 0.049902612552077716
+    H1_E_Input_E_max_weight_scale: 19.432391954269033
+    H1_E_Output_E_BTSP_learning_rate: 0.13648646992145688
+    H1_E_Output_E_max_weight_scale: 9.812545862025742
+    H1_FBI_H1_E_weight_scale: 2.0225173162144148
+    Output_E_BTSP_learning_rate: 0.0845515836254988
+    Output_E_BTSP_neg_loss_th: -0.23995250417653402
+    Output_E_BTSP_pos_loss_th: 0.25315069505417764
+    Output_E_H1_E_max_weight_scale: 7.472661546334389
+    Output_E_Output_FBI_weight_scale: 3.7904660167186335
+    Output_FBI_Output_E_weight_scale: 3.8429408525633244
+
