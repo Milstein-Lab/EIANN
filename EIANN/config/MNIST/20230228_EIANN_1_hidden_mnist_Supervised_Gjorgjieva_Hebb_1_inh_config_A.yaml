@@ -90,6 +90,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
+                    update_phase: A
                     learning_rule:
 training_kwargs:
     tau: 3

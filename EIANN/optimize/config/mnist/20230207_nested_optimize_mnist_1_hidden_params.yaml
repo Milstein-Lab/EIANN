@@ -18,6 +18,8 @@ BTSP_Clone_Dend_I_1:
     Output_E_Output_FBI_weight_scale: 0.7343906024644935
     Output_FBI_Output_E_weight_scale: 0.6709294587759165
 Supervised_Gjorgjieva_Hebb_C:
+    # no equilibration constraint
+    # accuracy: 71.606995
     E_I_learning_rate: 0.2514575767876125
     H1_E_H1_FBI_weight_scale: 0.7040352845848648
     H1_E_Input_E_learning_rate: 0.0018860396562151121

@@ -68,6 +68,10 @@ def config_worker():
         context.equilibration_activity_tolerance = float(context.equilibration_activity_tolerance)
     if 'receptive_fields' not in context():
         context.receptive_fields = None
+    if 'constrain_equilibration_dynamics' not in context():
+        context.constrain_equilibration_dynamics = True
+    else:
+        context.constrain_equilibration_dynamics - bool(context.constrain_equilibration_dynamics)
 
     context.train_steps = int(context.train_steps)
 
@@ -1515,10 +1519,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if torch.isnan(results['loss']):
         return dict()
 
-    if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                        context.debug, context.disp, context.debug and plot):
-        if not context.debug:
-            return dict()
+    if context.constrain_equilibration_dynamics or context.debug:
+        if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
+                                            context.debug, context.disp, context.debug and plot):
+            if not context.debug:
+                return dict()
 
     if plot:
         plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
