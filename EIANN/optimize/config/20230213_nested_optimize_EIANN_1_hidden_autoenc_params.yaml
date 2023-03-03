@@ -64,6 +64,7 @@ Gjorgjieva_Hebb_1_inh_static_C:
     Output_E_Output_FBI_weight_scale: 3.514615155286358
     Output_FBI_Output_E_weight_scale: 4.590772621218822
 Supervised_Gjorgjieva_Hebb_1_inh_static_C:
+    # broken - was not optimized with Output.FBI re-equilibration
     # Final H1_E_Input_E weights very close to initial
     # 100% autoenc accuracy
     # 63% final autoenc_CL accuracy (phase2 88%)

@@ -49,7 +49,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_1_inh_A
+optimization_title: EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_1_inh_B
 x0:
     H1_E_H1_FBI_weight_scale: 0.1320454234508166
     H1_FBI_H1_E_weight_scale: 0.1320454234508166

@@ -344,6 +344,62 @@ def sort_unsupervised_by_best_epoch(network, target, plot=False):
     return sorted_idx
 
 
+def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=None, store_history=False, plot=False):
+    """
+    Assumes network has been trained with store_weights=True. Evaluates test_loss at each train step in the
+    param_history.
+    :param network:
+    :param test_dataloader:
+    :param sorted_output_idx: tensor of int
+    :param store_history: bool
+    :param plot: bool
+    """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+    assert len(network.param_history) > 0, 'Network must contain a stored param_history'
+
+    idx, test_data, test_target = next(iter(test_dataloader))
+    test_data = test_data.to(network.device)
+    test_target = test_target.to(network.device)
+    test_loss_history = []
+    test_accuracy_history = []
+    num_patterns = test_data.shape[0]
+
+    if store_history:
+        network.reset_history()
+
+    for state_dict in network.param_history:
+        network.load_state_dict(state_dict)
+        output = network.forward(test_data, store_history=store_history)
+        if sorted_output_idx is not None:
+            output = output[:, sorted_output_idx]
+        test_loss_history.append(network.criterion(output, test_target).detach())
+        accuracy = 100 * torch.sum(torch.argmax(output, dim=1) ==
+                                   torch.argmax(test_target, dim=1)) / num_patterns
+        test_accuracy_history.append(accuracy)
+
+    network.test_loss_history = torch.stack(test_loss_history).cpu()
+    network.test_accuracy_history = torch.tensor(test_accuracy_history).cpu()
+
+    if plot:
+        fig = plt.figure()
+        plt.plot(network.param_history_steps, network.test_loss_history)
+        plt.xlabel('Training steps')
+        plt.ylabel('Test loss')
+        fig.suptitle('Test loss')
+        fig.tight_layout()
+        fig.show()
+
+        fig = plt.figure()
+        plt.plot(network.param_history_steps, network.test_accuracy_history)
+        plt.xlabel('Training steps')
+        plt.ylabel('Test accuracy')
+        fig.suptitle('Test accuracy')
+        fig.tight_layout()
+        fig.show()
+
+    return network.test_loss_history, network.test_accuracy_history
+
+
 def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=False, plot=False):
     """
 
@@ -380,27 +436,27 @@ def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=Fal
     return sorted_val_loss_history, sorted_val_accuracy_history
 
 
-def recompute_train_loss_and_accuracy(network, sorted_output_idx, store=False, plot=False):
+def recompute_train_loss_and_accuracy(network, sorted_output_idx, bin_size=100, plot=False):
     """
 
     :param network:
     :param sorted_output_idx:
-    :param store:
-    :param plot:
+    :param bin_size: int
+    :param plot:bool
     :return:
     """
 
     # Sort output history
     output_history = network.Output.E.activity_history[:, -1, sorted_output_idx]
-    target_history = network.target_history[: sorted_output_idx]
+    target_history = network.target_history[:, sorted_output_idx]
     num_units = output_history.shape[1]
     num_patterns = output_history.shape[0]
 
     # Bin output history to compute average loss & accuracy over training
-    bin_size = 10
     num_bins = int(num_patterns / bin_size)
     binned_output_history = output_history.reshape(num_bins, bin_size, num_units)
     binned_target_history = network.target_history.reshape(num_bins, bin_size, num_units)
+    binned_train_loss_steps = torch.arange(bin_size, bin_size * (num_bins + 1), bin_size)
 
     # Recompute loss
     sorted_loss_history = []
@@ -418,12 +474,7 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx, store=False, p
     sorted_loss_history = torch.tensor(sorted_loss_history)
     sorted_accuracy_history = torch.tensor(sorted_accuracy_history)
 
-    if store:
-        network.output_history = output_history
-        network.loss_history = sorted_loss_history
-        network.accuracy_history = sorted_accuracy_history
-
-    return sorted_loss_history, sorted_accuracy_history
+    return binned_train_loss_steps, sorted_loss_history, sorted_accuracy_history
 
 
 def get_optimal_sorting(network, test_dataloader, plot=False):
