@@ -392,6 +392,7 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx, store=False, p
 
     # Sort output history
     output_history = network.Output.E.activity_history[:, -1, sorted_output_idx]
+    target_history = network.target_history[: sorted_output_idx]
     num_units = output_history.shape[1]
     num_patterns = output_history.shape[0]
 
@@ -742,17 +743,17 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     num_units = activity.shape[1]
 
     # Compute sparsity
-    activity_fraction = (np.sum(activity, axis=1) / num_units)**2 / np.sum(pop_activity**2 / num_units, axis=1)
+    activity_fraction = (torch.sum(activity, dim=1) / num_units) ** 2 / torch.sum(activity ** 2 / num_units, dim=1)
     sparsity = (1 - activity_fraction) / (1 - 1 / num_units)
-    sparsity[np.where(np.sum(activity, axis=1) == 0.)] = 0.
+    sparsity[torch.where(torch.sum(activity, dim=1) == 0.)] = 0.
         # fraction_nonzero_units = np.count_nonzero(activity, axis=1) / num_units
         # active_pattern_idx = np.where(fraction_nonzero_units != 0.)[0] #exlcude silent patterns
         # sparsity = 1 - fraction_nonzero_units[active_pattern_idx]
 
     # Compute selectivity
-    activity_fraction = (np.sum(activity, axis=0) / num_patterns)**2 / np.sum(pop_activity**2 / num_patterns, axis=1)
-    sparsity = (1 - activity_fraction) / (1 - 1 / num_patterns)
-    sparsity[np.where(np.sum(activity, axis=1) == 0.)] = 0.
+    activity_fraction = (torch.sum(activity, dim=0) / num_patterns)**2 / torch.sum(activity**2 / num_patterns, dim=0)
+    selectivity = (1 - activity_fraction) / (1 - 1 / num_patterns)
+    selectivity[torch.where(torch.sum(activity, dim=0) == 0.)] = 0.
         # fraction_nonzero_patterns = np.count_nonzero(activity, axis=0) / num_patterns
         # active_unit_idx = np.where(fraction_nonzero_patterns != 0.)[0] #exlcude silent units
         # selectivity = 1 - fraction_nonzero_patterns[active_unit_idx]

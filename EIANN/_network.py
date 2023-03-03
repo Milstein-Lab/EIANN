@@ -477,13 +477,13 @@ class Network(nn.Module):
             if not os.path.exists(dir):
                 os.makedirs(dir)
 
-        if os.path.exists(path):
-            overwrite = input('File already exists. Overwrite? (y/n)')
-            if overwrite == 'y':
-                os.remove(path)
-            else:
-                print('Model not saved')
-                return
+        # if os.path.exists(path):
+        #     overwrite = input('File already exists. Overwrite? (y/n)')
+        #     if overwrite == 'y':
+        #         os.remove(path)
+        #     else:
+        #         print('Model not saved')
+        #         return
 
         self.params_to_save.extend(['param_history','param_history_steps','sample_order','target_history',
                                     'sorted_sample_indexes','loss_history','val_output_history','val_loss_history',

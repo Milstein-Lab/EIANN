@@ -23,15 +23,15 @@ context = Context()
 
 # run 5 random seeds in parallel:
 # mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
-#   --config-file-path=optimize/config/nested_optimize_EIANN_1_hidden_mnist.yaml \
-#   --param-file-path=optimize/config/fdsfdfs.yaml --model-key=BTSP_C6 --output-dir=optimize/data --label=btsp --plot \
-#   --export --compute_receptive_fields=True
+#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
+#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp --plot \
+#   --export --compute_receptive_fields=False
 
-# run a single seed to test:
+# run a single seed:
 # python -m nested.analyze --framework=serial \
-#   --config-file-path=optimize/config/nested_optimize_EIANN_1_hidden_mnist.yaml \
-#   --param-file-path=optimize/config/fdsfdfs.yaml --model-key=BTSP_C6 --output-dir=optimize/data --label=btsp --plot \
-#   --export --compute_receptive_fields=True
+#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
+#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp --plot \
+#   --export --compute_receptive_fields=False --num_instances=1
 
 def config_controller():
     if 'debug' not in context():
@@ -1500,8 +1500,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     sorted_val_loss_history, sorted_val_accuracy_history = \
         recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
 
-    sorted_train_loss_history, sorted_train_accuracy_history = \
-        recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
+    if network.Output.E.activity_history is not None:
+        sorted_train_loss_history, sorted_train_accuracy_history = \
+            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
 
     # Select for stability by computing mean accuracy in a window after the best validation step
     val_stepsize = int(context.val_interval[2])
@@ -1548,7 +1549,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         population = network.H1.E
         receptive_fields, _ = utils.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
     else:
-        receptive_fields = None
+        receptive_fields = network.H1.E.Input.E.weight.detach()
     metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields,
                                                         plot=plot)
 
@@ -1571,6 +1572,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             # Compute test activity and metrics
             idx, data, target = next(iter(test_dataloader))
             network.forward(data)
+            network.output_pop.activity = network.output_pop.activity[:, sorted_output_idx]
 
             with h5py.File(context.temp_output_path, 'a') as f:
                 if context.label is None:
