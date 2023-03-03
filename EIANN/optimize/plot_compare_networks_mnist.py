@@ -1,0 +1,46 @@
+from plot_compare_networks_utils import *
+
+
+model_list = ['van_BP', 'BP_Dale', 'Hebb', 'BTSP']
+
+title_dict = {'van_BP': 'Backprop',
+              'BP_Dale': 'Backprop (EI)',
+              'Hebb': 'Hebb',
+              'BTSP': 'Top-Down Dendritic Gating'}
+
+data_file_path_dict = \
+    {'BTSP': 'data/20221103_EIANN_1_hidden_exported_data.hdf5',
+     'Hebb': 'data/20221012_EIANN_1_hidden_exported_data.hdf5',
+     'BP_Dale': 'data/20221103_EIANN_1_hidden_exported_data.hdf5',
+     'van_BP': 'data/20221103_EIANN_1_hidden_exported_data.hdf5'}
+
+legend_dict =  {'BP_Dale': ('Backprop (EI)', 'b'),
+                'van_BP': ('Backprop', 'k'),
+                'Hebb': ('Hebb', 'r'),
+                'BTSP': ('Dendritic Gating', 'c')}
+
+example_index_dict = {'van_BP': 0, 'BP_Dale': 0, 'Hebb': 0, 'BTSP': 0}
+
+activity_dict, metrics_dict = unpack_data(model_list, data_file_path_dict)
+
+plot_n_choose_k_task()
+
+plot_activity(activity_dict, title_dict, example_index_dict, model_list[:1], label_pop=False)
+plot_activity(activity_dict, title_dict, example_index_dict, model_list[1:])
+
+plot_activation_funcs()
+
+plot_metrics(metrics_dict, legend_dict, model_list[:1])
+plot_metrics(metrics_dict, legend_dict, model_list[:2])
+plot_metrics(metrics_dict, legend_dict, model_list[:3])
+plot_metrics(metrics_dict, legend_dict, model_list)
+
+
+sparsity_dict, discriminability_dict = analyze_hidden_representations(activity_dict)
+
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:1])
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:2])
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:3])
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list)
+
+plt.show()
