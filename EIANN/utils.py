@@ -398,9 +398,9 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx, store=False, p
 
     # Bin output history to compute average loss & accuracy over training
     bin_size = 10
-    num_bins = num_patterns / bin_size
+    num_bins = int(num_patterns / bin_size)
     binned_output_history = output_history.reshape(num_bins, bin_size, num_units)
-    binned_target_history = target_history.reshape(num_bins, bin_size, num_units)
+    binned_target_history = network.target_history.reshape(num_bins, bin_size, num_units)
 
     # Recompute loss
     sorted_loss_history = []
