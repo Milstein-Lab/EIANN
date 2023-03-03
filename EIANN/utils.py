@@ -793,7 +793,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     num_patterns = activity.shape[0]
     num_units = activity.shape[1]
 
-    # Compute sparsity
+    # Compute population sparsity
     activity_fraction = (torch.sum(activity, dim=1) / num_units) ** 2 / torch.sum(activity ** 2 / num_units, dim=1)
     sparsity = (1 - activity_fraction) / (1 - 1 / num_units)
     sparsity[torch.where(torch.sum(activity, dim=1) == 0.)] = 0.
@@ -801,10 +801,13 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
         # active_pattern_idx = np.where(fraction_nonzero_units != 0.)[0] #exlcude silent patterns
         # sparsity = 1 - fraction_nonzero_units[active_pattern_idx]
 
-    # Compute selectivity
-    activity_fraction = (torch.sum(activity, dim=0) / num_patterns)**2 / torch.sum(activity**2 / num_patterns, dim=0)
+    total_act = torch.sum(population.activity.detach(), dim=0)
+    active_units_idx = torch.where(total_act > 1e-10)[0]
+
+    # Compute unit selectivity
+    activity_fraction = (torch.sum(activity[:,active_units_idx], dim=0) / num_patterns)**2 / torch.sum(activity[:,active_units_idx]**2 / num_patterns, dim=0)
     selectivity = (1 - activity_fraction) / (1 - 1 / num_patterns)
-    selectivity[torch.where(torch.sum(activity, dim=0) == 0.)] = 0.
+    selectivity[torch.where(torch.sum(activity[:,active_units_idx], dim=0) == 0.)] = 0.
         # fraction_nonzero_patterns = np.count_nonzero(activity, axis=0) / num_patterns
         # active_unit_idx = np.where(fraction_nonzero_patterns != 0.)[0] #exlcude silent units
         # selectivity = 1 - fraction_nonzero_patterns[active_unit_idx]
@@ -820,6 +823,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
 
     # Compute structure
     if receptive_fields is not None:
+        receptive_fields = receptive_fields[active_units_idx]
         structure_sim_ls = []
         for unit_rf in receptive_fields:
             s = 0
