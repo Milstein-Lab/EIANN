@@ -24,14 +24,14 @@ context = Context()
 # run 5 random seeds in parallel:
 # mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp --plot \
-#   --export --compute_receptive_fields=False
+#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
+#   --export --compute_receptive_fields=False --store_history=True --retrain=False
 
 # run a single seed:
 # python -m nested.analyze --framework=serial \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp --plot \
-#   --export --compute_receptive_fields=False --num_instances=1
+#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
+#   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False
 
 def config_controller():
     if 'debug' not in context():
@@ -1460,7 +1460,7 @@ def update_EIANN_config_2_hidden_mnist_BTSP_D1(x, context):
     context.projection_config['Output']['FBI']['Output']['E']['weight_init_args'] = (Output_FBI_Output_E_weight_scale,)
 
 
-def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False):
+def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False, retrain=True):
     """
 
     :param x: array of float
@@ -1484,18 +1484,22 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if plot:
         plot_batch_accuracy(network, test_dataloader, population='all', title='Initial')
 
-    data_generator.manual_seed(data_seed)
-    network.train_and_validate(train_sub_dataloader,
-                               val_dataloader,
-                               epochs=epochs,
-                               val_interval=context.val_interval, # e.g. (-201, -1, 10)
-                               store_history=context.store_history,
-                               store_weights=context.store_weights,
-                               store_weights_interval=context.store_weights_interval,
-                               status_bar=context.status_bar)
-    if export:
-        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-        network.save(dir=context.output_dir, file_name_base=f'{network_name}_{seed}')
+    network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+    saved_network_path = f"{context.output_dir}/{network_name}_{seed}.pkl"
+    if os.path.exists(saved_network_path) and retrain==False:
+        network.load(saved_network_path)
+    else:
+        data_generator.manual_seed(data_seed)
+        network.train_and_validate(train_sub_dataloader,
+                                   val_dataloader,
+                                   epochs=epochs,
+                                   val_interval=context.val_interval, # e.g. (-201, -1, 10)
+                                   store_history=context.store_history,
+                                   store_weights=context.store_weights,
+                                   store_weights_interval=context.store_weights_interval,
+                                   status_bar=context.status_bar)
+        if export:
+            network.save(dir=context.output_dir, file_name_base=f'{network_name}_{seed}')
 
     # reorder output units if using unsupervised/Hebbian rule
     if not context.supervised:
@@ -1551,7 +1555,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         plot_train_loss_history(network)
         plot_validate_loss_history(network)
 
-    if context.compute_receptive_fields:
+    if context.compute_receptive_fields==True:
         # Compute receptive fields
         population = network.H1.E
         receptive_fields, _ = utils.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
