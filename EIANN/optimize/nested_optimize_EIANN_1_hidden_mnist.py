@@ -20,8 +20,10 @@ import EIANN.utils as utils
 
 context = Context()
 
-# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --config-file-path=optimize/config/nested_optimize_EIANN_1_hidden_mnist.yaml --param-file-path=optimize/config/fdsfdfs.yaml
-# --model-key=BTSP_C6 --output-dir=optimize/data --label=btsp --plot --export --compute_rf=True
+# python -m nested.analyze --framework=serial \
+#   --config-file-path=optimize/config/nested_optimize_EIANN_1_hidden_mnist.yaml \
+#   --param-file-path=optimize/config/fdsfdfs.yaml --model-key=BTSP_C6 --output-dir=optimize/data --label=btsp --plot \
+#   --export --compute_receptive_fields=True --num_instances=1
 
 def config_controller():
     if 'debug' not in context():
@@ -66,8 +68,8 @@ def config_worker():
         context.equilibration_activity_tolerance = 0.2
     else:
         context.equilibration_activity_tolerance = float(context.equilibration_activity_tolerance)
-    if 'receptive_fields' not in context():
-        context.receptive_fields = None
+    if 'compute_rf' not in context():
+        context.compute_rf = False
     if 'constrain_equilibration_dynamics' not in context():
         context.constrain_equilibration_dynamics = True
     else:
@@ -1547,16 +1549,17 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       (os.getpid(), context.export_network_config_file_path))
 
         if context.temp_output_path is not None:
-            if context.receptive_fields:
+            if context.compute_rf:
                 # Compute receptive fields
                 population = network.H1.E
                 receptive_fields, _ = ut.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
             else:
-                receptive_fields = None
+                receptive_fields = network.H1.E.Input.E.weight.detach()
 
             # Compute test activity and metrics
             idx, data, target = next(iter(test_dataloader))
             network.forward(data)
+            network.output_pop.activity = network.output_pop.activity[:, sorted_output_idx]
 
             with h5py.File(context.temp_output_path, 'a') as f:
                 if context.label is None:
