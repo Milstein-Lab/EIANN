@@ -396,6 +396,7 @@ def plot_hidden_weights(weights, sort=False):
     cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
 
+
 def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=False):
     """
 
