@@ -1,4 +1,5 @@
 vanilla_backprop_softplus_SGD:
+    # CL final_accuracy: 51.428577
     learning_rate: 5.
     softplus_beta: 10.
 bpDale_1_inh_softplus:
@@ -8,6 +9,8 @@ bpDale_1_inh_softplus:
     I_E_learning_rate: 9.999943142695821
     softplus_beta: 98.01406086685208
 BTSP_D1:
+    # accuracy: 100.0
+    # CL final_accuracy: 87.61906
     BTSP_neg_loss_ET_discount: 0.26116426262770986
     FB_BTSP_init_weight_factor: 0.5601381085351538
     FF_BTSP_init_weight_factor: 0.010318147004625655
@@ -30,6 +33,7 @@ BTSP_D1:
     Output_FBI_Output_E_weight_scale: 3.8429408525633244
 Supervised_Gjorgjieva_Hebb_1_inh_static_C:
     # accuracy: 92.20952
+    # CL final_accuracy: 70.4762
     H1_E_H1_FBI_weight_scale: 0.3296294093703005
     H1_E_Input_E_learning_rate: 0.0023109858683253814
     H1_E_Input_E_weight_scale: 3.897551272339049
