@@ -10,7 +10,7 @@ import h5py
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
-    recompute_train_loss_and_accuracy
+    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history
 from nested.utils import Context, param_array_to_dict
 from nested.optimize_utils import update_source_contexts
@@ -77,6 +77,13 @@ def config_worker():
         context.store_weights = bool(context.store_weights)
     if 'store_weights_interval' not in context():
         context.store_weights_interval = (0, -1, 100)
+    if 'full_analysis' not in context():
+        context.full_analysis = False
+    else:
+        context.full_analysis = bool(context.full_analysis)
+        context.val_interval = (0, -1, 100)
+        context.store_weights_interval = (0, -1, 100)
+        context.store_weights = True
     if 'equilibration_activity_tolerance' not in context():
         context.equilibration_activity_tolerance = 0.2
     else:
@@ -1510,8 +1517,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
 
     if network.Output.E.activity_history is not None:
-        sorted_train_loss_history, sorted_train_accuracy_history = \
-            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
+        binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
+            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
 
     # Select for stability by computing mean accuracy in a window after the best validation step
     val_stepsize = int(context.val_interval[2])
@@ -1559,11 +1566,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         receptive_fields, _ = utils.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
     else:
         receptive_fields = network.H1.E.Input.E.weight.detach()
-    metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields,
-                                                        plot=plot)
+
+    if context.full_analysis:
+        metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields,
+                                                            plot=plot)
+        test_loss_history, test_accuracy_history = \
+            compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot)
 
     if context.debug:
-        print('pid: %i, seed: %i, network.val_loss_history: %s' % (os.getpid(), seed, network.val_loss_history))
+        print('pid: %i, seed: %i' % (os.getpid(), seed))
         sys.stdout.flush()
         context.update(locals())
 
@@ -1604,10 +1615,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                 metrics_group.create_dataset('val_loss_steps', data=network.val_history_train_steps)
                 metrics_group.create_dataset('val_accuracy', data=sorted_val_accuracy_history)
                 metrics_group.create_dataset('train_loss', data=sorted_train_loss_history)
+                metrics_group.create_dataset('binned_train_loss_steps', data=binned_train_loss_steps)
                 metrics_group.create_dataset('train_accuracy', data=sorted_val_accuracy_history)
 
-                for metric in metrics_dict:
-                    metrics_group.create_dataset(metric, data=metrics_dict[metric])
+                if context.full_analysis:
+                    metrics_group.create_dataset('test_loss', data=test_loss_history)
+                    metrics_group.create_dataset('test_loss_steps', data=network.param_history_steps)
+                    metrics_group.create_dataset('test_accuracy', data=test_accuracy_history)
+                    for metric in metrics_dict:
+                        metrics_group.create_dataset(metric, data=metrics_dict[metric])
 
     return results
 

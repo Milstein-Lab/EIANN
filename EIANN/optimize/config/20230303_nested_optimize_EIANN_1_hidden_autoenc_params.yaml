@@ -28,4 +28,23 @@ BTSP_D1:
     Output_E_H1_E_max_weight_scale: 7.472661546334389
     Output_E_Output_FBI_weight_scale: 3.7904660167186335
     Output_FBI_Output_E_weight_scale: 3.8429408525633244
-
+Supervised_Gjorgjieva_Hebb_1_inh_static_C:
+    # accuracy: 92.20952
+    H1_E_H1_FBI_weight_scale: 0.3296294093703005
+    H1_E_Input_E_learning_rate: 0.0023109858683253814
+    H1_E_Input_E_weight_scale: 3.897551272339049
+    H1_FBI_H1_E_weight_scale: 1.2746456631585945
+    Output_E_H1_E_learning_rate: 0.10126898779781077
+    Output_E_H1_E_weight_scale: 2.9713023199835846
+    Output_E_Output_FBI_weight_scale: 3.7054736328724296
+    Output_FBI_Output_E_weight_scale: 0.9753801227207254
+Gjorgjieva_Hebb_1_inh_static_C:
+    # 64% autoenc accuracy
+    H1_E_H1_FBI_weight_scale: 0.48371070064980726
+    H1_E_Input_E_learning_rate: 0.01986813402764495
+    H1_E_Input_E_weight_scale: 1.6403907158557745
+    H1_FBI_H1_E_weight_scale: 0.2519187023918979
+    Output_E_H1_E_learning_rate: 0.6461520149162121
+    Output_E_H1_E_weight_scale: 7.585694360215912
+    Output_E_Output_FBI_weight_scale: 3.514615155286358
+    Output_FBI_Output_E_weight_scale: 4.590772621218822
