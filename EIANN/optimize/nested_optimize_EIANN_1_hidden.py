@@ -10,7 +10,7 @@ from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
     sort_unsupervised_by_best_epoch, check_equilibration_dynamics
 from EIANN.plot import plot_simple_EIANN_config_summary, plot_simple_EIANN_weight_history_diagnostic
-from nested.utils import Context, param_array_to_dict
+from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
 
 
@@ -21,7 +21,7 @@ def config_controller():
     if 'debug' not in context():
         context.debug = False
     else:
-        context.debug = bool(context.debug)
+        context.debug = str_to_bool(context.debug)
 
 
 def config_worker():
@@ -31,15 +31,15 @@ def config_worker():
     context.task_id = int(context.task_id)
     context.data_seed_start = int(context.data_seed_start)
     context.epochs = int(context.epochs)
-    context.status_bar = bool(context.status_bar)
+    context.status_bar = str_to_bool(context.status_bar)
     if 'debug' not in context():
         context.debug = False
     else:
-        context.debug = bool(context.debug)
+        context.debug = str_to_bool(context.debug)
     if 'verbose' not in context():
         context.verbose = False
     else:
-        context.verbose = bool(context.verbose)
+        context.verbose = str_to_bool(context.verbose)
     if 'export_network_config_file_path' not in context():
         context.export_network_config_file_path = None
     if 'eval_accuracy' not in context():
@@ -49,7 +49,7 @@ def config_worker():
     if 'store_weights' not in context():
         context.store_weights = False
     else:
-        context.store_weights = bool(context.store_weights)
+        context.store_weights = str_to_bool(context.store_weights)
     if 'equilibration_activity_tolerance' not in context():
         context.equilibration_activity_tolerance = 0.2
     else:

@@ -14,7 +14,7 @@ from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoc
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, \
     evaluate_test_loss_history
-from nested.utils import Context, param_array_to_dict, get_unknown_click_arg_dict
+from nested.utils import Context, param_array_to_dict, get_unknown_click_arg_dict, str_to_bool
 from nested.parallel import get_parallel_interface
 from nested.optimize_utils import nested_parallel_init_contexts_interactive
 
@@ -29,11 +29,11 @@ def config_worker():
     context.task_id = int(context.task_id)
     context.data_seed_start = int(context.data_seed_start)
     context.epochs = int(context.epochs)
-    context.status_bar = bool(context.status_bar)
+    context.status_bar = str_to_bool(context.status_bar)
     if 'debug' not in context():
         context.debug = False
     else:
-        context.debug = bool(context.debug)
+        context.debug = str_to_bool(context.debug)
     if 'store_weights_interval' not in context():
         context.store_weights_interval = (0, -1, 10000)
     if 'equilibration_activity_tolerance' not in context():
