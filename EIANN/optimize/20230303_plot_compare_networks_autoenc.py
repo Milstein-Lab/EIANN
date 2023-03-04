@@ -19,7 +19,7 @@ data_file_path_dict = \
 
 legend_dict =  {'vanilla_backprop': ('Backprop', 'k'),
                 'bpDale_1_inh_softplus': ('Backprop (Dale)', 'r'),
-                'Gjorgjieva_Hebb_1_inh_static_C': ('Hebb', 'brown'),
+                'Gjorgjieva_Hebb_1_inh_static_C': ('Hebb', 'orange'),
                 'Supervised_Gjorgjieva_Hebb_1_inh_static_C': ('Supervised Hebb', 'purple'),
                 'BTSP_D1': ('Dendritic gating', 'c')}
 
@@ -38,19 +38,20 @@ plot_activity(activity_dict, title_dict, example_index_dict, model_list[1:])
 
 plot_activation_funcs()
 
+model_list_2 = ['vanilla_backprop', 'bpDale_1_inh_softplus', 'Supervised_Gjorgjieva_Hebb_1_inh_static_C', 'BTSP_D1']
+
 plot_metrics(metrics_dict, legend_dict, model_list[:1])
 plot_metrics(metrics_dict, legend_dict, model_list[:2])
 plot_metrics(metrics_dict, legend_dict, model_list[:3])
-plot_metrics(metrics_dict, legend_dict, model_list[:4])
-plot_metrics(metrics_dict, legend_dict, model_list)
+plot_metrics(metrics_dict, legend_dict, model_list_2[:3])
+plot_metrics(metrics_dict, legend_dict, model_list_2)
 
 
 sparsity_dict, discriminability_dict = analyze_hidden_representations(activity_dict)
 
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:1])
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:2])
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:3])
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:4])
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list)
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list_2[:1])
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list_2[:2])
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list_2[:3])
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list_2)
 
 plt.show()
