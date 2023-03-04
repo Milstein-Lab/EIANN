@@ -25,18 +25,21 @@ context = Context()
 # mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
 #   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --store_history=True --retrain=False --full_analysis=True --status_bar=True
+#   --export --store_history=True --retrain=False --full_analysis --status_bar
 
 # mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml \
 #   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=bpDale \
-#   --export --export-file-path=multiseed_mnist_metrics.hdf5 --store_history=True --retrain=False --full_analysis=True --status_bar=True
+#   --export --export-file-path=multiseed_mnist_metrics.hdf5 --store_history=True --retrain=False --full_analysis --status_bar
 
 # run a single seed (must be run from the root directory of EIANN):
 # python -m nested.analyze --framework=serial \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
 #   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis=True --status_bar=True
+#   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis --status_bar
+
+# python -m nested.analyze --framework=serial --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=btsp --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --status_bar --plot --full_analysis=True
+
 
 def config_controller():
     if 'debug' not in context():
@@ -93,14 +96,14 @@ def config_worker():
         context.compute_receptive_fields = False
     else:
         context.compute_receptive_fields = bool(context.compute_receptive_fields)
-    if 'retrain' not in context():
-        context.retrain = False
-    else:
-        context.retrain = bool(context.retrain)
     if 'constrain_equilibration_dynamics' not in context():
         context.constrain_equilibration_dynamics = True
     else:
         context.constrain_equilibration_dynamics - bool(context.constrain_equilibration_dynamics)
+    if 'retrain' not in context():
+        context.retrain = True
+    else:
+        context.retrain = bool(context.retrain)
 
     context.train_steps = int(context.train_steps)
 
@@ -1496,10 +1499,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
     saved_network_path = f"{context.output_dir}/{network_name}_{seed}.pkl"
-    print(f"Saved network path: {saved_network_path}")
-    print(os.path.exists(saved_network_path))
-    print(context.retrain)
-    if os.path.exists(saved_network_path) and context.retrain==False:
+    if os.path.exists(saved_network_path) and not context.retrain:
         network.load(saved_network_path)
     else:
         print('Training network...')
