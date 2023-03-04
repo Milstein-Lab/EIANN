@@ -42,6 +42,7 @@ def nested_convert_scalars(data):
     return data
 
 
+# Functions to import and export data
 def write_to_yaml(file_path, data, convert_scalars=True):
     """
 
@@ -116,6 +117,47 @@ def import_metrics_data(filename):
     return metrics_dict
 
 
+def hdf5_to_dict(file_path):
+    """
+    Load an HDF5 file and convert it to a nested Python dictionary.
+
+    :param file_path (str): Path to the HDF5 file.
+    :return dict: nested Python dictionary with identical structure as the HDF5 file.
+    """
+    with h5py.File(file_path, 'r') as f:
+        data_dict = {}
+        # Loop over the top-level keys in the HDF5 file
+        for key in f.keys():
+            if isinstance(f[key], h5py.Group):
+                # Recursively convert the group to a nested dictionary
+                data_dict[key] = hdf5_to_dict_helper(f[key])
+            else:
+                # If the key corresponds to a dataset, add it to the dictionary
+                data_dict[key] = f[key][()]
+    return data_dict
+
+
+def hdf5_to_dict_helper(group):
+    """
+    Helper function to recursively convert an HDF5 group to a nested Python dictionary.
+
+    :param group (h5py.Group): The HDF5 group to convert.
+    :return dict: Nested Python dictionary with identical structure as the HDF5 group.
+    """
+    data_dict = {}
+    # Loop over the keys in the HDF5 group
+    for key in group.keys():
+        if isinstance(group[key], h5py.Group):
+            # Recursively convert the group to a nested dictionary
+            data_dict[key] = hdf5_to_dict_helper(group[key])
+        else:
+            # If the key corresponds to a dataset, add it to the dictionary
+            data_dict[key] = group[key][()]
+
+    return data_dict
+
+
+# Functions to generate and process data
 def n_choose_k(n, k):
     """
     Calculates number of ways to choose k things out of n, using binomial coefficients
@@ -867,7 +909,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
             'discriminability': discriminability, 'structure': structure}
 
 
-# MNIST-related functions
+# MNIST-specific functions
 def compute_act_weighted_avg(population, dataloader):
     """
     Compute activity-weighted average input for every unit in the population

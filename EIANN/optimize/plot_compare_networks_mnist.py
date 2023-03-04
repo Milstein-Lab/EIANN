@@ -1,46 +1,96 @@
-from plot_compare_networks_utils import *
+import numpy as np
+import h5py
+import matplotlib.pyplot as plt
+import EIANN.utils as utils
+import EIANN.plot as pt
+
+pt.update_plot_defaults()
 
 
-model_list = ['van_BP', 'BP_Dale', 'Hebb', 'BTSP']
+def plot_metrics_comparison(model_list, data_dict, title_dict, legend_dict, model_names_dict):
+    fig, ax = plt.subplots(1, 4, figsize=[12, 5])
 
-title_dict = {'van_BP': 'Backprop',
-              'BP_Dale': 'Backprop (EI)',
-              'Hebb': 'Hebb',
-              'BTSP': 'Top-Down Dendritic Gating'}
+    label_list = []
+    for x, model_name in enumerate(model_list):
+        model_name = model_names_dict[model_name]
+        mean_sparsity = []
+        mean_selectivity = []
+        mean_discriminability = []
+        mean_structure = []
+        for seed in data_dict[model_name]:
+            mean_sparsity.append(np.mean(data_dict[model_name][seed]['metrics']['sparsity']))
+            mean_selectivity.append(np.mean(data_dict[model_name][seed]['metrics']['selectivity']))
+            mean_discriminability.append(np.mean(data_dict[model_name][seed]['metrics']['discriminability']))
+            mean_structure.append(np.mean(data_dict[model_name][seed]['metrics']['structure']))
 
-data_file_path_dict = \
-    {'BTSP': 'data/20221103_EIANN_1_hidden_exported_data.hdf5',
-     'Hebb': 'data/20221012_EIANN_1_hidden_exported_data.hdf5',
-     'BP_Dale': 'data/20221103_EIANN_1_hidden_exported_data.hdf5',
-     'van_BP': 'data/20221103_EIANN_1_hidden_exported_data.hdf5'}
+        # Plot bar graph with error bars
+        ax[0].bar(x, np.mean(mean_sparsity), yerr=np.std(mean_sparsity), width=0.5, color=legend_dict[model_name][1])
+        ax[1].bar(x, np.mean(mean_selectivity), yerr=np.std(mean_selectivity), width=0.5, color=legend_dict[model_name][1])
+        ax[2].bar(x, np.mean(mean_discriminability), yerr=np.std(mean_discriminability), width=0.5, color=legend_dict[model_name][1])
+        ax[3].bar(x, np.mean(mean_structure), yerr=np.std(mean_structure), width=0.5, color=legend_dict[model_name][1])
+        label_list.append(legend_dict[model_name][0])
 
-legend_dict =  {'BP_Dale': ('Backprop (EI)', 'b'),
-                'van_BP': ('Backprop', 'k'),
-                'Hebb': ('Hebb', 'r'),
-                'BTSP': ('Dendritic Gating', 'c')}
+    ax[0].set_title('Sparsity')
+    ax[1].set_title('Selectivity')
+    ax[2].set_title('Discriminability')
+    ax[3].set_title('Structure')
 
-example_index_dict = {'van_BP': 0, 'BP_Dale': 0, 'Hebb': 0, 'BTSP': 0}
+    for i in range(4):
+        ax[i].set_xticks(np.arange(len(data_dict)))
+        ax[i].set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
 
-activity_dict, metrics_dict = unpack_data(model_list, data_file_path_dict)
-
-plot_n_choose_k_task()
-
-plot_activity(activity_dict, title_dict, example_index_dict, model_list[:1], label_pop=False)
-plot_activity(activity_dict, title_dict, example_index_dict, model_list[1:])
-
-plot_activation_funcs()
-
-plot_metrics(metrics_dict, legend_dict, model_list[:1])
-plot_metrics(metrics_dict, legend_dict, model_list[:2])
-plot_metrics(metrics_dict, legend_dict, model_list[:3])
-plot_metrics(metrics_dict, legend_dict, model_list)
+    fig.tight_layout()
 
 
-sparsity_dict, discriminability_dict = analyze_hidden_representations(activity_dict)
+def plot_accuracy_comparison(model_list, data_dict, title_dict, legend_dict, model_names_dict):
+    fig, ax = plt.subplots(figsize=[6, 5])
 
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:1])
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:2])
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list[:3])
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list)
+    for model_name in model_list:
+        model_name = model_names_dict[model_name]
+        accuracy = []
+        for seed in data_dict[model_name]:
+            accuracy.append(data_dict[model_name][seed]['metrics']['test_accuracy'])
 
+        # Plot accuracy line plot with shaded error
+        x = data_dict[model_name][seed]['metrics']['test_loss_steps']
+        mean_accuracy = np.mean(accuracy, axis=0)
+        error = np.std(accuracy, axis=0)
+        ax.plot(x, mean_accuracy, color=legend_dict[model_name][1])
+        ax.fill_between(x, mean_accuracy-error, mean_accuracy+error,
+                        color=legend_dict[model_name][1], alpha=0.2, label=legend_dict[model_name][0])
+
+    ax.set_title('Accuracy')
+    ax.set_xlabel('Training steps')
+    ax.set_ylabel('Accuracy (%)')
+    plt.legend()
+
+
+data_file_path = 'data/20230303_exported_output_EIANN_1_hidden_mnist.hdf5'
+data_dict = utils.hdf5_to_dict(data_file_path)
+
+model_list = ['BP', 'BP_Dale', 'Hebb', 'BTSP']
+
+title_dict = {}
+legend_dict = {}
+model_names_dict = {}
+for model_name in data_dict:
+    if 'van_bp' in model_name:
+        title_dict[model_name] = 'Backprop'
+        legend_dict[model_name] = ('Backprop', 'k')
+        model_names_dict['BP'] = model_name
+    elif 'Dale' in model_name:
+        title_dict[model_name] = 'Backprop (EI)'
+        legend_dict[model_name] = ('Backprop (EI)', 'b')
+        model_names_dict['BP_Dale'] = model_name
+    if 'Hebb' in model_name:
+        title_dict[model_name] = 'Hebb'
+        legend_dict[model_name] = ('Hebb', 'r')
+        model_names_dict['Hebb'] = model_name
+    elif 'BTSP' in model_name:
+        title_dict[model_name] = 'Top-Down Dendritic Gating'
+        legend_dict[model_name] = ('Dendritic Gating', 'c')
+        model_names_dict['BTSP'] = model_name
+
+plot_metrics_comparison(model_list, data_dict, title_dict, legend_dict, model_names_dict)
+plot_accuracy_comparison(model_list, data_dict, title_dict, legend_dict, model_names_dict)
 plt.show()
