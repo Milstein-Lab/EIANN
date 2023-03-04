@@ -81,9 +81,10 @@ def config_worker():
         context.full_analysis = False
     else:
         context.full_analysis = bool(context.full_analysis)
-        context.val_interval = (0, -1, 100)
-        context.store_weights_interval = (0, -1, 100)
-        context.store_weights = True
+        if context.full_analysis:
+            context.val_interval = (0, -1, 100)
+            context.store_weights_interval = (0, -1, 100)
+            context.store_weights = True
     if 'equilibration_activity_tolerance' not in context():
         context.equilibration_activity_tolerance = 0.2
     else:

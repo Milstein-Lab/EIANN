@@ -43,12 +43,12 @@ Supervised_Gjorgjieva_Hebb_1_inh_static_C:
     Output_E_Output_FBI_weight_scale: 3.7054736328724296
     Output_FBI_Output_E_weight_scale: 0.9753801227207254
 Gjorgjieva_Hebb_1_inh_static_C:
-    # 64% autoenc accuracy
-    H1_E_H1_FBI_weight_scale: 0.48371070064980726
-    H1_E_Input_E_learning_rate: 0.01986813402764495
-    H1_E_Input_E_weight_scale: 1.6403907158557745
-    H1_FBI_H1_E_weight_scale: 0.2519187023918979
-    Output_E_H1_E_learning_rate: 0.6461520149162121
-    Output_E_H1_E_weight_scale: 7.585694360215912
-    Output_E_Output_FBI_weight_scale: 3.514615155286358
-    Output_FBI_Output_E_weight_scale: 4.590772621218822
+    # accuracy: 60.51429
+    H1_E_H1_FBI_weight_scale: 0.23384643382125886
+    H1_E_Input_E_learning_rate: 0.07279581006784476
+    H1_E_Input_E_weight_scale: 2.110067882400471
+    H1_FBI_H1_E_weight_scale: 0.26676967200669455
+    Output_E_H1_E_learning_rate: 0.3641385738630399
+    Output_E_H1_E_weight_scale: 4.7791933374900495
+    Output_E_Output_FBI_weight_scale: 3.0322208760957654
+    Output_FBI_Output_E_weight_scale: 4.558176824211938
