@@ -97,6 +97,10 @@ def config_worker():
         context.constrain_equilibration_dynamics = True
     else:
         context.constrain_equilibration_dynamics - bool(context.constrain_equilibration_dynamics)
+    if 'retrain' not in context():
+        context.retrain = True
+    else:
+        context.retrain = bool(context.retrain)
 
     context.train_steps = int(context.train_steps)
 
@@ -1466,7 +1470,7 @@ def update_EIANN_config_2_hidden_mnist_BTSP_D1(x, context):
     context.projection_config['Output']['FBI']['Output']['E']['weight_init_args'] = (Output_FBI_Output_E_weight_scale,)
 
 
-def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False, retrain=True):
+def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False):
     """
 
     :param x: array of float
@@ -1492,7 +1496,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
     saved_network_path = f"{context.output_dir}/{network_name}_{seed}.pkl"
-    if os.path.exists(saved_network_path) and retrain==False:
+    if os.path.exists(saved_network_path) and not context.retrain:
         network.load(saved_network_path)
     else:
         data_generator.manual_seed(data_seed)
