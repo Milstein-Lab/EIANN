@@ -54,6 +54,7 @@ Supervised_Gjorgjieva_Hebb_C:
     Output_FBI_Output_FBI_weight_scale: 0.4051025344896375
     Output_FBI_size: 7.0
 Gjorgjieva_Hebb_1_inh_static_C:
+    # optimized without equilibration constraints
     # 64% autoenc accuracy
     H1_E_H1_FBI_weight_scale: 0.48371070064980726
     H1_E_Input_E_learning_rate: 0.01986813402764495
