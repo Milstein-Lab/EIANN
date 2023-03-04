@@ -12,7 +12,7 @@ from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoc
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
     recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields
-from nested.utils import Context, param_array_to_dict
+from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
@@ -25,27 +25,27 @@ context = Context()
 # mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
 #   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --store_history=True --retrain=False --full_analysis --status_bar
+#   --export --store_history=True --retrain=False --full_analysis=True --status_bar=True
 
 # mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml \
 #   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=bpDale \
-#   --export --export-file-path=multiseed_mnist_metrics.hdf5 --store_history=True --retrain=False --full_analysis --status_bar
+#   --export --export-file-path=multiseed_mnist_metrics.hdf5 --store_history=True --retrain=False --full_analysis=True --status_bar=True
 
 # run a single seed (must be run from the root directory of EIANN):
 # python -m nested.analyze --framework=serial \
 #   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
 #   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis --status_bar
+#   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis=True --status_bar=True
 
-# python -m nested.analyze --framework=serial --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=btsp --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --status_bar --plot --full_analysis=True
+# python -m nested.analyze --framework=serial --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=btsp --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --status_bar=True --plot --full_analysis=True
 
 
 def config_controller():
     if 'debug' not in context():
         context.debug = False
     else:
-        context.debug = bool(context.debug)
+        context.debug = str_to_bool(context.debug)
 
 
 def config_worker():
@@ -55,15 +55,15 @@ def config_worker():
     context.task_id = int(context.task_id)
     context.data_seed_start = int(context.data_seed_start)
     context.epochs = int(context.epochs)
-    context.status_bar = bool(context.status_bar)
+    context.status_bar = str_to_bool(context.status_bar)
     if 'debug' not in context():
         context.debug = False
     else:
-        context.debug = bool(context.debug)
+        context.debug = str_to_bool(context.debug)
     if 'verbose' not in context():
         context.verbose = False
     else:
-        context.verbose = bool(context.verbose)
+        context.verbose = str_to_bool(context.verbose)
     if 'export_network_config_file_path' not in context():
         context.export_network_config_file_path = None
     if 'eval_accuracy' not in context():
@@ -73,17 +73,17 @@ def config_worker():
     if 'store_history' not in context():
         context.store_history = False
     else:
-        context.store_history = bool(context.store_history)
+        context.store_history = str_to_bool(context.store_history)
     if 'store_weights' not in context():
         context.store_weights = False
     else:
-        context.store_weights = bool(context.store_weights)
+        context.store_weights = str_to_bool(context.store_weights)
     if 'store_weights_interval' not in context():
         context.store_weights_interval = (0, -1, 100)
     if 'full_analysis' not in context():
         context.full_analysis = False
     else:
-        context.full_analysis = bool(context.full_analysis)
+        context.full_analysis = str_to_bool(context.full_analysis)
         if context.full_analysis:
             context.val_interval = (0, -1, 100)
             context.store_weights_interval = (0, -1, 100)
@@ -95,15 +95,15 @@ def config_worker():
     if 'compute_receptive_fields' not in context():
         context.compute_receptive_fields = False
     else:
-        context.compute_receptive_fields = bool(context.compute_receptive_fields)
+        context.compute_receptive_fields = str_to_bool(context.compute_receptive_fields)
     if 'constrain_equilibration_dynamics' not in context():
         context.constrain_equilibration_dynamics = True
     else:
-        context.constrain_equilibration_dynamics - bool(context.constrain_equilibration_dynamics)
+        context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
     if 'retrain' not in context():
         context.retrain = True
     else:
-        context.retrain = bool(context.retrain)
+        context.retrain = str_to_bool(context.retrain)
 
     context.train_steps = int(context.train_steps)
 
@@ -1575,9 +1575,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         receptive_fields, _ = utils.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
     else:
         receptive_fields = network.H1.E.Input.E.weight.detach()
-    _, activity_preferred_inputs = utils.compute_act_weighted_avg(network.H1.E, test_dataloader)
 
     if plot:
+        _, activity_preferred_inputs = utils.compute_act_weighted_avg(network.H1.E, test_dataloader)
         plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=True)
 
     if context.full_analysis:
