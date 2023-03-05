@@ -425,13 +425,15 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=Fals
     receptive_fields = receptive_fields * activity_preferred_inputs.unsqueeze(1)
 
     # Create figure
-    num_rows = receptive_fields.shape[0]
-    num_cols = int(num_rows**0.5)  # make the number of rows and columns approximately equal
-    if num_cols<5:
+    num_units = receptive_fields.shape[0]
+    num_cols = int(np.ceil(num_units**0.5))
+    num_rows = int(np.ceil(num_units**0.5)) + 1
+    if num_units < 25:
         num_cols = 5
+        num_rows = num_units // num_cols + 1
 
     axes = gs.GridSpec(num_rows, num_cols)
-    fig = plt.figure(figsize=(10, 10 * num_rows / num_cols))
+    fig = plt.figure(figsize=(6, 6 * num_rows / num_cols))
 
     colorscale = torch.max(receptive_fields.abs())
 
@@ -448,7 +450,8 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=Fals
         ax = fig.add_subplot(axes[row_idx, col_idx])
         # im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=-colorscale, vmax=colorscale,
         #                interpolation='none', alpha=activity_preferred_inputs[i])
-        im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=-colorscale, vmax=colorscale)
+        im = ax.imshow(receptive_fields[i].view(28, 28), cmap='gray', vmin=-colorscale, vmax=colorscale)
+        # im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=-colorscale, vmax=colorscale)
         ax.axis('off')
         # cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         # cax = fig.add_axes([ax.get_position().x1 + 0.002, ax.get_position().y0, 0.005, ax.get_position().height])
@@ -460,6 +463,7 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=Fals
     fig_height = fig.get_size_inches()[1]
     cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
+
 
 
 def plot_unit_receptive_field(population, dataloader, unit):
