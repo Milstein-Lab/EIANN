@@ -359,13 +359,13 @@ def plot_hidden_weights(weights, sort=False):
 
     if sort: # Sort units by tuning structure of their receptive fields
         print("Computing tuning strength...")
-        structure = []
-        for unit_weight_vec in weights.detach():
-            s = metrics.structural_similarity(unit_weight_vec.numpy(),
-                                              np.random.uniform(min(unit_weight_vec), max(unit_weight_vec),
-                                                                len(unit_weight_vec)).astype('float32'))
-            structure.append(s)
-        sorted_idx = np.argsort(structure)
+        structure = utils.compute_rf_structure(weights.detach())
+        # for unit_weight_vec in weights.detach():
+        #     s = metrics.structural_similarity(unit_weight_vec.numpy(),
+        #                                       np.random.uniform(min(unit_weight_vec), max(unit_weight_vec),
+        #                                                         len(unit_weight_vec)).astype('float32'))
+        #     structure.append(s)
+        sorted_idx = np.argsort(-structure)
         weights = weights[sorted_idx]
 
         # ks_stats = []
@@ -408,12 +408,13 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=Fals
     """
 
     if sort: # Sort units by tuning structure of their receptive fields
-        structure = []
-        for unit_rf in receptive_fields:
-            s = metrics.structural_similarity(unit_rf.numpy(),
-                                              np.random.uniform(min(unit_rf), max(unit_rf), len(unit_rf)).astype('float32'))
-            structure.append(s)
-        sorted_idx = np.argsort(structure)
+        structure = utils.compute_rf_structure(receptive_fields)
+        # structure = []
+        # for unit_rf in receptive_fields:
+        #     s = metrics.structural_similarity(unit_rf.numpy(),
+        #                                       np.random.uniform(min(unit_rf), max(unit_rf), len(unit_rf)).astype('float32'))
+        #     structure.append(s)
+        sorted_idx = np.argsort(-structure)
         receptive_fields = receptive_fields[sorted_idx]
 
     activity_preferred_inputs = activity_preferred_inputs.diagonal()
@@ -465,7 +466,6 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=Fals
     fig_height = fig.get_size_inches()[1]
     cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
-
 
 
 def plot_unit_receptive_field(population, dataloader, unit):
