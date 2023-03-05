@@ -400,18 +400,16 @@ def plot_hidden_weights(weights, sort=False):
 def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=False):
     """
 
-    :param population:
-    :param dataloader:
-    :param num_units:
-    :param method:
-    :return:
+    :param receptive_fields:
+    :param activity_preferred_inputs:
+    :param sort:
     """
-
     if sort: # Sort units by tuning structure of their receptive fields
         structure = []
         for unit_rf in receptive_fields:
-            s = metrics.structural_similarity(unit_rf.numpy(),
-                                              np.random.uniform(min(unit_rf), max(unit_rf), len(unit_rf)).astype('float32'))
+            s = metrics.structural_similarity(
+                unit_rf.numpy(),
+                np.random.uniform(min(unit_rf), max(unit_rf), len(unit_rf)).astype('float32'))
             structure.append(s)
         sorted_idx = np.argsort(structure)
         receptive_fields = receptive_fields[sorted_idx]
