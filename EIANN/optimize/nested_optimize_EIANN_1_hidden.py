@@ -50,6 +50,10 @@ def config_worker():
         context.store_weights = False
     else:
         context.store_weights = str_to_bool(context.store_weights)
+    if 'constrain_equilibration_dynamics' not in context():
+        context.constrain_equilibration_dynamics = True
+    else:
+        context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
     if 'equilibration_activity_tolerance' not in context():
         context.equilibration_activity_tolerance = 0.2
     else:
@@ -1148,10 +1152,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     network.train(dataloader, epochs, store_history=True, store_weights=context.store_weights,
                   status_bar=context.status_bar)
 
-    if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                        context.debug, context.disp):
-        if not context.debug:
-            return dict()
+    if context.constrain_equilibration_dynamics or context.debug:
+        if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
+                                            context.debug, context.disp, context.debug and plot):
+            if not context.debug:
+                return dict()
 
     if not context.supervised:
         #TODO: this should depend on value of eval_accuracy

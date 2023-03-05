@@ -2,31 +2,16 @@ van_bp_softplus:
     # accuracy: 94.54869
     learning_rate: 0.13315131781400405
     softplus_beta: 45.610257237854945
-bpDale_A:
+bpDale_softplus_A:
     # no equilibration constraint
+    # accuracy = 91.30999755859375%
     E_E_learning_rate: 0.3905827598087813
     E_I_learning_rate: 0.008001383903024366
     H1_FBI_size: 50.0
     I_E_learning_rate: 0.00013654399551975743
     Output_FBI_size: 10.0
     softplus_beta: 95.28786232460796
-Gjorgjieva_Hebb_C:
-    # accuracy: 30.15
-    E_I_learning_rate: 0.06180204942286381
-    H1_E_H1_FBI_weight_scale: 0.7742229847701145
-    H1_E_Input_E_learning_rate: 0.002958871842173382
-    H1_E_Input_E_weight_scale: 0.4233464926165639
-    H1_FBI_H1_E_weight_scale: 0.8646856213820285
-    H1_FBI_H1_FBI_weight_scale: 0.17534031637437697
-    H1_FBI_size: 50.0
-    I_E_learning_rate: 0.026971807301520982
-    I_I_learning_rate: 0.1723893661994558
-    Output_E_H1_E_learning_rate: 0.12129878280496757
-    Output_E_H1_E_weight_scale: 0.2536081541565322
-    Output_E_Output_FBI_weight_scale: 3.657194077291525
-    Output_FBI_Output_E_weight_scale: 0.747558825572868
-    Output_FBI_Output_FBI_weight_scale: 1.1334075480355845
-    Output_FBI_size: 10.0
+
 Supervised_Gjorgjieva_Hebb_C:
     # no equilibration constraint
     # accuracy: 71.606995
@@ -45,7 +30,6 @@ Supervised_Gjorgjieva_Hebb_C:
     Output_FBI_Output_E_weight_scale: 3.386978514311345
     Output_FBI_Output_FBI_weight_scale: 0.13403861091253574
     Output_FBI_size: 10.0
-
 BTSP_D1:
     # accuracy: 87.828995
     BTSP_neg_loss_ET_discount: 0.09096472533667882
