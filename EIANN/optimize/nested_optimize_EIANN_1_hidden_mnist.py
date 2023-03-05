@@ -16,7 +16,8 @@ from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
-    update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_backprop_softplus_SGD
+    update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_backprop_softplus_SGD, \
+    update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C
 import EIANN.utils as utils
 
 context = Context()
@@ -188,15 +189,15 @@ def update_EIANN_config_2_hidden_mnist_backprop_Dale_softplus_SGD(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
 
     softplus_beta = param_dict['softplus_beta']
-    H1_FBI_size = int(param_dict['H1_FBI_size'])
+    H_FBI_size = int(param_dict['H_FBI_size'])
     Output_FBI_size = int(param_dict['Output_FBI_size'])
 
     E_E_learning_rate = param_dict['E_E_learning_rate']
     E_I_learning_rate = param_dict['E_I_learning_rate']
     I_E_learning_rate = param_dict['I_E_learning_rate']
 
-    context.layer_config['H1']['FBI']['size'] = H1_FBI_size
-    context.layer_config['H2']['FBI']['size'] = H1_FBI_size
+    context.layer_config['H1']['FBI']['size'] = H_FBI_size
+    context.layer_config['H2']['FBI']['size'] = H_FBI_size
     context.layer_config['Output']['FBI']['size'] = Output_FBI_size
 
     for i, layer in enumerate(context.layer_config.values()):

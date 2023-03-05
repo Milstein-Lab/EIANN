@@ -11,14 +11,14 @@ bounds:
     softplus_beta:
         - 1.
         - 100.
-    H1_FBI_size:
+    H_FBI_size:
         - 1.
         - 100.
     Output_FBI_size:
         - 1.
         - 10.
 default_params:
-    H1_FBI_size: 1
+    H_FBI_size: 1
     Output_FBI_size: 1
 kwargs:
     network_id: 1
@@ -36,6 +36,7 @@ kwargs:
         - -1
         - 10
     num_training_steps_accuracy_window: 200
+    constrain_equilibration_dynamics: False
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       function: update_EIANN_config_2_hidden_mnist_backprop_Dale_softplus_SGD
@@ -51,5 +52,5 @@ x0:
     E_I_learning_rate: 0.2
     I_E_learning_rate: 0.2
     softplus_beta: 99.78563100135408
-    H1_FBI_size: 1
+    H_FBI_size: 1
     Output_FBI_size: 1

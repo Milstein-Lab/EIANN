@@ -1,8 +1,8 @@
 bounds:
-    H1_E_Input_E_learning_rate:
+    H_E_E_learning_rate:
         - 0.0001
         - 1.
-    Output_E_H1_E_learning_rate:
+    Output_E_E_learning_rate:
         - 0.0001
         - 1.
     E_I_learning_rate:
@@ -14,7 +14,7 @@ bounds:
     I_I_learning_rate:
         - 0.0001
         - 1.
-    Output_E_H1_E_weight_scale:
+    Output_E_H2_E_weight_scale:
         - 0.1
         - 10.
     Output_E_Output_FBI_weight_scale:
@@ -29,6 +29,9 @@ bounds:
     H1_E_Input_E_weight_scale:
         - 0.1
         - 10.
+    H2_E_H1_E_weight_scale:
+        - 0.1
+        - 10.
     H1_E_H1_FBI_weight_scale:
         - 0.1
         - 10.
@@ -38,14 +41,23 @@ bounds:
     H1_FBI_H1_FBI_weight_scale:
         - 0.1
         - 10.
-    H1_FBI_size:
+    H2_E_H2_FBI_weight_scale:
+        - 0.1
+        - 10.
+    H2_FBI_H2_E_weight_scale:
+        - 0.1
+        - 10.
+    H2_FBI_H2_FBI_weight_scale:
+        - 0.1
+        - 10.
+    H_FBI_size:
         - 1
         - 100
     Output_FBI_size:
         - 1
         - 10
 default_params:
-    H1_FBI_size: 50
+    H_FBI_size: 50
     Output_FBI_size: 10
 kwargs:
     network_id: 1
@@ -53,11 +65,11 @@ kwargs:
     seed_start: 1
     num_instances: 5
     data_seed_start: 1
-    supervised: False
+    supervised: True
     status_bar: False
     train_steps: 10000
     epochs: 1
-    network_config_file_path: config/MNIST/20230219_EIANN_1_hidden_mnist_Gjorgjieva_Hebb_config_C.yaml
+    network_config_file_path: config/MNIST/20230305_EIANN_2_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_C.yaml
     val_interval:
         - -201
         - -1
@@ -66,26 +78,30 @@ kwargs:
     constrain_equilibration_dynamics: False
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
-      function: update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C
+      function: update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_mnist_Gjorgjieva_Hebb_C
+optimization_title: EIANN_2_hidden_mnist_Supervised_Gjorgjieva_Hebb_C
 x0:
     E_I_learning_rate: 0.05889725542692798
     H1_E_H1_FBI_weight_scale: 1.5860937017840404
-    H1_E_Input_E_learning_rate: 0.005647880371398828
+    H2_E_H2_FBI_weight_scale: 1.5860937017840404
+    H_E_E_learning_rate: 0.005647880371398828
     H1_E_Input_E_weight_scale: 0.2800353254354707
+    H2_E_H1_E_weight_scale: 0.2800353254354707
     H1_FBI_H1_E_weight_scale: 3.056677478413984
     H1_FBI_H1_FBI_weight_scale: 2.2349494313586358
-    H1_FBI_size: 50
+    H2_FBI_H2_E_weight_scale: 3.056677478413984
+    H2_FBI_H2_FBI_weight_scale: 2.2349494313586358
+    H_FBI_size: 50
     I_E_learning_rate: 0.00048379300778867
     I_I_learning_rate: 0.08373746442701452
-    Output_E_H1_E_learning_rate: 0.09220619156590634
-    Output_E_H1_E_weight_scale: 0.8017671837661253
+    Output_E_E_learning_rate: 0.09220619156590634
+    Output_E_H2_E_weight_scale: 0.8017671837661253
     Output_E_Output_FBI_weight_scale: 0.4739197590895173
     Output_FBI_Output_E_weight_scale: 0.36606750462367517
     Output_FBI_Output_FBI_weight_scale: 1.1113407626461944

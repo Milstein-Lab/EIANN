@@ -50,6 +50,10 @@ def config_worker():
         context.store_weights = False
     else:
         context.store_weights = str_to_bool(context.store_weights)
+    if 'constrain_equilibration_dynamics' not in context():
+        context.constrain_equilibration_dynamics = True
+    else:
+        context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
     if 'equilibration_activity_tolerance' not in context():
         context.equilibration_activity_tolerance = 0.2
     else:
@@ -270,6 +274,97 @@ def update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C(x, context):
         Output_E_H1_E_weight_scale
     context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
         Output_E_H1_E_learning_rate
+
+    context.projection_config['Output']['E']['Output']['FBI']['weight_constraint_kwargs']['scale'] = \
+        Output_E_Output_FBI_weight_scale
+    context.projection_config['Output']['E']['Output']['FBI']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    context.projection_config['Output']['FBI']['Output']['E']['weight_constraint_kwargs']['scale'] = \
+        Output_FBI_Output_E_weight_scale
+    context.projection_config['Output']['FBI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['FBI']['Output']['FBI']['weight_constraint_kwargs']['scale'] = \
+        Output_FBI_Output_FBI_weight_scale
+    context.projection_config['Output']['FBI']['Output']['FBI']['learning_rule_kwargs']['learning_rate'] = \
+        I_I_learning_rate
+
+
+def update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C(x, context):
+    """
+
+    :param x:
+    :param context:
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    H_FBI_size = int(param_dict['H_FBI_size'])
+    Output_FBI_size = int(param_dict['Output_FBI_size'])
+
+    context.layer_config['H1']['FBI']['size'] = H_FBI_size
+    context.layer_config['H2']['FBI']['size'] = H_FBI_size
+    context.layer_config['Output']['FBI']['size'] = Output_FBI_size
+
+    H1_E_Input_E_weight_scale = param_dict['H1_E_Input_E_weight_scale'] * \
+                                math.sqrt(context.layer_config['Input']['E']['size']) / 2
+    H2_E_H1_E_weight_scale = param_dict['H2_E_H1_E_weight_scale'] * \
+                                math.sqrt(context.layer_config['H1']['E']['size']) / 2
+    H_E_E_learning_rate = param_dict['H_E_E_learning_rate']
+
+    H1_E_H1_FBI_weight_scale = param_dict['H1_E_H1_FBI_weight_scale'] * \
+                               math.sqrt(context.layer_config['H1']['FBI']['size']) / 2
+    H2_E_H2_FBI_weight_scale = param_dict['H2_E_H2_FBI_weight_scale'] * \
+                               math.sqrt(context.layer_config['H2']['FBI']['size']) / 2
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    H1_FBI_H1_E_weight_scale = param_dict['H1_FBI_H1_E_weight_scale'] * \
+                               math.sqrt(context.layer_config['H1']['E']['size']) / 2
+    H2_FBI_H2_E_weight_scale = param_dict['H2_FBI_H2_E_weight_scale'] * \
+                               math.sqrt(context.layer_config['H2']['E']['size']) / 2
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+    H1_FBI_H1_FBI_weight_scale = param_dict['H1_FBI_H1_FBI_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H1']['FBI']['size']) / 2
+    H2_FBI_H2_FBI_weight_scale = param_dict['H2_FBI_H2_FBI_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H2']['FBI']['size']) / 2
+    I_I_learning_rate = param_dict['I_I_learning_rate']
+
+    Output_E_H2_E_weight_scale = param_dict['Output_E_H2_E_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H2']['E']['size']) / 2
+    Output_E_E_learning_rate = param_dict['Output_E_E_learning_rate']
+
+    Output_E_Output_FBI_weight_scale = param_dict['Output_E_Output_FBI_weight_scale'] * \
+                                       math.sqrt(context.layer_config['Output']['FBI']['size']) / 2
+    Output_FBI_Output_E_weight_scale = param_dict['Output_FBI_Output_E_weight_scale'] * \
+                                       math.sqrt(context.layer_config['Output']['E']['size']) / 2
+    Output_FBI_Output_FBI_weight_scale = param_dict['Output_FBI_Output_FBI_weight_scale'] * \
+                                         math.sqrt(context.layer_config['Output']['FBI']['size']) / 2
+
+    context.projection_config['H1']['E']['Input']['E']['weight_constraint_kwargs']['scale'] = H1_E_Input_E_weight_scale
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_E_learning_rate
+
+    context.projection_config['H1']['E']['H1']['FBI']['weight_constraint_kwargs']['scale'] = H1_E_H1_FBI_weight_scale
+    context.projection_config['H1']['E']['H1']['FBI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['FBI']['H1']['E']['weight_constraint_kwargs']['scale'] = H1_FBI_H1_E_weight_scale
+    context.projection_config['H1']['FBI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['FBI']['H1']['FBI']['weight_constraint_kwargs']['scale'] = \
+        H1_FBI_H1_FBI_weight_scale
+    context.projection_config['H1']['FBI']['H1']['FBI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+
+    context.projection_config['H2']['E']['H1']['E']['weight_constraint_kwargs']['scale'] = H2_E_H1_E_weight_scale
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_E_learning_rate
+
+    context.projection_config['H2']['E']['H2']['FBI']['weight_constraint_kwargs']['scale'] = H2_E_H2_FBI_weight_scale
+    context.projection_config['H2']['E']['H2']['FBI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H2']['FBI']['H2']['E']['weight_constraint_kwargs']['scale'] = H2_FBI_H2_E_weight_scale
+    context.projection_config['H2']['FBI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H2']['FBI']['H2']['FBI']['weight_constraint_kwargs']['scale'] = \
+        H2_FBI_H2_FBI_weight_scale
+    context.projection_config['H2']['FBI']['H2']['FBI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+
+    context.projection_config['Output']['E']['H2']['E']['weight_constraint_kwargs']['scale'] = \
+        Output_E_H2_E_weight_scale
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_E_learning_rate
 
     context.projection_config['Output']['E']['Output']['FBI']['weight_constraint_kwargs']['scale'] = \
         Output_E_Output_FBI_weight_scale
@@ -1057,10 +1152,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     network.train(dataloader, epochs, store_history=True, store_weights=context.store_weights,
                   status_bar=context.status_bar)
 
-    if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                        context.debug, context.disp):
-        if not context.debug:
-            return dict()
+    if context.constrain_equilibration_dynamics or context.debug:
+        if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
+                                            context.debug, context.disp, context.debug and plot):
+            if not context.debug:
+                return dict()
 
     if not context.supervised:
         #TODO: this should depend on value of eval_accuracy

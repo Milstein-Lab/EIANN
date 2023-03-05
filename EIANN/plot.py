@@ -360,21 +360,8 @@ def plot_hidden_weights(weights, sort=False):
     if sort: # Sort units by tuning structure of their receptive fields
         print("Computing tuning strength...")
         structure = utils.compute_rf_structure(weights.detach())
-        # for unit_weight_vec in weights.detach():
-        #     s = metrics.structural_similarity(unit_weight_vec.numpy(),
-        #                                       np.random.uniform(min(unit_weight_vec), max(unit_weight_vec),
-        #                                                         len(unit_weight_vec)).astype('float32'))
-        #     structure.append(s)
-        sorted_idx = np.argsort(-structure)
+         sorted_idx = np.argsort(-structure)
         weights = weights[sorted_idx]
-
-        # ks_stats = []
-        # for unit_weight_vec in weights.detach():
-        #     ks_statistic, pvalue = stats.kstest(unit_weight_vec,
-        #                                         np.linspace(min(unit_weight_vec), max(unit_weight_vec), len(unit_weight_vec)))
-        #     ks_stats.append(-ks_statistic)
-        # sorted_idx = np.argsort(ks_stats)
-        # weights = weights[sorted_idx]
 
     print("Generating plots...")
     for i, unit_weight_vec in enumerate(weights):
@@ -400,20 +387,12 @@ def plot_hidden_weights(weights, sort=False):
 def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=False):
     """
 
-    :param population:
-    :param dataloader:
-    :param num_units:
-    :param method:
-    :return:
+    :param receptive_fields:
+    :param activity_preferred_inputs:
+    :param sort:
     """
-
     if sort: # Sort units by tuning structure of their receptive fields
         structure = utils.compute_rf_structure(receptive_fields)
-        # structure = []
-        # for unit_rf in receptive_fields:
-        #     s = metrics.structural_similarity(unit_rf.numpy(),
-        #                                       np.random.uniform(min(unit_rf), max(unit_rf), len(unit_rf)).astype('float32'))
-        #     structure.append(s)
         sorted_idx = np.argsort(-structure)
         receptive_fields = receptive_fields[sorted_idx]
 
