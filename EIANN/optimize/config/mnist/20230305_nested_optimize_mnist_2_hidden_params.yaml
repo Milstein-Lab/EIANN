@@ -25,3 +25,32 @@ BTSP_D1:
     Output_E_H2_E_max_weight_scale: 11.877004796419941
     Output_E_Output_FBI_weight_scale: 1.4421648104944618
     Output_FBI_Output_E_weight_scale: 1.2896049952374775
+
+Supervised_Gjorgjieva_Hebb_C_test:
+    E_I_learning_rate: 0.2514575767876125
+    H1_E_H1_FBI_weight_scale: 0.7040352845848648
+    H2_E_H2_FBI_weight_scale: 0.7040352845848648
+    H_E_E_learning_rate: 0.0018860396562151121
+    H1_E_Input_E_weight_scale: 0.19146687388500327
+    H1_FBI_H1_E_weight_scale: 0.7230011927045991
+    H1_FBI_H1_FBI_weight_scale: 0.6451660412343452
+    H2_E_H1_E_weight_scale: 0.19146687388500327
+    H2_FBI_H2_E_weight_scale: 0.7230011927045991
+    H2_FBI_H2_FBI_weight_scale: 0.6451660412343452
+    H_FBI_size: 50.0
+    I_E_learning_rate: 0.20961786889934966
+    I_I_learning_rate: 0.06677743380693181
+    Output_E_E_learning_rate: 0.5384919091718768
+    Output_E_H2_E_weight_scale: 1.0525765323079104
+    Output_E_Output_FBI_weight_scale: 0.43097675937320046
+    Output_FBI_Output_E_weight_scale: 3.386978514311345
+    Output_FBI_Output_FBI_weight_scale: 0.13403861091253574
+    Output_FBI_size: 10.0
+
+bpDale_A_test:
+    E_E_learning_rate: 2.1224223777593956
+    E_I_learning_rate: 0.0007249903965290382
+    H_FBI_size: 50
+    I_E_learning_rate: 0.0001266000494621511
+    Output_FBI_size: 10
+    softplus_beta: 16.55473214486173

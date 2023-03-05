@@ -63,6 +63,7 @@ kwargs:
         - -1
         - 10
     num_training_steps_accuracy_window: 200
+    constraint_equilibration_dynamics: False
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       function: update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C
