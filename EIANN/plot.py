@@ -406,15 +406,12 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
         structure = utils.compute_rf_structure(receptive_fields)
         sorted_idx = np.argsort(-structure)
         receptive_fields = receptive_fields[sorted_idx]
+        if activity_preferred_inputs is not None:
+            activity_preferred_inputs = activity_preferred_inputs[sorted_idx]
 
     if activity_preferred_inputs is not None:
-        activity_preferred_inputs = activity_preferred_inputs[sorted_idx]
-
         # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
         receptive_fields = receptive_fields / (torch.max(receptive_fields, dim=1, keepdim=True)[0] + 1e-10)
-
-        # Normalize activity_preferred_inputs (to use as alpha transparency)
-        # activity_preferred_inputs = (activity_preferred_inputs / torch.max(activity_preferred_inputs)).numpy()
         receptive_fields = receptive_fields * activity_preferred_inputs.unsqueeze(1)
 
     # Create figure
@@ -427,16 +424,19 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
         num_rows = int(np.ceil(num_units / num_cols))
     receptive_fields = receptive_fields[:num_cols * num_rows]
 
+    size = num_cols
+    # size = 6
+    num_rows += 1
     axes = gs.GridSpec(num_rows, num_cols)
-    fig = plt.figure(figsize=(1 * num_cols, 1 * num_rows + 2))
-
-    # Create custom colormap
-    top_rgba = plt.get_cmap('gray')(np.linspace(0, 1, 256))
-    bottom_rgba = plt.get_cmap('Blues')(np.linspace(0, 1, 256))
-    colors = np.concatenate((bottom_rgba, top_rgba))
+    fig = plt.figure(figsize=(size, size * num_rows / num_cols))
 
     colorscale_max = torch.max(receptive_fields.abs())
     if torch.min(receptive_fields) < 0:
+        # Create custom colormap
+        top_rgba = plt.get_cmap('gray')(np.linspace(0, 1, 256))
+        bottom_rgba = plt.get_cmap('Blues')(np.linspace(0, 1, 256))
+        colors = np.concatenate((bottom_rgba, top_rgba))
+
         my_cmap = plt.matplotlib.colors.LinearSegmentedColormap.from_list('custom', colors)
         colorscale_min = -colorscale_max
     else:
@@ -448,25 +448,21 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
         col_idx = i % num_cols
 
         ax = fig.add_subplot(axes[row_idx, col_idx])
-        # im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=-colorscale, vmax=colorscale,
-        #                interpolation='none', alpha=activity_preferred_inputs[i])
-        im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max)
-        # im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=-colorscale, vmax=colorscale)
+        im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max, aspect='equal')
         ax.axis('off')
-        # cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        # cax = fig.add_axes([ax.get_position().x1 + 0.002, ax.get_position().y0, 0.005, ax.get_position().height])
-        # cbar = plt.colorbar(im, cax=cax)
-        # cbar.outline.set_visible(False)
-        # cbar.ax.tick_params(labelsize=10, pad=0.5, length=0)
 
-    # fig.tight_layout(pad=0.2, h_pad=0.1)
-
+    fig.tight_layout(pad=0.2, h_pad=0.)
     fig_height = fig.get_size_inches()[1]
-    wspace = 0.01; hspace = 0.01; left = 0.01; top = 0.99; right = 0.99; bottom = 0.1
-    cax = fig.add_axes([left, ax.get_position().y0-0.2/fig_height, 0.5, ax.get_position().y0-hspace])
-    # cax = fig.add_subplot(axes[row_idx + 1, :num_cols//2])
+    cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
-    plt.subplots_adjust(wspace=wspace, hspace=hspace, left=left, top=top, right=right, bottom=bottom)
+
+    # fig_height = fig.get_size_inches()[1]
+    # wspace = 0.01; hspace = 0.01; left = 0.01; top = 0.99; right = 0.99; bottom = 0.1
+    # # cax = fig.add_axes([left, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
+    # cax = fig.add_subplot(axes[row_idx + 1, :num_cols//2])
+    # cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
+    # plt.subplots_adjust(wspace=wspace, hspace=hspace, left=left, top=top, right=right, bottom=bottom)
+
 
 def plot_unit_receptive_field(population, dataloader, unit):
 
