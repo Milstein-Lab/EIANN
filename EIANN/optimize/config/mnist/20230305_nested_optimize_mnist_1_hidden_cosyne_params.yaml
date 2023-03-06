@@ -11,7 +11,24 @@ bpDale_softplus_A:
     I_E_learning_rate: 0.00013654399551975743
     Output_FBI_size: 10.0
     softplus_beta: 95.28786232460796
-
+Gjorgjieva_Hebb_C:
+    # no equilibration constraint
+    # accuracy: 45.611202
+    E_I_learning_rate: 0.21788985208832293
+    H1_E_H1_FBI_weight_scale: 2.425808522928677
+    H1_E_Input_E_learning_rate: 0.01654879241950065
+    H1_E_Input_E_weight_scale: 0.78456745610896
+    H1_FBI_H1_E_weight_scale: 0.22996044324620546
+    H1_FBI_H1_FBI_weight_scale: 0.6180931242589313
+    H1_FBI_size: 50.0
+    I_E_learning_rate: 0.07896476261519035
+    I_I_learning_rate: 0.0889810946133562
+    Output_E_H1_E_learning_rate: 0.06740199634351625
+    Output_E_H1_E_weight_scale: 0.2778582983278187
+    Output_E_Output_FBI_weight_scale: 0.44114563672299145
+    Output_FBI_Output_E_weight_scale: 5.957441555841358
+    Output_FBI_Output_FBI_weight_scale: 1.1465177588696547
+    Output_FBI_size: 10.0
 Supervised_Gjorgjieva_Hebb_C:
     # no equilibration constraint
     # accuracy: 71.606995

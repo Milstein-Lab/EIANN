@@ -360,7 +360,7 @@ def plot_hidden_weights(weights, sort=False):
     if sort: # Sort units by tuning structure of their receptive fields
         print("Computing tuning strength...")
         structure = utils.compute_rf_structure(weights.detach())
-         sorted_idx = np.argsort(-structure)
+        sorted_idx = np.argsort(-structure)
         weights = weights[sorted_idx]
 
     print("Generating plots...")
@@ -384,46 +384,64 @@ def plot_hidden_weights(weights, sort=False):
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
 
 
-def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=False):
+def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort=False, num_cols=None, num_rows=None,
+                          activity_threshold=1e-10):
     """
 
     :param receptive_fields:
     :param activity_preferred_inputs:
     :param sort:
+    :param activity_threshold: float
+    :param num_cols: int
+    :param num_rows: int
     """
+    if activity_preferred_inputs is not None:
+        activity_preferred_inputs = activity_preferred_inputs.diagonal()
+        print(f'Min activity: {torch.min(activity_preferred_inputs)}, Max activity: {torch.max(activity_preferred_inputs)}')
+        active_idx = torch.where(activity_preferred_inputs > activity_threshold)
+        activity_preferred_inputs = activity_preferred_inputs[active_idx]
+        receptive_fields = receptive_fields[active_idx]
+
     if sort: # Sort units by tuning structure of their receptive fields
         structure = utils.compute_rf_structure(receptive_fields)
         sorted_idx = np.argsort(-structure)
         receptive_fields = receptive_fields[sorted_idx]
 
-    activity_preferred_inputs = activity_preferred_inputs.diagonal()
-    print(f'Min activity: {torch.min(activity_preferred_inputs)}, Max activity: {torch.max(activity_preferred_inputs)}')
+    if activity_preferred_inputs is not None:
+        activity_preferred_inputs = activity_preferred_inputs[sorted_idx]
 
-    # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
-    receptive_fields = receptive_fields / (torch.max(receptive_fields, dim=1, keepdim=True)[0] + 1e-10)
+        # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
+        receptive_fields = receptive_fields / (torch.max(receptive_fields, dim=1, keepdim=True)[0] + 1e-10)
 
-    # Normalize activity_preferred_inputs (to use as alpha transparency)
-    # activity_preferred_inputs = (activity_preferred_inputs / torch.max(activity_preferred_inputs)).numpy()
-    receptive_fields = receptive_fields * activity_preferred_inputs.unsqueeze(1)
+        # Normalize activity_preferred_inputs (to use as alpha transparency)
+        # activity_preferred_inputs = (activity_preferred_inputs / torch.max(activity_preferred_inputs)).numpy()
+        receptive_fields = receptive_fields * activity_preferred_inputs.unsqueeze(1)
 
     # Create figure
     num_units = receptive_fields.shape[0]
-    num_cols = int(np.ceil(num_units**0.5))
-    num_rows = int(np.ceil(num_units**0.5)) + 1
-    if num_units < 25:
-        num_cols = 5
-        num_rows = num_units // num_cols + 1
+    if num_cols is None:
+        if num_units < 25:
+            num_cols = 5
+        num_cols = int(np.ceil(num_units**0.5))
+    if num_rows is None:
+        num_rows = int(np.ceil(num_units / num_cols))
+    receptive_fields = receptive_fields[:num_cols * num_rows]
 
     axes = gs.GridSpec(num_rows, num_cols)
-    fig = plt.figure(figsize=(6, 6 * num_rows / num_cols))
-
-    colorscale = torch.max(receptive_fields.abs())
+    fig = plt.figure(figsize=(1 * num_cols, 1 * num_rows + 2))
 
     # Create custom colormap
     top_rgba = plt.get_cmap('gray')(np.linspace(0, 1, 256))
     bottom_rgba = plt.get_cmap('Blues')(np.linspace(0, 1, 256))
     colors = np.concatenate((bottom_rgba, top_rgba))
-    my_cmap = plt.matplotlib.colors.LinearSegmentedColormap.from_list('custom', colors)
+
+    colorscale_max = torch.max(receptive_fields.abs())
+    if torch.min(receptive_fields) < 0:
+        my_cmap = plt.matplotlib.colors.LinearSegmentedColormap.from_list('custom', colors)
+        colorscale_min = -colorscale_max
+    else:
+        my_cmap = 'gray'
+        colorscale_min = 0
 
     for i in range(receptive_fields.shape[0]):
         row_idx = i // num_cols
@@ -432,7 +450,7 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=Fals
         ax = fig.add_subplot(axes[row_idx, col_idx])
         # im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=-colorscale, vmax=colorscale,
         #                interpolation='none', alpha=activity_preferred_inputs[i])
-        im = ax.imshow(receptive_fields[i].view(28, 28), cmap='gray', vmin=-colorscale, vmax=colorscale)
+        im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max)
         # im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=-colorscale, vmax=colorscale)
         ax.axis('off')
         # cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
@@ -441,11 +459,14 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=Fals
         # cbar.outline.set_visible(False)
         # cbar.ax.tick_params(labelsize=10, pad=0.5, length=0)
 
-    fig.tight_layout(pad=0.2)
-    fig_height = fig.get_size_inches()[1]
-    cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
-    cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
+    # fig.tight_layout(pad=0.2, h_pad=0.1)
 
+    fig_height = fig.get_size_inches()[1]
+    wspace = 0.01; hspace = 0.01; left = 0.01; top = 0.99; right = 0.99; bottom = 0.1
+    cax = fig.add_axes([left, ax.get_position().y0-0.2/fig_height, 0.5, ax.get_position().y0-hspace])
+    # cax = fig.add_subplot(axes[row_idx + 1, :num_cols//2])
+    cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
+    plt.subplots_adjust(wspace=wspace, hspace=hspace, left=left, top=top, right=right, bottom=bottom)
 
 def plot_unit_receptive_field(population, dataloader, unit):
 

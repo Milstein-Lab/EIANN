@@ -386,7 +386,8 @@ def sort_unsupervised_by_best_epoch(network, target, plot=False):
     return sorted_idx
 
 
-def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=None, store_history=False, plot=False):
+def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=None, store_history=False, plot=False,
+                                   status_bar=False):
     """
     Assumes network has been trained with store_weights=True. Evaluates test_loss at each train step in the
     param_history.
@@ -395,6 +396,7 @@ def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=N
     :param sorted_output_idx: tensor of int
     :param store_history: bool
     :param plot: bool
+    :param status_bar
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
     assert len(network.param_history) > 0, 'Network must contain a stored param_history'
@@ -409,7 +411,11 @@ def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=N
     if store_history:
         network.reset_history()
 
-    for state_dict in network.param_history:
+    if status_bar:
+        iter_param_history = tqdm(network.param_history, desc='Test history')
+    else:
+        iter_param_history = network.param_history
+    for state_dict in iter_param_history:
         network.load_state_dict(state_dict)
         output = network.forward(test_data, store_history=store_history)
         if sorted_output_idx is not None:
@@ -861,7 +867,8 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     active_units_idx = torch.where(total_act > 1e-10)[0]
 
     # Compute unit selectivity
-    activity_fraction = (torch.sum(activity[:,active_units_idx], dim=0) / num_patterns)**2 / torch.sum(activity[:,active_units_idx]**2 / num_patterns, dim=0)
+    activity_fraction = (torch.sum(activity[:,active_units_idx], dim=0) / num_patterns)**2 / \
+                        torch.sum(activity[:,active_units_idx]**2 / num_patterns, dim=0)
     selectivity = (1 - activity_fraction) / (1 - 1 / num_patterns)
     selectivity[torch.where(torch.sum(activity[:,active_units_idx], dim=0) == 0.)] = 0.
         # fraction_nonzero_patterns = np.count_nonzero(activity, axis=0) / num_patterns
