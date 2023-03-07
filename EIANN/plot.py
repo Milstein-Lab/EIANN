@@ -448,13 +448,15 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
         col_idx = i % num_cols
 
         ax = fig.add_subplot(axes[row_idx, col_idx])
-        im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max, aspect='equal')
+        im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max,
+                       aspect='equal')
         ax.axis('off')
 
-    fig.tight_layout(pad=0.2, h_pad=0.)
-    fig_height = fig.get_size_inches()[1]
-    cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
+    fig.tight_layout(pad=0.8, h_pad=0.4, w_pad=0.2)
+    fig_width, fig_height = fig.get_size_inches()
+    cax = fig.add_axes([0.01, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
+    fig.show()
 
     # fig_height = fig.get_size_inches()[1]
     # wspace = 0.01; hspace = 0.01; left = 0.01; top = 0.99; right = 0.99; bottom = 0.1
