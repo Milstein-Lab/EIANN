@@ -462,11 +462,12 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
     # fig.tight_layout(pad=0.2, h_pad=0.1)
 
     fig_height = fig.get_size_inches()[1]
-    wspace = 0.01; hspace = 0.01; left = 0.01; top = 0.99; right = 0.99; bottom = 0.1
-    cax = fig.add_axes([left, ax.get_position().y0-0.2/fig_height, 0.5, ax.get_position().y0-hspace])
+    wspace = 0.01; hspace = 0.01; left = 0.02; top = 0.98; right = 0.98; bottom = 0.05
+    cax = fig.add_axes([left, ax.get_position().y0-0.4/fig_height, 0.5, 0.12/fig_height])
     # cax = fig.add_subplot(axes[row_idx + 1, :num_cols//2])
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
     plt.subplots_adjust(wspace=wspace, hspace=hspace, left=left, top=top, right=right, bottom=bottom)
+
 
 def plot_unit_receptive_field(population, dataloader, unit):
 

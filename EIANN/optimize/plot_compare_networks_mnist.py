@@ -74,7 +74,7 @@ def plot_accuracy_comparison(model_list, data_dict, title_dict, legend_dict):
 data_file_path = 'data/mnist/20230303_exported_output_EIANN_1_hidden_mnist.hdf5'
 data_dict = utils.hdf5_to_dict(data_file_path)
 
-model_list = ['van_bp_softplus', 'bpDale_softplus_A', 'Supervised_Gjorgjieva_Hebb_C', 'BTSP_D1']
+model_list = ['van_bp_softplus', 'bpDale_softplus_A', 'Gjorgjieva_Hebb_C', 'Supervised_Gjorgjieva_Hebb_C', 'BTSP_D1']
 
 title_dict = {}
 legend_dict = {}
@@ -88,9 +88,13 @@ for model_name in data_dict:
         title_dict[model_name] = 'Backprop (Dale)'
         legend_dict[model_name] = ('Backprop (Dale)', 'r')
         model_names_dict['BP_Dale'] = model_name
-    if 'Hebb' in model_name:
+    elif 'Supervised_Gjorgjieva_Hebb' in model_name:
         title_dict[model_name] = 'Supervised Hebb'
         legend_dict[model_name] = ('Supervised Hebb', 'purple')
+        model_names_dict['Hebb'] = model_name
+    elif 'Hebb' in model_name:
+        title_dict[model_name] = 'Hebb'
+        legend_dict[model_name] = ('Hebb', 'orange')
         model_names_dict['Hebb'] = model_name
     elif 'BTSP' in model_name:
         title_dict[model_name] = 'Dendritic Gating'

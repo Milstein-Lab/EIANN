@@ -16,8 +16,8 @@ from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
-    update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_backprop_softplus_SGD, \
-    update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C
+    update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, \
+    update_EIANN_config_1_hidden_backprop_softplus_SGD, update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C
 import EIANN.utils as utils
 
 context = Context()
@@ -1503,7 +1503,6 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if os.path.exists(saved_network_path) and not context.retrain:
         network.load(saved_network_path)
     else:
-        print('Training network...')
         data_generator.manual_seed(data_seed)
         network.train_and_validate(train_sub_dataloader,
                                    val_dataloader,
