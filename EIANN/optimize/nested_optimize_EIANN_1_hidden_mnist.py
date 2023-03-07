@@ -66,6 +66,10 @@ def config_worker():
         context.verbose = False
     else:
         context.verbose = str_to_bool(context.verbose)
+    if 'interactive' not in context():
+        context.interactive = False
+    else:
+        context.interactive = str_to_bool(context.interactive)
     if 'export_network_config_file_path' not in context():
         context.export_network_config_file_path = None
     if 'eval_accuracy' not in context():

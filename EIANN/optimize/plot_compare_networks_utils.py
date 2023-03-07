@@ -415,7 +415,7 @@ def plot_metrics_CL(metrics_dict, legend_dict, model_list):
 
     orig_font_size = mpl.rcParams['font.size']
     # mpl.rcParams['font.size'] = 14.
-    fig, ax = plt.subplots(2,1,figsize=(4,5))
+    fig, ax = plt.subplots(2,2,figsize=(10,10))
     xlim = [-0.75, len(model_list) - 0.25]
     key = 'final_accuracy'
     for x, model_name in enumerate(model_list):
