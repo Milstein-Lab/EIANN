@@ -6,6 +6,7 @@ import os, sys, math
 from copy import deepcopy
 import numpy as np
 import h5py
+import gc
 
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
@@ -1638,6 +1639,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                     metrics_group.create_dataset('test_accuracy', data=test_accuracy_history)
                     for metric in metrics_dict:
                         metrics_group.create_dataset(metric, data=metrics_dict[metric])
+
+    if not context.interactive:
+        del network
+        gc.collect()
 
     return results
 

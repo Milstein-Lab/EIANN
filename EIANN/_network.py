@@ -181,7 +181,7 @@ class Network(nn.Module):
                 population.reinit(self.device)
                 population.reset_history()
 
-    def forward(self, sample, store_history=False, store_dynamics=True):
+    def forward(self, sample, store_history=False, store_dynamics=True, no_grad=False):
 
         for i, layer in enumerate(self):
             for pop in layer:
@@ -191,7 +191,7 @@ class Network(nn.Module):
                 input_pop.activity = torch.squeeze(sample)
 
         for t in range(self.forward_steps):
-            if t >= self.forward_steps - self.backward_steps:
+            if (t >= self.forward_steps - self.backward_steps) and not no_grad:
                 track_grad = True
             else:
                 track_grad = False
@@ -368,7 +368,7 @@ class Network(nn.Module):
 
         # Compute validation loss
         if train_step in val_range:
-            output = self.forward(val_data, store_dynamics=False).detach()
+            output = self.forward(val_data, store_dynamics=False, no_grad=True).detach()
             val_output_history.append(output)
             val_loss_history.append(self.criterion(output, val_target).detach())
             accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / output.shape[0]
@@ -440,7 +440,7 @@ class Network(nn.Module):
 
                 # Compute validation loss
                 if train_step in val_range:
-                    output = self.forward(val_data, store_dynamics=False).detach()
+                    output = self.forward(val_data, store_dynamics=False, no_grad=True).detach()
                     val_output_history.append(output)
                     val_loss_history.append(self.criterion(output, val_target).detach())
                     accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \

@@ -1,4 +1,10 @@
+vanilla_bp_softplus:
+    # accuracy: 93.7527
+    learning_rate: 0.2567150144514216
+    softplus_beta: 13.407655301640798
 BTSP_D1:
+    # with constrain_equilibration_dynamics on
+    # accuracy: 83.1718
     BTSP_neg_loss_ET_discount: 0.0534906263219985
     FB_BTSP_init_weight_factor: 0.40154539810686335
     FF_BTSP_init_weight_factor: 0.014329974669793879
