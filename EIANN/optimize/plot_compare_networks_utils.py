@@ -81,7 +81,8 @@ def unpack_data_CL(model_list, data_file_path_dict):
             activity_dict[description] = {'phase1': {}, 'phase2': {}}
             metrics_dict[description] = {'phase1_loss': [], 'phase1_accuracy': [],
                                          'phase2_loss': [], 'phase2_accuracy': [],
-                                         'final_loss': [], 'final_accuracy': []}
+                                         'final_total_loss': [], 'final_total_accuracy': [],
+                                         'final_phase1_loss': [], 'final_phase1_accuracy': []}
             first_seed_group = next(iter(f[description].values()))
             for post_layer in first_seed_group['phase1_activity']:
                 activity_dict[description]['phase1'][post_layer] = {}
@@ -97,10 +98,14 @@ def unpack_data_CL(model_list, data_file_path_dict):
             for seed_group in f[description].values():
                 metrics_dict[description]['phase1_loss'].append(seed_group['metrics']['phase1_loss'][:])
                 metrics_dict[description]['phase2_loss'].append(seed_group['metrics']['phase2_loss'][:])
-                metrics_dict[description]['final_loss'].append(seed_group['metrics']['final_loss'][0])
+                metrics_dict[description]['final_total_loss'].append(seed_group['metrics']['final_total_loss'][0])
+                metrics_dict[description]['final_phase1_loss'].append(seed_group['metrics']['final_phase1_loss'][0])
                 metrics_dict[description]['phase1_accuracy'].append(seed_group['metrics']['phase1_accuracy'][:])
                 metrics_dict[description]['phase2_accuracy'].append(seed_group['metrics']['phase2_accuracy'][:])
-                metrics_dict[description]['final_accuracy'].append(seed_group['metrics']['final_accuracy'][0])
+                metrics_dict[description]['final_total_accuracy'].append(
+                    seed_group['metrics']['final_total_accuracy'][0])
+                metrics_dict[description]['final_phase1_accuracy'].append(
+                    seed_group['metrics']['final_phase1_accuracy'][0])
 
     return  activity_dict, metrics_dict
 
@@ -415,43 +420,46 @@ def plot_metrics_CL(metrics_dict, legend_dict, model_list):
 
     orig_font_size = mpl.rcParams['font.size']
     # mpl.rcParams['font.size'] = 14.
-    fig, ax = plt.subplots(2,2,figsize=(10,10))
+    fig, ax = plt.subplots() # 2,1,figsize=(5,10))
     xlim = [-0.75, len(model_list) - 0.25]
-    key = 'final_accuracy'
     for x, model_name in enumerate(model_list):
-        mean_accuracy = np.mean(metrics_dict[model_name][key])
-        std_accuracy = np.std(metrics_dict[model_name][key])
-        ax[1].bar(x, mean_accuracy, yerr=std_accuracy, width=0.5,
-                color=legend_dict[model_name][1], alpha=0.7)
-    ax[1].set_xlim(xlim)
-    ax[1].set_ylim([0, 100])
-    ax[1].set_ylabel('% Correct')
-    ax[1].set_title('Final accuracy')
-    ax[1].set_xticks(np.arange(len(model_list)))
+        final_phase1_accuracy = metrics_dict[model_name]['final_phase1_accuracy']
+        final_phase2_accuracy = np.array([metrics_dict[model_name]['phase2_accuracy'][i][-1] for i in
+                                          range(len(final_phase1_accuracy))])
+        final_phase_accuracy = np.array([final_phase1_accuracy, final_phase2_accuracy])
+        average_final_phase_accuracy = np.mean(final_phase_accuracy, axis=0)
+        mean_accuracy = np.mean(average_final_phase_accuracy)
+        std_accuracy = np.std(average_final_phase_accuracy)
+        ax.bar(x, mean_accuracy, yerr=std_accuracy, width=0.5, color=legend_dict[model_name][1], alpha=0.7)
+    ax.set_xlim(xlim)
+    ax.set_ylim([0, 100])
+    ax.set_ylabel('% Correct')
+    ax.set_title('Final accuracy\n(Average of training phases)')
+    ax.set_xticks(np.arange(len(model_list)))
     label_list = [legend_dict[model_name][0] for model_name in model_list]
-    ax[1].set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
-    clean_axes(ax[1])
-
-    xlim = [-0.75, len(model_list) - 0.25]
-    key = 'phase1_accuracy'
-    for x, model_name in enumerate(model_list):
-        final_accuracy_phase1 = np.array(metrics_dict[model_name][key])[:,-1]
-        mean_accuracy = np.mean(final_accuracy_phase1)
-        std_accuracy = np.std(final_accuracy_phase1)
-        ax[0].bar(x, mean_accuracy, yerr=std_accuracy, width=0.5,
-                color=legend_dict[model_name][1], alpha=0.7)
-    ax[0].set_xlim(xlim)
-    ax[0].set_ylim([0, 100])
-    ax[0].set_ylabel('% Correct')
-    ax[0].set_title('Phase 1 accuracy')
-    ax[0].set_xticks(np.arange(len(model_list)))
-    label_list = [legend_dict[model_name][0] for model_name in model_list]
-    ax[0].set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
-    clean_axes(ax[0])
+    ax.set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
+    clean_axes(ax)
+    #
+    # xlim = [-0.75, len(model_list) - 0.25]
+    # key = 'phase1_accuracy'
+    # for x, model_name in enumerate(model_list):
+    #     final_accuracy_phase1 = np.array(metrics_dict[model_name][key])[:,-1]
+    #     mean_accuracy = np.mean(final_accuracy_phase1)
+    #     std_accuracy = np.std(final_accuracy_phase1)
+    #     ax[0].bar(x, mean_accuracy, yerr=std_accuracy, width=0.5,
+    #             color=legend_dict[model_name][1], alpha=0.7)
+    # ax[0].set_xlim(xlim)
+    # ax[0].set_ylim([0, 100])
+    # ax[0].set_ylabel('% Correct')
+    # ax[0].set_title('Phase 1 accuracy')
+    # ax[0].set_xticks(np.arange(len(model_list)))
+    # label_list = [legend_dict[model_name][0] for model_name in model_list]
+    # ax[0].set_xticklabels(label_list, rotation=-45, ha="left", rotation_mode="anchor")
+    # clean_axes(ax[0])
     fig.tight_layout()
     fig.show()
-    fig.savefig(f'figures/accuracy_bar_CL.svg', dpi=300)
-    fig.savefig(f'figures/accuracy_bar_CL.png', dpi=300)
+    # fig.savefig(f'figures/accuracy_bar_CL.svg', dpi=300)
+    # fig.savefig(f'figures/accuracy_bar_CL.png', dpi=300)
     mpl.rcParams['font.size'] = orig_font_size
 
 
@@ -470,8 +478,8 @@ def plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, m
     ax2 = axes[1]
 
     xlim = [-0.75, len(model_list) - 0.25]
-    ax1.plot(xlim, np.ones_like(xlim) * sparsity_dict['ideal'], '--', color='grey')
-    ax2.plot(xlim, np.ones_like(xlim) * discriminability_dict['ideal'], '--', color='grey')
+    # ax1.plot(xlim, np.ones_like(xlim) * sparsity_dict['ideal'], '--', color='grey')
+    # ax2.plot(xlim, np.ones_like(xlim) * discriminability_dict['ideal'], '--', color='grey')
 
     for x, model_name in enumerate(model_list):
         ax1.bar(x, np.mean(sparsity_dict[model_name]), yerr=np.std(sparsity_dict[model_name]), width=0.5,

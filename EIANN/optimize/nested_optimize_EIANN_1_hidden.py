@@ -1237,6 +1237,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         plot_simple_EIANN_config_summary(network, num_samples=len(dataloader), label='Initial')
         network.reset_history()
 
+    # if context.debug:
+    #     context.update(locals())
+    #     return dict()
+
     data_generator.manual_seed(data_seed)
     network.train(dataloader, epochs, store_history=True, store_weights=context.store_weights,
                   status_bar=context.status_bar)
