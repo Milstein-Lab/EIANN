@@ -33,6 +33,29 @@ def update_plot_defaults():
                      'text.usetex': False})
 
 
+def clean_axes(axes, left=True, right=False):
+    """
+    Remove top and right axes from pyplot axes object.
+    :param axes: list of pyplot.Axes
+    :param top: bool
+    :param left: bool
+    :param right: bool
+    """
+    if not type(axes) in [np.ndarray, list]:
+        axes = [axes]
+    elif type(axes) == np.ndarray:
+        axes = axes.flatten()
+    for axis in axes:
+        axis.tick_params(direction='out')
+        axis.spines['top'].set_visible(False)
+        if not right:
+            axis.spines['right'].set_visible(False)
+        if not left:
+            axis.spines['left'].set_visible(False)
+        axis.get_xaxis().tick_bottom()
+        axis.get_yaxis().tick_left()
+
+
 # *******************************************************************
 # Network summary functions
 # *******************************************************************
@@ -448,13 +471,15 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
         col_idx = i % num_cols
 
         ax = fig.add_subplot(axes[row_idx, col_idx])
-        im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max, aspect='equal')
+        im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max,
+                       aspect='equal')
         ax.axis('off')
 
-    fig.tight_layout(pad=0.2, h_pad=0.)
-    fig_height = fig.get_size_inches()[1]
-    cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
+    fig.tight_layout(pad=2., h_pad=0.4, w_pad=0.2)
+    fig_width, fig_height = fig.get_size_inches()
+    cax = fig.add_axes([0.03, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
+    fig.show()
 
     # fig_height = fig.get_size_inches()[1]
     # wspace = 0.01; hspace = 0.01; left = 0.01; top = 0.99; right = 0.99; bottom = 0.1
@@ -629,9 +654,13 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         for label in range(num_labels):
             label_idx = torch.where(labels == label)  # find all instances of given label
             avg_pop_activity[:, label] = torch.mean(population.activity[label_idx].detach(), dim=0)
+        silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+        active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+        preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+        _, idx = torch.sort(preferred_input)
+        sort_idx = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
         fig, axes = plt.subplots()
         ax = axes
-        _, sort_idx = torch.sort(torch.argmax(avg_pop_activity,dim=1))
         im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none', aspect='auto')
         cbar = plt.colorbar(im, ax=ax)
         ax.set_xticks(range(num_labels))
@@ -689,11 +718,12 @@ def plot_plateaus(population, start=0, end=-1):
     plt.title(f'Plateau History: step {start} to {end}')
 
 
-def plot_sorted_plateaus(population, test_dataloader):
+def plot_sorted_plateaus(population, test_dataloader, show_negative=True):
 
     network = population.network
 
     # Sort history (x-axis) by label
+    # TODO: Why was this torch.stack previously?
     label_history = torch.argmax(network.target_history, dim=1)
     val, idx = torch.sort(label_history)
     sorted_plateaus = population.plateau_history[idx, :]
@@ -709,15 +739,25 @@ def plot_sorted_plateaus(population, test_dataloader):
         label_idx = torch.where(labels == label)[0]
         samples_per_label[label] = len(label_idx)
         avg_pop_activity[:, label] = torch.mean(population.activity[label_idx,:], dim=0)
-    preferred_input = torch.argmax(avg_pop_activity, dim=1)
+    silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+    active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+    preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
     val, idx = torch.sort(preferred_input)
-    sorted_plateaus = sorted_plateaus[:, idx]
+    sorted_indexes = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
+    sorted_plateaus = sorted_plateaus[:, sorted_indexes]
+    if not show_negative:
+        sorted_plateaus[(sorted_plateaus < 0)] = 0
+        vmin = 0
+        cmap = 'binary'
+    else:
+        vmin = -1
+        cmap = 'bwr'
     unit_ids = idx
 
-    fig, ax = plt.subplots(figsize=[11, 7])
+    fig, ax = plt.subplots() # figsize=[11, 7])
     # plateau_scale = max(abs(torch.max(sorted_plateaus)), abs(torch.min(sorted_plateaus)))
-    ax.imshow(sorted_plateaus.T, aspect='auto', cmap='bwr', interpolation='nearest',
-               vmin=-1, vmax=1)
+    ax.imshow(sorted_plateaus.T, aspect='auto', cmap=cmap, interpolation='nearest',
+               vmin=vmin, vmax=1)
     ax.set_ylabel(f'{population.fullname} unit')
     ax.set_title(f'Sorted Plateau History, {population.fullname}')
 
@@ -725,6 +765,9 @@ def plot_sorted_plateaus(population, test_dataloader):
     ax.set_xticks(label_centers)
     ax.set_xticklabels(range(0, num_labels))
     ax.set_xlabel('Samples (sorted by label)')
+    fig.tight_layout()
+    clean_axes(ax)
+    fig.show()
 
     return sorted_plateaus.T, unit_ids
 
@@ -1360,3 +1403,26 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
 
     plt.tight_layout()
     # fig.show()
+
+
+def plot_FB_weight_alignment(*projections, title=None):
+    """
+
+    :param projections: list of :class:'Projection'
+    :param labels: list of str
+    """
+    fig, axes = plt.subplots()
+    indexes = torch.where((projections[1].weight.data.T.flatten() == projections[1].initial_weight.T.flatten())
+                          & (projections[0].weight.data.T.flatten() == projections[0].initial_weight.T.flatten()))
+    axes.scatter(projections[0].weight.data.flatten()[indexes], projections[1].weight.data.T.flatten()[indexes], s=4.,
+                 label='Un-allocated weights', color='orange', zorder=3)
+    axes.scatter(projections[0].weight.data.flatten(), projections[1].weight.data.T.flatten(), s=4.,
+                 label='Learned weights', color='b', zorder=2)
+    axes.set_xlabel('Bottom-up weights')
+    axes.set_ylabel('Top-down weights')
+    if title is not None:
+        axes.set_title(title)
+    axes.legend(loc='best', frameon=False)
+    fig.tight_layout()
+    clean_axes(axes)
+    fig.show()

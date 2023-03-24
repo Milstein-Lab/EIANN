@@ -6,6 +6,7 @@ import os, sys, math
 from copy import deepcopy
 import numpy as np
 import h5py
+import gc
 
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
@@ -16,8 +17,8 @@ from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
-    update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_backprop_softplus_SGD, \
-    update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C
+    update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, \
+    update_EIANN_config_1_hidden_backprop_softplus_SGD, update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C
 import EIANN.utils as utils
 
 context = Context()
@@ -65,6 +66,10 @@ def config_worker():
         context.verbose = False
     else:
         context.verbose = str_to_bool(context.verbose)
+    if 'interactive' not in context():
+        context.interactive = False
+    else:
+        context.interactive = str_to_bool(context.interactive)
     if 'export_network_config_file_path' not in context():
         context.export_network_config_file_path = None
     if 'eval_accuracy' not in context():
@@ -221,6 +226,67 @@ def update_EIANN_config_2_hidden_mnist_backprop_Dale_softplus_SGD(x, context):
         E_I_learning_rate
     context.projection_config['Output']['FBI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
         I_E_learning_rate
+
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
+def update_EIANN_config_2_hidden_mnist_backprop_Dale_softplus_SGD_B(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    softplus_beta = param_dict['softplus_beta']
+    H_FBI_size = int(param_dict['H_FBI_size'])
+    Output_FBI_size = int(param_dict['Output_FBI_size'])
+
+    E_E_learning_rate = param_dict['E_E_learning_rate']
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+
+    context.layer_config['H1']['FBI']['size'] = H_FBI_size
+    context.layer_config['H2']['FBI']['size'] = H_FBI_size
+    context.layer_config['Output']['FBI']['size'] = Output_FBI_size
+
+    H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
+    H1_E_H1_FBI_init_weight_scale = param_dict['H1_E_H1_FBI_init_weight_scale']
+    H1_FBI_H1_E_init_weight_scale = param_dict['H1_FBI_H1_E_init_weight_scale']
+    H2_E_H1_E_init_weight_scale = param_dict['H2_E_H1_E_init_weight_scale']
+    H2_E_H2_FBI_init_weight_scale = param_dict['H2_E_H2_FBI_init_weight_scale']
+    H2_FBI_H2_E_init_weight_scale = param_dict['H2_FBI_H2_E_init_weight_scale']
+    Output_E_H2_E_init_weight_scale = param_dict['Output_E_H2_E_init_weight_scale']
+    Output_E_Output_FBI_init_weight_scale = param_dict['Output_E_Output_FBI_init_weight_scale']
+    Output_FBI_Output_E_init_weight_scale = param_dict['Output_FBI_Output_E_init_weight_scale']
+
+    for i, layer in enumerate(context.layer_config.values()):
+        if i > 0:
+            for pop in layer.values():
+                if 'activation' in pop and pop['activation'] == 'softplus':
+                    if 'activation_kwargs' not in pop:
+                        pop['activation_kwargs'] = {}
+                    pop['activation_kwargs']['beta'] = softplus_beta
+
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['FBI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['E']['H1']['FBI']['weight_init_args'] = (H1_E_H1_FBI_init_weight_scale,)
+    context.projection_config['H1']['FBI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['FBI']['H1']['E']['weight_init_args'] = (H1_FBI_H1_E_init_weight_scale,)
+
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_E_H1_E_init_weight_scale,)
+    context.projection_config['H2']['E']['H2']['FBI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H2']['E']['H2']['FBI']['weight_init_args'] = (H2_E_H2_FBI_init_weight_scale,)
+    context.projection_config['H2']['FBI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H2']['FBI']['H2']['E']['weight_init_args'] = (H2_FBI_H2_E_init_weight_scale,)
+
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
+    context.projection_config['Output']['E']['Output']['FBI']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    context.projection_config['Output']['E']['Output']['FBI']['weight_init_args'] = \
+        (Output_E_Output_FBI_init_weight_scale,)
+    context.projection_config['Output']['FBI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['FBI']['Output']['E']['weight_init_args'] = \
+        (Output_FBI_Output_E_init_weight_scale,)
 
     context.training_kwargs['optimizer'] = 'SGD'
 
@@ -1496,6 +1562,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
 
     if plot:
+        try:
+            network.Output.E.H1.E.initial_weight = network.Output.E.H1.E.weight.data.detach().clone()
+            network.H1.E.Output.E.initial_weight = network.H1.E.Output.E.weight.data.detach().clone()
+        except:
+            pass
         plot_batch_accuracy(network, test_dataloader, population='all', title='Initial')
 
     network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
@@ -1503,7 +1574,6 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if os.path.exists(saved_network_path) and not context.retrain:
         network.load(saved_network_path)
     else:
-        print('Training network...')
         data_generator.manual_seed(data_seed)
         network.train_and_validate(train_sub_dataloader,
                                    val_dataloader,
@@ -1515,6 +1585,13 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                                    status_bar=context.status_bar)
         if export:
             network.save(path=saved_network_path)
+
+    if plot:
+        try:
+            from EIANN.plot import plot_FB_weight_alignment
+            plot_FB_weight_alignment(network.Output.E.H1.E, network.H1.E.Output.E)
+        except:
+            pass
 
     # reorder output units if using unsupervised/Hebbian rule
     if not context.supervised:
@@ -1639,6 +1716,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                     metrics_group.create_dataset('test_accuracy', data=test_accuracy_history)
                     for metric in metrics_dict:
                         metrics_group.create_dataset(metric, data=metrics_dict[metric])
+
+    if not context.interactive:
+        del network
+        gc.collect()
 
     return results
 

@@ -181,7 +181,7 @@ class Network(nn.Module):
                 population.reinit(self.device)
                 population.reset_history()
 
-    def forward(self, sample, store_history=False):
+    def forward(self, sample, store_history=False, store_dynamics=True, no_grad=False):
 
         for i, layer in enumerate(self):
             for pop in layer:
@@ -191,7 +191,7 @@ class Network(nn.Module):
                 input_pop.activity = torch.squeeze(sample)
 
         for t in range(self.forward_steps):
-            if t >= self.forward_steps - self.backward_steps:
+            if (t >= self.forward_steps - self.backward_steps) and not no_grad:
                 track_grad = True
             else:
                 track_grad = False
@@ -212,7 +212,8 @@ class Network(nn.Module):
                                         delta_state = delta_state + projection(pre_pop.prev_activity)
                             post_pop.state = post_pop.state + delta_state / post_pop.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
-                        post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
+                        if store_dynamics:
+                            post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
 
         if store_history:
             for layer in self:
@@ -367,7 +368,7 @@ class Network(nn.Module):
 
         # Compute validation loss
         if train_step in val_range:
-            output = self.forward(val_data).detach()
+            output = self.forward(val_data, store_dynamics=False, no_grad=True).detach()
             val_output_history.append(output)
             val_loss_history.append(self.criterion(output, val_target).detach())
             accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / output.shape[0]
@@ -439,7 +440,7 @@ class Network(nn.Module):
 
                 # Compute validation loss
                 if train_step in val_range:
-                    output = self.forward(val_data).detach()
+                    output = self.forward(val_data, store_dynamics=False, no_grad=True).detach()
                     val_output_history.append(output)
                     val_loss_history.append(self.criterion(output, val_target).detach())
                     accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
@@ -485,11 +486,11 @@ class Network(nn.Module):
         #         print('Model not saved')
         #         return
 
-        self.params_to_save.extend(['param_history','param_history_steps','sample_order','target_history',
-                                    'sorted_sample_indexes','loss_history','val_output_history','val_loss_history',
-                                    'val_history_train_steps','val_accuracy_history','val_target','activity_history_list',
-                                    '_activity_history','_backward_activity_history','bias_history_list','_bias_history',
-                                    '_plateau_history','plateau_history_list'])
+        self.params_to_save.extend(['param_history', 'param_history_steps', 'sample_order', 'target_history',
+                                    'sorted_sample_indexes', 'loss_history', 'val_output_history', 'val_loss_history',
+                                    'val_history_train_steps', 'val_accuracy_history', 'val_target',
+                                    'activity_history_list', '_activity_history', '_backward_activity_history',
+                                    'bias_history_list', '_bias_history', '_plateau_history', 'plateau_history_list'])
 
         data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
                                  if param_name in self.params_to_save},

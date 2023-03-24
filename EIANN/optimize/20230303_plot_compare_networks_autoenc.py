@@ -13,7 +13,7 @@ title_dict = {'vanilla_backprop': 'Backprop',
               'Gjorgjieva_Hebb_C': 'Hebb',
               'Supervised_Gjorgjieva_Hebb_1_inh_static_C': 'Supervised Hebb',
               'Supervised_Gjorgjieva_Hebb_C': 'Supervised Hebb',
-              'BTSP_D1': 'Dendritic gating'}
+              'BTSP_D1': 'Dendritic Gating'}
 
 data_file_path_dict = \
     {'vanilla_backprop': 'data/autoenc/20230303_exported_output_EIANN_1_hidden_autoenc.hdf5',
@@ -30,7 +30,7 @@ legend_dict =  {'vanilla_backprop': ('Backprop', 'k'),
                 'Gjorgjieva_Hebb_C': ('Hebb', 'orange'),
                 'Supervised_Gjorgjieva_Hebb_1_inh_static_C': ('Supervised Hebb', 'purple'),
                 'Supervised_Gjorgjieva_Hebb_C': ('Supervised Hebb', 'purple'),
-                'BTSP_D1': ('Dendritic gating', 'c')}
+                'BTSP_D1': ('Dendritic Gating', 'c')}
 
 example_index_dict = {'vanilla_backprop': 0,
                       'bpDale_1_inh_softplus': 0,
@@ -56,15 +56,12 @@ model_list_2 = ['vanilla_backprop', 'bpDale_1_inh_softplus', 'Supervised_Gjorgji
 plot_metrics(metrics_dict, legend_dict, model_list[:1])
 plot_metrics(metrics_dict, legend_dict, model_list[:2])
 plot_metrics(metrics_dict, legend_dict, model_list[:3])
-plot_metrics(metrics_dict, legend_dict, model_list_2[:3])
-plot_metrics(metrics_dict, legend_dict, model_list_2)
+plot_metrics(metrics_dict, legend_dict, model_list[:4])
+plot_metrics(metrics_dict, legend_dict, model_list)
 
 
 sparsity_dict, discriminability_dict = analyze_hidden_representations(activity_dict)
 
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list_2[:1])
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list_2[:2])
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list_2[:3])
-plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list_2)
+plot_summary_comparison(sparsity_dict, discriminability_dict, legend_dict, model_list)
 
 plt.show()
