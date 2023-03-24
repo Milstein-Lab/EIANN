@@ -694,7 +694,7 @@ def plot_sorted_plateaus(population, test_dataloader):
     network = population.network
 
     # Sort history (x-axis) by label
-    label_history = torch.argmax(torch.stack(network.target_history), dim=1)
+    label_history = torch.argmax(network.target_history, dim=1)
     val, idx = torch.sort(label_history)
     sorted_plateaus = population.plateau_history[idx, :]
 
