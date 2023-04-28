@@ -55,14 +55,14 @@ kwargs:
     data_seed_start: 1
     supervised: True
     status_bar: False
-    train_steps: 10000
+    train_steps: 20000
     epochs: 1
     network_config_file_path: config/MNIST/20230425_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_D.yaml
     val_interval:
-        - -201
+        - -2001
         - -1
-        - 10
-    num_training_steps_accuracy_window: 200
+        - 100
+    num_training_steps_accuracy_window: 2000
     constrain_equilibration_dynamics: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
