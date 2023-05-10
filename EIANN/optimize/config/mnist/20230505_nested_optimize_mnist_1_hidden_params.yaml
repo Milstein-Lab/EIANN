@@ -1,0 +1,55 @@
+Supervised_Gjorgjieva_Hebb_D:
+    # with equilibration constraint
+    # accuracy: 55.4989
+    E_I_learning_rate: 0.09308157774337203
+    H1_E_H1_FBI_weight_scale: 1.7525122672680211
+    H1_E_Input_E_learning_rate: 0.0037112451292909384
+    H1_E_Input_E_weight_scale: 0.20789006913714658
+    H1_FBI_H1_E_weight_scale: 0.6422060674482027
+    H1_FBI_H1_FBI_weight_scale: 0.017390781126641903
+    H1_FBI_size: 50.0
+    I_E_learning_rate: 0.036513829967252213
+    I_I_learning_rate: 0.017056798927850628
+    Output_E_H1_E_learning_rate: 0.005512859516721208
+    Output_E_H1_E_weight_scale: 1.0300189014713241
+    Output_E_Output_FBI_weight_scale: 2.210781587616009
+    Output_FBI_Output_E_weight_scale: 0.22522678674654611
+    Output_FBI_Output_FBI_weight_scale: 1.0737522689930692
+    Output_FBI_size: 10.0
+test_Supervised_Gjorgjieva_Hebb_F:
+    # with equilibration constraint
+    E_I_learning_rate: 0.09308157774337203
+    H1_E_H1_I_weight_scale: 1.7525122672680211
+    H1_E_Input_E_learning_rate: 0.0037112451292909384
+    H1_E_Input_E_weight_scale: 0.20789006913714658
+    H1_I_Input_E_weight_scale: 0.6422060674482027
+    H1_I_H1_E_weight_scale: 0.6422060674482027
+    H1_I_H1_I_weight_scale: 0.017390781126641903
+    H1_I_size: 50.0
+    I_E_learning_rate: 0.036513829967252213
+    I_I_learning_rate: 0.017056798927850628
+    Output_E_H1_E_learning_rate: 0.005512859516721208
+    Output_E_H1_E_weight_scale: 1.0300189014713241
+    Output_E_Output_I_weight_scale: 2.210781587616009
+    Output_I_H1_E_weight_scale: 0.22522678674654611
+    Output_I_Output_E_weight_scale: 0.22522678674654611
+    Output_I_Output_I_weight_scale: 1.0737522689930692
+    Output_I_size: 10.0
+Gjorgjieva_Hebb_D:
+    # with equilibration constraint
+    # accuracy: 46.031902
+    E_I_learning_rate: 0.09632489642588908
+    H1_E_H1_FBI_weight_scale: 1.5965250166705285
+    H1_E_Input_E_learning_rate: 0.004667181860295883
+    H1_E_Input_E_weight_scale: 0.332820533243739
+    H1_FBI_H1_E_weight_scale: 0.7911109448391199
+    H1_FBI_H1_FBI_weight_scale: 0.03517013095833632
+    H1_FBI_size: 50.0
+    I_E_learning_rate: 0.004720158776876248
+    I_I_learning_rate: 0.06936872040561685
+    Output_E_H1_E_learning_rate: 0.45419681105055243
+    Output_E_H1_E_weight_scale: 0.5608329377081872
+    Output_E_Output_FBI_weight_scale: 0.4753918517675207
+    Output_FBI_Output_E_weight_scale: 8.2182557632527
+    Output_FBI_Output_FBI_weight_scale: 1.0995952673549512
+    Output_FBI_size: 10.0

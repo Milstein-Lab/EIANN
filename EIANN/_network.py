@@ -183,12 +183,16 @@ class Network(nn.Module):
 
     def forward(self, sample, store_history=False, store_dynamics=True, no_grad=False):
 
+        if len(sample.shape) > 1:
+            batch_size = sample.shape[0]
+        else:
+            batch_size = 1
         for i, layer in enumerate(self):
-            for pop in layer:
-                pop.reinit(self.device)
             if i == 0:
                 input_pop = next(iter(layer))
-                input_pop.activity = torch.squeeze(sample)
+            for pop in layer:
+                pop.reinit(self.device, batch_size=batch_size)
+        input_pop.activity = torch.squeeze(sample)
 
         for t in range(self.forward_steps):
             if (t >= self.forward_steps - self.backward_steps) and not no_grad:
@@ -682,13 +686,17 @@ class Population(object):
         self.reinit(network.device)
         self.reset_history()
 
-    def reinit(self, device):
+    def reinit(self, device, batch_size=1):
         """
         Method for resetting state variables of a population
         :param device:
         """
-        self.activity = torch.zeros(self.size, device=device)
-        self.state = torch.zeros(self.size, device=device)
+        if batch_size > 1:
+            self.activity = torch.zeros((batch_size, self.size), device=device)
+            self.state = torch.zeros((batch_size, self.size), device=device)
+        else:
+            self.activity = torch.zeros(self.size, device=device)
+            self.state = torch.zeros(self.size, device=device)
         self.forward_steps_activity = []
 
     def reset_history(self):

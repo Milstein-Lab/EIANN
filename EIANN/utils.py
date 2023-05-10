@@ -1133,8 +1133,8 @@ def reshape_backward_activity_history(pop):
             pop.backward_activity_history_list = []
 
 
-def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance,
-                                 debug=False, disp=False, plot=False):
+def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, debug=False, disp=False,
+                                 plot=False):
     """
 
     :param network: :class:'Network'
@@ -1146,7 +1146,7 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
     :return: bool
     """
     idx, data, targets = next(iter(dataloader))
-    network.forward(data)
+    network.forward(data, no_grad=True)
 
     for layer in network:
         for pop in layer:
