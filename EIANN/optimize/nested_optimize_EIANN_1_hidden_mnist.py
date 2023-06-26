@@ -17,7 +17,7 @@ from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
-    update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, \
+    update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, update_EIANN_config_1_hidden_BTSP_F1, \
     update_EIANN_config_1_hidden_backprop_softplus_SGD, update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F
 import EIANN.utils as utils

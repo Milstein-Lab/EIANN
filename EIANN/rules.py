@@ -438,6 +438,7 @@ class BTSP_2(LearningRule):
         forward or backward phase, but not both. In variant 2, plateaus can only occur in a specified maximum fraction
         of units in each layer. The entire layer is re-equilibrated after plateaus are selected.
         :param projection: :class:'nn.Linear'
+        :param projection: :class:'nn.Linear'
         :param pos_loss_th: float
         :param neg_loss_th: float
         :param neg_loss_ET_discount: float
