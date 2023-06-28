@@ -48,7 +48,8 @@ Supervised_Gjorgjieva_Hebb_C:
     Output_FBI_Output_FBI_weight_scale: 0.13403861091253574
     Output_FBI_size: 10.0
 BTSP_D1:
-    # accuracy: 87.828995
+    # accuracy: 87.828995;
+    # poor loss stability and fails equilibration constraint when training up to 50000 train steps
     BTSP_neg_loss_ET_discount: 0.09096472533667882
     FB_BTSP_init_weight_factor: 0.9719980864708379
     FF_BTSP_init_weight_factor: 0.013889941313286842

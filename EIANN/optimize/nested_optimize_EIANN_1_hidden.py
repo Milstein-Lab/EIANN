@@ -177,6 +177,76 @@ def update_EIANN_config_1_hidden_bpDale_1_inh_static_softplus_SGD(x, context):
     context.training_kwargs['optimizer'] = 'SGD'
 
 
+def update_EIANN_config_1_hidden_backprop_Dale_softplus_SGD_F(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    softplus_beta = param_dict['softplus_beta']
+    H_I_size = int(param_dict['H_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+
+    E_E_learning_rate = param_dict['E_E_learning_rate']
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+    I_I_learning_rate = param_dict['I_I_learning_rate']
+
+    context.layer_config['H1']['I']['size'] = H_I_size
+    context.layer_config['Output']['I']['size'] = Output_I_size
+
+    H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
+    H1_E_H1_I_init_weight_scale = param_dict['H1_E_H1_I_init_weight_scale']
+    H1_I_Input_E_init_weight_scale = param_dict['H1_I_Input_E_init_weight_scale']
+    H1_I_H1_E_init_weight_scale = param_dict['H1_I_H1_E_init_weight_scale']
+    H1_I_H1_I_init_weight_scale = param_dict['H1_I_H1_I_init_weight_scale']
+
+    Output_E_H1_E_init_weight_scale = param_dict['Output_E_H1_E_init_weight_scale']
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+    Output_I_H1_E_init_weight_scale = param_dict['Output_I_H1_E_init_weight_scale']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+
+    for i, layer in enumerate(context.layer_config.values()):
+        if i > 0:
+            for pop in layer.values():
+                if 'activation' in pop and pop['activation'] == 'softplus':
+                    if 'activation_kwargs' not in pop:
+                        pop['activation_kwargs'] = {}
+                    pop['activation_kwargs']['beta'] = softplus_beta
+
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['I']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['E']['H1']['I']['weight_init_args'] = (H1_E_H1_I_init_weight_scale,)
+
+    context.projection_config['H1']['I']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['I']['Input']['E']['weight_init_args'] = (H1_I_Input_E_init_weight_scale,)
+    context.projection_config['H1']['I']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['I']['H1']['E']['weight_init_args'] = (H1_I_H1_E_init_weight_scale,)
+    context.projection_config['H1']['I']['H1']['I']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+    context.projection_config['H1']['I']['H1']['I']['weight_init_args'] = (H1_I_H1_I_init_weight_scale,)
+
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = E_E_learning_rate
+    context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
+    context.projection_config['Output']['E']['Output']['I']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    context.projection_config['Output']['E']['Output']['I']['weight_init_args'] = \
+        (Output_E_Output_I_init_weight_scale,)
+
+    context.projection_config['Output']['I']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['I']['H1']['E']['weight_init_args'] = \
+        (Output_I_H1_E_init_weight_scale,)
+    context.projection_config['Output']['I']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['I']['Output']['E']['weight_init_args'] = \
+        (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['I']['Output']['I']['learning_rule_kwargs']['learning_rate'] = \
+        I_I_learning_rate
+    context.projection_config['Output']['I']['Output']['I']['weight_init_args'] = \
+        (Output_I_Output_I_init_weight_scale,)
+
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
 def update_EIANN_config_1_hidden_Gjorgjieva_Hebb_A(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
 

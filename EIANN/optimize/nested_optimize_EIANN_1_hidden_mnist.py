@@ -15,7 +15,8 @@ from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoc
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields
 from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
-from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
+from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_backprop_Dale_softplus_SGD_F, \
+    update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
     update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, update_EIANN_config_1_hidden_BTSP_F1, \
     update_EIANN_config_1_hidden_backprop_softplus_SGD, update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C, \

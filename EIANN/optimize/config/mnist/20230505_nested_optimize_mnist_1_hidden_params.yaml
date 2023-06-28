@@ -18,7 +18,7 @@ Supervised_Gjorgjieva_Hebb_D:
     Output_FBI_size: 10.0
 Supervised_Gjorgjieva_Hebb_F:
     # with equilibration constraint
-    # accuracy: 68.643906
+    # accuracy: 68.643906; slight loss drift to 50000 train steps
     E_I_learning_rate: 0.0046327307104736945
     H1_E_H1_I_weight_scale: 1.0835486998089612
     H1_E_Input_E_learning_rate: 0.003648207727042359
@@ -54,3 +54,34 @@ Gjorgjieva_Hebb_D:
     Output_FBI_Output_E_weight_scale: 8.2182557632527
     Output_FBI_Output_FBI_weight_scale: 1.0995952673549512
     Output_FBI_size: 10.0
+BTSP_F1:
+    # with equilibration constraint
+    # accuracy: 82.7385; good stability to 50000 train steps
+    BTSP_neg_loss_ET_discount: 0.34958356680043007
+    E_I_learning_rate: 0.15810936329311298
+    FB_BTSP_init_weight_factor: 0.498056662287783
+    FF_BTSP_init_weight_factor: 0.12300141967326919
+    H1_E_BTSP_neg_loss_th: -0.3884480516919648
+    H1_E_BTSP_pos_loss_th: 0.10720639676625117
+    H1_E_H1_DendI_init_weight_scale: 2.201834061888363
+    H1_E_H1_DendI_learning_rate: 0.016409872550122922
+    H1_E_H1_SomaI_weight_scale: 0.47943322710714553
+    H1_E_Input_E_BTSP_learning_rate: 0.010386575513859235
+    H1_E_Input_E_max_weight_scale: 2.8319428920607295
+    H1_E_Output_E_BTSP_learning_rate: 0.02258422341980495
+    H1_E_Output_E_max_weight_scale: 4.587558760183498
+    H1_I_H1_E_weight_scale: 0.47570200566079074
+    H1_I_H1_I_weight_scale: 0.7741494780821989
+    H1_I_Input_E_weight_scale: 1.4703523902209374
+    H1_I_size: 50.0
+    I_E_learning_rate: 0.0016876239903132247
+    I_I_learning_rate: 0.030709633250358505
+    Output_E_BTSP_learning_rate: 0.011357190984285446
+    Output_E_BTSP_neg_loss_th: -0.32002776606236877
+    Output_E_BTSP_pos_loss_th: 0.4713956261325139
+    Output_E_H1_E_max_weight_scale: 3.2642814155694713
+    Output_E_Output_I_weight_scale: 0.4285788809414422
+    Output_I_H1_E_weight_scale: 0.6446754221374511
+    Output_I_Output_E_weight_scale: 0.46569090065289964
+    Output_I_Output_I_weight_scale: 0.4463713958388956
+    Output_I_size: 10.0
