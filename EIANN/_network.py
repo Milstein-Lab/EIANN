@@ -249,10 +249,10 @@ class Network(nn.Module):
             sample_data = torch.squeeze(sample_data)
             sample_target = torch.squeeze(sample_target)
             epoch_sample_order.append(sample_idx)
-            output = self.forward(sample_data, store_history)
+            output = self.forward(sample_data, store_history, no_grad=True)
 
             loss = self.criterion(output, sample_target)
-            self.loss_history.append(loss.detach())
+            self.loss_history.append(loss.item())
 
         epoch_sample_order = torch.concat(epoch_sample_order)
         self.sample_order.extend(epoch_sample_order)
@@ -260,85 +260,13 @@ class Network(nn.Module):
 
         self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
-        self.loss_history = torch.stack(self.loss_history)
+        self.loss_history = torch.tensor(self.loss_history)
 
-        return loss.detach()
-
-    def train(self, dataloader, epochs, store_history=False, store_weights=False, status_bar=False):
-        """
-
-        :param dataloader: :class:'DataLoader';
-            returns index (int), sample_data (tensor of float), and sample_target (tensor of float)
-        :param epochs: int
-        :param store_history: bool
-        :param store_weights: bool
-        :param status_bar: bool
-        """
-        num_samples = len(dataloader)
-
-        # Save weights & biases & activity
-        if store_weights:
-            self.param_history = [deepcopy(self.state_dict())]
-
-        if status_bar:
-            from tqdm.autonotebook import tqdm
-
-        if status_bar:
-            epoch_iter = tqdm(range(epochs), desc='Epochs')
-        else:
-            epoch_iter = range(epochs)
-
-        self.target_history = []
-
-        for epoch in epoch_iter:
-            epoch_sample_order = []
-            if status_bar and len(dataloader) > epochs:
-                dataloader_iter = tqdm(dataloader, desc='Samples', leave=epoch == epochs - 1)
-            else:
-                dataloader_iter = dataloader
-
-            for sample_idx, sample_data, sample_target in dataloader_iter:
-                sample_data = torch.squeeze(sample_data).to(self.device)
-                sample_target = torch.squeeze(sample_target).to(self.device)
-                epoch_sample_order.append(sample_idx)
-                output = self.forward(sample_data, store_history)
-
-                loss = self.criterion(output, sample_target)
-                self.loss_history.append(loss.detach())
-                self.target_history.append(sample_target)
-
-                # Update state variables required for weight and bias updates
-                for backward in self.backward_methods:
-                    backward(self, output, sample_target, store_history)
-
-                # Step weights and biases
-                for i, post_layer in enumerate(self):
-                    if i > 0:
-                        for post_pop in post_layer:
-                            if post_pop.include_bias:
-                                post_pop.bias_learning_rule.step()
-                            for projection in post_pop:
-                                projection.learning_rule.step()
-
-                self.constrain_weights_and_biases()
-
-                # Store history of weights and biases
-                if store_weights:
-                    self.param_history.append(deepcopy(self.state_dict()))
-
-            epoch_sample_order = torch.concat(epoch_sample_order)
-            self.sample_order.extend(epoch_sample_order)
-            self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(epoch_sample_order)))
-
-        self.sample_order = torch.stack(self.sample_order)
-        self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
-        self.loss_history = torch.stack(self.loss_history)
-
-        return loss.detach()
-
-    def train_and_validate(self, train_dataloader, val_dataloader, epochs, val_interval=(0, -1, 50),
-                           store_history=False, store_weights=False, store_weights_interval=None,
-                           save_to_file=None, status_bar=False):
+        return loss.item()
+    
+    def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50),
+              store_history=False, store_weights=False, store_weights_interval=None,
+              save_to_file=None, status_bar=False):
         """
         Starting at validate_start, probe with the validate_data every validate_interval until >= validate_stop
         :param train_dataloader:
@@ -348,9 +276,10 @@ class Network(nn.Module):
         :param store_history: bool
         :param store_weights: bool
         :param store_weights_interval: tuple of int (start_index, stop_index, interval)
+        :param save_to_file: None or file_path
         :param status_bar: bool
-        :return:
         """
+        self.reset_history()
         num_samples = len(train_dataloader)
 
         train_step = 0
@@ -358,26 +287,28 @@ class Network(nn.Module):
         train_step_range = torch.arange(epochs * num_samples + 1)
 
         # Load validation data & initialize intermediate variables
-        assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
-        idx, val_data, val_target = next(iter(val_dataloader))
-        val_data = val_data.to(self.device)
-        val_target = val_target.to(self.device)
-        val_output_history = []
-        val_loss_history = []
-        val_accuracy_history = []
-        self.val_history_train_steps = []
+        if val_dataloader is not None:
+            assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
+            idx, val_data, val_target = next(iter(val_dataloader))
+            val_data = val_data.to(self.device)
+            val_target = val_target.to(self.device)
+            val_output_history = []
+            val_loss_history = []
+            val_accuracy_history = []
+            self.val_history_train_steps = []
 
-        val_range = torch.arange(train_step_range[val_interval[0]], train_step_range[val_interval[1]] + 1,
-                                 val_interval[2])
+            val_range = torch.arange(train_step_range[val_interval[0]], train_step_range[val_interval[1]] + 1,
+                                     val_interval[2])
 
-        # Compute validation loss
-        if train_step in val_range:
-            output = self.forward(val_data, store_dynamics=False, no_grad=True).detach()
-            val_output_history.append(output)
-            val_loss_history.append(self.criterion(output, val_target).detach())
-            accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / output.shape[0]
-            val_accuracy_history.append(accuracy)
-            self.val_history_train_steps.append(train_step)
+            # Compute validation loss
+            if train_step in val_range:
+                output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                val_output_history.append(output.detach().clone())
+                val_loss_history.append(self.criterion(output, val_target).item())
+                accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
+                           output.shape[0]
+                val_accuracy_history.append(accuracy.item())
+                self.val_history_train_steps.append(train_step)
 
         # Store history of weights and biases
         if store_weights:
@@ -403,6 +334,15 @@ class Network(nn.Module):
 
         self.target_history = []
 
+        # initialize learning rule parameters
+        for i, post_layer in enumerate(self):
+            if i > 0:
+                for post_pop in post_layer:
+                    if post_pop.include_bias:
+                        post_pop.bias_learning_rule.reinit()
+                    for projection in post_pop:
+                        projection.learning_rule.reinit()
+
         for epoch in epoch_iter:
             epoch_sample_order = []
             if status_bar and len(train_dataloader) > epochs:
@@ -416,11 +356,12 @@ class Network(nn.Module):
                 sample_data = torch.squeeze(sample_data).to(self.device)
                 sample_target = torch.squeeze(sample_target).to(self.device)
                 epoch_sample_order.append(sample_idx)
+
                 output = self.forward(sample_data, store_history)
 
                 loss = self.criterion(output, sample_target)
-                self.loss_history.append(loss.detach())
-                self.target_history.append(sample_target)
+                self.loss_history.append(loss.item())
+                self.target_history.append(sample_target.clone())
 
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
@@ -437,19 +378,28 @@ class Network(nn.Module):
 
                 self.constrain_weights_and_biases()
 
+                # update learning rule parameters
+                for i, post_layer in enumerate(self):
+                    if i > 0:
+                        for post_pop in post_layer:
+                            if post_pop.include_bias:
+                                post_pop.bias_learning_rule.update()
+                            for projection in post_pop:
+                                projection.learning_rule.update()
+
                 # Store history of weights and biases
                 if store_weights and train_step in store_weights_range:
                     self.param_history.append(deepcopy(self.state_dict()))
                     self.param_history_steps.append(train_step)
 
                 # Compute validation loss
-                if train_step in val_range:
-                    output = self.forward(val_data, store_dynamics=False, no_grad=True).detach()
-                    val_output_history.append(output)
-                    val_loss_history.append(self.criterion(output, val_target).detach())
+                if val_dataloader is not None and train_step in val_range:
+                    output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                    val_output_history.append(output.detach().clone())
+                    val_loss_history.append(self.criterion(output, val_target).item())
                     accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
                                output.shape[0]
-                    val_accuracy_history.append(accuracy)
+                    val_accuracy_history.append(accuracy.item())
                     self.val_history_train_steps.append(train_step)
 
             epoch_sample_order = torch.concat(epoch_sample_order)
@@ -458,12 +408,13 @@ class Network(nn.Module):
 
         self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
-        self.loss_history = torch.stack(self.loss_history).cpu()
+        self.loss_history = torch.tensor(self.loss_history).cpu()
         self.target_history = torch.stack(self.target_history).cpu()
-        self.val_output_history = torch.stack(val_output_history).cpu()
-        self.val_loss_history = torch.stack(val_loss_history).cpu()
-        self.val_accuracy_history = torch.stack(val_accuracy_history).cpu()
-        self.val_target = val_target.cpu()
+        if val_dataloader is not None:
+            self.val_output_history = torch.stack(val_output_history).cpu()
+            self.val_loss_history = torch.tensor(val_loss_history).cpu()
+            self.val_accuracy_history = torch.tensor(val_accuracy_history).cpu()
+            self.val_target = val_target.cpu()
 
         if save_to_file is not None:
             self.save(path=save_to_file)

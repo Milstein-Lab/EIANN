@@ -322,14 +322,14 @@ def sort_by_val_history(network, plot=False):
         optimal_sorting = get_diag_argmax_row_indexes(avg_output.T)
         sorted_activity = output[:, optimal_sorting]
         optimal_loss = network.criterion(sorted_activity, network.val_target)
-        optimal_loss_history.append(optimal_loss)
+        optimal_loss_history.append(optimal_loss.item())
         optimal_accuracy = 100 * torch.sum(
             torch.argmax(sorted_activity, dim=1) == torch.argmax(network.val_target, dim=1)) / num_patterns
-        optimal_accuracy_history.append(optimal_accuracy)
+        optimal_accuracy_history.append(optimal_accuracy.item())
         sorting_history.append(optimal_sorting)
 
     # Pick timepoint with lowest sorted loss
-    optimal_loss_history = torch.stack(optimal_loss_history)
+    optimal_loss_history = torch.tensor(optimal_loss_history)
     min_loss_idx = torch.argmin(optimal_loss_history)
     min_loss_sorting = sorting_history[min_loss_idx]
 
@@ -417,15 +417,15 @@ def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=N
         iter_param_history = network.param_history
     for state_dict in iter_param_history:
         network.load_state_dict(state_dict)
-        output = network.forward(test_data, store_history=store_history)
+        output = network.forward(test_data, store_history=store_history, no_grad=True)
         if sorted_output_idx is not None:
             output = output[:, sorted_output_idx]
-        test_loss_history.append(network.criterion(output, test_target).detach())
+        test_loss_history.append(network.criterion(output, test_target).item())
         accuracy = 100 * torch.sum(torch.argmax(output, dim=1) ==
                                    torch.argmax(test_target, dim=1)) / num_patterns
-        test_accuracy_history.append(accuracy)
+        test_accuracy_history.append(accuracy.item())
 
-    network.test_loss_history = torch.stack(test_loss_history).cpu()
+    network.test_loss_history = torch.tensor(test_loss_history).cpu()
     network.test_accuracy_history = torch.tensor(test_accuracy_history).cpu()
 
     if plot:
@@ -466,12 +466,12 @@ def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=Fal
     sorted_val_accuracy_history = []
     num_patterns = val_output_history.shape[1]
     for batch_output in val_output_history:
-        loss = network.criterion(batch_output, network.val_target).detach()
+        loss = network.criterion(batch_output, network.val_target).item()
         accuracy = 100 * torch.sum(torch.argmax(batch_output, dim=1) ==
                                    torch.argmax(network.val_target, dim=1)) / num_patterns
 
         sorted_val_loss_history.append(loss)
-        sorted_val_accuracy_history.append(accuracy)
+        sorted_val_accuracy_history.append(accuracy.item())
 
     sorted_val_loss_history = torch.tensor(sorted_val_loss_history)
     sorted_val_accuracy_history = torch.tensor(sorted_val_accuracy_history)
@@ -511,13 +511,13 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx, bin_size=100, 
     sorted_accuracy_history = []
 
     for (batch_output, batch_target) in zip(binned_output_history, binned_target_history):
-        loss = network.criterion(batch_output, batch_target).detach()
+        loss = network.criterion(batch_output, batch_target).item()
         predictions = torch.argmax(batch_output, dim=1)
         labels = torch.argmax(batch_target, dim=1)
         accuracy = 100 * torch.sum(predictions == labels) / num_patterns
 
         sorted_loss_history.append(loss)
-        sorted_accuracy_history.append(accuracy)
+        sorted_accuracy_history.append(accuracy.item())
 
     sorted_loss_history = torch.tensor(sorted_loss_history)
     sorted_accuracy_history = torch.tensor(sorted_accuracy_history)
@@ -544,7 +544,7 @@ def get_optimal_sorting(network, test_dataloader, plot=False):
     from tqdm.autonotebook import tqdm
     for t in tqdm(range(history_len)):
         network.load_state_dict(network.param_history[t])
-        output = network.forward(test_data)  # row=patterns, col=units
+        output = network.forward(test_data, no_grad=True)  # row=patterns, col=units
 
         # Get average output for each label class
         num_units = network.val_target.shape[1]
@@ -634,10 +634,10 @@ def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_
         end = start + target.shape[0]
         epoch_output = output_history[start:end, :]
         loss = network.criterion(epoch_output, target)
-        epoch_loss.append(loss)
+        epoch_loss.append(loss.item())
         start += target.shape[0]
         accuracy = torch.sum(torch.argmax(epoch_output, axis=1) == torch.argmax(target, axis=1))
-        epoch_argmax_accuracy.append(accuracy / target.shape[0] * 100.)
+        epoch_argmax_accuracy.append(accuracy.item() / target.shape[0] * 100.)
 
     epoch_loss = torch.tensor(epoch_loss)
     epoch_argmax_accuracy = torch.tensor(epoch_argmax_accuracy)
@@ -744,7 +744,7 @@ def compute_batch_accuracy(network, test_dataloader):
     data = data.to(network.device)
     targets = targets.to(network.device)
     labels = torch.argmax(targets, axis=1)
-    output = network.forward(data).detach()
+    output = network.forward(data, no_grad=True)
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
     percent_correct = torch.round(percent_correct, decimals=2)
     print(f'Batch accuracy = {percent_correct}%')
@@ -849,8 +849,8 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     network = population.network
     idx, data, target = next(iter(test_dataloader))
     data.to(network.device)
-    network.forward(data)
-    activity = population.activity.detach()
+    network.forward(data, no_grad=True)
+    activity = population.activity
 
     num_patterns = activity.shape[0]
     num_units = activity.shape[1]
@@ -863,7 +863,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
         # active_pattern_idx = np.where(fraction_nonzero_units != 0.)[0] #exlcude silent patterns
         # sparsity = 1 - fraction_nonzero_units[active_pattern_idx]
 
-    total_act = torch.sum(population.activity.detach(), dim=0)
+    total_act = torch.sum(population.activity, dim=0)
     active_units_idx = torch.where(total_act > 1e-10)[0]
 
     # Compute unit selectivity
@@ -934,13 +934,13 @@ def compute_act_weighted_avg(population, dataloader):
     idx, data, target = next(iter(dataloader))
     network = population.network
 
-    network.forward(data)  # compute unit activities in forward pass
-    pop_activity = population.activity.detach()
+    network.forward(data, no_grad=True)  # compute unit activities in forward pass
+    pop_activity = population.activity
     weighted_avg_input = (data.T @ pop_activity) / (pop_activity.sum(axis=0) + 0.0001) # + epsilon to avoid div-by-0 error
     weighted_avg_input = weighted_avg_input.T
 
-    network.forward(weighted_avg_input)  # compute unit activities in forward pass
-    activity_preferred_inputs = population.activity.detach()
+    network.forward(weighted_avg_input, no_grad=True)  # compute unit activities in forward pass
+    activity_preferred_inputs = population.activity.detach().clone()
 
     return weighted_avg_input, activity_preferred_inputs
 
@@ -987,16 +987,16 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
             network.forward(input_images)  # compute unit activities in forward pass
         pop_activity = population.activity[:,0:num_units]
         loss = torch.sum(-torch.log(torch.diagonal(pop_activity) + 0.001))
-        loss_history.append(loss.detach())
+        loss_history.append(loss.item())
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-    receptive_fields = input_images.detach()
+    receptive_fields = input_images.detach().clone()
     if sigmoid:
         receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
-        network.forward(receptive_fields)  # compute unit activities in forward pass
-        activity_preferred_inputs = population.activity[:,0:num_units].detach()
+        network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
+        activity_preferred_inputs = population.activity[:,0:num_units].detach().clone()
 
     return receptive_fields, activity_preferred_inputs
 

@@ -269,10 +269,10 @@ def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None,
 
     for state_dict in network.param_history:
         network.load_state_dict(state_dict)
-        output = network.forward(test_data, store_history=store_history)
+        output = network.forward(test_data, store_history=store_history, no_grad=True)
         if sorted_output_idx is not None:
             output = output[:, sorted_output_idx]
-        test_loss_history.append(network.criterion(output, test_target).detach())
+        test_loss_history.append(network.criterion(output, test_target).item())
 
     network.test_loss_history = torch.stack(test_loss_history).cpu()
 
@@ -306,7 +306,7 @@ def plot_MNIST_examples(network, dataloader):
         idx = torch.where(labels == label)[0][0]
         im = ax.imshow(images[idx].reshape((image_dim, image_dim)), cmap='Greys')
         ax.axis('off')
-        output = network.forward(images[idx])
+        output = network.forward(images[idx], no_grad=True)
         if labels[idx] == torch.argmax(output):
             color = 'k'
         else:
@@ -607,7 +607,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     data = data.to(network.device)
     targets = targets.to(network.device)
     labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
-    output = network.forward(data).detach()
+    output = network.forward(data, no_grad=True)
 
     # if unsupervised: # sort output units by their mean activity
     if sorted_output_idx is not None:
@@ -653,7 +653,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         avg_pop_activity = torch.zeros(population.size, num_labels)
         for label in range(num_labels):
             label_idx = torch.where(labels == label)  # find all instances of given label
-            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx].detach(), dim=0)
+            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
         silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
         active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
         preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
@@ -678,8 +678,8 @@ def plot_rsm(network, test_dataloader):
 
     idx, data, target = next(iter(test_dataloader))
     data.to(network.device)
-    network.forward(data)
-    pop_activity = network.H1.E.activity.detach()
+    network.forward(data, no_grad=True)
+    pop_activity = network.H1.E.activity
 
     # Sort rows of pop_activity by label
     _, sort_idx = torch.sort(torch.argmax(target, dim=1))
@@ -730,7 +730,7 @@ def plot_sorted_plateaus(population, test_dataloader, show_negative=True):
 
     # Sort units (y-axis) by preferred input, defined over test_dataloader
     idx, data, target = next(iter(test_dataloader))
-    network.forward(data) #compute activities for test dataset
+    network.forward(data, no_grad=True) #compute activities for test dataset
     labels = torch.argmax(target, dim=1)
     num_labels = target.shape[1]
     samples_per_label = torch.zeros(num_labels)
@@ -778,15 +778,15 @@ def plot_total_input(population, test_dataloader, sorting='E', act_threshold=0):
     network = population.network
     network.reset_history()
     idx, data, target = next(iter(test_dataloader))
-    network.forward(data, store_history=True)
+    network.forward(data, store_history=True, no_grad=True)
 
     total_input = {}
     for name, projection in population.incoming_projections.items():
         if projection.direction in ['F','forward']:
-            total_input[name] = projection.weight.detach() @ projection.pre.activity_history[0,-1,:,:].detach().T
+            total_input[name] = projection.weight.data @ projection.pre.activity_history[0,-1,:,:].data.T
         elif projection.direction in ['R','recurrent']:
-            pre_act = torch.mean(projection.pre.activity_history[0,-4:,:,:].detach(), dim=0).detach().T
-            total_input[name] = projection.weight.detach() @ pre_act
+            pre_act = torch.mean(projection.pre.activity_history[0,-4:,:,:].data, dim=0).data.T
+            total_input[name] = projection.weight.data @ pre_act
 
     if sorting == 'E':
         val, idx = torch.sort(total_input['H1E_InputE'], descending=True)
@@ -796,7 +796,7 @@ def plot_total_input(population, test_dataloader, sorting='E', act_threshold=0):
         net_input = total_input['H1E_InputE'] + total_input['H1E_H1FBI']
         val, idx = torch.sort(net_input, descending=True)
     elif sorting == 'activity':
-        activity = population.activity.T.detach()
+        activity = population.activity.T
         val, idx = torch.sort(activity, descending=True)
 
     fig, ax = plt.subplots(1, 2, figsize=[11, 4])
@@ -807,7 +807,7 @@ def plot_total_input(population, test_dataloader, sorting='E', act_threshold=0):
         else:
             color = 'C0'
         sorted_input = torch.gather(proj_input, 1, idx)
-        active_units = torch.where(torch.sum(population.activity.detach(), dim=0) > act_threshold)[0]
+        active_units = torch.where(torch.sum(population.activity, dim=0) > act_threshold)[0]
         # net_input = total_input['H1E_InputE'] + total_input['H1E_H1FBI']
         # active_units = torch.where(torch.max(net_input, dim=1)[0] > act_threshold)[0]
         avg_proj_input = torch.mean(sorted_input[active_units], dim=0)
@@ -819,7 +819,7 @@ def plot_total_input(population, test_dataloader, sorting='E', act_threshold=0):
 
     # net_input = total_input['H1E_InputE'] + total_input['H1E_H1FBI']
     # active_idx = torch.where(net_input > act_threshold)
-    active_idx = torch.where(population.activity.detach().T > act_threshold)
+    active_idx = torch.where(population.activity.T > act_threshold)
     ax[1].scatter(total_input['H1E_InputE'][active_idx], total_input['H1E_H1FBI'][active_idx], c='k', alpha=0.2)
     ax[1].invert_yaxis()
     ax[1].set_xlabel('Sample E input')
@@ -832,18 +832,18 @@ def plot_correlations(network, test_dataloader):
     '''Plot the correlation matrix for a layer's weights'''
 
     idx, data, target = next(iter(test_dataloader))
-    network.forward(data)
+    network.forward(data, no_grad=True)
 
     for layer in network:
         if layer.name == 'Input':
             continue
 
         # Compute correlations
-        activity_matrix = torch.cat([layer.E.activity.T, layer.FBI.activity.T]).detach()
+        activity_matrix = torch.cat([layer.E.activity.T, layer.FBI.activity.T])
         activity_corr_mat = cosine_similarity(activity_matrix)
 
-        E_I_weights = network.module_dict[f"{layer.E.fullname}_{layer.FBI.fullname}"].weight.detach()
-        I_E_weights = network.module_dict[f"{layer.FBI.fullname}_{layer.E.fullname}"].weight.detach()
+        E_I_weights = network.module_dict[f"{layer.E.fullname}_{layer.FBI.fullname}"].weight.data
+        I_E_weights = network.module_dict[f"{layer.FBI.fullname}_{layer.E.fullname}"].weight.data
 
         # Generate plots
         fig, ax = plt.subplots(1, 4, figsize=[14, 3])
@@ -1108,7 +1108,7 @@ def flatten_weights(network):
     for layer in network:
         for population in layer:
             for projection in population:
-                W = projection.weight.detach()
+                W = projection.weight.data
                 flat_weights_ls.append(W.flatten())
                 weight_sizes.append([W.numel(), W.shape])
 
@@ -1170,8 +1170,8 @@ def compute_loss(network, state_dict, test_dataloader):
     loss = 0
     for batch in test_dataloader:
         idx, batch_data, batch_target = batch
-        output = network.forward(batch_data).detach()
-        loss += network.criterion(output, batch_target)
+        output = network.forward(batch_data, no_grad=True)
+        loss += network.criterion(output, batch_target).item()
     loss /= len(test_dataloader)
 
     return loss

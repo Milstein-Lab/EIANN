@@ -80,7 +80,7 @@ def main(config_path, name, export_path, plot, retrain, epochs, data_seed, netwo
     else:
         # Train network
         data_generator.manual_seed(data_seed)
-        network.train_and_validate(train_sub_dataloader,
+        network.train(train_sub_dataloader,
                                     test_dataloader,
                                     epochs=epochs,
                                     val_interval=(0, -1, 1000),

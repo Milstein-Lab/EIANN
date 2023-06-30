@@ -138,7 +138,7 @@ def simulate(seed, data_seed):
         network.load(data_file_path)
     else:
         data_generator.manual_seed(data_seed)
-        network.train_and_validate(train_sub_dataloader,
+        network.train(train_sub_dataloader,
                                    val_dataloader,
                                    epochs=epochs,
                                    val_interval=context.val_interval, # e.g. (-201, -1, 10)

@@ -60,7 +60,7 @@ def main(config_file_path, output_dir, train_steps, device, status_bar):
     network = Network(layer_config, projection_config, seed=seed, device=device, **training_kwargs)
 
     data_generator.manual_seed(data_seed)
-    network.train_and_validate(train_sub_dataloader,
+    network.train(train_sub_dataloader,
                                val_dataloader,
                                epochs=epochs,
                                val_interval=val_interval,

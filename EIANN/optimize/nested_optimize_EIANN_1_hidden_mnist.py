@@ -19,8 +19,8 @@ from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_backpro
     update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
     update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, update_EIANN_config_1_hidden_BTSP_F1, \
-    update_EIANN_config_1_hidden_backprop_softplus_SGD, update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C, \
-    update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F
+    update_EIANN_config_1_hidden_BTSP_F2, update_EIANN_config_1_hidden_backprop_softplus_SGD, \
+    update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C, update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F
 import EIANN.utils as utils
 
 context = Context()
@@ -1577,14 +1577,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         network.load(saved_network_path)
     else:
         data_generator.manual_seed(data_seed)
-        network.train_and_validate(train_sub_dataloader,
-                                   val_dataloader,
-                                   epochs=epochs,
-                                   val_interval=context.val_interval, # e.g. (-201, -1, 10)
-                                   store_history=context.store_history,
-                                   store_weights=context.store_weights,
-                                   store_weights_interval=context.store_weights_interval,
-                                   status_bar=context.status_bar)
+        network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
+                      val_interval=context.val_interval, # e.g. (-201, -1, 10)
+                      store_history=context.store_history, store_weights=context.store_weights,
+                      store_weights_interval=context.store_weights_interval, status_bar=context.status_bar)
         if export:
             network.save(path=saved_network_path)
 
