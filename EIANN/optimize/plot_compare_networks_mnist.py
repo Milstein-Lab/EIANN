@@ -74,12 +74,12 @@ def plot_accuracy_comparison(model_list, data_dict, title_dict, legend_dict):
     fig.show()
 
 
-# data_file_path = 'data/mnist/20230303_exported_output_EIANN_1_hidden_mnist.hdf5'
-data_file_path = 'data/mnist/20230307_exported_output_EIANN_2_hidden_mnist.hdf5'
+data_file_path = 'data/mnist/20230303_exported_output_EIANN_1_hidden_mnist.hdf5'
+# data_file_path = 'data/mnist/20230307_exported_output_EIANN_2_hidden_mnist.hdf5'
 data_dict = utils.hdf5_to_dict(data_file_path)
 
-# model_list = ['van_bp_softplus', 'bpDale_softplus_A', 'Gjorgjieva_Hebb_C', 'Supervised_Gjorgjieva_Hebb_C', 'BTSP_E1']
-model_list = ['van_bp_softplus', 'Supervised_Gjorgjieva_Hebb_C', 'BTSP_D1']
+model_list = ['van_bp_softplus', 'bpDale_softplus_A', 'Gjorgjieva_Hebb_C', 'Supervised_Gjorgjieva_Hebb_C', 'BTSP_E1']
+# model_list = ['van_bp_softplus', 'Supervised_Gjorgjieva_Hebb_C', 'BTSP_D1']
 
 title_dict = {}
 legend_dict = {}

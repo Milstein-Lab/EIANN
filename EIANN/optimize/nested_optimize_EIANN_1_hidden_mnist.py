@@ -19,7 +19,8 @@ from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_backpro
     update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
     update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, update_EIANN_config_1_hidden_BTSP_F1, \
-    update_EIANN_config_1_hidden_BTSP_F2, update_EIANN_config_1_hidden_backprop_softplus_SGD, \
+    update_EIANN_config_1_hidden_BTSP_F2, update_EIANN_config_1_hidden_BTSP_F3, \
+    update_EIANN_config_1_hidden_backprop_softplus_SGD, \
     update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C, update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F
 import EIANN.utils as utils
 
@@ -1601,7 +1602,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     sorted_val_loss_history, sorted_val_accuracy_history = \
         recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
 
-    if network.Output.E.activity_history is not None:
+    if context.store_history:
         binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
             recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
 
@@ -1668,16 +1669,16 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         sys.stdout.flush()
         context.update(locals())
 
-    if export:
-        if context.export_network_config_file_path is not None:
-            config_dict = {'layer_config': context.layer_config,
-                           'projection_config': context.projection_config,
-                           'training_kwargs': context.training_kwargs}
-            write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
-            if context.disp:
-                print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
-                      (os.getpid(), context.export_network_config_file_path))
+    if context.export_network_config_file_path is not None:
+        config_dict = {'layer_config': context.layer_config,
+                       'projection_config': context.projection_config,
+                       'training_kwargs': context.training_kwargs}
+        write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
+        if context.disp:
+            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
+                  (os.getpid(), context.export_network_config_file_path))
 
+    if export:
         if context.temp_output_path is not None:
             # Compute test activity and metrics
             idx, data, target = next(iter(test_dataloader))
@@ -1704,9 +1705,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                 metrics_group.create_dataset('val_loss', data=sorted_val_loss_history)
                 metrics_group.create_dataset('val_loss_steps', data=network.val_history_train_steps)
                 metrics_group.create_dataset('val_accuracy', data=sorted_val_accuracy_history)
-                metrics_group.create_dataset('train_loss', data=sorted_train_loss_history)
-                metrics_group.create_dataset('binned_train_loss_steps', data=binned_train_loss_steps)
-                metrics_group.create_dataset('train_accuracy', data=sorted_val_accuracy_history)
+                if context.store_history:
+                    metrics_group.create_dataset('train_loss', data=sorted_train_loss_history)
+                    metrics_group.create_dataset('binned_train_loss_steps', data=binned_train_loss_steps)
+                    metrics_group.create_dataset('train_accuracy', data=sorted_train_accuracy_history)
 
                 if context.full_analysis:
                     metrics_group.create_dataset('test_loss', data=test_loss_history)

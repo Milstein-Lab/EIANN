@@ -263,7 +263,7 @@ class Network(nn.Module):
         self.loss_history = torch.tensor(self.loss_history)
 
         return loss.item()
-    
+
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50),
               store_history=False, store_weights=False, store_weights_interval=None,
               save_to_file=None, status_bar=False):
