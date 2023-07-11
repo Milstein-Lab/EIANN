@@ -1253,14 +1253,14 @@ class BTSP_6(LearningRule):
         self.projection.post.backward_dendritic_state_history = []
         self.projection.pre.ET_history = []
         self.projection.post.IS_history = []
-        self.projection.pre.ET_initialized = False
-        self.projection.post.plateau_initialized = False
+        self.projection.pre.ET_updated = False
+        self.projection.post.IS_updated = False
 
     def update(self):
         self.projection.pre.ET *= (1. - 1./self.decay_tau)
         self.projection.post.IS *= (1. - 1./self.decay_tau)
-        self.projection.pre.ET_initialized = False
-        self.projection.post.plateau_initialized = False
+        self.projection.pre.ET_updated = False
+        self.projection.post.IS_updated = False
 
     def step(self):
 
@@ -1361,19 +1361,12 @@ class BTSP_6(LearningRule):
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
-                        if not pop.plateau_initialized:
-                            pop.plateau = torch.zeros(pop.size, device=pop.network.device, requires_grad=False)
-                            pop.dend_to_soma = torch.zeros(pop.size, device=pop.network.device, requires_grad=False)
-                            pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                            pop.plateau_initialized = True
-                            if store_history:
-                                pop.forward_dendritic_state_history.append(pop.forward_dendritic_state.detach().clone())
-                        if not projection.pre.ET_initialized:
-                            projection.pre.ET += projection.pre.activity
-                            projection.pre.ET.clamp_(0., 1.)
-                            projection.pre.ET_initialized = True
-                            if store_history:
-                                projection.pre.ET_history.append(projection.pre.ET.detach().clone())
+                        pop.plateau = torch.zeros(pop.size, device=pop.network.device, requires_grad=False)
+                        pop.dend_to_soma = torch.zeros(pop.size, device=pop.network.device, requires_grad=False)
+                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
+                        if store_history:
+                            pop.forward_dendritic_state_history.append(pop.forward_dendritic_state.detach().clone())
+                        break
 
         # compute plateau events and nudge somatic state
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
@@ -1412,13 +1405,20 @@ class BTSP_6(LearningRule):
             for pop in layer:
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
-                        pop.IS += pop.plateau
-                        pop.IS.clamp_(0., 1.)
-                        if store_history:
-                            pop.plateau_history_list.append(pop.plateau.detach().clone())
-                            pop.IS_history.append(pop.IS.detach().clone())
-                            pop.backward_dendritic_state_history.append(pop.dendritic_state.detach().clone())
-                        break
+                        if not pop.IS_updated:
+                            pop.IS += pop.plateau
+                            pop.IS.clamp_(0., 1.)
+                            pop.IS_updated = True
+                            if store_history:
+                                pop.IS_history.append(pop.IS.detach().clone())
+                                pop.plateau_history_list.append(pop.plateau.detach().clone())
+                                pop.backward_dendritic_state_history.append(pop.dendritic_state.detach().clone())
+                        if not projection.pre.ET_updated:
+                            projection.pre.ET += projection.pre.activity
+                            projection.pre.ET.clamp_(0., 1.)
+                            projection.pre.ET_updated = True
+                            if store_history:
+                                projection.pre.ET_history.append(projection.pre.ET.detach().clone())
                 if pop.backward_projections or pop is output_pop:
                     if store_history:
                         pop.backward_activity_history_list.append(pop.backward_steps_activity)
