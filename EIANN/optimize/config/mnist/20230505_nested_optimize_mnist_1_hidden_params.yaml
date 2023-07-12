@@ -109,7 +109,7 @@ BTSP_F1_orig:
 BTSP_F1:
     # trained with path_length=3
     # accuracy: 83.6666
-    # stability:
+    # stability: good stability to 50000 train steps
     BTSP_neg_loss_ET_discount: 0.06295722548200736
     E_I_learning_rate: 0.08969975937152957
     FB_BTSP_init_weight_factor: 0.9191479208196159
@@ -226,4 +226,24 @@ test_BTSP_F4:
     Output_I_H1_E_weight_scale: 0.6021538104071334
     Output_I_Output_E_weight_scale: 0.7612308249873861
     Output_I_Output_I_weight_scale: 0.2675206244069382
+    Output_I_size: 10.0
+
+test_Gjorgjieva_Hebb_F:
+    # with equilibration constraint
+    E_I_learning_rate: 0.0046327307104736945
+    H1_E_H1_I_weight_scale: 1.0835486998089612
+    H1_E_Input_E_learning_rate: 0.003648207727042359
+    H1_E_Input_E_weight_scale: 0.4605897942444468
+    H1_I_H1_E_weight_scale: 1.145865490175058
+    H1_I_H1_I_weight_scale: 1.388540761046658
+    H1_I_Input_E_weight_scale: 0.8259515380080028
+    H1_I_size: 50.0
+    I_E_learning_rate: 0.0015026909037009963
+    I_I_learning_rate: 0.061059879732683904
+    Output_E_H1_E_learning_rate: 0.01122007659971835
+    Output_E_H1_E_weight_scale: 0.25427536658577804
+    Output_E_Output_I_weight_scale: 1.0203675646989483
+    Output_I_H1_E_weight_scale: 0.2474989499133363
+    Output_I_Output_E_weight_scale: 0.5664646212794889
+    Output_I_Output_I_weight_scale: 0.38566801800246875
     Output_I_size: 10.0
