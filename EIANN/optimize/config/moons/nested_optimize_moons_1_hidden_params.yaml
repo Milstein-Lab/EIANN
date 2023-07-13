@@ -1,0 +1,60 @@
+test_Hebb_EI:
+    # with equilibration constraint
+    E_I_learning_rate: 0.0046327307104736945
+    H1_E_H1_I_weight_scale: 1.0835486998089612
+    H1_E_Input_E_learning_rate: 0.003648207727042359
+    H1_E_Input_E_weight_scale: 0.4605897942444468
+    H1_I_H1_E_weight_scale: 1.145865490175058
+    H1_I_H1_I_weight_scale: 1.388540761046658
+    H1_I_Input_E_weight_scale: 0.8259515380080028
+    H1_I_size: 16
+    I_E_learning_rate: 0.0015026909037009963
+    I_I_learning_rate: 0.061059879732683904
+    Output_E_H1_E_learning_rate: 0.01122007659971835
+    Output_E_H1_E_weight_scale: 0.25427536658577804
+    Output_E_Output_I_weight_scale: 1.0203675646989483
+    Output_I_H1_E_weight_scale: 0.2474989499133363
+    Output_I_Output_E_weight_scale: 0.5664646212794889
+    Output_I_Output_I_weight_scale: 0.38566801800246875
+    Output_I_size: 2
+test_Supervised_Hebb_EI:
+    # with equilibration constraint
+    E_I_learning_rate: 0.0046327307104736945
+    H1_E_H1_I_weight_scale: 1.0835486998089612
+    H1_E_Input_E_learning_rate: 0.003648207727042359
+    H1_E_Input_E_weight_scale: 0.4605897942444468
+    H1_I_H1_E_weight_scale: 1.145865490175058
+    H1_I_H1_I_weight_scale: 1.388540761046658
+    H1_I_Input_E_weight_scale: 0.8259515380080028
+    H1_I_size: 16
+    I_E_learning_rate: 0.0015026909037009963
+    I_I_learning_rate: 0.061059879732683904
+    Output_E_H1_E_learning_rate: 0.01122007659971835
+    Output_E_H1_E_weight_scale: 0.25427536658577804
+    Output_E_Output_I_weight_scale: 1.0203675646989483
+    Output_I_H1_E_weight_scale: 0.2474989499133363
+    Output_I_Output_E_weight_scale: 0.5664646212794889
+    Output_I_Output_I_weight_scale: 0.38566801800246875
+    Output_I_size: 2
+test_backprop_EI:
+    # with equilibration constraint
+    E_E_learning_rate: 0.215559448667304
+    E_I_learning_rate: 0.0026149854534126722
+    H1_E_H1_I_init_weight_scale: 2.6100372902368116
+    H1_E_Input_E_init_weight_scale: 1.3946524860671066
+    H1_I_H1_E_init_weight_scale: 0.4713348586741817
+    H1_I_H1_I_init_weight_scale: 3.117809602677552
+    H1_I_Input_E_init_weight_scale: 1.2631700563290804
+    H_I_size: 16
+    I_E_learning_rate: 0.18055033255571856
+    I_I_learning_rate: 0.0004293553235942274
+    Output_E_H1_E_init_weight_scale: 0.45252326709233986
+    Output_E_Output_I_init_weight_scale: 0.5020033450838103
+    Output_I_H1_E_init_weight_scale: 0.39650489698489216
+    Output_I_Output_E_init_weight_scale: 0.3097041376584422
+    Output_I_Output_I_init_weight_scale: 0.04787954553985202
+    Output_I_size: 2
+    softplus_beta: 40.37659035816862
+test_vanilla_backprop:
+    learning_rate: 0.13315131781400405
+    softplus_beta: 45.610257237854945
