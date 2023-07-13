@@ -234,33 +234,19 @@ class Network(nn.Module):
         :param store_history: bool
         :param status_bar: bool
         """
-        num_samples = len(dataloader)
-
         if status_bar:
             from tqdm.autonotebook import tqdm
 
-        epoch = 0
-        epoch_sample_order = []
         if status_bar:
             dataloader_iter = tqdm(dataloader, desc='Samples')
         else:
             dataloader_iter = dataloader
+
         for sample_idx, sample_data, sample_target in dataloader_iter:
             sample_data = torch.squeeze(sample_data)
             sample_target = torch.squeeze(sample_target)
-            epoch_sample_order.append(sample_idx)
             output = self.forward(sample_data, store_history, no_grad=True)
-
             loss = self.criterion(output, sample_target)
-            self.loss_history.append(loss.item())
-
-        epoch_sample_order = torch.concat(epoch_sample_order)
-        self.sample_order.extend(epoch_sample_order)
-        self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(epoch_sample_order)))
-
-        self.sample_order = torch.stack(self.sample_order)
-        self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
-        self.loss_history = torch.tensor(self.loss_history)
 
         return loss.item()
 

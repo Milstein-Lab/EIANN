@@ -12,7 +12,10 @@ import itertools
 import os
 from . import plot as plot
 from . import external as external
-from collections import Iterable
+try:
+    from collections import Iterable
+except:
+    from collections.abc import Iterable
 import matplotlib.pyplot as plt
 from tqdm.autonotebook import tqdm
 
@@ -484,7 +487,7 @@ def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=Fal
     return sorted_val_loss_history, sorted_val_accuracy_history
 
 
-def recompute_train_loss_and_accuracy(network, sorted_output_idx, bin_size=100, plot=False):
+def recompute_train_loss_and_accuracy(network, sorted_output_idx=None, bin_size=100, plot=False):
     """
 
     :param network:
@@ -495,8 +498,12 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx, bin_size=100, 
     """
 
     # Sort output history
-    output_history = network.Output.E.activity_history[:, -1, sorted_output_idx]
-    target_history = network.target_history[:, sorted_output_idx]
+    if sorted_output_idx is None:
+        output_history = network.Output.E.activity_history[:, -1, :]
+        target_history = network.target_history.clone()
+    else:
+        output_history = network.Output.E.activity_history[:, -1, sorted_output_idx]
+        target_history = network.target_history[:, sorted_output_idx]
     num_units = output_history.shape[1]
     num_patterns = output_history.shape[0]
 
@@ -514,13 +521,30 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx, bin_size=100, 
         loss = network.criterion(batch_output, batch_target).item()
         predictions = torch.argmax(batch_output, dim=1)
         labels = torch.argmax(batch_target, dim=1)
-        accuracy = 100 * torch.sum(predictions == labels) / num_patterns
+        accuracy = 100 * torch.sum(predictions == labels) / bin_size
 
         sorted_loss_history.append(loss)
         sorted_accuracy_history.append(accuracy.item())
 
     sorted_loss_history = torch.tensor(sorted_loss_history)
     sorted_accuracy_history = torch.tensor(sorted_accuracy_history)
+
+    if plot:
+        fig = plt.figure()
+        plt.plot(binned_train_loss_steps, sorted_loss_history)
+        plt.title('Train Loss')
+        plt.ylabel('Loss')
+        plt.xlabel('Train steps')
+        plt.ylim((0, plt.ylim()[1]))
+        fig.show()
+
+        fig = plt.figure()
+        plt.plot(binned_train_loss_steps, sorted_accuracy_history)
+        plt.title('Train accuracy')
+        plt.ylabel('Accuracy (%)')
+        plt.xlabel('Train steps')
+        plt.ylim((0, max(100, plt.ylim()[1])))
+        fig.show()
 
     return binned_train_loss_steps, sorted_loss_history, sorted_accuracy_history
 
