@@ -243,8 +243,8 @@ class Network(nn.Module):
             dataloader_iter = dataloader
 
         for sample_idx, sample_data, sample_target in dataloader_iter:
-            sample_data = torch.squeeze(sample_data)
-            sample_target = torch.squeeze(sample_target)
+            sample_data = torch.squeeze(sample_data).to(self.device)
+            sample_target = torch.squeeze(sample_target).to(self.device)
             output = self.forward(sample_data, store_history, no_grad=True)
             loss = self.criterion(output, sample_target)
 
