@@ -17,7 +17,7 @@ import EIANN.plot as pt
 @click.option("--network_config2", type=click.Path(exists=True, file_okay=False, dir_okay=True), default=None)
 
 def main(show, save, network_config1, network_config2):
-
+    pass
 
 if __name__ == '__main__':
     main(standalone_mode=False)
@@ -50,7 +50,7 @@ training_kwargs = network_config['training_kwargs']
 gj_network = Network(layer_config, projection_config, seed=seed, **training_kwargs)
 
 data_generator.manual_seed(data_seed)
-gj_network.train(dataloader, epochs, store_history=True, store_weights=True, status_bar=True)
+gj_network.train(dataloader, epochs, store_history=True, store_params=True, status_bar=True)
 pt.plot_test_loss_history(gj_network, test_dataloader)
 plt.savefig('figures/gjNet_raw_loss_history.png',edgecolor='white',dpi=300,facecolor='white',transparent=True)
 plt.savefig('figures/gjNet_raw_loss_history.svg',edgecolor='white',dpi=300,facecolor='white',transparent=True)
@@ -82,7 +82,7 @@ gj_initial_state = gj_network.param_history[0]
 bp_network.load_state_dict(gj_initial_state) # initialize backprop net with same weights as Gjorg. init
 
 data_generator.manual_seed(data_seed)
-bp_network.train(dataloader, epochs, store_history=True, store_weights=True, status_bar=True)
+bp_network.train(dataloader, epochs, store_history=True, store_params=True, status_bar=True)
 
 for layer in bp_network:  # swap to ReLU activation to make loss comparable across networks
     for population in layer:

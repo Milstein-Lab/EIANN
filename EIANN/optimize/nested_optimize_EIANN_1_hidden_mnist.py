@@ -83,20 +83,24 @@ def config_worker():
         context.store_history = False
     else:
         context.store_history = str_to_bool(context.store_history)
-    if 'store_weights' not in context():
-        context.store_weights = False
+    if 'store_dynamics' not in context():
+        context.store_dynamics = False
     else:
-        context.store_weights = str_to_bool(context.store_weights)
-    if 'store_weights_interval' not in context():
-        context.store_weights_interval = (0, -1, 100)
+        context.store_dynamics = str_to_bool(context.store_dynamics)
+    if 'store_params' not in context():
+        context.store_params = False
+    else:
+        context.store_params = str_to_bool(context.store_params)
+    if 'store_params_interval' not in context():
+        context.store_params_interval = (0, -1, 100)
     if 'full_analysis' not in context():
         context.full_analysis = False
     else:
         context.full_analysis = str_to_bool(context.full_analysis)
         if context.full_analysis:
             context.val_interval = (0, -1, 100)
-            context.store_weights_interval = (0, -1, 100)
-            context.store_weights = True
+            context.store_params_interval = (0, -1, 100)
+            context.store_params = True
     if 'equilibration_activity_tolerance' not in context():
         context.equilibration_activity_tolerance = 0.2
     else:
@@ -1580,8 +1584,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         data_generator.manual_seed(data_seed)
         network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
                       val_interval=context.val_interval, # e.g. (-201, -1, 10)
-                      store_history=context.store_history, store_weights=context.store_weights,
-                      store_weights_interval=context.store_weights_interval, status_bar=context.status_bar)
+                      store_history=context.store_history, store_dynamics=context.store_dynamics,
+                      store_params=context.store_params, store_params_interval=context.store_params_interval,
+                      status_bar=context.status_bar)
         if export:
             network.save(path=saved_network_path)
 
@@ -1603,6 +1608,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
 
     if context.store_history:
+        # if context.debug:
+        #     context.update(locals())
+        #     return dict()
         binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
             recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
 

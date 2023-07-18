@@ -10,6 +10,7 @@ import pickle
 import datetime
 from copy import deepcopy
 import time
+from collections import defaultdict
 
 from EIANN.utils import half_kaining_init, scaled_kaining_init, linear
 import EIANN.rules as rules
@@ -120,9 +121,7 @@ class Network(nn.Module):
 
         self.optimizer = optimizer
         self.init_weights_and_biases()
-        self.sample_order = []
-        self.sorted_sample_indexes = []
-        self.loss_history = []
+        self.reset_history()
 
     def init_weights_and_biases(self):
         for i, post_layer in enumerate(self):
@@ -176,12 +175,22 @@ class Network(nn.Module):
         self.sample_order = []
         self.sorted_sample_indexes = []
         self.loss_history = []
+        self.param_history = []
+        self.param_history_steps = []
         for layer in self:
             for population in layer:
                 population.reinit(self.device)
                 population.reset_history()
 
-    def forward(self, sample, store_history=False, store_dynamics=True, no_grad=False):
+    def forward(self, sample, store_history=False, store_dynamics=False, no_grad=False):
+        """
+
+        :param sample: tensor
+        :param store_history: bool
+        :param store_dynamics: bool
+        :param no_grad: bool
+        :return: tensor
+        """
 
         if len(sample.shape) > 1:
             batch_size = sample.shape[0]
@@ -222,17 +231,22 @@ class Network(nn.Module):
         if store_history:
             for layer in self:
                 for pop in layer:
-                    pop.activity_history_list.append(pop.forward_steps_activity)
+                    if store_dynamics:
+                        pop.append_attribute_history('activity', pop.forward_steps_activity)
+                    else:
+                        pop.append_attribute_history('activity', pop.activity.detach().clone())
 
         return self.output_pop.activity
 
-    def test(self, dataloader, store_history=False, status_bar=False):
+    def test(self, dataloader, store_history=False, store_dynamics=False, status_bar=False):
         """
 
         :param dataloader: :class:'DataLoader';
             returns index (int), sample_data (tensor of float), and sample_target (tensor of float)
         :param store_history: bool
+        :param store_dynamics: bool
         :param status_bar: bool
+        :return: float
         """
         if status_bar:
             from tqdm.autonotebook import tqdm
@@ -245,14 +259,14 @@ class Network(nn.Module):
         for sample_idx, sample_data, sample_target in dataloader_iter:
             sample_data = torch.squeeze(sample_data).to(self.device)
             sample_target = torch.squeeze(sample_target).to(self.device)
-            output = self.forward(sample_data, store_history, no_grad=True)
+            output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
             loss = self.criterion(output, sample_target)
 
         return loss.item()
 
-    def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50),
-              store_history=False, store_weights=False, store_weights_interval=None,
-              save_to_file=None, status_bar=False):
+    def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), store_history=False,
+              store_dynamics=False, store_params=False, store_params_interval=None, save_to_file=None,
+              status_bar=False):
         """
         Starting at validate_start, probe with the validate_data every validate_interval until >= validate_stop
         :param train_dataloader:
@@ -260,8 +274,9 @@ class Network(nn.Module):
         :param epochs:
         :param val_interval: tuple of int (start_index, stop_index, interval)
         :param store_history: bool
-        :param store_weights: bool
-        :param store_weights_interval: tuple of int (start_index, stop_index, interval)
+        :param store_dynamics: bool
+        :param store_params: bool
+        :param store_params_interval: tuple of int (start_index, stop_index, interval)
         :param save_to_file: None or file_path
         :param status_bar: bool
         """
@@ -297,16 +312,16 @@ class Network(nn.Module):
                 self.val_history_train_steps.append(train_step)
 
         # Store history of weights and biases
-        if store_weights:
+        if store_params:
             self.param_history = []
             self.param_history_steps = []
-            if store_weights_interval is None:
-                store_weights_range = val_range
+            if store_params_interval is None:
+                store_params_range = val_range
             else:
-                store_weights_range = torch.arange(train_step_range[store_weights_interval[0]],
-                                                   train_step_range[store_weights_interval[1]] + 1,
-                                                   store_weights_interval[2])
-            if train_step in store_weights_range:
+                store_params_range = torch.arange(train_step_range[store_params_interval[0]],
+                                                   train_step_range[store_params_interval[1]] + 1,
+                                                   store_params_interval[2])
+            if train_step in store_params_range:
                 self.param_history.append(deepcopy(self.state_dict()))
                 self.param_history_steps.append(train_step)
 
@@ -343,7 +358,7 @@ class Network(nn.Module):
                 sample_target = torch.squeeze(sample_target).to(self.device)
                 epoch_sample_order.append(sample_idx)
 
-                output = self.forward(sample_data, store_history)
+                output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics)
 
                 loss = self.criterion(output, sample_target)
                 self.loss_history.append(loss.item())
@@ -351,7 +366,7 @@ class Network(nn.Module):
 
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
-                    backward(self, output, sample_target, store_history)
+                    backward(self, output, sample_target, store_history=store_history, store_dynamics=store_dynamics)
 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
@@ -374,7 +389,7 @@ class Network(nn.Module):
                                 projection.learning_rule.update()
 
                 # Store history of weights and biases
-                if store_weights and train_step in store_weights_range:
+                if store_params and train_step in store_params_range:
                     self.param_history.append(deepcopy(self.state_dict()))
                     self.param_history_steps.append(train_step)
 
@@ -430,8 +445,7 @@ class Network(nn.Module):
         self.params_to_save.extend(['param_history', 'param_history_steps', 'sample_order', 'target_history',
                                     'sorted_sample_indexes', 'loss_history', 'val_output_history', 'val_loss_history',
                                     'val_history_train_steps', 'val_accuracy_history', 'val_target',
-                                    'activity_history_list', '_activity_history', '_backward_activity_history',
-                                    'bias_history_list', '_bias_history', '_plateau_history', 'plateau_history_list'])
+                                    'attribute_history_dict'])
 
         data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
                                  if param_name in self.params_to_save},
@@ -620,9 +634,47 @@ class Population(object):
         self.backward_projections = []
         self.outgoing_projections = {}
         self.incoming_projections = {}
+        self.attribute_history_dict = defaultdict(lambda: {'buffer': [], 'history': None})
         self.reinit(network.device)
         self.reset_history()
 
+    def append_attribute_history(self, attr_name, vals):
+        self.attribute_history_dict[attr_name]['buffer'].append(vals)
+
+    def get_attribute_history(self, attr_name):
+        if self.attribute_history_dict[attr_name]['buffer']:
+            if isinstance(self.attribute_history_dict[attr_name]['buffer'][0], torch.Tensor):
+                temp_history = torch.stack(self.attribute_history_dict[attr_name]['buffer'])
+            elif isinstance(self.attribute_history_dict[attr_name]['buffer'][0], list):
+                temp_history = \
+                    torch.stack(
+                        [torch.stack(val_list) for val_list in self.attribute_history_dict[attr_name]['buffer']])
+            self.attribute_history_dict[attr_name]['buffer'] = []
+        else:
+            return self.attribute_history_dict[attr_name]['history']
+        if self.attribute_history_dict[attr_name]['history'] is None:
+            self.attribute_history_dict[attr_name]['history'] = temp_history
+        else:
+            self.attribute_history_dict[attr_name]['history'] = torch.cat(
+                [self.attribute_history_dict[attr_name]['history'], temp_history])
+
+        return self.attribute_history_dict[attr_name]['history']
+    
+    def get_param_history(self, param_name):
+        cached_param_history = self.get_attribute_history(param_name)
+        if len(self.network.param_history) == 0:
+            return cached_param_history
+        if cached_param_history is None:
+            start = 0
+        elif len(cached_param_history) == len(self.network.param_history):
+            return cached_param_history
+        else:
+            start = len(cached_param_history)
+        for t in range(start, len(self.network.param_history)):
+            this_param = self.network.param_history[t][f'parameter_dict.{self.fullname}_{param_name}']
+            self.append_attribute_history(param_name, this_param)
+        return self.get_attribute_history(param_name)
+    
     def reinit(self, device, batch_size=1):
         """
         Method for resetting state variables of a population
@@ -640,6 +692,7 @@ class Population(object):
         """
 
         """
+        self.attribute_history_dict = defaultdict(lambda: {'buffer': [], 'history': None})
         self.activity_history_list = []
         self._activity_history = None
         self.backward_activity_history_list = []
@@ -673,81 +726,11 @@ class Population(object):
 
     @property
     def activity_history(self):
-        if self._activity_history is None:
-            if self.activity_history_list:
-                self._activity_history = \
-                    torch.stack([torch.stack(forward_steps_activity)
-                                 for forward_steps_activity in self.activity_history_list])
-                self.activity_history_list = []
-        else:
-            if self.activity_history_list:
-                self._activity_history = \
-                    torch.cat([self._activity_history,
-                               torch.stack([torch.stack(forward_steps_activity)
-                                            for forward_steps_activity in self.activity_history_list])])
-                self.activity_history_list = []
-
-        return self._activity_history
-
-    @property
-    def backward_activity_history(self):
-        if not hasattr(self, '_backward_activity_history'):
-            return None
-        if self._backward_activity_history is None:
-            if self.backward_activity_history_list:
-                self._backward_activity_history = \
-                    torch.stack([torch.stack(backward_steps_activity)
-                                 for backward_steps_activity in self.backward_activity_history_list])
-                self.backward_activity_history_list = []
-        else:
-            if self.backward_activity_history_list:
-                self._backward_activity_history = \
-                    torch.cat([self._backward_activity_history,
-                               torch.stack([torch.stack(backward_steps_activity)
-                                            for backward_steps_activity in self.backward_activity_history_list])])
-                self.backward_activity_history_list = []
-
-        return self._backward_activity_history
-
-    @property
-    def plateau_history(self):
-        if not hasattr(self, '_plateau_history'):
-            return None
-        if self._plateau_history is None:
-            if self.plateau_history_list:
-                self._plateau_history = torch.stack(self.plateau_history_list)
-                self.plateau_history_list = []
-        else:
-            if self.plateau_history_list:
-                self._plateau_history = torch.cat([self._plateau_history, torch.stack(self.plateau_history_list)])
-                self.plateau_history_list = []
-
-        return self._plateau_history
-
-    @property
-    def nudge_history(self):
-        if not hasattr(self, '_nudge_history'):
-            return None
-        if self._nudge_history is None:
-            if self.nudge_history_list:
-                self._nudge_history = torch.stack(self.nudge_history_list)
-                self.nudge_history_list = []
-        else:
-            if self.nudge_history_list:
-                self._nudge_history = torch.cat([self._nudge_history, torch.stack(self.nudge_history_list)])
-                self.nudge_history_list = []
-
-        return self._nudge_history
+        return self.get_attribute_history('activity')
 
     @property
     def bias_history(self):
-        """
-        TODO: cache the bias_history so this doesn't have to rebuilt from scratch at each call
-        :return:
-        """
-        param_history = self.network.param_history
-        _bias_history = [param_history[t][f'parameter_dict.{self.fullname}_bias'] for t in range(len(param_history))]
-        return torch.stack(_bias_history)
+        return self.get_param_history('bias')
 
 
 class Input(Population):
@@ -765,10 +748,7 @@ class Input(Population):
         self.reset_history()
 
     def reset_history(self):
-        self.activity_history_list = []
-        self._activity_history = None
-        self.backward_activity_history_list = []
-        self._backward_activity_history = None
+        self.attribute_history_dict = defaultdict(lambda: {'buffer': [], 'history': None})
 
 
 class Projection(nn.Linear):
@@ -860,8 +840,45 @@ class Projection(nn.Linear):
         if learning_rule_class != rules.Backprop:
             self.weight.requires_grad = False
 
+        self.attribute_history_dict = defaultdict(lambda: {'buffer': [], 'history': None})
+
+    def append_attribute_history(self, attr_name, vals):
+        self.attribute_history_dict[attr_name]['buffer'].append(vals)
+
+    def get_attribute_history(self, attr_name):
+        if self.attribute_history_dict[attr_name]['buffer']:
+            if isinstance(self.attribute_history_dict[attr_name]['buffer'][0], torch.Tensor):
+                temp_history = torch.stack(self.attribute_history_dict[attr_name]['buffer'])
+            elif isinstance(self.attribute_history_dict[attr_name]['buffer'][0], list):
+                temp_history = \
+                    torch.stack(
+                        [torch.stack(val_list) for val_list in self.attribute_history_dict[attr_name]['buffer']])
+            self.attribute_history_dict[attr_name]['buffer'] = []
+        else:
+            return self.attribute_history_dict[attr_name]['history']
+        if self.attribute_history_dict[attr_name]['history'] is None:
+            self.attribute_history_dict[attr_name]['history'] = temp_history
+        else:
+            self.attribute_history_dict[attr_name]['history'] = torch.cat(
+                [self.attribute_history_dict[attr_name]['history'], temp_history])
+
+        return self.attribute_history_dict[attr_name]['history']
+
+    def get_weight_history(self):
+        cached_weight_history = self.get_attribute_history('weight')
+        if len(self.post.network.param_history) == 0:
+            return cached_weight_history
+        if cached_weight_history is None:
+            start = 0
+        elif len(cached_weight_history) == len(self.post.network.param_history):
+            return cached_weight_history
+        else:
+            start = len(cached_weight_history)
+        for t in range(start, len(self.post.network.param_history)):
+            this_weight = self.post.network.param_history[t][f'module_dict.{self.name}.weight']
+            self.append_attribute_history('weight', this_weight)
+        return self.get_attribute_history('weight')
+
     @property
     def weight_history(self):
-        param_history = self.post.network.param_history
-        _weight_history = [param_history[t][f'module_dict.{self.name}.weight'] for t in range(len(param_history))]
-        return torch.stack(_weight_history)
+        return self.get_weight_history()

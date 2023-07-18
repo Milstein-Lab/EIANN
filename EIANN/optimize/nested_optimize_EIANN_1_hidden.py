@@ -46,10 +46,10 @@ def config_worker():
         context.eval_accuracy = 'final'
     else:
         context.eval_accuracy = str(context.eval_accuracy)
-    if 'store_weights' not in context():
-        context.store_weights = False
+    if 'store_params' not in context():
+        context.store_params = False
     else:
-        context.store_weights = str_to_bool(context.store_weights)
+        context.store_params = str_to_bool(context.store_params)
     if 'constrain_equilibration_dynamics' not in context():
         context.constrain_equilibration_dynamics = True
     else:
@@ -1902,7 +1902,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
 
     if plot:
-        network.test(dataloader, store_history=True, status_bar=context.status_bar)
+        network.test(dataloader, store_history=True, store_dynamics=True, status_bar=context.status_bar)
         plot_simple_EIANN_config_summary(network, num_samples=len(dataloader), label='Initial')
         network.reset_history()
 
@@ -1911,7 +1911,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     #     return dict()
 
     data_generator.manual_seed(data_seed)
-    network.train(dataloader, epochs, store_history=True, store_weights=context.store_weights,
+    network.train(dataloader, epochs=epochs, store_history=True, store_params=context.store_params,
                   status_bar=context.status_bar)
 
     if context.constrain_equilibration_dynamics or context.debug:

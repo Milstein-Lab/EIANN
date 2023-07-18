@@ -85,7 +85,7 @@ def main(config_path, name, export_path, plot, retrain, epochs, data_seed, netwo
                                     epochs=epochs,
                                     val_interval=(0, -1, 1000),
                                     store_history=True,
-                                    store_weights=False,
+                                    store_params=False,
                                     status_bar=True)
         network.save(file_name_base=network.name, dir='../saved_networks')
 

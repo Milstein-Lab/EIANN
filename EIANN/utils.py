@@ -353,7 +353,10 @@ def sort_unsupervised_by_best_epoch(network, target, plot=False):
     dynamic_epoch_loss_history = []
     sorted_idx_history = []
 
-    output_history = output_pop.activity_history[network.sorted_sample_indexes, -1, :]
+    if output_pop.activity_history.dim() > 2:
+        output_history = output_pop.activity_history[network.sorted_sample_indexes, -1, :]
+    else:
+        output_history = output_pop.activity_history[network.sorted_sample_indexes, :]
     start = 0
     while start < output_history.shape[0]:
         end = start + target.shape[0]
@@ -392,7 +395,7 @@ def sort_unsupervised_by_best_epoch(network, target, plot=False):
 def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=None, store_history=False, plot=False,
                                    status_bar=False):
     """
-    Assumes network has been trained with store_weights=True. Evaluates test_loss at each train step in the
+    Assumes network has been trained with store_params=True. Evaluates test_loss at each train step in the
     param_history.
     :param network:
     :param test_dataloader:
@@ -498,19 +501,25 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx=None, bin_size=
     """
 
     # Sort output history
-    if sorted_output_idx is None:
+    if network.Output.E.activity_history.dim() > 2:
         output_history = network.Output.E.activity_history[:, -1, :]
-        target_history = network.target_history.clone()
     else:
-        output_history = network.Output.E.activity_history[:, -1, sorted_output_idx]
-        target_history = network.target_history[:, sorted_output_idx]
+        output_history = network.Output.E.activity_history
+    if sorted_output_idx is not None:
+        output_history = output_history[:, sorted_output_idx]
+    target_history = network.target_history
     num_units = output_history.shape[1]
     num_patterns = output_history.shape[0]
 
     # Bin output history to compute average loss & accuracy over training
-    num_bins = int(num_patterns / bin_size)
+    num_bins = num_patterns // bin_size
+    excess = num_patterns % bin_size
+    if excess > 0:
+        output_history = output_history[:-excess]
+        target_history = target_history[:-excess]
+
     binned_output_history = output_history.reshape(num_bins, bin_size, num_units)
-    binned_target_history = network.target_history.reshape(num_bins, bin_size, num_units)
+    binned_target_history = target_history.reshape(num_bins, bin_size, num_units)
     binned_train_loss_steps = torch.arange(bin_size, bin_size * (num_bins + 1), bin_size)
 
     # Recompute loss
@@ -608,11 +617,18 @@ def recompute_history(network, output_sorting):
     output_pop = network.output_pop
 
     # Sort activity history
-    output_pop.activity_history.data = output_pop.activity_history[:, :, output_sorting]
+    if output_pop.activity_history.dim() > 2:
+        output_pop.activity_history.data = output_pop.activity_history[:, :, output_sorting]
+    else:
+        output_pop.activity_history.data = output_pop.activity_history[:, output_sorting]
 
     for t in range(len(network.param_history)):
+        # TODO: why is this starting with index == -1?
         # Recompute loss history
-        output = output_pop.activity_history[t-1, -1, :]
+        if output_pop.activity_history.dim() > 2:
+            output = output_pop.activity_history[t-1, -1, :]
+        else:
+            output = output_pop.activity_history[t - 1, :]
         target = network.target_history[t-1]
         network.loss_history[t-1] = network.criterion(output, target)
 
@@ -637,7 +653,7 @@ def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_
     """
     Split output activity history into "epoch" blocks (e.g. containint all 21 patterns) and compute accuracy for each
     block (with a given sorting of output units) to find the epoch with lowest loss.
-
+    TODO: this method is meant to be used after train, needs a separate method to compute test loss and accuracy
     :param network:
     :param target:
     :param sorted_output_idx:
@@ -649,10 +665,13 @@ def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_
     epoch_loss = []
     epoch_argmax_accuracy = []
 
-    if sorted_output_idx is None:
-        sorted_output_idx = torch.arange(0, output_pop.size)
+    if output_pop.activity_history.dim() > 2:
+        output_history = output_pop.activity_history[network.sorted_sample_indexes, -1, :]
+    else:
+        output_history = output_pop.activity_history[network.sorted_sample_indexes, :]
 
-    output_history = output_pop.activity_history[network.sorted_sample_indexes, -1, :][:, sorted_output_idx]
+    if sorted_output_idx is not None:
+        output_history = output_history[:, sorted_output_idx]
     start = 0
     while start < output_history.shape[0]:
         end = start + target.shape[0]
@@ -665,6 +684,7 @@ def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_
 
     epoch_loss = torch.tensor(epoch_loss)
     epoch_argmax_accuracy = torch.tensor(epoch_argmax_accuracy)
+    print(epoch_loss.shape)
     best_epoch_index = torch.where(epoch_loss == torch.min(epoch_loss))[0][0]
 
     if plot:
@@ -690,11 +710,11 @@ def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_
 def test_simple_EIANN_config(network, dataloader, epochs, supervised=True):
 
     num_samples = len(dataloader)
-    network.test(dataloader, store_history=True, status_bar=True)
+    network.test(dataloader, store_history=True, store_dynamics=True, status_bar=True)
     plot.plot_simple_EIANN_config_summary(network, num_samples=num_samples, label='Initial')
     network.reset_history()
 
-    network.train(dataloader, epochs, store_history=True, status_bar=True)
+    network.train(dataloader, epochs=epochs, store_history=True, store_dynamics=True, status_bar=True)
 
     target = torch.stack([sample_target for _, _, sample_target in dataloader.dataset])
     if not supervised:
@@ -713,7 +733,7 @@ def test_simple_EIANN_config(network, dataloader, epochs, supervised=True):
 def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=True, generator=None):
 
     num_samples = len(dataloader)
-    network.test(dataloader, store_history=True, status_bar=True)
+    network.test(dataloader, store_history=True, store_dynamics=True, status_bar=True)
     plot.plot_simple_EIANN_config_summary(network, num_samples=num_samples, label='Initial')
     network.reset_history()
 
@@ -728,7 +748,7 @@ def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=Tru
         analyze_simple_EIANN_epoch_loss_and_accuracy(network, phase1_target, plot=True)
     network.reset_history()
 
-    network.test(dataloader, store_history=True, status_bar=True)
+    network.test(dataloader, store_history=True, store_dynamics=True, status_bar=True)
     if not supervised:
         sorted_output_idx = sort_unsupervised_by_best_epoch(network, target, plot=plot)
     else:
@@ -747,7 +767,7 @@ def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=Tru
         analyze_simple_EIANN_epoch_loss_and_accuracy(network, phase2_target, plot=True)
     network.reset_history()
 
-    network.test(dataloader, store_history=True, status_bar=True)
+    network.test(dataloader, store_history=True, store_dynamics=True, status_bar=True)
     if not supervised:
         sorted_output_idx = sort_unsupervised_by_best_epoch(network, target, plot=plot)
     else:
@@ -794,6 +814,7 @@ def get_update_history(network):
 def compute_sparsity_history(activity_history):
     """
     Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
+    TODO: check activity_history dimensions
     """
     population_activity = activity_history #dims: 0=history, 1=dynamics, 2=patterns, 3=units
     n = population_activity.shape[3]
@@ -805,6 +826,7 @@ def compute_sparsity_history(activity_history):
 def compute_selectivity_history(activity_history):
     """
     Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
+    TODO: check activity_history dimensions
     """
     population_activity = activity_history #dims: 0=history, 1=dynamics, 2=patterns, 3=units
     n = population_activity.shape[2]
@@ -1124,39 +1146,6 @@ def compute_PSD(receptive_field, plot=False):
     return frequencies, spectral_power, peak_spatial_frequency
 
 
-def reshape_backward_activity_history(pop):
-    """
-    BTSP_4 learning rule variant equilibrates for a variable number of steps during the backward phase, creating a
-    ragged array. This method fills the backward_activity_history tensor up to the maximum number of steps encountered.
-    :param pop: :class:'Population'
-    """
-    if pop.backward_activity_history_list:
-        max_backward_steps = \
-            max([len(backward_steps_activity) for backward_steps_activity in pop.backward_activity_history_list])
-        if max_backward_steps == 0:
-            return
-        for i, backward_steps_activity in enumerate(pop.backward_activity_history_list):
-            if len(backward_steps_activity) == 0:
-                backward_steps_activity = pop.activity_history[i,-1,:].repeat(max_backward_steps, 1)
-            elif len(backward_steps_activity) == max_backward_steps:
-                backward_steps_activity = torch.stack(backward_steps_activity)
-            else:
-                backward_steps_activity = torch.stack(backward_steps_activity)
-                backward_steps_activity = torch.cat([backward_steps_activity,
-                                                     backward_steps_activity[-1,:].repeat(
-                                                         max_backward_steps - len(backward_steps_activity), 1)])
-            pop.backward_activity_history_list[i] = backward_steps_activity
-
-        if pop._backward_activity_history is None:
-            pop._backward_activity_history = torch.stack(pop.backward_activity_history_list)
-            pop.backward_activity_history_list = []
-        else:
-            pop._backward_activity_history = \
-                torch.cat([pop._backward_activity_history,
-                           torch.stack(pop.backward_activity_history_list)])
-            pop.backward_activity_history_list = []
-
-
 def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, debug=False, disp=False,
                                  plot=False):
     """
@@ -1170,7 +1159,7 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
     :return: bool
     """
     idx, data, targets = next(iter(dataloader))
-    network.forward(data, no_grad=True)
+    network.forward(data, store_dynamics=True, no_grad=True)
 
     for layer in network:
         for pop in layer:

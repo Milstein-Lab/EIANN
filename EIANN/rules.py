@@ -22,7 +22,7 @@ class LearningRule(object):
         pass
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         pass
 
 
@@ -43,13 +43,13 @@ class BiasLearningRule(object):
         pass
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         pass
 
 
 class Backprop(LearningRule):
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         loss = network.criterion(output, target)
         network.optimizer.zero_grad()
         loss.backward()
@@ -88,7 +88,7 @@ class BCM(LearningRule):
         self.projection.weight.data += self.learning_rate * delta_weight
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         for i, layer in enumerate(network):
             if i > 0:
                 for population in layer:
@@ -135,6 +135,9 @@ class SupervisedGjorgjievaHebb(LearningRule):
     def __init__(self, projection, sign=1, learning_rate=None):
         super().__init__(projection, learning_rate)
         self.sign = sign
+        projection.post.__class__.nudge_history = property(lambda self: self.get_attribute_history('nudge'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
 
     def step(self):
         delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity)
@@ -144,12 +147,12 @@ class SupervisedGjorgjievaHebb(LearningRule):
             self.projection.weight.data -= self.learning_rate * delta_weight
 
     @classmethod
-    def backward_update_layer_activity(cls, layer, store_history=False):
+    def backward_update_layer_activity(cls, layer, store_dynamics=False):
         """
         Update somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
         :param layer:
-        :param store_history: bool
+        :param store_dynamics: bool
         """
         for post_pop in layer:
             post_pop.prev_activity = post_pop.activity
@@ -168,25 +171,28 @@ class SupervisedGjorgjievaHebb(LearningRule):
                             delta_state = delta_state + projection(pre_pop.prev_activity)
                 post_pop.state = post_pop.state + delta_state / post_pop.tau
                 post_pop.activity = post_pop.activation(post_pop.state)
-                if store_history:
+                if store_dynamics:
                     post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
         :param network:
         :param output:
         :param target:
         :param store_history: bool
+        :param store_dynamics: bool
         """
         output_pop = network.output_pop
         output_layer = output_pop.layer
 
         # initialize populations that are updated during the backward phase
-        for pop in output_layer:
-            if pop.backward_projections or pop is output_pop:
-                pop.backward_steps_activity = []
+
+        if store_dynamics:
+            for pop in output_layer:
+                if pop.backward_projections or pop is output_pop:
+                    pop.backward_steps_activity = []
 
         # compute nudge based on target
         for projection in output_pop:
@@ -196,19 +202,27 @@ class SupervisedGjorgjievaHebb(LearningRule):
 
         # re-equilibrate soma states and activites
         for t in range(network.forward_steps):
-            cls.backward_update_layer_activity(output_layer, store_history)
+            cls.backward_update_layer_activity(output_layer, store_dynamics=store_dynamics)
         if store_history:
-            output_pop.nudge_history_list.append(output_pop.nudge.detach().clone())
-
-        for pop in output_layer:
-            if pop.backward_projections or pop is output_pop:
-                pop.backward_activity_history_list.append(pop.backward_steps_activity)
+            for pop in output_layer:
+                if pop.backward_projections or pop is output_pop:
+                    if store_dynamics:
+                        pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                    else:
+                        pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
+            output_pop.append_attribute_history('nudge', output_pop.nudge.detach().clone())
 
 
 class SupervisedGjorgjievaHebb_2(LearningRule):
+    """
+    This variant 2 respects recurrent connections and consults the prev_activity to update weights.
+    """
     def __init__(self, projection, sign=1, learning_rate=None):
         super().__init__(projection, learning_rate)
         self.sign = sign
+        projection.post.__class__.nudge_history = property(lambda self: self.get_attribute_history('nudge'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
 
     def step(self):
         if self.projection.direction in ['forward', 'F']:
@@ -221,12 +235,12 @@ class SupervisedGjorgjievaHebb_2(LearningRule):
             self.projection.weight.data -= self.learning_rate * delta_weight
 
     @classmethod
-    def backward_update_layer_activity(cls, layer, store_history=False):
+    def backward_update_layer_activity(cls, layer, store_dynamics=False):
         """
         Update somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
         :param layer:
-        :param store_history: bool
+        :param store_dynamics: bool
         """
         for post_pop in layer:
             post_pop.prev_activity = post_pop.activity
@@ -245,25 +259,27 @@ class SupervisedGjorgjievaHebb_2(LearningRule):
                             delta_state = delta_state + projection(pre_pop.prev_activity)
                 post_pop.state = post_pop.state + delta_state / post_pop.tau
                 post_pop.activity = post_pop.activation(post_pop.state)
-                if store_history:
+                if store_dynamics:
                     post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
         :param network:
         :param output:
         :param target:
         :param store_history: bool
+        :param store_dynamics: bool
         """
         output_pop = network.output_pop
         output_layer = output_pop.layer
 
         # initialize populations that are updated during the backward phase
-        for pop in output_layer:
-            if pop.backward_projections or pop is output_pop:
-                pop.backward_steps_activity = []
+        if store_dynamics:
+            for pop in output_layer:
+                if pop.backward_projections or pop is output_pop:
+                    pop.backward_steps_activity = []
 
         # compute nudge based on target
         for projection in output_pop:
@@ -273,13 +289,15 @@ class SupervisedGjorgjievaHebb_2(LearningRule):
 
         # re-equilibrate soma states and activites
         for t in range(network.forward_steps):
-            cls.backward_update_layer_activity(output_layer, store_history)
+            cls.backward_update_layer_activity(output_layer, store_dynamics=store_dynamics)
         if store_history:
-            output_pop.nudge_history_list.append(output_pop.nudge.detach().clone())
-
-        for pop in output_layer:
-            if pop.backward_projections or pop is output_pop:
-                pop.backward_activity_history_list.append(pop.backward_steps_activity)
+            for pop in output_layer:
+                if pop.backward_projections or pop is output_pop:
+                    if store_dynamics:
+                        pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                    else:
+                        pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
+            output_pop.append_attribute_history('nudge', output_pop.nudge.detach().clone())
 
 
 class BTSP(LearningRule):
@@ -309,6 +327,9 @@ class BTSP(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
+        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
 
     def step(self):
         plateau = self.projection.post.plateau
@@ -371,13 +392,14 @@ class BTSP(LearningRule):
 
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
         :param network:
         :param output:
         :param target:
         :param store_history: bool
+        :param store_dynamics: bool
         """
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
@@ -398,17 +420,18 @@ class BTSP(LearningRule):
                 neg_indexes = (output_pop.dendritic_state < projection.learning_rule.neg_loss_th).nonzero(as_tuple=True)
                 output_pop.plateau[neg_indexes] = output_pop.dendritic_state[neg_indexes]
                 if store_history:
-                    output_pop.plateau_history_list.append(output_pop.plateau.detach().clone())
+                    output_pop.append_attribute_history('plateau',output_pop.plateau.detach().clone())
                 break
         if store_history:
-            output_pop.backward_activity_history_list.append([output_pop.activity.detach().clone()])
+            output_pop.append_attribute_history('backward_activity', output_pop.activity.detach().clone())
 
         for layer in reversed_layers:
             # initialize cells that receive backward projections
             for pop in layer:
                 if pop.backward_projections:
                     pop.forward_soma_state = pop.state.detach().clone()
-                    pop.backward_steps_activity = []
+                    if store_dynamics:
+                        pop.backward_steps_activity = []
 
             # equilibrate activites and dendritic state variables
             for t in range(network.forward_steps):
@@ -424,7 +447,7 @@ class BTSP(LearningRule):
                                 pop.plateau[pos_indexes] = pop.dendritic_state[pos_indexes]
                                 pop.dend_to_soma[pos_indexes] = pop.dendritic_state[pos_indexes]
                                 break
-                        if store_history:
+                        if store_dynamics:
                             pop.backward_steps_activity.append(pop.activity.detach().clone())
             for pop in layer:
                 if pop.backward_projections:
@@ -434,10 +457,13 @@ class BTSP(LearningRule):
                                 as_tuple=True)
                             pop.plateau[neg_indexes] = pop.dendritic_state[neg_indexes]
                             if store_history:
-                                pop.plateau_history_list.append(pop.plateau.detach().clone())
+                                pop.append_attribute_history('plateau', pop.plateau.detach().clone())
                             break
                     if store_history:
-                        pop.backward_activity_history_list.append(pop.backward_steps_activity)
+                        if store_dynamics:
+                            pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                        else:
+                            pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
 
 
 class BTSP_2(LearningRule):
@@ -471,10 +497,13 @@ class BTSP_2(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-
-    def reinit(self):
-        self.projection.post.forward_dendritic_state_history = []
-        self.projection.post.backward_dendritic_state_history = []
+        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.__class__.forward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
+        projection.post.__class__.backward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
 
     def step(self):
         plateau = self.projection.post.plateau
@@ -488,13 +517,13 @@ class BTSP_2(LearningRule):
         self.projection.weight.data += self.learning_rate * delta_weight
 
     @classmethod
-    def backward_equilibrate_layer_activity(cls, layer, forward_steps, store_history=False):
+    def backward_equilibrate_layer_activity(cls, layer, forward_steps, store_dynamics=False):
         """
         Equilibrate somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
         :param layer:
         :param forward_steps: int
-        :param store_history: bool
+        :param store_dynamics: bool
         """
         for t in range(forward_steps):
             for post_pop in layer:
@@ -514,7 +543,7 @@ class BTSP_2(LearningRule):
                                 delta_state = delta_state + projection(pre_pop.prev_activity)
                     post_pop.state = post_pop.state + delta_state / post_pop.tau
                     post_pop.activity = post_pop.activation(post_pop.state)
-                if store_history:
+                if store_dynamics:
                     post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
 
     @classmethod
@@ -541,24 +570,26 @@ class BTSP_2(LearningRule):
                     post_pop.dendritic_state = torch.clamp(post_pop.dendritic_state, min=-1, max=1)
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
         :param network:
         :param output:
         :param target:
         :param store_history: bool
+        :param store_dynamics: bool
         """
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_layer = reversed_layers.pop(0)
         output_pop = network.output_pop
 
-        # initialize populations that are updated during the backward phase
-        for layer in network:
-            for pop in layer:
-                if pop.backward_projections or pop is output_pop:
-                    pop.backward_steps_activity = []
+        if store_dynamics:
+            # initialize populations that are updated during the backward phase
+            for layer in network:
+                for pop in layer:
+                    if pop.backward_projections or pop is output_pop:
+                        pop.backward_steps_activity = []
 
         # store the forward_activity before comparing output to target
         for layer in network:
@@ -572,7 +603,8 @@ class BTSP_2(LearningRule):
                 if hasattr(pop, 'dendritic_state'):
                     pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
                     if store_history:
-                        pop.forward_dendritic_state_history.append(pop.forward_dendritic_state.detach().clone())
+                        pop.append_attribute_history('forward_dendritic_state',
+                                                     pop.forward_dendritic_state.detach().clone())
 
         # compute plateau events and nudge somatic state
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
@@ -591,9 +623,9 @@ class BTSP_2(LearningRule):
                 break
 
         # re-equilibrate soma states and activites
-        cls.backward_equilibrate_layer_activity(output_layer, network.forward_steps, store_history)
+        cls.backward_equilibrate_layer_activity(output_layer, network.forward_steps, store_dynamics=store_dynamics)
         if store_history:
-            output_pop.plateau_history_list.append(output_pop.plateau.detach().clone())
+            output_pop.append_attribute_history('plateau', output_pop.plateau.detach().clone())
 
         for layer in reversed_layers:
             # equilibrate activites and dendritic state variables
@@ -620,16 +652,20 @@ class BTSP_2(LearningRule):
                         # pop.dend_to_soma[neg_plateau_indexes] = pop.dendritic_state[neg_plateau_indexes]
 
                         if store_history:
-                            pop.plateau_history_list.append(pop.plateau.detach().clone())
-                            pop.backward_dendritic_state_history.append(pop.dendritic_state.detach().clone())
+                            pop.append_attribute_history('plateau', pop.plateau.detach().clone())
+                            pop.append_attribute_history('backward_dendritic_state',
+                                                         pop.dendritic_state.detach().clone())
                         break
-            cls.backward_equilibrate_layer_activity(layer, network.forward_steps, store_history)
+            cls.backward_equilibrate_layer_activity(layer, network.forward_steps, store_dynamics=store_dynamics)
 
         if store_history:
             for layer in network:
                 for pop in layer:
                     if pop.backward_projections or pop is output_pop:
-                        pop.backward_activity_history_list.append(pop.backward_steps_activity)
+                        if store_dynamics:
+                            pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                        else:
+                            pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
 
 
 class BTSP_3(LearningRule):
@@ -659,6 +695,9 @@ class BTSP_3(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
+        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
 
     def step(self):
         plateau = self.projection.post.plateau
@@ -672,12 +711,12 @@ class BTSP_3(LearningRule):
         self.projection.weight.data += self.learning_rate * delta_weight
 
     @classmethod
-    def backward_update_layer_activity(cls, layer, store_history=False):
+    def backward_update_layer_activity(cls, layer, store_dynamics=False):
         """
         Update somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
         :param layer:
-        :param store_history: bool
+        :param store_dynamics: bool
         """
         for post_pop in layer:
             post_pop.prev_activity = post_pop.activity
@@ -696,7 +735,7 @@ class BTSP_3(LearningRule):
                             delta_state = delta_state + projection(pre_pop.prev_activity)
                 post_pop.state = post_pop.state + delta_state / post_pop.tau
                 post_pop.activity = post_pop.activation(post_pop.state)
-                if store_history:
+                if store_dynamics:
                     post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
 
     @classmethod
@@ -723,13 +762,14 @@ class BTSP_3(LearningRule):
                     post_pop.dendritic_state = torch.clamp(post_pop.dendritic_state, min=-1, max=1)
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
         :param network:
         :param output:
         :param target:
         :param store_history: bool
+        :param store_dynamics: bool
         """
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
@@ -748,11 +788,12 @@ class BTSP_3(LearningRule):
                 if hasattr(pop, 'dendritic_state'):
                     pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
 
-        # initialize populations that are updated during the backward phase
-        for layer in network:
-            for pop in layer:
-                if pop.backward_projections or pop is output_pop:
-                    pop.backward_steps_activity = []
+        if store_dynamics:
+            # initialize populations that are updated during the backward phase
+            for layer in network:
+                for pop in layer:
+                    if pop.backward_projections or pop is output_pop:
+                        pop.backward_steps_activity = []
 
         # compute plateau events and nudge somatic state
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
@@ -771,14 +812,14 @@ class BTSP_3(LearningRule):
                 break
         # re-equilibrate soma states and activites
         for t in range(network.forward_steps):
-            cls.backward_update_layer_activity(output_layer, store_history)
+            cls.backward_update_layer_activity(output_layer, store_dynamics=store_dynamics)
         if store_history:
-            output_pop.plateau_history_list.append(output_pop.plateau.detach().clone())
+            output_pop.append_attribute_history('plateau', output_pop.plateau.detach().clone())
 
         for layer in reversed_layers:
             # equilibrate activites and dendritic state variables
             for t in range(network.forward_steps):
-                cls.backward_update_layer_activity(layer, store_history)
+                cls.backward_update_layer_activity(layer, store_dynamics=store_dynamics)
                 cls.backward_update_layer_dendritic_state(layer)
                 for pop in layer:
                     for projection in pop:
@@ -798,13 +839,17 @@ class BTSP_3(LearningRule):
                             as_tuple=True)
                         pop.plateau[neg_indexes] = pop.dendritic_state[neg_indexes]
                         if store_history:
-                            pop.plateau_history_list.append(pop.plateau.detach().clone())
+                            pop.append_attribute_history('plateau', pop.plateau.detach().clone())
                         break
 
-        for layer in network:
-            for pop in layer:
-                if pop.backward_projections or pop is output_pop:
-                    pop.backward_activity_history_list.append(pop.backward_steps_activity)
+        if store_history:
+            for layer in network:
+                for pop in layer:
+                    if pop.backward_projections or pop is output_pop:
+                        if store_dynamics:
+                            pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                        else:
+                            pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
 
 
 class BTSP_4(LearningRule):
@@ -835,6 +880,9 @@ class BTSP_4(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
+        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
 
     def step(self):
         plateau = self.projection.post.plateau
@@ -848,12 +896,12 @@ class BTSP_4(LearningRule):
         self.projection.weight.data += self.learning_rate * delta_weight
 
     @classmethod
-    def backward_update_layer_activity(cls, layer, store_history=False):
+    def backward_update_layer_activity(cls, layer, store_dynamics=False):
         """
         Update somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
         :param layer:
-        :param store_history: bool
+        :param store_dynamics: bool
         """
         for post_pop in layer:
             post_pop.prev_activity = post_pop.activity
@@ -872,7 +920,7 @@ class BTSP_4(LearningRule):
                             delta_state = delta_state + projection(pre_pop.prev_activity)
                 post_pop.state = post_pop.state + delta_state / post_pop.tau
                 post_pop.activity = post_pop.activation(post_pop.state)
-                if store_history:
+                if store_dynamics:
                     post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
 
     @classmethod
@@ -899,24 +947,26 @@ class BTSP_4(LearningRule):
                     post_pop.dendritic_state = torch.clamp(post_pop.dendritic_state, min=-1, max=1)
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
         :param network:
         :param output:
         :param target:
         :param store_history: bool
+        :param store_dynamics: bool
         """
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_layer = reversed_layers.pop(0)
         output_pop = network.output_pop
 
-        # initialize populations that are updated during the backward phase
-        for layer in network:
-            for pop in layer:
-                if pop.backward_projections or pop is output_pop:
-                    pop.backward_steps_activity = []
+        if store_dynamics:
+            # initialize populations that are updated during the backward phase
+            for layer in network:
+                for pop in layer:
+                    if pop.backward_projections or pop is output_pop:
+                        pop.backward_steps_activity = []
 
         # store the forward_activity before comparing output to target
         for layer in network:
@@ -948,9 +998,9 @@ class BTSP_4(LearningRule):
 
         # re-equilibrate soma states and activites
         for t in range(network.forward_steps):
-            cls.backward_update_layer_activity(output_layer, store_history)
+            cls.backward_update_layer_activity(output_layer, store_dynamics=store_dynamics)
         if store_history:
-            output_pop.plateau_history_list.append(output_pop.plateau.detach().clone())
+            output_pop.append_attribute_history('plateau', output_pop.plateau.detach().clone())
 
         for layer in reversed_layers:
             # equilibrate activites and dendritic state variables
@@ -989,14 +1039,17 @@ class BTSP_4(LearningRule):
                             neg_plateau_indexes = neg_indexes[avail_indexes]
                             pop.plateau[neg_plateau_indexes] = pop.dendritic_state[neg_plateau_indexes]
                         if store_history:
-                            pop.plateau_history_list.append(pop.plateau.detach().clone())
+                            pop.append_attribute_history('plateau', pop.plateau.detach().clone())
                         break
 
         if store_history:
             for layer in network:
                 for pop in layer:
                     if pop.backward_projections or pop is output_pop:
-                        pop.backward_activity_history_list.append(pop.backward_steps_activity)
+                        if store_dynamics:
+                            pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                        else:
+                            pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
 
 
 class BTSP_5(LearningRule):
@@ -1030,14 +1083,19 @@ class BTSP_5(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
+        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.__class__.forward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
+        projection.post.__class__.backward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
 
     def reinit(self):
         self.projection.pre.past_activity = torch.zeros(self.projection.pre.size,
                                                         device=self.projection.pre.network.device)
         self.projection.post.past_plateau = torch.zeros(self.projection.post.size,
                                                         device=self.projection.post.network.device)
-        self.projection.post.forward_dendritic_state_history = []
-        self.projection.post.backward_dendritic_state_history = []
 
     def update(self):
         self.projection.pre.past_activity = self.projection.pre.activity.detach().clone()
@@ -1074,13 +1132,13 @@ class BTSP_5(LearningRule):
             self.projection.weight.data += self.learning_rate * delta_weight
 
     @classmethod
-    def backward_equilibrate_layer_activity(cls, layer, forward_steps, store_history=False):
+    def backward_equilibrate_layer_activity(cls, layer, forward_steps, store_dynamics=False):
         """
         Equilibrate somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
         :param layer:
         :param forward_steps: int
-        :param store_history: bool
+        :param store_dynamics: bool
         """
         for t in range(forward_steps):
             for post_pop in layer:
@@ -1100,7 +1158,7 @@ class BTSP_5(LearningRule):
                                 delta_state = delta_state + projection(pre_pop.prev_activity)
                     post_pop.state = post_pop.state + delta_state / post_pop.tau
                     post_pop.activity = post_pop.activation(post_pop.state)
-                if store_history:
+                if store_dynamics:
                     post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
 
     @classmethod
@@ -1127,13 +1185,14 @@ class BTSP_5(LearningRule):
                     post_pop.dendritic_state = torch.clamp(post_pop.dendritic_state, min=-1, max=1)
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
         :param network:
         :param output:
         :param target:
         :param store_history: bool
+        :param store_dynamics: bool
         """
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
@@ -1145,7 +1204,8 @@ class BTSP_5(LearningRule):
         for layer in network:
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
-                    pop.backward_steps_activity = []
+                    if store_dynamics:
+                        pop.backward_steps_activity = []
                 pop.forward_activity = pop.activity.detach().clone()
 
         # compute and store the forward_dendritic_state before comparing output to target
@@ -1155,7 +1215,7 @@ class BTSP_5(LearningRule):
                 if hasattr(pop, 'dendritic_state'):
                     pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
                     if store_history:
-                        pop.forward_dendritic_state_history.append(pop.forward_dendritic_state.detach().clone())
+                        pop.append_attribute_history('forward_dendritic_state', pop.dendritic_state.detach().clone())
 
         # compute plateau events and nudge somatic state
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
@@ -1170,9 +1230,9 @@ class BTSP_5(LearningRule):
                 break
 
         # re-equilibrate soma states and activites
-        cls.backward_equilibrate_layer_activity(output_layer, network.forward_steps, store_history)
+        cls.backward_equilibrate_layer_activity(output_layer, network.forward_steps, store_dynamics=store_dynamics)
         if store_history:
-            output_pop.plateau_history_list.append(output_pop.plateau.detach().clone())
+            output_pop.append_attribute_history('plateau', output_pop.plateau.detach().clone())
 
         for layer in reversed_layers:
             # equilibrate activites and dendritic state variables
@@ -1193,16 +1253,20 @@ class BTSP_5(LearningRule):
                         pop.dend_to_soma[pos_plateau_indexes] = 1.  # pop.dendritic_state[pos_plateau_indexes]
 
                         if store_history:
-                            pop.plateau_history_list.append(pop.plateau.detach().clone())
-                            pop.backward_dendritic_state_history.append(pop.dendritic_state.detach().clone())
+                            pop.append_attribute_history('plateau', pop.plateau.detach().clone())
+                            pop.append_attribute_history('backward_dendritic_state',
+                                                         pop.dendritic_state.detach().clone())
                         break
-            cls.backward_equilibrate_layer_activity(layer, network.forward_steps, store_history)
+            cls.backward_equilibrate_layer_activity(layer, network.forward_steps, store_dynamics=store_dynamics)
 
         if store_history:
             for layer in network:
                 for pop in layer:
                     if pop.backward_projections or pop is output_pop:
-                        pop.backward_activity_history_list.append(pop.backward_steps_activity)
+                        if store_dynamics:
+                            pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                        else:
+                            pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
 
 
 class BTSP_6(LearningRule):
@@ -1243,16 +1307,21 @@ class BTSP_6(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
+        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.__class__.forward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
+        projection.post.__class__.backward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
+        projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
 
     def reinit(self):
         self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
                                              requires_grad=False)
         self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
                                               requires_grad=False)
-        self.projection.post.forward_dendritic_state_history = []
-        self.projection.post.backward_dendritic_state_history = []
-        self.projection.pre.ET_history = []
-        self.projection.post.IS_history = []
         self.projection.pre.ET_updated = False
         self.projection.post.IS_updated = False
 
@@ -1271,24 +1340,24 @@ class BTSP_6(LearningRule):
         self.projection.weight.data += delta_weight
 
     @classmethod
-    def backward_equilibrate_layer_activity(cls, layer, forward_steps, store_history=False):
+    def backward_equilibrate_layer_activity(cls, layer, forward_steps, store_dynamics=False):
         """
         Equilibrate somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
         :param layer:
         :param forward_steps: int
-        :param store_history: bool
+        :param store_dynamics: bool
         """
         for t in range(forward_steps):
-            cls.backward_update_layer_activity(layer, store_history=store_history)
+            cls.backward_update_layer_activity(layer, store_dynamics=store_dynamics)
 
     @classmethod
-    def backward_update_layer_activity(cls, layer, store_history=False):
+    def backward_update_layer_activity(cls, layer, store_dynamics=False):
         """
         Update somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
         :param layer:
-        :param store_history: bool
+        :param store_dynamics: bool
         """
         for post_pop in layer:
             post_pop.prev_activity = post_pop.activity
@@ -1335,13 +1404,14 @@ class BTSP_6(LearningRule):
                     post_pop.dendritic_state = torch.clamp(post_pop.dendritic_state, min=-1, max=1)
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
         :param network:
         :param output:
         :param target:
         :param store_history: bool
+        :param store_dynamics: bool
         """
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
@@ -1356,7 +1426,8 @@ class BTSP_6(LearningRule):
             cls.backward_update_layer_dendritic_state(layer)
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
-                    pop.backward_steps_activity = []
+                    if store_dynamics:
+                        pop.backward_steps_activity = []
                 pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
@@ -1365,7 +1436,8 @@ class BTSP_6(LearningRule):
                         pop.dend_to_soma = torch.zeros(pop.size, device=pop.network.device, requires_grad=False)
                         pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
                         if store_history:
-                            pop.forward_dendritic_state_history.append(pop.forward_dendritic_state.detach().clone())
+                            pop.append_attribute_history('forward_dendritic_state',
+                                                         pop.dendritic_state.detach().clone())
                         break
 
         # compute plateau events and nudge somatic state
@@ -1378,7 +1450,7 @@ class BTSP_6(LearningRule):
                 output_pop.dend_to_soma[pos_indexes] = 1.  # output_pop.dendritic_state[pos_indexes]
                 break
         # re-equilibrate soma states and activites
-        cls.backward_equilibrate_layer_activity(output_layer, network.forward_steps, store_history)
+        cls.backward_equilibrate_layer_activity(output_layer, network.forward_steps, store_dynamics=store_dynamics)
 
         for layer in reversed_layers:
             for t in range(network.forward_steps):
@@ -1399,7 +1471,7 @@ class BTSP_6(LearningRule):
                                     pop.plateau[plateau_index] = 1.
                                     pop.dend_to_soma[plateau_index] = 1.  # pop.dendritic_state[pos_plateau_indexes]
                             break
-                cls.backward_update_layer_activity(layer, store_history)
+                cls.backward_update_layer_activity(layer, store_dynamics=store_dynamics)
 
         for layer in network:
             for pop in layer:
@@ -1410,18 +1482,22 @@ class BTSP_6(LearningRule):
                             pop.IS.clamp_(0., 1.)
                             pop.IS_updated = True
                             if store_history:
-                                pop.IS_history.append(pop.IS.detach().clone())
-                                pop.plateau_history_list.append(pop.plateau.detach().clone())
-                                pop.backward_dendritic_state_history.append(pop.dendritic_state.detach().clone())
+                                pop.append_attribute_history('IS', pop.IS.detach().clone())
+                                pop.append_attribute_history('plateau', pop.plateau.detach().clone())
+                                pop.append_attribute_history('backward_dendritic_state',
+                                                             pop.dendritic_state.detach().clone())
                         if not projection.pre.ET_updated:
                             projection.pre.ET += projection.pre.activity
                             projection.pre.ET.clamp_(0., 1.)
                             projection.pre.ET_updated = True
                             if store_history:
-                                projection.pre.ET_history.append(projection.pre.ET.detach().clone())
+                                projection.pre.append_attribute_history('ET', projection.pre.ET.detach().clone())
                 if pop.backward_projections or pop is output_pop:
                     if store_history:
-                        pop.backward_activity_history_list.append(pop.backward_steps_activity)
+                        if store_dynamics:
+                            pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                        else:
+                            pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
 
 
 class BTSP_7(LearningRule):
@@ -1463,16 +1539,21 @@ class BTSP_7(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
+        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.__class__.forward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
+        projection.post.__class__.backward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
+        projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
 
     def reinit(self):
         self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
                                              requires_grad=False)
         self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
                                               requires_grad=False)
-        self.projection.post.forward_dendritic_state_history = []
-        self.projection.post.backward_dendritic_state_history = []
-        self.projection.pre.ET_history = []
-        self.projection.post.IS_history = []
         self.projection.pre.ET_updated = False
         self.projection.post.IS_updated = False
 
@@ -1491,12 +1572,12 @@ class BTSP_7(LearningRule):
         self.projection.weight.data += delta_weight
 
     @classmethod
-    def backward_update_activity(cls, network, store_history=False):
+    def backward_update_activity(cls, network, store_dynamics=False):
         """
         Update somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
         :param layer:
-        :param store_history: bool
+        :param store_dynamics: bool
         """
         for layer in network:
             for post_pop in layer:
@@ -1517,7 +1598,7 @@ class BTSP_7(LearningRule):
                     post_pop.activity = post_pop.activation(post_pop.state)
                     if hasattr(post_pop, 'dend_to_soma'):
                         post_pop.activity = post_pop.activity + post_pop.dend_to_soma
-                    if store_history:
+                    if store_dynamics:
                         post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
 
     @classmethod
@@ -1545,13 +1626,14 @@ class BTSP_7(LearningRule):
                     post_pop.dendritic_state = torch.clamp(post_pop.dendritic_state, min=-1, max=1)
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
         :param network:
         :param output:
         :param target:
         :param store_history: bool
+        :param store_dynamics: bool
         """
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
@@ -1564,7 +1646,8 @@ class BTSP_7(LearningRule):
             # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
-                    pop.backward_steps_activity = []
+                    if store_dynamics:
+                        pop.backward_steps_activity = []
                 # store the forward_activity before comparing output to target
                 pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
@@ -1575,7 +1658,8 @@ class BTSP_7(LearningRule):
                         pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
                         if store_history:
                             # store the forward_dendritic_state
-                            pop.forward_dendritic_state_history.append(pop.forward_dendritic_state.detach().clone())
+                            pop.append_attribute_history('forward_dendritic_state',
+                                                         pop.dendritic_state.detach().clone())
                         break
 
         for t in range(network.forward_steps):
@@ -1606,7 +1690,7 @@ class BTSP_7(LearningRule):
                                         pop.dend_to_soma[plateau_index] = 1.  # pop.dendritic_state[pos_plateau_indexes]
                             break
             # update activities
-            cls.backward_update_activity(network, store_history)
+            cls.backward_update_activity(network, store_dynamics=store_dynamics)
 
         for layer in network:
             for pop in layer:
@@ -1617,18 +1701,22 @@ class BTSP_7(LearningRule):
                             pop.IS.clamp_(0., 1.)
                             pop.IS_updated = True
                             if store_history:
-                                pop.IS_history.append(pop.IS.detach().clone())
-                                pop.plateau_history_list.append(pop.plateau.detach().clone())
-                                pop.backward_dendritic_state_history.append(pop.dendritic_state.detach().clone())
+                                pop.append_attribute_history('IS', pop.IS.detach().clone())
+                                pop.append_attribute_history('plateau', pop.plateau.detach().clone())
+                                pop.append_attribute_history('backward_dendritic_state',
+                                                             pop.dendritic_state.detach().clone())
                         if not projection.pre.ET_updated:
                             projection.pre.ET += projection.pre.activity
                             projection.pre.ET.clamp_(0., 1.)
                             projection.pre.ET_updated = True
                             if store_history:
-                                projection.pre.ET_history.append(projection.pre.ET.detach().clone())
+                                projection.pre.append_attribute_history('ET', projection.pre.ET.detach().clone())
                 if pop.backward_projections or pop is output_pop:
                     if store_history:
-                        pop.backward_activity_history_list.append(pop.backward_steps_activity)
+                        if store_dynamics:
+                            pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                        else:
+                            pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
 
 
 class DendriticLossBias(BiasLearningRule):

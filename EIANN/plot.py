@@ -61,7 +61,8 @@ def clean_axes(axes, left=True, right=False):
 # *******************************************************************
 def plot_simple_EIANN_config_summary(network, num_samples, start_index=None, sorted_output_idx=None, label=None):
     """
-
+    TODO: align with strategy for mnist - plot after a simple forward batch of a test_dataloader
+    Assumes network was trained with store_history=True and store_dynamics=True
     :param network:
     :param num_samples: int
     :param start_index: int
@@ -248,7 +249,7 @@ def plot_validate_loss_history(network):
 
 def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None, store_history=False, plot=False):
     """
-    Assumes network has been trained with store_weights=True. Evaluates test_loss at each train step in the
+    Assumes network has been trained with store_params=True. Evaluates test_loss at each train step in the
     param_history.
     :param network:
     :param test_dataloader:
@@ -773,7 +774,16 @@ def plot_sorted_plateaus(population, test_dataloader, show_negative=True):
 
 
 def plot_total_input(population, test_dataloader, sorting='E', act_threshold=0):
-    '''Plot the total input to a population for each pattern in the test set'''
+    """
+    Plot the total input to a population for each pattern in the test set
+    TODO: check activity_history dimensions
+    :param population:
+    :param test_dataloader:
+    :param sorting:
+    :param act_threshold:
+    :return:
+    """
+    ''''''
 
     network = population.network
     network.reset_history()

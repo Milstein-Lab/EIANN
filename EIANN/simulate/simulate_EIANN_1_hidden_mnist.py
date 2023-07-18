@@ -34,8 +34,8 @@ def config_worker():
         context.debug = False
     else:
         context.debug = str_to_bool(context.debug)
-    if 'store_weights_interval' not in context():
-        context.store_weights_interval = (0, -1, 10000)
+    if 'store_params_interval' not in context():
+        context.store_params_interval = (0, -1, 10000)
     if 'equilibration_activity_tolerance' not in context():
         context.equilibration_activity_tolerance = 0.2
     else:
@@ -143,8 +143,8 @@ def simulate(seed, data_seed):
                                    epochs=epochs,
                                    val_interval=context.val_interval, # e.g. (-201, -1, 10)
                                    store_history=True,
-                                   store_weights=True,
-                                   store_weights_interval=context.store_weights_interval,
+                                   store_params=True,
+                                   store_params_interval=context.store_params_interval,
                                    status_bar=context.status_bar)
 
     # reorder output units if using unsupervised/Hebbian rule
