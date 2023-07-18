@@ -331,64 +331,64 @@ class Network(nn.Module):
 
         for epoch in epoch_iter:
             epoch_sample_order = []
-            if status_bar and len(train_dataloader) > epochs:
-                dataloader_iter = tqdm(train_dataloader, desc='Samples', leave=epoch == epochs - 1)
-            else:
-                dataloader_iter = train_dataloader
 
-            for sample_idx, sample_data, sample_target in dataloader_iter:
-                train_step += 1
+            for batch_idx, batch_data, batch_target in train_dataloader:
+                batch_data = batch_data.to(self.device)
+                batch_target = batch_target.to(self.device)
+                data_iter = zip(batch_idx, batch_data, batch_target)
+                if status_bar and len(batch_data) > epochs:
+                    data_iter = tqdm(list(data_iter), desc='Samples', leave=epoch == epochs - 1)
 
-                sample_data = torch.squeeze(sample_data).to(self.device)
-                sample_target = torch.squeeze(sample_target).to(self.device)
-                epoch_sample_order.append(sample_idx)
+                for sample_idx, sample_data, sample_target in data_iter:
+                    train_step += 1
 
-                output = self.forward(sample_data, store_history)
+                    epoch_sample_order.append(sample_idx)
+                    output = self.forward(sample_data, store_history)
 
-                loss = self.criterion(output, sample_target)
-                self.loss_history.append(loss.item())
-                self.target_history.append(sample_target.clone())
+                    loss = self.criterion(output, sample_target)
+                    self.loss_history.append(loss.item())
+                    self.target_history.append(sample_target.clone())
 
-                # Update state variables required for weight and bias updates
-                for backward in self.backward_methods:
-                    backward(self, output, sample_target, store_history)
+                    # Update state variables required for weight and bias updates
+                    for backward in self.backward_methods:
+                        backward(self, output, sample_target, store_history)
 
-                # Step weights and biases
-                for i, post_layer in enumerate(self):
-                    if i > 0:
-                        for post_pop in post_layer:
-                            if post_pop.include_bias:
-                                post_pop.bias_learning_rule.step()
-                            for projection in post_pop:
-                                projection.learning_rule.step()
+                    # Step weights and biases
+                    for i, post_layer in enumerate(self):
+                        if i > 0:
+                            for post_pop in post_layer:
+                                if post_pop.include_bias:
+                                    post_pop.bias_learning_rule.step()
+                                for projection in post_pop:
+                                    projection.learning_rule.step()
 
-                self.constrain_weights_and_biases()
+                    self.constrain_weights_and_biases()
 
-                # update learning rule parameters
-                for i, post_layer in enumerate(self):
-                    if i > 0:
-                        for post_pop in post_layer:
-                            if post_pop.include_bias:
-                                post_pop.bias_learning_rule.update()
-                            for projection in post_pop:
-                                projection.learning_rule.update()
+                    # update learning rule parameters
+                    for i, post_layer in enumerate(self):
+                        if i > 0:
+                            for post_pop in post_layer:
+                                if post_pop.include_bias:
+                                    post_pop.bias_learning_rule.update()
+                                for projection in post_pop:
+                                    projection.learning_rule.update()
 
-                # Store history of weights and biases
-                if store_weights and train_step in store_weights_range:
-                    self.param_history.append(deepcopy(self.state_dict()))
-                    self.param_history_steps.append(train_step)
+                    # Store history of weights and biases
+                    if store_weights and train_step in store_weights_range:
+                        self.param_history.append(deepcopy(self.state_dict()))
+                        self.param_history_steps.append(train_step)
 
-                # Compute validation loss
-                if val_dataloader is not None and train_step in val_range:
-                    output = self.forward(val_data, store_dynamics=False, no_grad=True)
-                    val_output_history.append(output.detach().clone())
-                    val_loss_history.append(self.criterion(output, val_target).item())
-                    accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
-                               output.shape[0]
-                    val_accuracy_history.append(accuracy.item())
-                    self.val_history_train_steps.append(train_step)
+                    # Compute validation loss
+                    if val_dataloader is not None and train_step in val_range:
+                        output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                        val_output_history.append(output.detach().clone())
+                        val_loss_history.append(self.criterion(output, val_target).item())
+                        accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
+                                   output.shape[0]
+                        val_accuracy_history.append(accuracy.item())
+                        self.val_history_train_steps.append(train_step)
 
-            epoch_sample_order = torch.concat(epoch_sample_order)
+            epoch_sample_order = torch.stack(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
             self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(epoch_sample_order)))
 
