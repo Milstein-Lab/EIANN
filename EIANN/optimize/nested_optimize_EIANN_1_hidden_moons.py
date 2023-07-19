@@ -1,6 +1,4 @@
 import torch
-import torchvision
-import torchvision.transforms as T
 from torch.utils.data import DataLoader
 import os, sys, math
 from copy import deepcopy
@@ -11,8 +9,8 @@ import gc
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, \
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
-    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy
-from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields
+    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history
+from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history
 from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_backprop_Dale_softplus_SGD_F, \
@@ -22,29 +20,9 @@ from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_backpro
     update_EIANN_config_1_hidden_BTSP_F2, update_EIANN_config_1_hidden_BTSP_F3, \
     update_EIANN_config_1_hidden_backprop_softplus_SGD, \
     update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C, update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F
-import EIANN.utils as utils
 from sklearn.datasets import make_moons
 
 context = Context()
-
-# run 5 random seeds in parallel:
-# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --store_history=True --retrain=False --full_analysis=True --status_bar=True
-
-# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=bpDale \
-#   --export --export-file-path=multiseed_mnist_metrics.hdf5 --store_history=True --retrain=False --full_analysis=True --status_bar=True
-
-# run a single seed (must be run from the root directory of EIANN):
-# python -m nested.analyze --framework=serial \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis=True --status_bar=True
-
-# python -m nested.analyze --framework=serial --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=btsp --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --status_bar=True --plot --full_analysis=True
 
 
 def config_controller():
@@ -106,10 +84,6 @@ def config_worker():
         context.equilibration_activity_tolerance = 0.2
     else:
         context.equilibration_activity_tolerance = float(context.equilibration_activity_tolerance)
-    if 'compute_receptive_fields' not in context():
-        context.compute_receptive_fields = False
-    else:
-        context.compute_receptive_fields = str_to_bool(context.compute_receptive_fields)
     if 'constrain_equilibration_dynamics' not in context():
         context.constrain_equilibration_dynamics = True
     else:
@@ -226,17 +200,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     # reorder output units if using unsupervised/Hebbian rule
     if not context.supervised:
         min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
+        sorted_val_loss_history, sorted_val_accuracy_history = \
+            recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True)
     else:
         min_loss_idx = torch.argmin(network.val_loss_history)
-        sorted_output_idx = torch.arange(0, network.val_output_history.shape[-1])
-
-    sorted_val_loss_history, sorted_val_accuracy_history = \
-        recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
+        sorted_output_idx = None
+        sorted_val_loss_history = network.val_loss_history
+        sorted_val_accuracy_history = network.val_accuracy_history
 
     if context.store_history:
-        # if context.debug:
-        #     context.update(locals())
-        #     return {}
         binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
             recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
 
@@ -262,7 +234,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         results = {'loss': best_loss_window,
                    'accuracy': best_accuracy_window}
     else:
-        raise Exception('nested_optimize_EIANN_1_hidden: eval_accuracy must be final or best, not %s' %
+        raise Exception('nested_optimize_EIANN_1_hidden_moons: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
 
     if torch.isnan(results['loss']):
@@ -282,7 +254,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     if context.full_analysis:
         test_loss_history, test_accuracy_history = \
-            compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot,
+            compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot,
                                            status_bar=context.status_bar)
 
     if context.debug:
@@ -296,7 +268,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                        'training_kwargs': context.training_kwargs}
         write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
         if context.disp:
-            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
+            print('nested_optimize_EIANN_1_hidden_moons: pid: %i exported network config to %s' %
                   (os.getpid(), context.export_network_config_file_path))
 
     if export:

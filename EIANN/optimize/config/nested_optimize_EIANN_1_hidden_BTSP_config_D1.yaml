@@ -69,7 +69,11 @@ kwargs:
     supervised: True
     status_bar: False
     epochs: 300
-    num_epochs_argmax_accuracy: 50
+    val_interval:
+        - -1001
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
     network_config_file_path: config/EIANN_1_hidden_BTSP_config_D1.yaml
     eval_accuracy: final
 update_context:

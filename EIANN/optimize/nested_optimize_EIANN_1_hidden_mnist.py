@@ -11,7 +11,7 @@ import gc
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
-    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy
+    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields
 from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
@@ -20,7 +20,8 @@ from .nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_backpro
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
     update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, update_EIANN_config_1_hidden_BTSP_F1, \
     update_EIANN_config_1_hidden_BTSP_F2, update_EIANN_config_1_hidden_BTSP_F3, \
-    update_EIANN_config_1_hidden_BTSP_F5, update_EIANN_config_1_hidden_backprop_softplus_SGD, \
+    update_EIANN_config_1_hidden_BTSP_F5, update_EIANN_config_1_hidden_BTSP_F6, \
+    update_EIANN_config_1_hidden_backprop_softplus_SGD, \
     update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C, update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F
 import EIANN.utils as utils
 
@@ -1600,17 +1601,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     # reorder output units if using unsupervised/Hebbian rule
     if not context.supervised:
         min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
+        sorted_val_loss_history, sorted_val_accuracy_history = \
+            recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True)
     else:
         min_loss_idx = torch.argmin(network.val_loss_history)
-        sorted_output_idx = torch.arange(0, network.val_output_history.shape[-1])
-
-    sorted_val_loss_history, sorted_val_accuracy_history = \
-        recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True, plot=plot)
+        sorted_output_idx = None
+        sorted_val_loss_history = network.val_loss_history
+        sorted_val_accuracy_history = network.val_accuracy_history
 
     if context.store_history:
-        # if context.debug:
-        #     context.update(locals())
-        #     return dict()
         binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
             recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
 
@@ -1636,7 +1635,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         results = {'loss': best_loss_window,
                    'accuracy': best_accuracy_window}
     else:
-        raise Exception('nested_optimize_EIANN_1_hidden: eval_accuracy must be final or best, not %s' %
+        raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
 
     if torch.isnan(results['loss']):
@@ -1669,7 +1668,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields,
                                                             plot=plot)
         test_loss_history, test_accuracy_history = \
-            compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot,
+            compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot,
                                            status_bar=context.status_bar)
 
     if context.debug:

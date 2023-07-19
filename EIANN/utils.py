@@ -346,6 +346,23 @@ def sort_by_val_history(network, plot=False):
     return min_loss_idx, min_loss_sorting
 
 
+def sort_unsupervised_by_test_batch_autoenc(network, test_dataloader):
+    """
+    Run a test batch and return the output unit sorting that best matches the output activity to the test labels.
+    :param network:
+    :param test_dataloader:
+    :return: tensor of int
+    """
+    assert len(test_dataloader) == 1, 'Dataloader must have a single large batch'
+
+    network.test(test_dataloader)
+
+    # Find optimal output unit (column) sorting
+    optimal_sorting = get_diag_argmax_row_indexes(network.output_pop.activity.T)
+
+    return optimal_sorting
+
+
 def sort_unsupervised_by_best_epoch(network, target, plot=False):
 
     output_pop = network.output_pop
@@ -392,8 +409,35 @@ def sort_unsupervised_by_best_epoch(network, target, plot=False):
     return sorted_idx
 
 
-def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=None, store_history=False, plot=False,
-                                   status_bar=False):
+def compute_test_loss_and_accuracy_single_batch(network, test_dataloader, sorted_output_idx=None):
+    """
+
+    :param network:
+    :param test_dataloader:
+    :param sorted_output_idx: tensor of int
+    """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    idx, test_data, test_target = next(iter(test_dataloader))
+    test_data = test_data.to(network.device)
+    test_target = test_target.to(network.device)
+    test_loss_history = []
+    test_accuracy_history = []
+    num_patterns = test_data.shape[0]
+
+    output = network.forward(test_data, no_grad=True)
+    if sorted_output_idx is not None:
+        output = output[:, sorted_output_idx]
+    test_loss = network.criterion(output, test_target).item()
+    test_accuracy = 100 * torch.sum(torch.argmax(output, dim=1) ==
+                               torch.argmax(test_target, dim=1)) / num_patterns
+    test_accuracy = test_accuracy.item()
+
+    return test_loss, test_accuracy
+
+
+def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=None, store_history=False,
+                                           plot=False, status_bar=False, title=None):
     """
     Assumes network has been trained with store_params=True. Evaluates test_loss at each train step in the
     param_history.
@@ -402,7 +446,8 @@ def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=N
     :param sorted_output_idx: tensor of int
     :param store_history: bool
     :param plot: bool
-    :param status_bar
+    :param status_bar: bool
+    :param title: str
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
     assert len(network.param_history) > 0, 'Network must contain a stored param_history'
@@ -434,12 +479,17 @@ def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=N
     network.test_loss_history = torch.tensor(test_loss_history).cpu()
     network.test_accuracy_history = torch.tensor(test_accuracy_history).cpu()
 
+    if title is None:
+        title_str = ''
+    else:
+        title_str = ': %s' % str(title)
+
     if plot:
         fig = plt.figure()
         plt.plot(network.param_history_steps, network.test_loss_history)
         plt.xlabel('Training steps')
         plt.ylabel('Test loss')
-        fig.suptitle('Test loss')
+        fig.suptitle('Test loss%s' % title_str)
         fig.tight_layout()
         fig.show()
 
@@ -447,14 +497,14 @@ def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=N
         plt.plot(network.param_history_steps, network.test_accuracy_history)
         plt.xlabel('Training steps')
         plt.ylabel('Test accuracy')
-        fig.suptitle('Test accuracy')
+        fig.suptitle('Test accuracy%s' % title_str)
         fig.tight_layout()
         fig.show()
 
     return network.test_loss_history, network.test_accuracy_history
 
 
-def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=False, plot=False):
+def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=False):
     """
 
     :param network:
@@ -490,14 +540,15 @@ def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=Fal
     return sorted_val_loss_history, sorted_val_accuracy_history
 
 
-def recompute_train_loss_and_accuracy(network, sorted_output_idx=None, bin_size=100, plot=False):
+def recompute_train_loss_and_accuracy(network, sorted_output_idx=None, bin_size=100, plot=False, title=None):
     """
 
     :param network:
     :param sorted_output_idx:
     :param bin_size: int
-    :param plot:bool
-    :return:
+    :param plot: bool
+    :param title: str
+    :return: tuple of tensor
     """
 
     # Sort output history
@@ -538,10 +589,15 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx=None, bin_size=
     sorted_loss_history = torch.tensor(sorted_loss_history)
     sorted_accuracy_history = torch.tensor(sorted_accuracy_history)
 
+    if title is None:
+        title_str = ''
+    else:
+        title_str = ': %s' % str(title)
     if plot:
         fig = plt.figure()
         plt.plot(binned_train_loss_steps, sorted_loss_history)
-        plt.title('Train Loss')
+
+        plt.title('Train Loss%s' % title_str)
         plt.ylabel('Loss')
         plt.xlabel('Train steps')
         plt.ylim((0, plt.ylim()[1]))
@@ -549,7 +605,7 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx=None, bin_size=
 
         fig = plt.figure()
         plt.plot(binned_train_loss_steps, sorted_accuracy_history)
-        plt.title('Train accuracy')
+        plt.title('Train accuracy%s' % title_str)
         plt.ylabel('Accuracy (%)')
         plt.xlabel('Train steps')
         plt.ylim((0, max(100, plt.ylim()[1])))
@@ -1161,27 +1217,46 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
     idx, data, targets = next(iter(dataloader))
     network.forward(data, store_dynamics=True, no_grad=True)
 
-    for layer in network:
-        for pop in layer:
-            pop_activity = torch.stack(pop.forward_steps_activity)
-            if pop_activity.shape[0] == 1:
-                return True
-            average_activity = torch.mean(pop_activity, dim=(1, 2))
-            if plot:
-                fig = plt.figure()
-                plt.plot(average_activity, label=pop.fullname)
-                plt.legend(loc='best', frameon=False, framealpha=0.5)
-                plt.xlabel('Equilibration time steps')
-                plt.ylabel('Average population activity')
-                plt.ylim((0., plt.ylim()[1]))
-                fig.show()
-            equil_mean = torch.mean(average_activity[-2:])
-            if equil_mean > 0:
-                equil_delta = torch.abs(average_activity[-1] - average_activity[-2])
-                equil_error = equil_delta/equil_mean
-                if equil_error > equilibration_activity_tolerance:
-                    if disp:
-                        print('pop: %s failed check_equilibration_dynamics: %.2f' % (pop.fullname, equil_error))
-                    if not debug:
-                        return False
+    if plot:
+        max_rows = 1
+        for layer in network:
+            max_rows = max(max_rows, len(layer.populations))
+        cols = len(network.layers) - 1
+        fig, axes = plt.subplots(max_rows, cols, figsize=(3.2 * cols, 3. * max_rows))
+        if max_rows == 1:
+            if cols == 1:
+                axes = [[axes]]
+            else:
+                axes = [axes]
+        elif cols == 1:
+            axes = [[axis] for axis in axes]
+
+    for i, layer in enumerate(network):
+        if i > 0:
+            col = i - 1
+            for row, population in enumerate(layer):
+                pop_activity = torch.stack(population.forward_steps_activity)
+                if pop_activity.shape[0] == 1:
+                    return True
+                average_activity = torch.mean(pop_activity, dim=(1, 2))
+                if plot:
+                    this_axis = axes[row][col]
+                    this_axis.plot(average_activity)
+                    this_axis.set_xlabel('Equilibration time steps')
+                    this_axis.set_ylabel('Average population activity')
+                    this_axis.set_title('%s.%s' % (layer.name, population.name))
+                    this_axis.set_ylim((0., this_axis.get_ylim()[1]))
+                equil_mean = torch.mean(average_activity[-2:])
+                if equil_mean > 0:
+                    equil_delta = torch.abs(average_activity[-1] - average_activity[-2])
+                    equil_error = equil_delta/equil_mean
+                    if equil_error > equilibration_activity_tolerance:
+                        if disp:
+                            print('pop: %s failed check_equilibration_dynamics: %.2f' % (pop.fullname, equil_error))
+                        if not debug:
+                            return False
+    if plot:
+        fig.suptitle('Activity dynamics')
+        fig.tight_layout()
+        fig.show()
     return True

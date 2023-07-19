@@ -59,37 +59,22 @@ def clean_axes(axes, left=True, right=False):
 # *******************************************************************
 # Network summary functions
 # *******************************************************************
-def plot_simple_EIANN_config_summary(network, num_samples, start_index=None, sorted_output_idx=None, label=None):
+def plot_EIANN_1_hidden_autoenc_config_summary(network, test_dataloader, sorted_output_idx=None, title=None):
     """
-    TODO: align with strategy for mnist - plot after a simple forward batch of a test_dataloader
-    Assumes network was trained with store_history=True and store_dynamics=True
+
     :param network:
-    :param num_samples: int
-    :param start_index: int
-    :parm sorted_output_idx: tensor of int
-    :param label: str
+    :param test_dataloader:
+    :param sorted_output_idx: tensor of int
+    :param title: str
     """
-    output_layer = list(network)[-1]
-    output_pop = network.output_pop
+    assert len(test_dataloader) == 1, 'Dataloader must have a single large batch'
 
-    if sorted_output_idx is None:
-        sorted_output_idx = torch.arange(0, output_pop.size)
+    network.test(test_dataloader, store_dynamics=True, status_bar=True)
 
-    if len(network.sorted_sample_indexes) > 0:
-        sorted_sample_indexes = network.sorted_sample_indexes
+    if title is None:
+        title_str = ''
     else:
-        sorted_sample_indexes = torch.arange(0, output_pop.activity_history.shape[0])
-
-    if start_index is None:
-        end_index = len(sorted_sample_indexes)
-        start_index = end_index - num_samples
-    else:
-        end_index = start_index + num_samples
-
-    if label is None:
-        label_str = ''
-    else:
-        label_str = '%s ' % label
+        title_str = '%s ' % title
 
     max_rows = 1
     cols = len(network.layers) - 1
@@ -100,27 +85,34 @@ def plot_simple_EIANN_config_summary(network, num_samples, start_index=None, sor
         max_rows = max(max_rows, projection_count)
 
     fig1, axes = plt.subplots(max_rows, cols, figsize=(3.2*cols, 3.*max_rows))
+    if max_rows == 1:
+        if cols == 1:
+            axes = [[axes]]
+        else:
+            axes = [axes]
+    elif cols == 1:
+        axes = [[axis] for axis in axes]
     for i, layer in enumerate(network):
         if i > 0:
             col = i - 1
             row = 0
             for population in layer:
                 for projection in population:
-                    if cols == 1:
-                        if max_rows == 1:
-                            this_axis = axes
+                    this_axis = axes[row, col]
+                    if projection.post is network.output_pop:
+                        if sorted_output_idx is not None:
+                            im = this_axis.imshow(projection.weight.data[sorted_output_idx, :], aspect='auto',
+                                                  interpolation='none')
                         else:
-                            this_axis = axes[row]
-                    elif max_rows == 1:
-                        this_axis = axes[col]
+                            im = this_axis.imshow(projection.weight.data, aspect='auto', interpolation='none')
+                    elif projection.pre is network.output_pop:
+                        if sorted_output_idx is not None:
+                            im = this_axis.imshow(projection.weight.data[:, sorted_output_idx], aspect='auto',
+                                                  interpolation='none')
+                        else:
+                            im = this_axis.imshow(projection.weight.data, aspect='auto', interpolation='none')
                     else:
-                        this_axis = axes[row, col]
-                    if projection.post == output_pop:
-                        im = this_axis.imshow(projection.weight.data[sorted_output_idx, :], aspect='auto')
-                    elif projection.pre == output_pop:
-                        im = this_axis.imshow(projection.weight.data[:, sorted_output_idx], aspect='auto')
-                    else:
-                        im = this_axis.imshow(projection.weight.data, aspect='auto')
+                        im = this_axis.imshow(projection.weight.data, aspect='auto', interpolation='none')
                     fig1.colorbar(im, ax=this_axis)
                     this_axis.set_xlabel('Pre unit ID')
                     this_axis.set_ylabel('Post unit ID')
@@ -129,13 +121,10 @@ def plot_simple_EIANN_config_summary(network, num_samples, start_index=None, sor
                                projection.pre.layer.name, projection.pre.name))
                     row += 1
             while row < max_rows:
-                if cols == 1:
-                    this_axis = axes[row]
-                else:
-                    this_axis = axes[row, col]
+                this_axis = axes[row, col]
                 this_axis.set_visible(False)
                 row += 1
-    fig1.suptitle('%sweights' % label_str)
+    fig1.suptitle('%sweights' % title_str)
     fig1.tight_layout()
     fig1.show()
 
@@ -145,104 +134,94 @@ def plot_simple_EIANN_config_summary(network, num_samples, start_index=None, sor
         max_rows = max(max_rows, len(layer.populations))
 
     fig2, axes = plt.subplots(max_rows, cols, figsize=(3.2 * cols, 3. * max_rows))
+    if max_rows == 1:
+        axes = [axes]
     for col, layer in enumerate(network):
         for row, population in enumerate(layer):
-            if cols == 1:
-                if max_rows == 1:
-                    this_axis = axes
-                else:
-                    this_axis = axes[row]
-            elif max_rows == 1:
-                this_axis = axes[col]
+            this_axis = axes[row][col]
+            if population is network.output_pop and sorted_output_idx is not None:
+                im = this_axis.imshow(population.activity[:, sorted_output_idx].T, aspect='auto', interpolation='none')
             else:
-                this_axis = axes[row, col]
-            if population == output_pop:
-                im = this_axis.imshow(population.activity_history[sorted_sample_indexes, -1, :][
-                                      start_index:end_index, sorted_output_idx].T, aspect='auto')
-            else:
-                im = this_axis.imshow(population.activity_history[sorted_sample_indexes, -1, :][
-                                      start_index:end_index, :].T, aspect='auto')
+                im = this_axis.imshow(population.activity.T, aspect='auto', interpolation='none')
             fig2.colorbar(im, ax=this_axis)
             this_axis.set_xlabel('Input pattern ID')
             this_axis.set_ylabel('Unit ID')
             this_axis.set_title('%s.%s' % (layer.name, population.name))
         row += 1
         while row < max_rows:
-            if cols == 1:
-                this_axis = axes[row]
-            else:
-                this_axis = axes[row, col]
+            this_axis = axes[row][col]
             this_axis.set_visible(False)
             row += 1
-    fig2.suptitle('%sactivity' % label_str)
+    fig2.suptitle('%sactivity' % title_str)
     fig2.tight_layout()
     fig2.show()
 
     cols = len(network.layers) - 1
     fig3, axes = plt.subplots(max_rows, cols, figsize=(3.2 * cols, 3. * max_rows))
+    if max_rows == 1:
+        if cols == 1:
+            axes = [[axes]]
+        else:
+            axes = [axes]
+    elif cols == 1:
+        axes = [[axis] for axis in axes]
     for i, layer in enumerate(network):
         if i > 0:
             col = i - 1
             for row, population in enumerate(layer):
-                if cols == 1:
-                    if max_rows == 1:
-                        this_axis = axes
-                    else:
-                        this_axis = axes[row]
-                elif max_rows == 1:
-                    this_axis = axes[col]
-                else:
-                    this_axis = axes[row, col]
+                this_axis = axes[row][col]
+                av_activity_dynamics = torch.mean(torch.stack(population.forward_steps_activity), dim=1)
                 for i in range(population.size):
-                    this_axis.plot(torch.mean(population.activity_history[start_index:end_index, :, i], axis=0))
+                    this_axis.plot(av_activity_dynamics[:,i])
                 this_axis.set_xlabel('Equilibration time steps')
-                this_axis.set_ylabel('Unit ID')
+                this_axis.set_ylabel('Activity')
                 this_axis.set_title('%s.%s' % (layer.name, population.name))
             row += 1
             while row < max_rows:
-                if cols == 1:
-                    this_axis = axes[row]
-                else:
-                    this_axis = axes[row, col]
+                this_axis = axes[row][col]
                 this_axis.set_visible(False)
                 row += 1
-    fig3.suptitle('%sactivity dynamics' % label_str)
+    fig3.suptitle('%sactivity dynamics' % title_str)
     fig3.tight_layout()
     fig3.show()
 
-    print('%spopulation biases:' % label_str)
-    for i, layer in enumerate(network):
-        if i > 0:
-            for population in layer:
-                print(layer.name, population.name, population.bias)
 
-
-def plot_train_loss_history(network):
+def plot_train_loss_history(network, title=None):
     """
     Plot loss and accuracy history from training
     :param network:
+    :param title: str
     """
     # network.loss_history = network.loss_history.cpu()
+    if title is None:
+        title_str = ''
+    else:
+        title_str = ': %s' % str(title)
     fig = plt.figure()
     plt.plot(network.loss_history)
     plt.ylabel('Train loss')
     plt.xlabel('Training steps')
-    fig.suptitle('Train loss')
+    fig.suptitle('Train loss%s' % title_str)
     fig.tight_layout()
     fig.show()
 
 
-def plot_validate_loss_history(network):
+def plot_validate_loss_history(network, title=None):
     """
     Assumes network has been trained and a val_loss_history has been stored.
     :param network:
     """
     assert len(network.val_loss_history) > 0, 'Network must contain a stored val_loss_history'
+
+    if title is None:
+        title_str = ''
+    else:
+        title_str = ': %s' % str(title)
     fig = plt.figure()
     plt.plot(network.val_history_train_steps, network.val_loss_history)
     plt.xlabel('Training steps')
     plt.ylabel('Validation loss')
-    fig.suptitle('Validation loss')
+    fig.suptitle('Validation loss%s' % title_str)
     fig.tight_layout()
     fig.show()
 

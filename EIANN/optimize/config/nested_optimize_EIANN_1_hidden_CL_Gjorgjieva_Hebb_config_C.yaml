@@ -53,7 +53,7 @@ kwargs:
     seed_start: 1
     num_instances: 5
     data_seed_start: 1
-    supervised: True
+    supervised: False
     status_bar: False
     epochs: 300
     split: 0.75
@@ -62,7 +62,8 @@ kwargs:
         - -1
         - 100
     num_training_steps_accuracy_window: 1000
-    network_config_file_path: config/EIANN_1_hidden_Supervised_Gjorgjieva_Hebb_config_C.yaml
+    network_config_file_path: config/EIANN_1_hidden_Gjorgjieva_Hebb_config_C.yaml
+    constrain_equilibration_dynamics: False
     eval_accuracy: final
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_CL
@@ -73,7 +74,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_CL_Supervised_Gjorgjieva_Hebb_C
+optimization_title: EIANN_1_hidden_CL_Gjorgjieva_Hebb_C
 x0:
     H1_E_Input_E_learning_rate: 2.339308E-01
     Output_E_H1_E_learning_rate: 2.339308E-01
@@ -90,3 +91,4 @@ x0:
     H1_FBI_H1_FBI_weight_scale: 5.040185E+00
     H1_FBI_size: 7
     Output_FBI_size: 7
+

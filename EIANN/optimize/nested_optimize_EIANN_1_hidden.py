@@ -1,15 +1,17 @@
 import torch
 from torch.utils.data import DataLoader
-import os, sys
+import os, sys, math
 from copy import deepcopy
 import numpy as np
 import h5py
-import math
+import gc
 
 from EIANN import Network
-from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
-    sort_unsupervised_by_best_epoch, check_equilibration_dynamics
-from EIANN.plot import plot_simple_EIANN_config_summary, plot_simple_EIANN_weight_history_diagnostic
+from EIANN.utils import read_from_yaml, write_to_yaml, \
+    sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
+    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history
+from EIANN.plot import plot_EIANN_1_hidden_autoenc_config_summary, plot_batch_accuracy, plot_train_loss_history, \
+    plot_validate_loss_history
 from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
 
@@ -40,39 +42,65 @@ def config_worker():
         context.verbose = False
     else:
         context.verbose = str_to_bool(context.verbose)
+    if 'interactive' not in context():
+        context.interactive = False
+    else:
+        context.interactive = str_to_bool(context.interactive)
     if 'export_network_config_file_path' not in context():
         context.export_network_config_file_path = None
     if 'eval_accuracy' not in context():
         context.eval_accuracy = 'final'
     else:
         context.eval_accuracy = str(context.eval_accuracy)
+    if 'store_history' not in context():
+        context.store_history = False
+    else:
+        context.store_history = str_to_bool(context.store_history)
+    if 'store_dynamics' not in context():
+        context.store_dynamics = False
+    else:
+        context.store_dynamics = str_to_bool(context.store_dynamics)
     if 'store_params' not in context():
         context.store_params = False
     else:
         context.store_params = str_to_bool(context.store_params)
-    if 'constrain_equilibration_dynamics' not in context():
-        context.constrain_equilibration_dynamics = True
+    if 'store_params_interval' not in context():
+        context.store_params_interval = (0, -1, 100)
+    if 'full_analysis' not in context():
+        context.full_analysis = False
     else:
-        context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
+        context.full_analysis = str_to_bool(context.full_analysis)
+        if context.full_analysis:
+            context.val_interval = (0, -1, 100)
+            context.store_params_interval = (0, -1, 100)
+            context.store_params = True
     if 'equilibration_activity_tolerance' not in context():
         context.equilibration_activity_tolerance = 0.2
     else:
         context.equilibration_activity_tolerance = float(context.equilibration_activity_tolerance)
+    if 'constrain_equilibration_dynamics' not in context():
+        context.constrain_equilibration_dynamics = True
+    else:
+        context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
+    if 'retrain' not in context():
+        context.retrain = True
+    else:
+        context.retrain = str_to_bool(context.retrain)
 
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
 
-    context.input_size = 21
-    context.dataset = torch.eye(context.input_size)
-    context.target = torch.eye(context.dataset.shape[0])
+    input_size = 21
+    dataset = torch.eye(input_size)
+    target = torch.eye(dataset.shape[0])
 
-    context.sample_indexes = torch.arange(len(context.dataset))
+    sample_indexes = torch.arange(len(dataset))
     context.data_generator = torch.Generator()
-    autoenc_train_data = list(zip(context.sample_indexes, context.dataset, context.target))
-    context.dataloader = DataLoader(autoenc_train_data, shuffle=True, generator=context.data_generator)
-    context.test_dataloader = DataLoader(autoenc_train_data, batch_size=len(context.dataset), shuffle=False)
+    autoenc_train_data = list(zip(sample_indexes, dataset, target))
+    context.train_dataloader = DataLoader(autoenc_train_data, shuffle=True, generator=context.data_generator)
+    context.test_dataloader = DataLoader(autoenc_train_data, batch_size=len(dataset), shuffle=False)
 
 
 def get_random_seeds():
@@ -1881,6 +1909,147 @@ def update_EIANN_config_1_hidden_BTSP_F5(x, context):
         I_I_learning_rate
 
 
+def update_EIANN_config_1_hidden_BTSP_F6(x, context):
+    """
+    H1.SomaI, H1.DendI, and Output.SomaI are learned with the Gjorgjieva_Hebb_2 rule.
+    H1.E.H1.DendI weights are learned with the DendriticLoss_5 rule.
+    E<-E weights are learned with the BTSP_8 rule.
+    Inits are half-kaining with parameterized scale.
+    :param x:
+    :param context:
+
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    H1_I_size = int(param_dict['H1_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+
+    context.layer_config['H1']['SomaI']['size'] = H1_I_size
+    context.layer_config['H1']['DendI']['size'] = H1_I_size
+    context.layer_config['Output']['SomaI']['size'] = Output_I_size
+
+    FF_BTSP_init_weight_factor = param_dict['FF_BTSP_init_weight_factor']
+    FB_BTSP_init_weight_factor = param_dict['FB_BTSP_init_weight_factor']
+    BTSP_anti_hebb_th = param_dict['BTSP_anti_hebb_th']
+
+    H1_E_Input_E_max_weight_scale = param_dict['H1_E_Input_E_max_weight_scale']
+    H1_E_Input_E_max_weight = H1_E_Input_E_max_weight_scale / math.sqrt(context.layer_config['Input']['E']['size'])
+    H1_E_Input_E_init_weight_scale = H1_E_Input_E_max_weight_scale * FF_BTSP_init_weight_factor
+    H1_E_Input_E_BTSP_learning_rate = param_dict['H1_E_Input_E_BTSP_learning_rate']
+    H1_E_Output_E_BTSP_learning_rate = param_dict['H1_E_Output_E_BTSP_learning_rate']
+    H1_E_BTSP_pos_loss_th = param_dict['H1_E_BTSP_pos_loss_th']
+    H1_E_Output_E_max_weight_scale = param_dict['H1_E_Output_E_max_weight_scale']
+    H1_E_Output_E_max_weight = H1_E_Output_E_max_weight_scale / math.sqrt(context.layer_config['Output']['E']['size'])
+    H1_E_Output_E_init_weight_scale = H1_E_Output_E_max_weight_scale * FB_BTSP_init_weight_factor
+
+    H1_E_H1_SomaI_weight_scale = param_dict['H1_E_H1_SomaI_weight_scale'] * \
+                             math.sqrt(context.layer_config['H1']['SomaI']['size']) / 2
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    H1_SomaI_H1_E_weight_scale = param_dict['H1_SomaI_H1_E_weight_scale'] * \
+                             math.sqrt(context.layer_config['H1']['E']['size']) / 2
+    H1_SomaI_Input_E_weight_scale = param_dict['H1_SomaI_Input_E_weight_scale'] * \
+                                math.sqrt(context.layer_config['Input']['E']['size']) / 2
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+    H1_SomaI_H1_SomaI_weight_scale = param_dict['H1_SomaI_H1_SomaI_weight_scale'] * \
+                             math.sqrt(context.layer_config['H1']['SomaI']['size']) / 2
+    I_I_learning_rate = param_dict['I_I_learning_rate']
+
+    H1_DendI_H1_E_weight_scale = param_dict['H1_DendI_H1_E_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H1']['E']['size']) / 2
+    H1_DendI_H1_DendI_weight_scale = param_dict['H1_DendI_H1_DendI_weight_scale'] * \
+                                     math.sqrt(context.layer_config['H1']['DendI']['size']) / 2
+    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
+                                      math.sqrt(context.layer_config['H1']['DendI']['size'])
+    H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
+
+    Output_E_H1_E_max_weight_scale = param_dict['Output_E_H1_E_max_weight_scale']
+    Output_E_H1_E_max_weight = Output_E_H1_E_max_weight_scale / math.sqrt(context.layer_config['H1']['E']['size'])
+    Output_E_H1_E_init_weight_scale = Output_E_H1_E_max_weight_scale * FF_BTSP_init_weight_factor
+    Output_E_BTSP_learning_rate = param_dict['Output_E_BTSP_learning_rate']
+    Output_E_BTSP_pos_loss_th = param_dict['Output_E_BTSP_pos_loss_th']
+
+    Output_E_Output_I_weight_scale = param_dict['Output_E_Output_I_weight_scale'] * \
+                                     math.sqrt(context.layer_config['Output']['SomaI']['size']) / 2
+    Output_I_Output_E_weight_scale = param_dict['Output_I_Output_E_weight_scale'] * \
+                                     math.sqrt(context.layer_config['Output']['E']['size']) / 2
+    Output_I_H1_E_weight_scale = param_dict['Output_I_H1_E_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H1']['E']['size']) / 2
+    Output_I_Output_I_weight_scale = param_dict['Output_I_Output_I_weight_scale'] * \
+                                     math.sqrt(context.layer_config['Output']['SomaI']['size']) / 2
+
+    BTSP_decay_tau = param_dict['BTSP_decay_tau']
+
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['Input']['E']['weight_bounds'] = (0, H1_E_Input_E_max_weight)
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = H1_E_BTSP_pos_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_Input_E_BTSP_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['decay_tau'] = \
+        BTSP_decay_tau
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['anti_hebb_th'] = BTSP_anti_hebb_th
+
+    context.projection_config['H1']['E']['Output']['E']['weight_init_args'] = (H1_E_Output_E_init_weight_scale,)
+    context.projection_config['H1']['E']['Output']['E']['weight_bounds'] = (0, H1_E_Output_E_max_weight)
+    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['pos_loss_th'] = H1_E_BTSP_pos_loss_th
+    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_Output_E_BTSP_learning_rate
+    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['decay_tau'] = \
+        BTSP_decay_tau
+    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['anti_hebb_th'] = BTSP_anti_hebb_th
+
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_constraint_kwargs']['scale'] = \
+        H1_E_H1_SomaI_weight_scale
+    context.projection_config['H1']['E']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+
+    context.projection_config['H1']['E']['H1']['DendI']['weight_init_args'] = (H1_E_H1_DendI_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['DendI']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_H1_DendI_learning_rate
+
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_constraint_kwargs']['scale'] = \
+        H1_SomaI_Input_E_weight_scale
+    context.projection_config['H1']['SomaI']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_constraint_kwargs']['scale'] = \
+        H1_SomaI_H1_E_weight_scale
+    context.projection_config['H1']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_constraint_kwargs']['scale'] = \
+        H1_SomaI_H1_SomaI_weight_scale
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+
+    context.projection_config['H1']['DendI']['H1']['E']['weight_constraint_kwargs']['scale'] = \
+        H1_DendI_H1_E_weight_scale
+    context.projection_config['H1']['DendI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['DendI']['H1']['DendI']['weight_constraint_kwargs']['scale'] = \
+        H1_DendI_H1_DendI_weight_scale
+    context.projection_config['H1']['DendI']['H1']['DendI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+
+    context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
+    context.projection_config['Output']['E']['H1']['E']['weight_bounds'] = (0, Output_E_H1_E_max_weight)
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['pos_loss_th'] = \
+        Output_E_BTSP_pos_loss_th
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_BTSP_learning_rate
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['decay_tau'] = \
+        BTSP_decay_tau
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['anti_hebb_th'] = BTSP_anti_hebb_th
+
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_constraint_kwargs']['scale'] = \
+        Output_E_Output_I_weight_scale
+    context.projection_config['Output']['E']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+
+    context.projection_config['Output']['SomaI']['H1']['E']['weight_constraint_kwargs']['scale'] = \
+        Output_I_H1_E_weight_scale
+    context.projection_config['Output']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_constraint_kwargs']['scale'] = \
+        Output_I_Output_E_weight_scale
+    context.projection_config['Output']['SomaI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_constraint_kwargs']['scale'] = \
+        Output_I_Output_I_weight_scale
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = \
+        I_I_learning_rate
+
+
 def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False):
     """
 
@@ -1893,73 +2062,91 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     """
     update_source_contexts(x, context)
 
-    target = context.target
     data_generator = context.data_generator
-    dataloader = context.dataloader
+    train_dataloader = context.train_dataloader
+    val_dataloader = context.test_dataloader
     test_dataloader = context.test_dataloader
     epochs = context.epochs
 
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
 
     if plot:
-        network.test(dataloader, store_history=True, store_dynamics=True, status_bar=context.status_bar)
-        plot_simple_EIANN_config_summary(network, num_samples=len(dataloader), label='Initial')
-        network.reset_history()
+        plot_EIANN_1_hidden_autoenc_config_summary(network, test_dataloader, title='Initial')
 
-    # if context.debug:
-    #     context.update(locals())
-    #     return dict()
+    network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+    saved_network_path = f"{context.output_dir}/{network_name}_{seed}.pkl"
+    if os.path.exists(saved_network_path) and not context.retrain:
+        network.load(saved_network_path)
+    else:
+        data_generator.manual_seed(data_seed)
+        network.train(train_dataloader, val_dataloader, epochs=epochs,
+                      val_interval=context.val_interval,  # e.g. (-201, -1, 10)
+                      store_history=context.store_history, store_dynamics=context.store_dynamics,
+                      store_params=context.store_params, store_params_interval=context.store_params_interval,
+                      status_bar=context.status_bar)
+        if export:
+            network.save(path=saved_network_path)
 
-    data_generator.manual_seed(data_seed)
-    network.train(dataloader, epochs=epochs, store_history=True, store_params=context.store_params,
-                  status_bar=context.status_bar)
-
-    if context.constrain_equilibration_dynamics or context.debug:
-        if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                            context.debug, context.disp, context.debug and plot):
-            if not context.debug:
-                return dict()
-
+    # reorder output units if using unsupervised/Hebbian rule
     if not context.supervised:
-        #TODO: this should depend on value of eval_accuracy
-        sorted_idx = sort_unsupervised_by_best_epoch(network, target, plot=plot)
+        min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
+        sorted_val_loss_history, sorted_val_accuracy_history = \
+            recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True)
     else:
-        sorted_idx = torch.arange(0, len(target))
+        min_loss_idx = torch.argmin(network.val_loss_history)
+        sorted_output_idx = None
+        sorted_val_loss_history = network.val_loss_history
+        sorted_val_accuracy_history = network.val_accuracy_history
 
-    best_epoch_index, epoch_loss, epoch_argmax_accuracy = \
-        analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=sorted_idx, plot=plot)
+    if context.store_history:
+        binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
+            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
 
-    if best_epoch_index + context.num_epochs_argmax_accuracy > epochs:
-        best_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
-        best_epoch_loss = torch.mean(epoch_loss[-context.num_epochs_argmax_accuracy:])
+    # Select for stability by computing mean accuracy in a window after the best validation step
+    val_stepsize = int(context.val_interval[2])
+    val_start_idx = int(context.val_interval[0])
+    num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
+    if min_loss_idx + num_val_steps_accuracy_window > len(sorted_val_loss_history):  # if best loss too close to the end
+        best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
+        best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
     else:
-        best_argmax_accuracy = \
-            torch.mean(epoch_argmax_accuracy[best_epoch_index:best_epoch_index + context.num_epochs_argmax_accuracy])
-        best_epoch_loss = torch.mean(epoch_loss[best_epoch_index:best_epoch_index + context.num_epochs_argmax_accuracy])
-    final_epoch_loss = torch.mean(epoch_loss[-context.num_epochs_argmax_accuracy:])
-    final_argmax_accuracy = torch.mean(epoch_argmax_accuracy[-context.num_epochs_argmax_accuracy:])
+        best_accuracy_window = \
+            torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+        best_loss_window = torch.mean(
+            sorted_val_loss_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+
+    final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
+    final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
 
     if context.eval_accuracy == 'final':
-        start_index = (epochs - 1) * len(dataloader)
-        results = {'loss': final_epoch_loss,
+        results = {'loss': final_loss,
                    'accuracy': final_argmax_accuracy}
     elif context.eval_accuracy == 'best':
-        start_index = best_epoch_index * len(dataloader)
-        results = {'loss': best_epoch_loss,
-                   'accuracy': best_argmax_accuracy}
+        results = {'loss': best_loss_window,
+                   'accuracy': best_accuracy_window}
     else:
         raise Exception('nested_optimize_EIANN_1_hidden: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
-    if plot:
-        plot_simple_EIANN_config_summary(network, num_samples=len(dataloader), start_index=start_index,
-                                         sorted_output_idx=sorted_idx, label='Final')
 
-    if context.debug:
-        print('pid: %i, seed: %i, sample_order: %s, final_output: %s' % (os.getpid(), seed, network.sample_order,
-                                                                         network.Output.E.activity))
-        context.update(locals())
-        #if plot:
-        #    plot_simple_EIANN_weight_history_diagnostic(network)
+    if torch.isnan(results['loss']):
+        return dict()
+
+    if context.constrain_equilibration_dynamics or context.debug:
+        if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
+                                            context.debug, context.disp):
+            if not context.debug:
+                return dict()
+
+    if plot:
+        plot_EIANN_1_hidden_autoenc_config_summary(network, test_dataloader, sorted_output_idx=sorted_output_idx,
+                            title='Final')
+        plot_train_loss_history(network)
+        plot_validate_loss_history(network)
+
+    if context.full_analysis:
+        test_loss_history, test_accuracy_history = \
+            compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot,
+                                           status_bar=context.status_bar)
 
     if export:
         if context.export_network_config_file_path is not None:
@@ -1972,7 +2159,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       (os.getpid(), context.export_network_config_file_path))
         if context.temp_output_path is not None:
 
-            end_index = start_index + len(dataloader)
+            end_index = start_index + len(train_dataloader)
             output_pop = network.output_pop
 
             with h5py.File(context.temp_output_path, 'a') as f:
@@ -1992,8 +2179,13 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                         if post_pop == output_pop:
                             activity_data = activity_data[sorted_idx,:]
                         post_layer_activity.create_dataset(post_pop.name, data=activity_data)
-                metrics_group.create_dataset('loss', data=epoch_loss)
-                metrics_group.create_dataset('accuracy', data=epoch_argmax_accuracy)
+                metrics_group.create_dataset('binned_train_loss_steps', data=binned_train_loss_steps)
+                metrics_group.create_dataset('loss', data=sorted_train_loss_history)
+                metrics_group.create_dataset('accuracy', data=sorted_train_accuracy_history)
+
+    if not context.interactive:
+        del network
+        gc.collect()
 
     return results
 
