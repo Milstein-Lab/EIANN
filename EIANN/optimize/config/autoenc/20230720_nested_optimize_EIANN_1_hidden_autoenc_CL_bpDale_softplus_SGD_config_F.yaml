@@ -46,10 +46,10 @@ bounds:
         - 10.
     H_I_size:
         - 1.
-        - 100.
+        - 7.
     Output_I_size:
         - 1.
-        - 10.
+        - 21.
 default_params:
     H_I_size: 7
     Output_I_size: 7
@@ -62,6 +62,7 @@ kwargs:
     supervised: True
     status_bar: False
     epochs: 300
+    split: 0.75
     network_config_file_path: config/autoenc/20230720_EIANN_1_hidden_autoenc_bpDale_softplus_SGD_config_F.yaml
     val_interval:
         - -1001
@@ -71,23 +72,23 @@ kwargs:
     constrain_equilibration_dynamics: True
     eval_accuracy: final
 update_context:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL
       function: update_EIANN_config_1_hidden_backprop_Dale_softplus_SGD_F
 stages:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_autoenc_bpDale_softplus_SGD_F
+optimization_title: EIANN_1_hidden_autoenc_CL_bpDale_softplus_SGD_F
 x0:
     E_E_learning_rate: 0.5
     E_I_learning_rate: 0.002
     I_E_learning_rate: 0.002
     I_I_learning_rate: 0.002
     softplus_beta: 99.78563100135408
-    H_I_size: 50
-    Output_I_size: 10
+    H_I_size: 7
+    Output_I_size: 7
     H1_E_Input_E_init_weight_scale: 1.
     H1_E_H1_I_init_weight_scale: 1.
     H1_I_Input_E_init_weight_scale: 1.

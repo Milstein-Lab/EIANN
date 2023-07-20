@@ -98,7 +98,7 @@ def plot_EIANN_1_hidden_autoenc_config_summary(network, test_dataloader, sorted_
             row = 0
             for population in layer:
                 for projection in population:
-                    this_axis = axes[row, col]
+                    this_axis = axes[row][col]
                     if projection.post is network.output_pop:
                         if sorted_output_idx is not None:
                             im = this_axis.imshow(projection.weight.data[sorted_output_idx, :], aspect='auto',
