@@ -38,7 +38,7 @@ class Network(nn.Module):
         :param verbose: bool
         """
         super().__init__()
-        self.device = device
+        self.device = torch.device(device)
 
         # Load loss criterion
         if isinstance(criterion, str):
@@ -256,9 +256,18 @@ class Network(nn.Module):
         else:
             dataloader_iter = dataloader
 
+        on_device = False
+
         for sample_idx, sample_data, sample_target in dataloader_iter:
-            sample_data = torch.squeeze(sample_data).to(self.device)
-            sample_target = torch.squeeze(sample_target).to(self.device)
+            sample_data = torch.squeeze(sample_data)
+            sample_target = torch.squeeze(sample_target)
+            if not on_device:
+                if sample_data.device == self.device:
+                    on_device = True
+                else:
+                    sample_data = sample_data.to(self.device)
+                    sample_target = sample_target.to(self.device)
+
             output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
             loss = self.criterion(output, sample_target)
 
@@ -287,12 +296,18 @@ class Network(nn.Module):
         # includes initial state before first train step
         train_step_range = torch.arange(epochs * num_samples + 1)
 
+        val_data_on_device = False
+
         # Load validation data & initialize intermediate variables
         if val_dataloader is not None:
             assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
             idx, val_data, val_target = next(iter(val_dataloader))
-            val_data = val_data.to(self.device)
-            val_target = val_target.to(self.device)
+            if not val_data_on_device:
+                if val_data.device == self.device:
+                    val_data_on_device = True
+                else:
+                    val_data = val_data.to(self.device)
+                    val_target = val_target.to(self.device)
             val_output_history = []
             val_loss_history = []
             val_accuracy_history = []
@@ -344,6 +359,8 @@ class Network(nn.Module):
                     for projection in post_pop:
                         projection.learning_rule.reinit()
 
+        train_data_on_device = False
+
         for epoch in epoch_iter:
             epoch_sample_order = []
             if status_bar and len(train_dataloader) > epochs:
@@ -353,9 +370,14 @@ class Network(nn.Module):
 
             for sample_idx, sample_data, sample_target in dataloader_iter:
                 train_step += 1
-
-                sample_data = torch.squeeze(sample_data).to(self.device)
-                sample_target = torch.squeeze(sample_target).to(self.device)
+                sample_data = torch.squeeze(sample_data)
+                sample_target = torch.squeeze(sample_target)
+                if not train_data_on_device:
+                    if sample_data.device == self.device:
+                        train_data_on_device = True
+                    else:
+                        sample_data = sample_data.to(self.device)
+                        sample_target = sample_target.to(self.device)
                 epoch_sample_order.append(sample_idx)
 
                 output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics)
