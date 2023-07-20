@@ -1252,7 +1252,8 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
                     equil_error = equil_delta/equil_mean
                     if equil_error > equilibration_activity_tolerance:
                         if disp:
-                            print('pop: %s failed check_equilibration_dynamics: %.2f' % (pop.fullname, equil_error))
+                            print('population: %s failed check_equilibration_dynamics: %.2f' %
+                                  (population.fullname, equil_error))
                         if not debug:
                             return False
     if plot:
