@@ -763,27 +763,41 @@ def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_
     return best_epoch_index, epoch_loss, epoch_argmax_accuracy
 
 
-def test_simple_EIANN_config(network, dataloader, epochs, supervised=True):
+def test_EIANN_autoenc_config(network, train_dataloader, test_dataloader, epochs, supervised=True,
+                              store_dynamics=False):
+    """
 
-    num_samples = len(dataloader)
-    network.test(dataloader, store_history=True, store_dynamics=True, status_bar=True)
-    plot.plot_simple_EIANN_config_summary(network, num_samples=num_samples, label='Initial')
-    network.reset_history()
+    :param network:
+    :param train_dataloader:
+    :param test_dataloader:
+    :param epochs:
+    :param supervised:
+    :param store_dynamics:
+    """
 
-    network.train(dataloader, epochs=epochs, store_history=True, store_dynamics=True, status_bar=True)
+    plot.plot_EIANN_1_hidden_autoenc_config_summary(network, test_dataloader, title='Initial')
 
-    target = torch.stack([sample_target for _, _, sample_target in dataloader.dataset])
+    network.train(train_dataloader, val_dataloader=test_dataloader, epochs=epochs, store_history=True,
+                  store_dynamics=store_dynamics, status_bar=True)
+
     if not supervised:
-        sorted_output_idx = sort_unsupervised_by_best_epoch(network, target, plot=plot)
+        min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
+        sorted_val_loss_history, sorted_val_accuracy_history = \
+            recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True)
     else:
+        min_loss_idx = torch.argmin(network.val_loss_history)
         sorted_output_idx = None
-    best_epoch_index, loss_history, epoch_argmax_accuracy = \
-        analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=sorted_output_idx, plot=True)
-    start_index = best_epoch_index * num_samples
-    plot.plot_simple_EIANN_config_summary(network, start_index=start_index, num_samples=num_samples,
-                                           sorted_output_idx=sorted_output_idx, label='Best')
-    plot.plot_simple_EIANN_config_summary(network, num_samples=num_samples, sorted_output_idx=sorted_output_idx,
-                                          label='Final')
+        sorted_val_loss_history = network.val_loss_history
+        sorted_val_accuracy_history = network.val_accuracy_history
+
+    binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
+        recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=True)
+
+    plot.plot_train_loss_history(network)
+    plot.plot_validate_loss_history(network)
+
+    plot.plot_EIANN_1_hidden_autoenc_config_summary(network, test_dataloader, sorted_output_idx=sorted_output_idx,
+                                               title='Final')
 
 
 def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=True, generator=None):

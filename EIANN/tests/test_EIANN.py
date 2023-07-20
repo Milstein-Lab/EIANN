@@ -87,13 +87,14 @@ class TestEIANN_0hidden(unittest.TestCase):
         self.network.layers['Output'].populations['E'].projections['Input']['E'].bias == None
 
     def test_plotting(self):
-        eiu.test_simple_EIANN_config(self.network,
+        eiu.test_EIANN_autoenc_config(self.network,
                           dataset=n_hot_patterns(n=2, length=7),
                           target=torch.eye(dataset.shape[0]),
                           epochs=300)
 
-    def test_learning:
+    def test_learning(self):
         # check that final backprop loss is smaller initial loss
+        pass
 
 # def run_test(self):
 #     try:

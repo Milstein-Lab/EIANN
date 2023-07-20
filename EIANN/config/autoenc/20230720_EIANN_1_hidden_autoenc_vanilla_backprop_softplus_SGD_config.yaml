@@ -33,4 +33,4 @@ training_kwargs:
     learning_rate: 1.
     optimizer: SGD
     tau: 1
-    verbose: true
+    verbose: False

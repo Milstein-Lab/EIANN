@@ -1,9 +1,9 @@
-test_van_bp:
-    learning_rate: 0.93315131781400405
-    softplus_beta: 45.610257237854945
+van_bp:
+    # CL final_accuracy: 52.380950927734375
+    learning_rate: 0.9783906992659672
+    softplus_beta: 8.271340428826583
 
 test_bpDale_F:
-    # accuracy: 94.9597
     E_E_learning_rate: 0.215559448667304
     E_I_learning_rate: 0.0026149854534126722
     H1_E_H1_I_init_weight_scale: 2.6100372902368116
