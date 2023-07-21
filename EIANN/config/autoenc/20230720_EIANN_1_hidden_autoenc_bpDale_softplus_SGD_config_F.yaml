@@ -143,8 +143,8 @@ projection_config:
                     weight_init_args: !!python/tuple
                         - 1.
                     weight_bounds:
-                        - 0
                         - null
+                        - 0
                     direction: R
                     learning_rule: Backprop
                     learning_rule_kwargs:
