@@ -276,7 +276,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             # Compute test activity and metrics
             idx, data, target = next(iter(test_dataloader))
             network.forward(data)
-            network.output_pop.activity = network.output_pop.activity[:, sorted_output_idx]
+            if sorted_output_idx is not None:
+                network.output_pop.activity = network.output_pop.activity[:, sorted_output_idx]
 
             with h5py.File(context.temp_output_path, 'a') as f:
                 if context.label is None:
@@ -313,6 +314,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if not context.interactive:
         del network
         gc.collect()
+    elif context.debug:
+        context.update(locals())
 
     return results
 

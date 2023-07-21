@@ -11,6 +11,7 @@ import datetime
 from copy import deepcopy
 import time
 from collections import defaultdict
+from functools import partial
 
 from EIANN.utils import half_kaining_init, scaled_kaining_init, linear
 import EIANN.rules as rules
@@ -656,7 +657,7 @@ class Population(object):
         self.backward_projections = []
         self.outgoing_projections = {}
         self.incoming_projections = {}
-        self.attribute_history_dict = defaultdict(lambda: {'buffer': [], 'history': None})
+        self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
         self.reinit(network.device)
         self.reset_history()
 
@@ -714,7 +715,7 @@ class Population(object):
         """
 
         """
-        self.attribute_history_dict = defaultdict(lambda: {'buffer': [], 'history': None})
+        self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
         self.activity_history_list = []
         self._activity_history = None
         self.backward_activity_history_list = []
@@ -770,7 +771,7 @@ class Input(Population):
         self.reset_history()
 
     def reset_history(self):
-        self.attribute_history_dict = defaultdict(lambda: {'buffer': [], 'history': None})
+        self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
 
 
 class Projection(nn.Linear):
@@ -862,7 +863,7 @@ class Projection(nn.Linear):
         if learning_rule_class != rules.Backprop:
             self.weight.requires_grad = False
 
-        self.attribute_history_dict = defaultdict(lambda: {'buffer': [], 'history': None})
+        self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
 
     def append_attribute_history(self, attr_name, vals):
         self.attribute_history_dict[attr_name]['buffer'].append(vals)

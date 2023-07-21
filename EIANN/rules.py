@@ -2048,7 +2048,7 @@ def clone_weight(projection, source=None, sign=1, scale=1, source2=None):
 
 
 def normalize_weight(projection, scale, autapses=False, axis=1):
-    if not autapses and projection.pre == projection.post:
+    if not autapses and projection.pre is projection.post:
         projection.weight.data.fill_diagonal_(0.)
     weight_sum = torch.sum(torch.abs(projection.weight.data), axis=axis).unsqueeze(1)
     valid_rows = torch.nonzero(weight_sum, as_tuple=True)[0]
@@ -2057,5 +2057,5 @@ def normalize_weight(projection, scale, autapses=False, axis=1):
 
 
 def no_autapses(projection):
-    if projection.pre == projection.post:
+    if projection.pre is projection.post:
         projection.weight.data.fill_diagonal_(0.)

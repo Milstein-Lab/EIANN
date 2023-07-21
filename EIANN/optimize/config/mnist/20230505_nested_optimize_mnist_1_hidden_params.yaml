@@ -1,7 +1,7 @@
 bpDale_F_wrong:
     # with equilibration constraint
     # accuracy: 94.9597
-    # Output.I <- Output.I projections had flipped sign
+    # Output.I <- Output.I projections had flipped sign and allowed autapses
     E_E_learning_rate: 0.215559448667304
     E_I_learning_rate: 0.0026149854534126722
     H1_E_H1_I_init_weight_scale: 2.6100372902368116

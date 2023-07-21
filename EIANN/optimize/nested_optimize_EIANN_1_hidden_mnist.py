@@ -1727,6 +1727,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if not context.interactive:
         del network
         gc.collect()
+    elif context.debug:
+        context.update(locals())
 
     return results
 
