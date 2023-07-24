@@ -4,31 +4,32 @@ van_bp:
     learning_rate: 0.9783906992659672
     softplus_beta: 8.271340428826583
 
-bpDale_F_wrong:
+bpDale_F:
     # equilibration constraints on
     # accuracy: 100.0
-    # Output.I <- Output.I projection had flipped sign and allowed autapses
-    E_E_learning_rate: 0.9977801635113296
-    E_I_learning_rate: 0.9891360264947674
-    H1_E_H1_I_init_weight_scale: 0.5798075061164235
-    H1_E_Input_E_init_weight_scale: 1.0041426887479052
-    H1_I_H1_E_init_weight_scale: 1.5039681047683426
-    H1_I_H1_I_init_weight_scale: 1.8303487596625991
-    H1_I_Input_E_init_weight_scale: 0.4799098619684694
+    # I <- I projections do not allow autapses
+    E_E_learning_rate: 0.9653465957948357
+    E_I_learning_rate: 0.6954546520473359
+    H1_E_H1_I_init_weight_scale: 0.9333892811338734
+    H1_E_Input_E_init_weight_scale: 9.812737167443222
+    H1_I_H1_E_init_weight_scale: 7.431613988825293
+    H1_I_H1_I_init_weight_scale: 5.449389619218094
+    H1_I_Input_E_init_weight_scale: 1.129094612247817
     H_I_size: 7.0
-    I_E_learning_rate: 0.8766731349253922
-    I_I_learning_rate: 0.5287203479911113
-    Output_E_H1_E_init_weight_scale: 4.850734480506756
-    Output_E_Output_I_init_weight_scale: 0.08637508756406229
-    Output_I_H1_E_init_weight_scale: 2.044041066011324
-    Output_I_Output_E_init_weight_scale: 3.419057713933924
-    Output_I_Output_I_init_weight_scale: 0.01717673155634683
+    I_E_learning_rate: 0.829548265821622
+    I_I_learning_rate: 0.48468369883470536
+    Output_E_H1_E_init_weight_scale: 0.1600129028975431
+    Output_E_Output_I_init_weight_scale: 0.02089062419836269
+    Output_I_H1_E_init_weight_scale: 2.964502072870642
+    Output_I_Output_E_init_weight_scale: 1.8591914919061203
+    Output_I_Output_I_init_weight_scale: 1.7817926451033916
     Output_I_size: 7.0
-    softplus_beta: 95.78971399055023
+    softplus_beta: 88.36874263855478
 
 Supervised_Gjorgjieva_Hebb_F:
     # equilibration constraints on
     # accuracy: 100.0
+    # CL final_accuracy: 70.47619094848633
     E_I_learning_rate: 0.22097561867713184
     H1_E_H1_I_weight_scale: 0.4284925895112282
     H1_E_Input_E_learning_rate: 0.13542173225257473
@@ -50,6 +51,7 @@ Supervised_Gjorgjieva_Hebb_F:
 Gjorgjieva_Hebb_F:
     # equilibration constraints on
     # accuracy: 82.571434
+    # CL final_accuracy: 48.57142868041992
     E_I_learning_rate: 0.024465357997379197
     H1_E_H1_I_weight_scale: 0.17872494374482326
     H1_E_Input_E_learning_rate: 0.04143824747153582
