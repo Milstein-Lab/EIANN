@@ -6,3 +6,12 @@ EIANN/notebooks/figures
 EIANN/__pycache__/
 UNKNOWN.egg-info/
 EIANN/optimize/figures
+.DS_Store
+.vscode/settings.json
+dist/*
+EIANN/config/*
+EIANN/notebooks/saved_networks/*
+EIANN/saved_networks/*
+EIANN/optimize/data/datasets/*
+EIANN.egg-info/*
+EIANN/optimize/data/*
