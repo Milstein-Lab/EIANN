@@ -104,8 +104,7 @@ class Network(nn.Module):
                         post_pop.incoming_projections[projection.name] = projection
                         pre_pop.outgoing_projections[projection.name] = projection
                         if verbose:
-                            print('Network: appending a projection from %s %s -> %s %s' %
-                                  (pre_pop.layer.name, pre_pop.name, post_pop.layer.name, post_pop.name))
+                            print(f'Network: appending a projection from {pre_pop.fullname} -> {post_pop.fullname}')
 
         if optimizer is not None:
             if isinstance(optimizer, str):
