@@ -1,0 +1,31 @@
+layer_config:
+  Input:
+    E:
+      size: 784
+  Output:
+    E:
+      size: 10
+      activation: relu
+
+projection_config:
+  Output:
+    E:
+      Input:
+        E:
+          weight_init: half_kaining
+          weight_init_args:
+          - 0.00956
+          weight_bounds:
+          - 0
+          - 0.025
+          direction: F
+          learning_rule: BTSP_5_manual
+          learning_rule_kwargs:
+            pos_loss_th: 0.15
+            learning_rate: 0.04
+
+training_kwargs:
+  tau: 3
+  forward_steps: 10
+  backward_steps: 0
+  learning_rate: 0.9
