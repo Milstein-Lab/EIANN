@@ -1,0 +1,42 @@
+Wrote profile results to forward_speedtest.py.lprof
+Timer unit: 1e-06 s
+
+Total time: 2178.04 s
+File: forward_speedtest.py
+Function: forward at line 48
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    48                                           @profile
+    49                                           def forward(self, dataloader, no_grad=True):
+    50     60000   10687505.0    178.1      0.5      for idx, data, target in dataloader:
+    51     60000     747999.0     12.5      0.0          sample = data.squeeze(0).to(device)
+    52    180000     181810.0      1.0      0.0          for i, layer in enumerate(self):
+    53    300000     244002.0      0.8      0.0              for j, population in enumerate(layer):
+    54    240000      54316.0      0.2      0.0                  if i == 0 and j == 0:  # pass pattern to first population of input layer
+    55     60000     187358.0      3.1      0.0                      population.activity = sample
+    56                                                           else:
+    57    240000   11884437.0     49.5      0.5                      population.reinit(self.device, batch_size=sample.shape[0])
+    58                                           
+    59    600000     400585.0      0.7      0.0          for t in range(self.forward_steps):
+    60    600000     658190.0      1.1      0.0              if (t >= self.forward_steps - self.backward_steps) and not no_grad:
+    61                                                           track_grad = True
+    62                                                       else:
+    63    600000      90178.0      0.2      0.0                  track_grad = False
+    64    600000    1971566.0      3.3      0.1              with torch.set_grad_enabled(track_grad):
+    65   1800000    2108504.0      1.2      0.1                  for i, layer in enumerate(self):
+    66   1200000     418993.0      0.3      0.0                      if i > 0:
+    67   2400000    2289941.0      1.0      0.1                          for population in layer:
+    68   2400000    3808883.0      1.6      0.2                              population.prev_activity = population.activity
+    69   2400000  144170771.0     60.1      6.6                              delta_state = -population.state + population.bias
+    70   3600000    5630900.0      1.6      0.3                              for projection in population:
+    71   3600000    1962134.0      0.5      0.1                                  if projection.update_phase in ['forward', 'all', 'F', 'A']:
+    72   2400000     883554.0      0.4      0.0                                      if projection.direction in ['forward', 'F']:
+    73   2400000 1057305850.0    440.5     48.5                                          delta_state = delta_state + projection(projection.pre.activity)
+    74   1200000     261201.0      0.2      0.0                                      elif projection.direction in ['recurrent', 'R']:
+    75   1200000  713978203.0    595.0     32.8                                          delta_state = delta_state + projection(projection.pre.prev_activity)
+    76   2400000  154483278.0     64.4      7.1                              population.state = population.state + delta_state / population.tau
+    77   2400000   63628918.0     26.5      2.9                              population.activity = population.activation(population.state)
+    78                                           
+    79         1          1.0      1.0      0.0      return self.output_pop.activity
+

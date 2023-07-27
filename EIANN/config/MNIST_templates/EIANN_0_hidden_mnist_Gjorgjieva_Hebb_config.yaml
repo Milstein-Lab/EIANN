@@ -2,13 +2,6 @@ layer_config:
   Input:
     E:
       size: 784
-  H1:
-    E:
-      size: 500
-      activation: relu
-    FBI:
-      size: 50
-      activation: relu
   Output:
     E:
       size: 10
@@ -16,68 +9,12 @@ layer_config:
     FBI:
       size: 5
       activation: relu
+
+
 projection_config:
-  H1:
-    E:
-      Input:
-        E:
-          weight_init: half_kaining
-          weight_constraint: normalize_weight
-          weight_constraint_kwargs:
-            scale: 9.268612119353545
-          weight_bounds: !!python/tuple
-          - 0
-          - null
-          direction: F
-          learning_rule: GjorgjievaHebb
-          learning_rule_kwargs:
-            sign: 1
-            learning_rate: 0.0029082138223596003
-      H1:
-        FBI:
-          weight_init: half_kaining
-          weight_constraint: normalize_weight
-          weight_constraint_kwargs:
-            scale: 9.738536101036361
-          weight_bounds: !!python/tuple
-          - null
-          - 0
-          direction: R
-          learning_rule: GjorgjievaHebb
-          learning_rule_kwargs:
-            sign: -1
-            learning_rate: 0.020305333347622453
-    FBI:
-      H1:
-        E:
-          weight_init: half_kaining
-          weight_constraint: normalize_weight
-          weight_constraint_kwargs:
-            scale: 1.850402110115092
-          weight_bounds: !!python/tuple
-          - 0
-          - null
-          direction: F
-          learning_rule: GjorgjievaHebb
-          learning_rule_kwargs:
-            sign: 1
-            learning_rate: 0.0429858889652221
-        FBI:
-          weight_init: half_kaining
-          weight_constraint: normalize_weight
-          weight_constraint_kwargs:
-            scale: 5.801491142319589
-          weight_bounds: !!python/tuple
-          - null
-          - 0
-          direction: R
-          learning_rule: GjorgjievaHebb
-          learning_rule_kwargs:
-            sign: -1
-            learning_rate: 0.09365706016459538
   Output:
     E:
-      H1:
+      Input:
         E:
           weight_init: half_kaining
           weight_constraint: normalize_weight
