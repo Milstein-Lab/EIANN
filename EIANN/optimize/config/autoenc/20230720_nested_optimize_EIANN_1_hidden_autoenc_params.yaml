@@ -7,6 +7,7 @@ van_bp:
 bpDale_F:
     # equilibration constraints on
     # accuracy: 100.0
+    # CL final_accuracy: 42.85714340209961
     # I <- I projections do not allow autapses
     E_E_learning_rate: 0.9653465957948357
     E_I_learning_rate: 0.6954546520473359
@@ -69,3 +70,35 @@ Gjorgjieva_Hebb_F:
     Output_I_Output_E_weight_scale: 3.1399940070715964
     Output_I_Output_I_weight_scale: 1.6354896032878923
     Output_I_size: 7.0
+
+test_BTSP_F7:
+    BTSP_decay_tau: 1.0189490287747094
+    E_I_learning_rate: 0.14645460023593235
+    FB_BTSP_init_weight_factor: 0.5458138304597818
+    FF_BTSP_init_weight_factor: 0.1686640183733182
+    H1_DendI_H1_DendI_weight_scale: 0.8344882001345386
+    H1_DendI_H1_E_weight_scale: 0.5967317795633288
+    H1_E_BTSP_anti_hebb_th: 0.024647904194573054
+    H1_E_BTSP_pos_loss_th: 0.14972616966986116
+    H1_E_H1_DendI_init_weight_scale: 0.03092351133463017
+    H1_E_H1_DendI_learning_rate: 0.01965782007949526
+    H1_E_H1_SomaI_weight_scale: 0.3164142961541675
+    H1_E_Input_E_BTSP_learning_rate: 0.0023228194681630247
+    H1_E_Input_E_max_weight_scale: 4.404553993315136
+    H1_E_Output_E_BTSP_learning_rate: 0.012684513569635661
+    H1_E_Output_E_max_weight_scale: 2.288571955381731
+    H1_I_size: 7
+    H1_SomaI_H1_E_weight_scale: 0.948651655823015
+    H1_SomaI_H1_SomaI_weight_scale: 0.7510080148443956
+    H1_SomaI_Input_E_weight_scale: 0.9206848007744874
+    I_E_learning_rate: 0.0017214788341343489
+    I_I_learning_rate: 0.09135375860073619
+    Output_E_BTSP_anti_hebb_th: 0.016164426152892174
+    Output_E_BTSP_learning_rate: 0.00476635982633891
+    Output_E_BTSP_pos_loss_th: 0.39148056508254586
+    Output_E_H1_E_max_weight_scale: 13.009523479556808
+    Output_E_Output_I_weight_scale: 0.027181423567138888
+    Output_I_H1_E_weight_scale: 0.19759716926717913
+    Output_I_Output_E_weight_scale: 0.06588080389013971
+    Output_I_Output_I_weight_scale: 2.310318456779682
+    Output_I_size: 7
