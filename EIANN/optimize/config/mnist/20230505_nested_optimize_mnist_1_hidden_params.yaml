@@ -326,36 +326,39 @@ BTSP_F6:
     Output_I_Output_I_weight_scale: 0.07724674190651358
     Output_I_size: 10.0
 
-test_BTSP_F7:
+BTSP_F7:
     # with equilibration constraint
     # Uses BTSP_9 rule
-    H1_E_BTSP_anti_hebb_th: 0.038668527527428095
-    Output_E_BTSP_anti_hebb_th: 0.038668527527428095
-    BTSP_decay_tau: 1.0136008136090988
-    E_I_learning_rate: 0.135937592383031
-    FB_BTSP_init_weight_factor: 0.19090692823747935
-    FF_BTSP_init_weight_factor: 0.015397396775837208
-    H1_DendI_H1_DendI_weight_scale: 0.5781578917093595
-    H1_DendI_H1_E_weight_scale: 1.850516441002545
-    H1_E_BTSP_pos_loss_th: 0.12627174660414886
-    H1_E_H1_DendI_init_weight_scale: 0.20494071579457956
-    H1_E_H1_DendI_learning_rate: 0.014828087767794877
-    H1_E_H1_SomaI_weight_scale: 0.7578682934058321
-    H1_E_Input_E_BTSP_learning_rate: 0.000899195889895131
-    H1_E_Input_E_max_weight_scale: 6.253286234384848
-    H1_E_Output_E_BTSP_learning_rate: 0.023629264913798347
-    H1_E_Output_E_max_weight_scale: 2.4092837880390965
+    # accuracy: 87.9724
+    # stability: good stability to 50000 train steps
+    # H1 is sparse despite removing hard cap on # of plateaus, but there are no longer unutilized weights
+    BTSP_decay_tau: 1.0189490287747094
+    E_I_learning_rate: 0.14645460023593235
+    FB_BTSP_init_weight_factor: 0.5458138304597818
+    FF_BTSP_init_weight_factor: 0.1686640183733182
+    H1_DendI_H1_DendI_weight_scale: 0.8344882001345386
+    H1_DendI_H1_E_weight_scale: 0.5967317795633288
+    H1_E_BTSP_anti_hebb_th: 0.024647904194573054
+    H1_E_BTSP_pos_loss_th: 0.14972616966986116
+    H1_E_H1_DendI_init_weight_scale: 0.03092351133463017
+    H1_E_H1_DendI_learning_rate: 0.01965782007949526
+    H1_E_H1_SomaI_weight_scale: 0.3164142961541675
+    H1_E_Input_E_BTSP_learning_rate: 0.0023228194681630247
+    H1_E_Input_E_max_weight_scale: 4.404553993315136
+    H1_E_Output_E_BTSP_learning_rate: 0.012684513569635661
+    H1_E_Output_E_max_weight_scale: 2.288571955381731
     H1_I_size: 50.0
-    H1_SomaI_H1_E_weight_scale: 0.09679310603738107
-    H1_SomaI_H1_SomaI_weight_scale: 0.9073740646928214
-    H1_SomaI_Input_E_weight_scale: 0.722314097385098
-    I_E_learning_rate: 0.00024448710228076696
-    I_I_learning_rate: 0.5431627306432479
-    Output_E_BTSP_learning_rate: 0.001890287128514582
-    Output_E_BTSP_pos_loss_th: 0.06372221925778973
-    Output_E_H1_E_max_weight_scale: 11.55499522760118
-    Output_E_Output_I_weight_scale: 0.0637358786310783
-    Output_I_H1_E_weight_scale: 0.8183315727279951
-    Output_I_Output_E_weight_scale: 0.815848581334796
-    Output_I_Output_I_weight_scale: 0.07724674190651358
+    H1_SomaI_H1_E_weight_scale: 0.948651655823015
+    H1_SomaI_H1_SomaI_weight_scale: 0.7510080148443956
+    H1_SomaI_Input_E_weight_scale: 0.9206848007744874
+    I_E_learning_rate: 0.0017214788341343489
+    I_I_learning_rate: 0.09135375860073619
+    Output_E_BTSP_anti_hebb_th: 0.016164426152892174
+    Output_E_BTSP_learning_rate: 0.00476635982633891
+    Output_E_BTSP_pos_loss_th: 0.39148056508254586
+    Output_E_H1_E_max_weight_scale: 13.009523479556808
+    Output_E_Output_I_weight_scale: 0.027181423567138888
+    Output_I_H1_E_weight_scale: 0.19759716926717913
+    Output_I_Output_E_weight_scale: 0.06588080389013971
+    Output_I_Output_I_weight_scale: 2.310318456779682
     Output_I_size: 10.0

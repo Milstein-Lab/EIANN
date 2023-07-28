@@ -2293,15 +2293,16 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot,
                                            status_bar=context.status_bar)
 
+    if context.export_network_config_file_path is not None:
+        config_dict = {'layer_config': context.layer_config,
+                       'projection_config': context.projection_config,
+                       'training_kwargs': context.training_kwargs}
+        write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
+        if context.disp:
+            print('nested_optimize_EIANN_1_hidden: pid: %i exported network config to %s' %
+                  (os.getpid(), context.export_network_config_file_path))
+
     if export:
-        if context.export_network_config_file_path is not None:
-            config_dict = {'layer_config': context.layer_config,
-                           'projection_config': context.projection_config,
-                           'training_kwargs': context.training_kwargs}
-            write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
-            if context.disp:
-                print('nested_optimize_EIANN_1_hidden: pid: %i exported network config to %s' %
-                      (os.getpid(), context.export_network_config_file_path))
         if context.temp_output_path is not None:
 
             end_index = start_index + len(train_dataloader)
