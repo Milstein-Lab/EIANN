@@ -65,10 +65,10 @@ kwargs:
     constrain_equilibration_dynamics: False
     eval_accuracy: final
 update_context:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_autoenc
       function: update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C
 stages:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_autoenc
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features

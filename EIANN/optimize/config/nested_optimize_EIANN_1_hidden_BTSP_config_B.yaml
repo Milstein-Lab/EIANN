@@ -68,7 +68,7 @@ kwargs:
   num_epochs_argmax_accuracy: 50
   network_config_file_path: config/EIANN_1_hidden_BTSP_config_B.yaml
 update_context:
-- source: optimize.nested_optimize_EIANN_1_hidden
+- source: optimize.nested_optimize_EIANN_1_hidden_autoenc
   function: update_EIANN_config_1_hidden_BTSP_B
 stages:
 - source: optimize.nested_optimize_EIANN_1_hidden

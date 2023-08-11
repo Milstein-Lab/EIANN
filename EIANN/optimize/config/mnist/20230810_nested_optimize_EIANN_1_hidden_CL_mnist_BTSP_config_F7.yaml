@@ -85,13 +85,13 @@ bounds:
         - 5.
     H1_I_size:
         - 1
-        - 7
+        - 100
     Output_I_size:
         - 1
-        - 21
+        - 10
 default_params:
-    H1_I_size: 7
-    Output_I_size: 7
+    H1_I_size: 50
+    Output_I_size: 10
 rel_bounds:
 - - H1_E_BTSP_anti_hebb_th
   - '<'
@@ -103,31 +103,32 @@ rel_bounds:
   - Output_E_BTSP_pos_loss_th
 kwargs:
     network_id: 1
-    task_id: 1
+    task_id: 2
     seed_start: 1
     num_instances: 5
     data_seed_start: 1
     supervised: True
     status_bar: False
-    epochs: 300
+    train_steps: 20000
+    split: 0.75
+    epochs: 1
+    network_config_file_path: config/MNIST/20230724_EIANN_1_hidden_mnist_BTSP_config_F7.yaml
     val_interval:
-        - -1001
+        - -2001
         - -1
         - 100
-    network_config_file_path: config/autoenc/20230727_EIANN_1_hidden_autoenc_BTSP_config_F7.yaml
-    num_training_steps_accuracy_window: 1000
+    num_training_steps_accuracy_window: 2000
     constrain_equilibration_dynamics: True
-    eval_accuracy: final
 update_context:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
       function: update_EIANN_config_1_hidden_BTSP_F7
 stages:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_autoenc_BTSP_F7
+optimization_title: EIANN_1_hidden_CL_mnist_BTSP_F7
 x0:
     FB_BTSP_init_weight_factor: 0.5
     FF_BTSP_init_weight_factor: 0.14933762086546284
@@ -155,7 +156,7 @@ x0:
     Output_I_H1_E_weight_scale: 0.36606750462367517
     Output_I_Output_I_weight_scale: 1.1113407626461944
     BTSP_decay_tau: 2.
-    H1_I_size: 7
-    Output_I_size: 7
+    H1_I_size: 50
+    Output_I_size: 10
     H1_E_BTSP_anti_hebb_th: 0.02
     Output_E_BTSP_anti_hebb_th: 0.02

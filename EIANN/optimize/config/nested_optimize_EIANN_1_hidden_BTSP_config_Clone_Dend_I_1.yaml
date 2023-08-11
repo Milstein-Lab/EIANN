@@ -64,7 +64,7 @@ kwargs:
     network_config_file_path: config/EIANN_1_hidden_BTSP_config_Clone_Dend_I_1.yaml
     eval_accuracy: final
 update_context:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_autoenc
       function: update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden

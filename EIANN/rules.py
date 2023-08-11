@@ -2008,6 +2008,7 @@ class BTSP_9(LearningRule):
                                     requires_grad=False)
         meets_criterion = self.projection.post.meets_BTSP_anti_hebb_criterion
         post_activity[meets_criterion] = self.projection.post.activity[meets_criterion]
+        # TODO: Should these activities be clamped?
         delta_weight = -self.learning_rate * torch.outer(post_activity, self.projection.pre.activity)
         self.projection.weight.data += delta_weight
 

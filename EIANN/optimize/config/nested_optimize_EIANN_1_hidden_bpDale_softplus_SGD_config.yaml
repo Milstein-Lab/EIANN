@@ -28,10 +28,10 @@ kwargs:
     num_training_steps_accuracy_window: 1000
     network_config_file_path: config/EIANN_1_hidden_bpDale_softplus_SGD_config.yaml
 update_context:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_autoenc
       function: update_EIANN_config_1_hidden_bpDale_softplus_SGD
 stages:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_autoenc
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features

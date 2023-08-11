@@ -9,9 +9,10 @@ import h5py
 import gc
 
 from EIANN import Network
-from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
+from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
-    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history
+    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, \
+                         compute_test_loss_and_accuracy_single_batch)
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields
 from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
@@ -61,6 +62,7 @@ def config_worker():
     context.task_id = int(context.task_id)
     context.data_seed_start = int(context.data_seed_start)
     context.epochs = int(context.epochs)
+    context.split = float(context.split)
     context.status_bar = str_to_bool(context.status_bar)
     if 'debug' not in context():
         context.debug = False
@@ -134,22 +136,50 @@ def config_worker():
                                                     download=False, transform=tensor_flatten)
 
     # Add index to train & test data
-    MNIST_train = []
-    for idx, (data, target) in enumerate(MNIST_train_dataset):
-        target = torch.eye(len(MNIST_train_dataset.classes))[target]
-        MNIST_train.append((idx, data, target))
+    MNIST_phase1_train = []
+    MNIST_phase2_train = []
+    num_classes = len(MNIST_train_dataset.classes)
+    phase_label_split = round(num_classes * context.split)
+    for idx, (data, label) in enumerate(MNIST_train_dataset):
+        target = torch.eye(num_classes)[label]
+        if label < phase_label_split:
+            MNIST_phase1_train.append((idx, data, target))
+        else:
+            MNIST_phase2_train.append((idx, data, target))
 
-    MNIST_test = []
-    for idx, (data, target) in enumerate(MNIST_test_dataset):
-        target = torch.eye(len(MNIST_test_dataset.classes))[target]
-        MNIST_test.append((idx, data, target))
+    MNIST_full_test = []
+    MNIST_phase1_test = []
+    MNIST_phase2_test = []
+    for idx, (data, label) in enumerate(MNIST_test_dataset):
+        target = torch.eye(num_classes)[label]
+        MNIST_full_test.append((idx, data, target))
+        if label < phase_label_split:
+            MNIST_phase1_test.append((idx, data, target))
+        else:
+            MNIST_phase2_test.append((idx, data, target))
 
     # Put data in dataloader
     context.data_generator = torch.Generator()
-    context.train_sub_dataloader = \
-        torch.utils.data.DataLoader(MNIST_train[0:context.train_steps], shuffle=True, generator=context.data_generator)
-    context.val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
-    context.test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
+    phase1_num_train_samples = round(context.train_steps * context.split)
+    phase2_num_train_samples = context.train_steps - phase1_num_train_samples
+    phase1_num_val_samples = round(10000 * context.split)
+    phase2_num_val_samples = 10000 - phase1_num_val_samples
+
+    context.phase1_train_dataloader = \
+        torch.utils.data.DataLoader(MNIST_phase1_train[:phase1_num_train_samples], shuffle=True, generator=context.data_generator)
+    context.phase1_val_dataloader = torch.utils.data.DataLoader(MNIST_phase1_train[-phase1_num_val_samples:], batch_size=10000, shuffle=False)
+
+    context.phase2_train_dataloader = \
+        torch.utils.data.DataLoader(MNIST_phase2_train[:phase2_num_train_samples], shuffle=True,
+                                    generator=context.data_generator)
+    context.phase2_val_dataloader = torch.utils.data.DataLoader(MNIST_phase2_train[-phase2_num_val_samples:],
+                                                                batch_size=10000, shuffle=False)
+
+    context.full_test_dataloader = torch.utils.data.DataLoader(MNIST_full_test, batch_size=len(MNIST_full_test), shuffle=False)
+    context.phase1_test_dataloader = torch.utils.data.DataLoader(MNIST_phase1_test, batch_size=len(MNIST_phase1_test),
+                                                               shuffle=False)
+    context.phase2_test_dataloader = torch.utils.data.DataLoader(MNIST_phase2_test, batch_size=len(MNIST_phase2_test),
+                                                                 shuffle=False)
 
 
 def get_random_seeds():
@@ -157,9 +187,6 @@ def get_random_seeds():
                      for instance_id in range(context.seed_start, context.seed_start + context.num_instances)]
     data_seeds = [int.from_bytes((context.network_id, instance_id), byteorder='big')
                      for instance_id in range(context.data_seed_start, context.data_seed_start + context.num_instances)]
-    if context.debug:
-        print(network_seeds, data_seeds)
-        sys.stdout.flush()
     return [network_seeds, data_seeds]
 
 
@@ -1561,9 +1588,13 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     update_source_contexts(x, context)
 
     data_generator = context.data_generator
-    train_sub_dataloader = context.train_sub_dataloader
-    val_dataloader = context.val_dataloader
-    test_dataloader = context.test_dataloader
+    full_test_dataloader = context.full_test_dataloader
+    phase1_train_dataloader = context.phase1_train_dataloader
+    phase1_test_dataloader = context.phase1_test_dataloader
+    phase1_val_dataloader = context.phase1_val_dataloader
+    phase2_train_dataloader = context.phase2_train_dataloader
+    phase2_test_dataloader = context.phase2_test_dataloader
+    phase2_val_dataloader = context.phase2_val_dataloader
 
     epochs = context.epochs
 
@@ -1575,28 +1606,21 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             network.H1.E.Output.E.initial_weight = network.H1.E.Output.E.weight.data.detach().clone()
         except:
             pass
-        plot_batch_accuracy(network, test_dataloader, population='all', title='Initial')
+        plot_batch_accuracy(network, full_test_dataloader, population='all', title='Initial')
 
     network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-    saved_network_path = f"{context.output_dir}/{network_name}_{seed}.pkl"
+    saved_network_path = f"{context.output_dir}/{network_name}_phase1_{seed}.pkl"
     if os.path.exists(saved_network_path) and not context.retrain:
         network.load(saved_network_path)
     else:
         data_generator.manual_seed(data_seed)
-        network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
-                      val_interval=context.val_interval, # e.g. (-201, -1, 10)
+        network.train(phase1_train_dataloader, phase1_val_dataloader, epochs=epochs,
+                      val_interval=context.val_interval,  # e.g. (-201, -1, 10)
                       store_history=context.store_history, store_dynamics=context.store_dynamics,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar)
         if export:
             network.save(path=saved_network_path)
-
-    if plot:
-        try:
-            from EIANN.plot import plot_FB_weight_alignment
-            plot_FB_weight_alignment(network.Output.E.H1.E, network.H1.E.Output.E)
-        except:
-            pass
 
     # reorder output units if using unsupervised/Hebbian rule
     if not context.supervised:
@@ -1611,65 +1635,54 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     if context.store_history:
         binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
-            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
+            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot, title='Phase 1')
 
     # Select for stability by computing mean accuracy in a window after the best validation step
     val_stepsize = int(context.val_interval[2])
     val_start_idx = int(context.val_interval[0])
     num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
-    if min_loss_idx + num_val_steps_accuracy_window > len(sorted_val_loss_history): # if best loss too close to the end
+    if min_loss_idx + num_val_steps_accuracy_window > len(sorted_val_loss_history):  # if best loss too close to the end
         best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
         best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
     else:
         best_accuracy_window = \
-            torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx+num_val_steps_accuracy_window])
-        best_loss_window = torch.mean(sorted_val_loss_history[min_loss_idx:min_loss_idx+num_val_steps_accuracy_window])
+            torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+        best_loss_window = torch.mean(
+            sorted_val_loss_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
 
     final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
     final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
 
     if context.eval_accuracy == 'final':
-        results = {'loss': final_loss,
-                   'accuracy': final_argmax_accuracy}
+        results = {'phase1_loss': final_loss,
+                   'phase1_accuracy': final_argmax_accuracy}
     elif context.eval_accuracy == 'best':
-        results = {'loss': best_loss_window,
-                   'accuracy': best_accuracy_window}
+        results = {'phase1_loss': best_loss_window,
+                   'phase2_accuracy': best_accuracy_window}
     else:
-        raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
+        raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
 
-    if torch.isnan(results['loss']):
+    if torch.isnan(results['phase1_loss']):
         return dict()
 
     if context.constrain_equilibration_dynamics or context.debug:
-        if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
+        if not check_equilibration_dynamics(network, full_test_dataloader, context.equilibration_activity_tolerance,
                                             context.debug, context.disp, context.debug and plot):
             if not context.debug:
                 return dict()
 
     if plot:
-        plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
-                            title='Final')
-        plot_train_loss_history(network)
-        plot_validate_loss_history(network)
-
-    if context.compute_receptive_fields:
-        # Compute receptive fields
-        population = network.H1.E
-        receptive_fields, _ = utils.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
-        _, activity_preferred_inputs = utils.compute_act_weighted_avg(network.H1.E, test_dataloader)
-    else:
-        receptive_fields = network.H1.E.Input.E.weight.detach()
-        activity_preferred_inputs = None
-    if plot:
-        plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=True, num_cols=10, num_rows=10)
+        plot_batch_accuracy(network, full_test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
+                            title='After Phase 1')
+        plot_train_loss_history(network, title='Phase 1')
+        plot_validate_loss_history(network, title='Phase 1')
 
     if context.full_analysis:
-        metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields,
-                                                            plot=plot)
         test_loss_history, test_accuracy_history = \
-            compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot,
-                                           status_bar=context.status_bar)
+            compute_test_loss_and_accuracy_history(network, phase1_test_dataloader,
+                                                   sorted_output_idx=sorted_output_idx, plot=plot,
+                                                   status_bar=context.status_bar)
 
     if context.debug:
         print('pid: %i, seed: %i' % (os.getpid(), seed))
@@ -1688,9 +1701,12 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if export:
         if context.temp_output_path is not None:
             # Compute test activity and metrics
-            idx, data, target = next(iter(test_dataloader))
+            idx, data, target = next(iter(full_test_dataloader))
             network.forward(data)
-            network.output_pop.activity = network.output_pop.activity[:, sorted_output_idx]
+            if sorted_output_idx is not None:
+                network.output_pop.activity = network.output_pop.activity[:, sorted_output_idx]
+
+            output_pop = network.output_pop
 
             with h5py.File(context.temp_output_path, 'a') as f:
                 if context.label is None:
@@ -1699,30 +1715,145 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                     label = context.label
                 group = f.create_group(label)
                 model_group = group.create_group(str(seed))
-
-                activity_group = model_group.create_group('activity')
+                activity_group = model_group.create_group('phase1_activity')
+                for post_layer in network:
+                    post_layer_activity = activity_group.create_group(post_layer.name)
+                    for post_pop in post_layer:
+                        activity_data = \
+                            post_pop.activity_history[network.sorted_sample_indexes, -1, :].T
+                        if post_pop == output_pop:
+                            activity_data = activity_data[sorted_output_idx,:]
+                        post_layer_activity.create_dataset(post_pop.name, data=activity_data)
                 metrics_group = model_group.create_group('metrics')
+                metrics_group.create_dataset('phase1_loss', data=final_loss)
+                metrics_group.create_dataset('phase1_accuracy', data=final_argmax_accuracy)
 
-                for layer in network:
-                    layer_activity = activity_group.create_group(layer.name)
-                    for pop in layer:
-                        activity_data = pop.activity.T.detach()
-                        layer_activity.create_dataset(pop.name, data=activity_data)
+    network.reset_history()
 
-                metrics_group.create_dataset('val_loss', data=sorted_val_loss_history)
-                metrics_group.create_dataset('val_loss_steps', data=network.val_history_train_steps)
-                metrics_group.create_dataset('val_accuracy', data=sorted_val_accuracy_history)
-                if context.store_history:
-                    metrics_group.create_dataset('train_loss', data=sorted_train_loss_history)
-                    metrics_group.create_dataset('binned_train_loss_steps', data=binned_train_loss_steps)
-                    metrics_group.create_dataset('train_accuracy', data=sorted_train_accuracy_history)
+    saved_network_path = f"{context.output_dir}/{network_name}_phase2_{seed}.pkl"
+    if os.path.exists(saved_network_path) and not context.retrain:
+        network.load(saved_network_path)
+    else:
+        data_generator.manual_seed(data_seed)
+        network.train(phase2_train_dataloader, phase2_val_dataloader, epochs=epochs,
+                      val_interval=context.val_interval,  # e.g. (-201, -1, 10)
+                      store_history=context.store_history, store_dynamics=context.store_dynamics,
+                      store_params=context.store_params, store_params_interval=context.store_params_interval,
+                      status_bar=context.status_bar)
+        if export:
+            network.save(path=saved_network_path)
 
-                if context.full_analysis:
-                    metrics_group.create_dataset('test_loss', data=test_loss_history)
-                    metrics_group.create_dataset('test_loss_steps', data=network.param_history_steps)
-                    metrics_group.create_dataset('test_accuracy', data=test_accuracy_history)
-                    for metric in metrics_dict:
-                        metrics_group.create_dataset(metric, data=metrics_dict[metric])
+    # reorder output units if using unsupervised/Hebbian rule
+    if not context.supervised:
+        min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
+        sorted_val_loss_history, sorted_val_accuracy_history = \
+            recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True)
+    else:
+        min_loss_idx = torch.argmin(network.val_loss_history)
+        sorted_output_idx = None
+        sorted_val_loss_history = network.val_loss_history
+        sorted_val_accuracy_history = network.val_accuracy_history
+
+    if context.store_history:
+        binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
+            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot, title='Phase 2')
+
+    # Select for stability by computing mean accuracy in a window after the best validation step
+    val_stepsize = int(context.val_interval[2])
+    val_start_idx = int(context.val_interval[0])
+    num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
+    if min_loss_idx + num_val_steps_accuracy_window > len(
+            sorted_val_loss_history):  # if best loss too close to the end
+        best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
+        best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
+    else:
+        best_accuracy_window = \
+            torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+        best_loss_window = torch.mean(
+            sorted_val_loss_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+
+    final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
+    final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
+
+    if context.eval_accuracy == 'final':
+        results['phase2_loss'] = final_loss
+        results['phase2_accuracy'] = final_argmax_accuracy
+    elif context.eval_accuracy == 'best':
+        results['phase2_loss'] = best_loss_window
+        results['phase2_accuracy'] = best_accuracy_window
+    else:
+        raise Exception('nested_optimize_EIANN_1_hidden_CL_autoenc: eval_accuracy must be final or best, not %s' %
+                        context.eval_accuracy)
+
+    if torch.isnan(results['phase2_loss']):
+        return dict()
+
+    if plot:
+        plot_batch_accuracy(network, full_test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
+                            title='After Phase 2')
+        plot_train_loss_history(network, title='Phase 2')
+        plot_validate_loss_history(network, title='Phase 2')
+
+    if context.compute_receptive_fields:
+        # Compute receptive fields
+        population = network.H1.E
+        receptive_fields, _ = utils.compute_maxact_receptive_fields(population, full_test_dataloader, sigmoid=False)
+        _, activity_preferred_inputs = utils.compute_act_weighted_avg(network.H1.E, full_test_dataloader)
+    else:
+        receptive_fields = network.H1.E.Input.E.weight.detach()
+        activity_preferred_inputs = None
+    if plot:
+        plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=True, num_cols=10, num_rows=10)
+
+    if context.full_analysis:
+        metrics_dict = utils.compute_representation_metrics(network.H1.E, full_test_dataloader, receptive_fields,
+                                                            plot=plot)
+        test_loss_history, test_accuracy_history = \
+            compute_test_loss_and_accuracy_history(network, phase2_test_dataloader, sorted_output_idx=sorted_output_idx,
+                                                   plot=plot, status_bar=context.status_bar, title='Phase 2')
+
+
+    # if context.debug:
+    #     context.update(locals())
+    #     return dict()
+
+    final_total_loss, final_total_accuracy = \
+        compute_test_loss_and_accuracy_single_batch(network, full_test_dataloader, sorted_output_idx=sorted_output_idx)
+
+    results['final_loss'] = final_total_loss
+    results['final_accuracy'] = final_total_accuracy
+
+    if export:
+        if context.temp_output_path is not None:
+            with h5py.File(context.temp_output_path, 'a') as f:
+                model_group = f[label][str(seed)]
+                activity_group = model_group.create_group('phase2_activity')
+                for post_layer in network:
+                    post_layer_activity = activity_group.create_group(post_layer.name)
+                    for post_pop in post_layer:
+                        # TODO: This will depend on store_dynamics
+                        activity_data = \
+                            post_pop.activity_history[network.sorted_sample_indexes, -1, :].T
+                        if post_pop == output_pop:
+                            activity_data = activity_data[sorted_output_idx,:]
+                        post_layer_activity.create_dataset(post_pop.name, data=activity_data)
+                metrics_group = model_group['metrics']
+                metrics_group.create_dataset('phase2_loss', data=final_loss)
+                metrics_group.create_dataset('phase2_accuracy', data=final_argmax_accuracy)
+                metrics_group.create_dataset('final_total_loss', data=final_total_loss)
+                metrics_group.create_dataset('final_total_accuracy', data=final_total_accuracy)
+
+    if export:
+        final_phase1_loss, final_phase1_accuracy = \
+            compute_test_loss_and_accuracy_single_batch(network, phase1_test_dataloader,
+                                                        sorted_output_idx=sorted_output_idx)
+
+        if context.temp_output_path is not None:
+            with h5py.File(context.temp_output_path, 'a') as f:
+                model_group = f[label][str(seed)]
+                metrics_group = model_group['metrics']
+                metrics_group.create_dataset('final_phase1_loss', data=final_phase1_loss)
+                metrics_group.create_dataset('final_phase1_accuracy', data=final_phase1_accuracy)
 
     if not context.interactive:
         del network

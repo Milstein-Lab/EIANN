@@ -13,7 +13,7 @@ from EIANN.utils import read_from_yaml, write_to_yaml, \
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history
 from nested.utils import Context, param_array_to_dict, str_to_bool
 from nested.optimize_utils import update_source_contexts
-from EIANN.optimize.nested_optimize_EIANN_1_hidden import update_EIANN_config_1_hidden_backprop_Dale_softplus_SGD_F, \
+from EIANN.optimize.nested_optimize_EIANN_1_hidden_autoenc import update_EIANN_config_1_hidden_backprop_Dale_softplus_SGD_F, \
     update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
     update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
     update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, update_EIANN_config_1_hidden_BTSP_F1, \

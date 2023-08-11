@@ -421,8 +421,6 @@ def compute_test_loss_and_accuracy_single_batch(network, test_dataloader, sorted
     idx, test_data, test_target = next(iter(test_dataloader))
     test_data = test_data.to(network.device)
     test_target = test_target.to(network.device)
-    test_loss_history = []
-    test_accuracy_history = []
     num_patterns = test_data.shape[0]
 
     output = network.forward(test_data, no_grad=True)

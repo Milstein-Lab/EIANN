@@ -73,10 +73,10 @@ kwargs:
     network_config_file_path: config/EIANN_1_hidden_BTSP_config_C6.yaml
     eval_accuracy: final
 update_context:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_autoenc
       function: update_EIANN_config_1_hidden_BTSP_C4
 stages:
-    - source: optimize.nested_optimize_EIANN_1_hidden
+    - source: optimize.nested_optimize_EIANN_1_hidden_autoenc
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
