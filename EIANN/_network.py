@@ -341,7 +341,7 @@ class Network(nn.Module):
                 self.param_history_steps.append(train_step)
 
         if status_bar:
-            from tqdm.notebook import tqdm
+            from tqdm.autonotebook import tqdm
         if status_bar:
             epoch_iter = tqdm(range(epochs), desc='Epochs')
         else:

@@ -21,7 +21,7 @@ from EIANN.optimize.nested_optimize_EIANN_1_hidden_autoenc import update_EIANN_c
     update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, update_EIANN_config_1_hidden_BTSP_F1, \
     update_EIANN_config_1_hidden_BTSP_F2, update_EIANN_config_1_hidden_BTSP_F3, \
     update_EIANN_config_1_hidden_BTSP_F5, update_EIANN_config_1_hidden_BTSP_F6, update_EIANN_config_1_hidden_BTSP_F7, \
-    update_EIANN_config_1_hidden_backprop_softplus_SGD, \
+    update_EIANN_config_1_hidden_BTSP_F8, update_EIANN_config_1_hidden_backprop_softplus_SGD, \
     update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C, update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F
 import EIANN.utils as utils
 
@@ -158,7 +158,7 @@ def get_random_seeds():
     data_seeds = [int.from_bytes((context.network_id, instance_id), byteorder='big')
                      for instance_id in range(context.data_seed_start, context.data_seed_start + context.num_instances)]
     if context.debug:
-        print(network_seeds, data_seeds)
+        print('network_seeds:', network_seeds, 'data_seeds:', data_seeds)
         sys.stdout.flush()
     return [network_seeds, data_seeds]
 
