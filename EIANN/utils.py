@@ -45,7 +45,10 @@ def nested_convert_scalars(data):
     return data
 
 
+# *******************************************************************
 # Functions to import and export data
+# *******************************************************************
+
 def write_to_yaml(file_path, data, convert_scalars=True):
     """
 
@@ -160,7 +163,10 @@ def hdf5_to_dict_helper(group):
     return data_dict
 
 
+# *******************************************************************
 # Functions to generate and process data
+# *******************************************************************
+
 def n_choose_k(n, k):
     """
     Calculates number of ways to choose k things out of n, using binomial coefficients
@@ -1035,7 +1041,107 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
             'discriminability': discriminability, 'structure': structure}
 
 
+def compute_dW_angle_vs_BP(network, dataloader, data_seed=0):
+    """
+    Compute angle between dW at each training step and the expected dW from a full-batch backprop gradient descent step
+
+    :param network: network with param_history
+    :param dataloader: dataloader with a single large batch
+    :return: list of angles (in degrees)
+    """
+    assert len(network.param_history)>0, 'Network must have param_history'
+
+    if len(dataloader) > 1:
+        data_generator.manual_seed(data_seed)
+        data_iter = iter(train_sub_dataloader)
+    else:
+        idx, data, target = next(iter(dataloader))
+
+    # Turn on gradient tracking
+    network.backward_steps = 3
+    for parameter in network.parameters(): 
+        if parameter.is_learned:
+            parameter.requires_grad = True
+
+    angles = []
+
+    if plot:
+        fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(12,3))
+
+    for i in tqdm(range(len(network.param_history)-1)):
+        # Load params into network
+        state_dict = network.param_history[i]
+        network.load_state_dict(state_dict)
+        
+        # Compute backprop dW
+        if len(dataloader) > 1:
+            idx, data, target = next(data_iter)
+        target = target.squeeze()
+        output = network.forward(data)
+
+        network.zero_grad()
+        loss = network.criterion(output, target)
+        loss.backward()      
+        gradients = [param.grad.flatten() for param in network.parameters() if param.requires_grad and param.grad is not None]
+
+        # Compute BTSP dW (computed dW should be the same as comparing to next params)
+        next_state_dict = network.param_history[i+1]
+        dW = [(state_dict[name] - next_state_dict[name]).flatten() for name,param in network.named_parameters() 
+              if param.requires_grad and param.grad is not None]
+
+        # Compute angle between dW's
+        gradients = torch.cat(gradients)
+        dW = torch.cat(dW)
+
+        vector_product = torch.dot(gradients, dW) / (torch.norm(gradients)*torch.norm(dW)+1e-100)
+        angle_rad = np.arccos(torch.round(vector_product,decimals=5))
+        angle = angle_rad * 180 / np.pi
+        angles.append(angle)
+
+        if plot:            
+            if i==0:
+                ax1.scatter(gradients, dW, c='k', alpha=0.2)
+                ax1.set_xlabel('Gradients')
+                ax1.set_ylabel('Actual dW')
+                ax1.set_title('First dW')
+
+                # Plot line of best fit
+                m, b = np.polyfit(gradients, dW, 1)
+                ax1.plot(gradients, m*gradients + b, c='r', alpha=0.5)
+                ax1.text(0.05, 0.95, f'Angle = {angle:.2f} degrees', transform=ax1.transAxes, ha='left', va='top')
+                corr = np.corrcoef(gradients, dW)[0,1]
+                ax1.text(0.05, 0.85, f'R = {corr:.2f}', transform=ax1.transAxes, ha='left', va='top')
+
+            if i==len(network.param_history)-2:
+                ax2.scatter(gradients, dW, c='k', alpha=0.2)
+                ax2.set_xlabel('Gradients')
+                ax2.set_ylabel('Actual dW')
+                ax2.set_title('Last dW')
+
+                # Plot line of best fit
+                m, b = np.polyfit(gradients, dW, 1)
+                ax2.plot(gradients, m*gradients + b, c='r', alpha=0.5)
+                ax2.text(0.05, 0.95, f'Angle = {angle:.2f} degrees', transform=ax2.transAxes, ha='left', va='top')
+                corr = np.corrcoef(gradients, dW)[0,1]
+                ax2.text(0.05, 0.85, f'R = {corr:.2f}', transform=ax2.transAxes, ha='left', va='top')
+
+    if plot:
+        ax3.plot(angles)
+        ax3.set_xlabel('Training step')
+        ax3.set_ylabel('Angle vs BP (degrees)')
+        avg_angle = np.mean(angles)
+        ax3.text(0.05, 0.95, f'Avg angle = {avg_angle:.2f} degrees', transform=ax3.transAxes, ha='left', va='top')
+        plt.tight_layout()
+        plt.show()
+
+    return angles
+
+
+
+# *******************************************************************
 # MNIST-specific functions
+# *******************************************************************
+
 def compute_act_weighted_avg(population, dataloader):
     """
     Compute activity-weighted average input for every unit in the population

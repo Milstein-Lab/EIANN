@@ -341,8 +341,7 @@ class Network(nn.Module):
                 self.param_history_steps.append(train_step)
 
         if status_bar:
-            from tqdm.autonotebook import tqdm
-
+            from tqdm.notebook import tqdm
         if status_bar:
             epoch_iter = tqdm(range(epochs), desc='Epochs')
         else:
@@ -610,8 +609,7 @@ class Population(object):
         self.activation = lambda x: activation(x, **activation_kwargs)
 
         # Set bias parameters
-        self.bias = nn.Parameter(torch.zeros(self.size), requires_grad=False)
-        self.bias = self.bias.to(network.device)
+        self.bias = nn.Parameter(torch.zeros(self.size, device=network.device), requires_grad=False)
         self.bias_init = bias_init
         if bias_init_args is None:
             bias_init_args = ()
@@ -621,7 +619,9 @@ class Population(object):
             bias_learning_rule_kwargs = {}
         if bias_learning_rule is None:
             bias_learning_rule_class = rules.BiasLearningRule
+            self.bias.is_learned = False
         else:
+            self.bias.is_learned = True
             include_bias = True
             if bias_learning_rule == 'Backprop':
                 bias_learning_rule_class = rules.BackpropBias
@@ -844,7 +844,9 @@ class Projection(nn.Linear):
             learning_rule_kwargs = {}
         if learning_rule is None:
             learning_rule_class = rules.LearningRule
+            self.weight.is_learned = False
         else:
+            self.weight.is_learned = True
             try:
                 if isinstance(learning_rule, str):
                     if hasattr(rules, learning_rule):
