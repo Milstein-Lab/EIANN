@@ -1,0 +1,15 @@
+bpDale_G:
+    E_E_learning_rate: 0.15290614588474738
+    H1_E_H1_I_init_weight_scale: 0.39763932784212713
+    H1_E_Input_E_init_weight_scale: 1.1952529102104883
+    H1_I_H1_E_init_weight_scale: 0.5253583054380215
+    H1_I_H1_I_init_weight_scale: 0.2808805285473549
+    H1_I_Input_E_init_weight_scale: 1.5771364930203475
+    H_I_size: 50.0
+    Output_E_H1_E_init_weight_scale: 1.5683059810940299
+    Output_E_Output_I_init_weight_scale: 0.2902385409084288
+    Output_I_H1_E_init_weight_scale: 0.1259964014717104
+    Output_I_Output_E_init_weight_scale: 0.026090294899284282
+    Output_I_Output_I_init_weight_scale: 0.023577496148612726
+    Output_I_size: 10.0
+    softplus_beta: 80.88228118091115

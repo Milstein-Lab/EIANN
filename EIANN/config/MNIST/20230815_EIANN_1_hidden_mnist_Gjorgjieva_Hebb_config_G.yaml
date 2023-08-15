@@ -22,18 +22,17 @@ projection_config:
             Input:
                 E:
                     weight_init: half_kaining
-                    weight_init_args: !!python/tuple
-                        - 1.
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 9.48517424257211
                     weight_bounds: !!python/tuple
                         - 0
                         - null
                     direction: F
-                    learning_rule: BCM
+                    learning_rule: GjorgjievaHebb_2
                     learning_rule_kwargs:
                         sign: 1
                         learning_rate: 0.29434780488671874
-                        theta_tau: 0.29434780488671874
-                        k: 0.1
             H1:
                 I:
                     weight_init: half_kaining
@@ -80,18 +79,17 @@ projection_config:
             H1:
                 E:
                     weight_init: half_kaining
-                    weight_init_args: !!python/tuple
-                        - 1.
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 5.36355008130285
                     weight_bounds: !!python/tuple
                         - 0
                         - null
                     direction: F
-                    learning_rule: BCM
+                    learning_rule: GjorgjievaHebb_2
                     learning_rule_kwargs:
                         sign: 1
                         learning_rate: 0.29434780488671874
-                        theta_tau: 0.29434780488671874
-                        k: 0.1
             Output:
                 I:
                     weight_init: half_kaining
@@ -121,6 +119,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    update_phase: A
                     direction: R
                     learning_rule: null
                 I:
