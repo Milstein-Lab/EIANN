@@ -68,24 +68,36 @@ class Oja(LearningRule):
 
 
 class BCM(LearningRule):
-    def __init__(self, projection, theta_init, theta_tau, k, learning_rate=None):
+    def __init__(self, projection, theta_tau, k, sign=1, learning_rate=None):
         """
 
         :param projection:
-        :param theta_init: float
         :param theta_tau: float
         :param k: float
+        :param sign: int in {-1, 1}
         :param learning_rate: float
         """
         super().__init__(projection, learning_rate)
         self.theta_tau = theta_tau
         self.k = k
-        self.projection.post.theta = torch.ones(projection.post.size) * theta_init
+        self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device,
+                                                requires_grad=False) * k
+        self.sign = sign
+        projection.post.__class__.theta_history = property(lambda self: self.get_attribute_history('theta'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
 
     def step(self):
-        delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity) * \
+        if self.projection.direction in ['forward', 'F']:
+            delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity) * \
                        (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1)
-        self.projection.weight.data += self.learning_rate * delta_weight
+        elif self.projection.direction in ['recurrent', 'R']:
+            torch.outer(self.projection.post.activity, self.projection.pre.prev_activity) * \
+            (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1)
+        if self.sign > 0:
+            self.projection.weight.data += self.learning_rate * delta_weight
+        else:
+            self.projection.weight.data -= self.learning_rate * delta_weight
 
     @classmethod
     def backward(cls, network, output, target, store_history=False, store_dynamics=False):
@@ -94,11 +106,13 @@ class BCM(LearningRule):
                 for population in layer:
                     for projection in population:
                         if projection.learning_rule.__class__ == cls:
-                            population.prev_theta = population.theta.clone()
+                            population.prev_theta = population.theta.detach().clone()
                             delta_theta = (-population.theta + population.activity ** 2. /
                                            projection.learning_rule.k) / projection.learning_rule.theta_tau
                             population.theta += delta_theta
                             # only update theta once per population
+                            if store_history:
+                                population.append_attribute_history('theta', population.prev_theta.detach().clone())
                             break
 
 
@@ -1376,7 +1390,7 @@ class BTSP_6(LearningRule):
                 post_pop.activity = post_pop.activation(post_pop.state)
                 if hasattr(post_pop, 'dend_to_soma'):
                     post_pop.activity = post_pop.activity + post_pop.dend_to_soma
-            if store_history:
+            if store_dynamics:
                 post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
 
     @classmethod

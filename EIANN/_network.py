@@ -133,8 +133,8 @@ class Network(nn.Module):
                         total_fan_in += fan_in
                         if projection.weight_init is not None:
                             if projection.weight_init == 'half_kaining':
-                                 half_kaining_init(projection.weight.data, fan_in, *projection.weight_init_args,
-                                                   bounds=projection.weight_bounds)
+                                half_kaining_init(projection.weight.data, fan_in, *projection.weight_init_args,
+                                                  bounds=projection.weight_bounds)
                             elif projection.weight_init == 'scaled_kaining':
                                 scaled_kaining_init(projection.weight.data, fan_in, *projection.weight_init_args)
                             else:
@@ -715,14 +715,6 @@ class Population(object):
 
         """
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
-        self.activity_history_list = []
-        self._activity_history = None
-        self.backward_activity_history_list = []
-        self._backward_activity_history = None
-        self.plateau_history_list = []
-        self._plateau_history = None
-        self.nudge_history_list = []
-        self._nudge_history = None
 
     def append_projection(self, projection):
         """

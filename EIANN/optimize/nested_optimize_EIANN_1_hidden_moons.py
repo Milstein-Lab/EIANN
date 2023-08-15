@@ -11,16 +11,11 @@ from EIANN.utils import read_from_yaml, write_to_yaml, \
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
     recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history
-from nested.utils import Context, param_array_to_dict, str_to_bool
+from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
-from EIANN.optimize.nested_optimize_EIANN_1_hidden_autoenc import update_EIANN_config_1_hidden_backprop_Dale_softplus_SGD_F, \
-    update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C, \
-    update_EIANN_config_1_hidden_BTSP_C4, update_EIANN_config_1_hidden_BTSP_Clone_Dend_I_1, \
-    update_EIANN_config_1_hidden_BTSP_D2, update_EIANN_config_1_hidden_BTSP_E1, update_EIANN_config_1_hidden_BTSP_F1, \
-    update_EIANN_config_1_hidden_BTSP_F2, update_EIANN_config_1_hidden_BTSP_F3, \
-    update_EIANN_config_1_hidden_backprop_softplus_SGD, \
-    update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C, update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F
+from EIANN.optimize.network_config_updates import *
 from sklearn.datasets import make_moons
+
 
 context = Context()
 
@@ -271,45 +266,45 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             print('nested_optimize_EIANN_1_hidden_moons: pid: %i exported network config to %s' %
                   (os.getpid(), context.export_network_config_file_path))
 
-    if export:
-        if context.temp_output_path is not None:
-            # Compute test activity and metrics
-            idx, data, target = next(iter(test_dataloader))
-            network.forward(data)
-            if sorted_output_idx is not None:
-                network.output_pop.activity = network.output_pop.activity[:, sorted_output_idx]
-
-            with h5py.File(context.temp_output_path, 'a') as f:
-                if context.label is None:
-                    label = str(len(f))
-                else:
-                    label = context.label
-                group = f.create_group(label)
-                model_group = group.create_group(str(seed))
-
-                activity_group = model_group.create_group('activity')
-                metrics_group = model_group.create_group('metrics')
-
-                for layer in network:
-                    layer_activity = activity_group.create_group(layer.name)
-                    for pop in layer:
-                        activity_data = pop.activity.T.detach()
-                        layer_activity.create_dataset(pop.name, data=activity_data)
-
-                metrics_group.create_dataset('val_loss', data=sorted_val_loss_history)
-                metrics_group.create_dataset('val_loss_steps', data=network.val_history_train_steps)
-                metrics_group.create_dataset('val_accuracy', data=sorted_val_accuracy_history)
-                if context.store_history:
-                    metrics_group.create_dataset('train_loss', data=sorted_train_loss_history)
-                    metrics_group.create_dataset('binned_train_loss_steps', data=binned_train_loss_steps)
-                    metrics_group.create_dataset('train_accuracy', data=sorted_train_accuracy_history)
-
-                if context.full_analysis:
-                    metrics_group.create_dataset('test_loss', data=test_loss_history)
-                    metrics_group.create_dataset('test_loss_steps', data=network.param_history_steps)
-                    metrics_group.create_dataset('test_accuracy', data=test_accuracy_history)
-                    for metric in metrics_dict:
-                        metrics_group.create_dataset(metric, data=metrics_dict[metric])
+    # if export:
+    #     if context.temp_output_path is not None:
+    #         # Compute test activity and metrics
+    #         idx, data, target = next(iter(test_dataloader))
+    #         network.forward(data)
+    #         if sorted_output_idx is not None:
+    #             network.output_pop.activity = network.output_pop.activity[:, sorted_output_idx]
+    #
+    #         with h5py.File(context.temp_output_path, 'a') as f:
+    #             if context.label is None:
+    #                 label = str(len(f))
+    #             else:
+    #                 label = context.label
+    #             group = f.create_group(label)
+    #             model_group = group.create_group(str(seed))
+    #
+    #             activity_group = model_group.create_group('activity')
+    #             metrics_group = model_group.create_group('metrics')
+    #
+    #             for layer in network:
+    #                 layer_activity = activity_group.create_group(layer.name)
+    #                 for pop in layer:
+    #                     activity_data = pop.activity.T.detach()
+    #                     layer_activity.create_dataset(pop.name, data=activity_data)
+    #
+    #             metrics_group.create_dataset('val_loss', data=sorted_val_loss_history)
+    #             metrics_group.create_dataset('val_loss_steps', data=network.val_history_train_steps)
+    #             metrics_group.create_dataset('val_accuracy', data=sorted_val_accuracy_history)
+    #             if context.store_history:
+    #                 metrics_group.create_dataset('train_loss', data=sorted_train_loss_history)
+    #                 metrics_group.create_dataset('binned_train_loss_steps', data=binned_train_loss_steps)
+    #                 metrics_group.create_dataset('train_accuracy', data=sorted_train_accuracy_history)
+    #
+    #             if context.full_analysis:
+    #                 metrics_group.create_dataset('test_loss', data=test_loss_history)
+    #                 metrics_group.create_dataset('test_loss_steps', data=network.param_history_steps)
+    #                 metrics_group.create_dataset('test_accuracy', data=test_accuracy_history)
+    #                 for metric in metrics_dict:
+    #                     metrics_group.create_dataset(metric, data=metrics_dict[metric])
 
     if not context.interactive:
         del network
