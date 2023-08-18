@@ -1074,14 +1074,22 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, data_se
             assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
     test_network.reset_history()
 
+    if len(network.prev_param_history)==0: # if interval step is 1
+        prev_param_history = network.param_history[:]
+        param_history = network.param_history[1:]
+    else:
+        prev_param_history = network.prev_param_history
+        param_history = network.param_history[1:] # exclude initial params
+
+
     actual_dParam_history_dict = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
     predicted_dParam_history_dict = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
     actual_dParam_history_all = []
     predicted_dParam_history_all = []
 
-    for t in tqdm(range(len(network.param_history)-1)):  
+    for t in tqdm(range(len(param_history))):  
         # Load params into network
-        state_dict = network.param_history[t]
+        state_dict = prev_param_history[t]
         if network2 is not None:
             state_dict = {name:param for name,param in state_dict.items() if name in test_network.state_dict()}
         test_network.load_state_dict(state_dict)
@@ -1126,7 +1134,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, data_se
         predicted_dParam_history_all.append(torch.cat(dParam_vec))
 
         # Compute the actual dParam of the first network
-        next_state_dict = copy.deepcopy(network.param_history[t+1])
+        next_state_dict = param_history[t]
         dParam_vec = []
         for key in actual_dParam_history_dict:
             dParam = (next_state_dict[key]-state_dict[key])
@@ -1197,7 +1205,7 @@ def compute_dW_angles(test_network, plot=False):
             fig.show()
 
     return angles
-    
+
 
 # *******************************************************************
 # MNIST-specific functions
