@@ -141,7 +141,7 @@ def config_worker():
     # Put data in dataloader
     context.data_generator = torch.Generator()
     context.train_sub_dataloader = \
-        torch.utils.data.DataLoader(MNIST_train[0:context.train_steps], shuffle=True, generator=context.data_generator)
+        torch.utils.data.DataLoader(MNIST_train[0:-10000], shuffle=True, generator=context.data_generator)
     context.val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
     context.test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
 
@@ -196,7 +196,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     else:
         data_generator.manual_seed(data_seed)
         network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
-                      val_interval=context.val_interval, # e.g. (-201, -1, 10)
+                      val_interval=context.val_interval, # e.g. (-201, -1, 10),
+                      samples_per_epoch=context.train_steps,
                       store_history=context.store_history, store_dynamics=context.store_dynamics,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar)

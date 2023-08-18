@@ -1,7 +1,10 @@
 bpDale_G:
+    # after 20000 steps:
     # accuracy: 95.453
     # loss: 0.011002556
-    # stability: # does not degrade accuracy with extended training, but re-shuffling samples produced lower accuracy
+    # stability: after 50000 steps:
+    # accuracy: 94.7621
+    # loss: 0.010341975
     E_E_learning_rate: 0.20906601706686329
     H1_E_H1_I_init_weight_scale: 1.085742013295119
     H1_E_Input_E_init_weight_scale: 2.251133247968139
@@ -94,9 +97,12 @@ Gjorgjieva_Hebb_G:
     Output_I_Output_I_init_weight_scale: 9.862356931112654
     Output_I_size: 10.0
 BTSP_G:
+    # after 20000 steps:
     # accuracy: 88.1841
     # loss: 0.024980325
-    # stability:
+    # stability: after 50000 steps:
+    # accuracy: 81.289795
+    # loss: 0.037463017
     BTSP_decay_tau: 1.0018623473736468
     FB_BTSP_init_weight_factor: 0.13242693154479954
     FF_BTSP_init_weight_factor: 0.0395693698058979

@@ -273,15 +273,16 @@ class Network(nn.Module):
 
         return loss.item()
 
-    def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), store_history=False,
-              store_dynamics=False, store_params=False, store_params_interval=None, save_to_file=None,
-              status_bar=False):
+    def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
+              store_history=False, store_dynamics=False, store_params=False, store_params_interval=None,
+              save_to_file=None, status_bar=False):
         """
         Starting at validate_start, probe with the validate_data every validate_interval until >= validate_stop
         :param train_dataloader:
         :param val_dataloader:
         :param epochs:
         :param val_interval: tuple of int (start_index, stop_index, interval)
+        :param samples_per_epoch: int
         :param store_history: bool
         :param store_dynamics: bool
         :param store_params: bool
@@ -290,11 +291,12 @@ class Network(nn.Module):
         :param status_bar: bool
         """
         self.reset_history()
-        num_samples = len(train_dataloader)
+        if samples_per_epoch is None:
+            samples_per_epoch = len(train_dataloader)
 
         train_step = 0
         # includes initial state before first train step
-        train_step_range = torch.arange(epochs * num_samples + 1)
+        train_step_range = torch.arange(epochs * samples_per_epoch + 1)
 
         val_data_on_device = False
 
@@ -364,11 +366,14 @@ class Network(nn.Module):
         for epoch in epoch_iter:
             epoch_sample_order = []
             if status_bar and len(train_dataloader) > epochs:
-                dataloader_iter = tqdm(train_dataloader, desc='Samples', leave=epoch == epochs - 1)
+                dataloader_iter = tqdm(train_dataloader, desc='Samples', total=samples_per_epoch,
+                                       leave=epoch == epochs - 1)
             else:
                 dataloader_iter = train_dataloader
 
-            for sample_idx, sample_data, sample_target in dataloader_iter:
+            for sample_count, (sample_idx, sample_data, sample_target) in enumerate(dataloader_iter):
+                if sample_count >= samples_per_epoch:
+                    break
                 train_step += 1
                 sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
@@ -430,7 +435,7 @@ class Network(nn.Module):
 
             epoch_sample_order = torch.concat(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
-            self.sorted_sample_indexes.extend(torch.add(epoch * num_samples, torch.argsort(epoch_sample_order)))
+            self.sorted_sample_indexes.extend(torch.add(epoch * samples_per_epoch, torch.argsort(epoch_sample_order)))
 
         self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
