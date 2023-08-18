@@ -84,14 +84,20 @@ class BCM(LearningRule):
                                                 requires_grad=False) * k
         self.sign = sign
         projection.post.__class__.theta_history = property(lambda self: self.get_attribute_history('theta'))
-    
+
+    def reinit(self):
+        self.projection.post.BCM_theta_updated = False
+
+    def update(self):
+        self.projection.post.BCM_theta_updated = False
+
     def step(self):
         if self.projection.direction in ['forward', 'F']:
-            delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity) * \
-                       (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1)
+            delta_weight = (torch.outer(self.projection.post.activity, self.projection.pre.activity) *
+                            (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1))
         elif self.projection.direction in ['recurrent', 'R']:
-            torch.outer(self.projection.post.activity, self.projection.pre.prev_activity) * \
-            (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1)
+            delta_weight = (torch.outer(self.projection.post.activity, self.projection.pre.prev_activity) *
+                            (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1))
         if self.sign > 0:
             self.projection.weight.data += self.learning_rate * delta_weight
         else:
@@ -104,13 +110,15 @@ class BCM(LearningRule):
                 for population in layer:
                     for projection in population:
                         if projection.learning_rule.__class__ == cls:
-                            population.prev_theta = population.theta.detach().clone()
-                            delta_theta = (-population.theta + population.activity ** 2. /
-                                           projection.learning_rule.k) / projection.learning_rule.theta_tau
-                            population.theta += delta_theta
                             # only update theta once per population
-                            if store_history:
-                                population.append_attribute_history('theta', population.prev_theta.detach().clone())
+                            if not population.BCM_theta_updated:
+                                population.prev_theta = population.theta.detach().clone()
+                                delta_theta = (-population.theta + population.activity ** 2. /
+                                               projection.learning_rule.k) / projection.learning_rule.theta_tau
+                                population.theta += delta_theta
+                                population.BCM_theta_updated = True
+                                if store_history:
+                                    population.append_attribute_history('theta', population.prev_theta.detach().clone())
                             break
 
 
@@ -135,12 +143,18 @@ class Supervised_BCM(LearningRule):
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
 
+    def reinit(self):
+        self.projection.post.BCM_theta_updated = False
+
+    def update(self):
+        self.projection.post.BCM_theta_updated = False
+
     def step(self):
         if self.projection.direction in ['forward', 'F']:
             delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity) * \
                        (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1)
         elif self.projection.direction in ['recurrent', 'R']:
-            torch.outer(self.projection.post.activity, self.projection.pre.prev_activity) * \
+            delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.prev_activity) * \
             (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1)
         if self.sign > 0:
             self.projection.weight.data += self.learning_rate * delta_weight
@@ -211,13 +225,15 @@ class Supervised_BCM(LearningRule):
                 for population in layer:
                     for projection in population:
                         if projection.learning_rule.__class__ == cls:
-                            population.prev_theta = population.theta.detach().clone()
-                            delta_theta = (-population.theta + population.activity ** 2. /
-                                           projection.learning_rule.k) / projection.learning_rule.theta_tau
-                            population.theta += delta_theta
                             # only update theta once per population
-                            if store_history:
-                                population.append_attribute_history('theta', population.prev_theta.detach().clone())
+                            if not population.BCM_theta_updated:
+                                population.prev_theta = population.theta.detach().clone()
+                                delta_theta = (-population.theta + population.activity ** 2. /
+                                               projection.learning_rule.k) / projection.learning_rule.theta_tau
+                                population.theta += delta_theta
+                                population.BCM_theta_updated = True
+                                if store_history:
+                                    population.append_attribute_history('theta', population.prev_theta.detach().clone())
                             break
 
 

@@ -526,6 +526,106 @@ def update_EIANN_config_1_hidden_BCM_G(x, context):
     context.projection_config['Output']['I']['Output']['I']['weight_init_args'] = (Output_I_Output_I_init_weight_scale,)
 
 
+def update_EIANN_config_1_hidden_BCM_cotuned_I_H(x, context):
+    """
+
+    :param x:
+    :param context:
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    H1_I_size = int(param_dict['H1_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+
+    context.layer_config['H1']['I']['size'] = H1_I_size
+    context.layer_config['Output']['I']['size'] = Output_I_size
+
+    H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
+    H1_E_Input_E_learning_rate = param_dict['H1_E_Input_E_learning_rate']
+    H1_E_theta_tau = param_dict['H1_E_theta_tau']
+    H1_E_BCM_k = param_dict['H1_E_BCM_k']
+
+    H1_E_H1_I_init_weight_scale = param_dict['H1_E_H1_I_init_weight_scale']
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    I_E_learning_rate = param_dict['E_I_learning_rate']
+    I_I_learning_rate = param_dict['E_I_learning_rate']
+
+    H1_I_theta_tau = param_dict['H1_I_theta_tau']
+    H1_I_BCM_k = param_dict['H1_I_BCM_k']
+    H1_I_H1_E_init_weight_scale = param_dict['H1_I_H1_E_init_weight_scale']
+    H1_I_Input_E_init_weight_scale = param_dict['H1_I_Input_E_init_weight_scale']
+    H1_I_H1_I_init_weight_scale = param_dict['H1_I_H1_I_init_weight_scale']
+
+    Output_E_H1_E_init_weight_scale = param_dict['Output_E_H1_E_init_weight_scale']
+    Output_E_H1_E_learning_rate = param_dict['Output_E_H1_E_learning_rate']
+    Output_E_theta_tau = param_dict['Output_E_theta_tau']
+    Output_E_BCM_k = param_dict['Output_E_BCM_k']
+
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+
+    Output_I_theta_tau = param_dict['Output_I_theta_tau']
+    Output_I_BCM_k = param_dict['Output_I_BCM_k']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_H1_E_init_weight_scale = param_dict['Output_I_H1_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_Input_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['theta_tau'] = H1_E_theta_tau
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['k'] = H1_E_BCM_k
+
+    context.projection_config['H1']['E']['H1']['I']['weight_init_args'] = (H1_E_H1_I_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['I']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['E']['H1']['I']['learning_rule_kwargs']['theta_tau'] = H1_E_theta_tau
+    context.projection_config['H1']['E']['H1']['I']['learning_rule_kwargs']['k'] = H1_E_BCM_k
+
+    context.projection_config['H1']['I']['Input']['E']['weight_init_args'] = (H1_I_Input_E_init_weight_scale,)
+    context.projection_config['H1']['I']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['I']['Input']['E']['learning_rule_kwargs']['theta_tau'] = H1_I_theta_tau
+    context.projection_config['H1']['I']['Input']['E']['learning_rule_kwargs']['k'] = H1_I_BCM_k
+
+    context.projection_config['H1']['I']['H1']['E']['weight_init_args'] = (H1_I_H1_E_init_weight_scale,)
+    context.projection_config['H1']['I']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['I']['H1']['E']['learning_rule_kwargs']['theta_tau'] = H1_I_theta_tau
+    context.projection_config['H1']['I']['H1']['E']['learning_rule_kwargs']['k'] = H1_I_BCM_k
+
+    context.projection_config['H1']['I']['H1']['I']['weight_init_args'] = (H1_I_H1_I_init_weight_scale,)
+    context.projection_config['H1']['I']['H1']['I']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+    context.projection_config['H1']['I']['H1']['I']['learning_rule_kwargs']['theta_tau'] = H1_I_theta_tau
+    context.projection_config['H1']['I']['H1']['I']['learning_rule_kwargs']['k'] = H1_I_BCM_k
+
+    context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_H1_E_learning_rate
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['theta_tau'] = Output_E_theta_tau
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['k'] = Output_E_BCM_k
+
+    context.projection_config['Output']['E']['Output']['I']['weight_init_args'] = (Output_E_Output_I_init_weight_scale,)
+    context.projection_config['Output']['E']['Output']['I']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    context.projection_config['Output']['E']['Output']['I']['learning_rule_kwargs']['theta_tau'] = Output_E_theta_tau
+    context.projection_config['Output']['E']['Output']['I']['learning_rule_kwargs']['k'] = Output_E_BCM_k
+
+    context.projection_config['Output']['I']['H1']['E']['weight_init_args'] = (Output_I_H1_E_init_weight_scale,)
+    context.projection_config['Output']['I']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['I']['H1']['E']['learning_rule_kwargs']['theta_tau'] = Output_I_theta_tau
+    context.projection_config['Output']['I']['H1']['E']['learning_rule_kwargs']['k'] = Output_I_BCM_k
+
+    context.projection_config['Output']['I']['Output']['E']['weight_init_args'] = (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['I']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['I']['Output']['E']['learning_rule_kwargs']['theta_tau'] = Output_I_theta_tau
+    context.projection_config['Output']['I']['Output']['E']['learning_rule_kwargs']['k'] = Output_I_BCM_k
+
+    context.projection_config['Output']['I']['Output']['I']['weight_init_args'] = (Output_I_Output_I_init_weight_scale,)
+    context.projection_config['Output']['I']['Output']['I']['learning_rule_kwargs']['learning_rate'] = \
+        I_I_learning_rate
+    context.projection_config['Output']['I']['Output']['I']['learning_rule_kwargs']['theta_tau'] = Output_I_theta_tau
+    context.projection_config['Output']['I']['Output']['I']['learning_rule_kwargs']['k'] = Output_I_BCM_k
+
+
 def update_EIANN_config_2_hidden_Gjorgjieva_Hebb_C(x, context):
     """
 
