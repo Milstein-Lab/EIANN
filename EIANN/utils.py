@@ -1056,7 +1056,8 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, data_se
     assert len(network.param_history)>0, 'Network must have param_history'
 
     if len(dataloader) > 1: # if dataloader is split into batches
-        data_generator.manual_seed(data_seed)
+        if dataloader.generator is not None:
+            dataloader.generator.manual_seed(data_seed)
         data_iter = iter(train_sub_dataloader)
     else:
         idx, data, target = next(iter(dataloader)) # if dataloader is a single batch
