@@ -133,8 +133,8 @@ class Network(nn.Module):
                         total_fan_in += fan_in
                         if projection.weight_init is not None:
                             if projection.weight_init == 'half_kaining':
-                                half_kaining_init(projection.weight.data, fan_in, *projection.weight_init_args,
-                                                  bounds=projection.weight_bounds)
+                                 half_kaining_init(projection.weight.data, fan_in, *projection.weight_init_args,
+                                                   bounds=projection.weight_bounds)
                             elif projection.weight_init == 'scaled_kaining':
                                 scaled_kaining_init(projection.weight.data, fan_in, *projection.weight_init_args)
                             else:
@@ -330,7 +330,9 @@ class Network(nn.Module):
         if store_params:
             self.param_history = []
             self.param_history_steps = []
+            self.prev_param_history = []
             if store_params_interval is None:
+                store_params_interval = val_interval
                 store_params_range = val_range
             else:
                 store_params_range = torch.arange(train_step_range[store_params_interval[0]],
@@ -350,13 +352,12 @@ class Network(nn.Module):
         self.target_history = []
 
         # initialize learning rule parameters
-        for i, post_layer in enumerate(self):
-            if i > 0:
-                for post_pop in post_layer:
-                    if post_pop.include_bias:
-                        post_pop.bias_learning_rule.reinit()
-                    for projection in post_pop:
-                        projection.learning_rule.reinit()
+        for post_layer in self:
+            for post_pop in post_layer:
+                if post_pop.include_bias:
+                    post_pop.bias_learning_rule.reinit()
+                for projection in post_pop:
+                    projection.learning_rule.reinit()
 
         train_data_on_device = False
 
@@ -385,6 +386,9 @@ class Network(nn.Module):
                 self.loss_history.append(loss.item())
                 self.target_history.append(sample_target.clone())
 
+                if store_params and store_params_interval[2] > 2: # Store parameters for dW comparison
+                    self.prev_param_history.append(deepcopy(self.state_dict()))
+                        
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
                     backward(self, output, sample_target, store_history=store_history, store_dynamics=store_dynamics)
@@ -715,6 +719,14 @@ class Population(object):
 
         """
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
+        self.activity_history_list = []
+        self._activity_history = None
+        self.backward_activity_history_list = []
+        self._backward_activity_history = None
+        self.plateau_history_list = []
+        self._plateau_history = None
+        self.nudge_history_list = []
+        self._nudge_history = None
 
     def append_projection(self, projection):
         """
@@ -758,6 +770,7 @@ class Input(Population):
         self.backward_projections = []
         self.outgoing_projections = {}
         self.incoming_projections = {}
+        self.include_bias = False
         self.reinit(network.device)
         self.reset_history()
 

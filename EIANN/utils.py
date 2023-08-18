@@ -10,6 +10,7 @@ import yaml
 import h5py
 import itertools
 import os
+import copy
 from . import plot as plot
 from . import external as external
 try:
@@ -106,7 +107,7 @@ def export_metrics_data(metrics_dict, model_name, path):
         for metric in metrics_dict.keys():
             file[model_name].create_dataset(metric, data=metrics_dict[metric])
 
-
+ 
 def import_metrics_data(filename):
     """
     Imports metrics data from hdf5 file
@@ -868,7 +869,7 @@ def compute_batch_accuracy(network, test_dataloader):
     print(f'Batch accuracy = {percent_correct}%')
 
 
-def get_update_history(network):
+def compute_dParam_history(network):
     dParam_history = {name: [] for name in network.state_dict()}
 
     for i in range(len(network.param_history) - 1):
@@ -1041,102 +1042,162 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
             'discriminability': discriminability, 'structure': structure}
 
 
-def compute_dW_angle_vs_BP(network, dataloader, data_seed=0):
+def compute_alternate_dParam_history(dataloader, network, network2=None, data_seed=0, save_path=None):
     """
-    Compute angle between dW at each training step and the expected dW from a full-batch backprop gradient descent step
+    Iterate through the parameter history and compute both the actual dParam at each training step 
+    and the alternate dParam predicted from either a backprop/gradient descent step or from an identical 
+    network with a custom learning rule
 
+    :param dataloader:
     :param network: network with param_history
-    :param dataloader: dataloader with a single large batch
+    :param network2: (optional) network with a custom learning rule
     :return: list of angles (in degrees)
     """
     assert len(network.param_history)>0, 'Network must have param_history'
 
-    if len(dataloader) > 1:
+    if len(dataloader) > 1: # if dataloader is split into batches
         data_generator.manual_seed(data_seed)
         data_iter = iter(train_sub_dataloader)
     else:
-        idx, data, target = next(iter(dataloader))
+        idx, data, target = next(iter(dataloader)) # if dataloader is a single batch
 
-    # Turn on gradient tracking
-    network.backward_steps = 3
-    for parameter in network.parameters(): 
-        if parameter.is_learned:
-            parameter.requires_grad = True
+    if network2 is None:
+        # Turn on gradient tracking to compute backprop dW
+        test_network = copy.copy(network)
+        test_network.backward_steps = 3
+        for parameter in network.parameters(): 
+            if parameter.is_learned:
+                parameter.requires_grad = True
+    else:
+        test_network = copy.copy(network2)
+        if "Backprop" in str(test_network.backward_methods):
+            assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
+    test_network.reset_history()
 
-    angles = []
+    actual_dParam_history_dict = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
+    predicted_dParam_history_dict = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
+    actual_dParam_history_all = []
+    predicted_dParam_history_all = []
 
-    if plot:
-        fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(12,3))
-
-    for i in tqdm(range(len(network.param_history)-1)):
+    for t in tqdm(range(len(network.param_history)-1)):  
         # Load params into network
-        state_dict = network.param_history[i]
-        network.load_state_dict(state_dict)
-        
-        # Compute backprop dW
+        state_dict = network.param_history[t]
+        if network2 is not None:
+            state_dict = {name:param for name,param in state_dict.items() if name in test_network.state_dict()}
+        test_network.load_state_dict(state_dict)
+        test_network.param_history.append(copy.deepcopy(state_dict))
+
+        # Compute forward pass
         if len(dataloader) > 1:
             idx, data, target = next(data_iter)
         target = target.squeeze()
-        output = network.forward(data)
+        output = test_network.forward(data)
+        loss = test_network.criterion(output, target)            
 
-        network.zero_grad()
-        loss = network.criterion(output, target)
-        loss.backward()      
-        gradients = [param.grad.flatten() for param in network.parameters() if param.requires_grad and param.grad is not None]
+        # Compute backward pass update
+        if network2 is None:
+            # Regular backprop update
+            test_network.zero_grad()
+            loss.backward() 
+            test_network.optimizer.step()    
+        else:
+            # Backward update speficied by learning rules in network2
+            for backward in test_network.backward_methods:
+                backward(test_network, output, target)
 
-        # Compute BTSP dW (computed dW should be the same as comparing to next params)
-        next_state_dict = network.param_history[i+1]
-        dW = [(state_dict[name] - next_state_dict[name]).flatten() for name,param in network.named_parameters() 
-              if param.requires_grad and param.grad is not None]
+            # Step weights and biases
+            for layer in test_network:
+                for population in layer:
+                    if population.include_bias:
+                        population.bias_learning_rule.step()
+                    for projection in population:
+                        projection.learning_rule.step()
+            test_network.constrain_weights_and_biases()
 
-        # Compute angle between dW's
-        gradients = torch.cat(gradients)
-        dW = torch.cat(dW)
+        new_state_dict = test_network.state_dict() 
+        test_network.param_history.append(copy.deepcopy(new_state_dict))
 
-        vector_product = torch.dot(gradients, dW) / (torch.norm(gradients)*torch.norm(dW)+1e-100)
-        angle_rad = np.arccos(torch.round(vector_product,decimals=5))
-        angle = angle_rad * 180 / np.pi
-        angles.append(angle)
+        # Compute the predicted dParam (from the test network)
+        dParam_vec = []
+        for key in predicted_dParam_history_dict:
+            dParam = (new_state_dict[key]-state_dict[key])
+            predicted_dParam_history_dict[key].append(dParam)
+            dParam_vec.append(dParam.flatten())
+        predicted_dParam_history_all.append(torch.cat(dParam_vec))
 
-        if plot:            
-            if i==0:
-                ax1.scatter(gradients, dW, c='k', alpha=0.2)
-                ax1.set_xlabel('Gradients')
-                ax1.set_ylabel('Actual dW')
-                ax1.set_title('First dW')
+        # Compute the actual dParam of the first network
+        next_state_dict = copy.deepcopy(network.param_history[t+1])
+        dParam_vec = []
+        for key in actual_dParam_history_dict:
+            dParam = (next_state_dict[key]-state_dict[key])
+            actual_dParam_history_dict[key].append(dParam)
+            dParam_vec.append(dParam.flatten())
+        actual_dParam_history_all.append(torch.cat(dParam_vec))
 
-                # Plot line of best fit
-                m, b = np.polyfit(gradients, dW, 1)
-                ax1.plot(gradients, m*gradients + b, c='r', alpha=0.5)
-                ax1.text(0.05, 0.95, f'Angle = {angle:.2f} degrees', transform=ax1.transAxes, ha='left', va='top')
-                corr = np.corrcoef(gradients, dW)[0,1]
-                ax1.text(0.05, 0.85, f'R = {corr:.2f}', transform=ax1.transAxes, ha='left', va='top')
+    predicted_dParam_history_dict['all_params'] = predicted_dParam_history_all
+    actual_dParam_history_dict['all_params'] = actual_dParam_history_all
 
-            if i==len(network.param_history)-2:
-                ax2.scatter(gradients, dW, c='k', alpha=0.2)
-                ax2.set_xlabel('Gradients')
-                ax2.set_ylabel('Actual dW')
-                ax2.set_title('Last dW')
+    test_network.predicted_dParam_history = predicted_dParam_history_dict
+    test_network.actual_dParam_history = actual_dParam_history_dict
 
-                # Plot line of best fit
-                m, b = np.polyfit(gradients, dW, 1)
-                ax2.plot(gradients, m*gradients + b, c='r', alpha=0.5)
-                ax2.text(0.05, 0.95, f'Angle = {angle:.2f} degrees', transform=ax2.transAxes, ha='left', va='top')
-                corr = np.corrcoef(gradients, dW)[0,1]
-                ax2.text(0.05, 0.85, f'R = {corr:.2f}', transform=ax2.transAxes, ha='left', va='top')
+    if save_path is not None:
+        test_network.params_to_save.append('predicted_dParam_history')
+        test_network.params_to_save.append('actual_dParam_history')
+        test_network.save(save_path)
+
+    return test_network
+
+
+def compute_dW_angles(test_network, plot=False):
+    '''
+    Compute the angle between the actual and predicted parameter updates (dW) for each training step.
+    The angle is computed as the arccosine of the dot product between the two vectors, normalized by the product of their norms.    
+    '''
 
     if plot:
-        ax3.plot(angles)
-        ax3.set_xlabel('Training step')
-        ax3.set_ylabel('Angle vs BP (degrees)')
-        avg_angle = np.mean(angles)
-        ax3.text(0.05, 0.95, f'Avg angle = {avg_angle:.2f} degrees', transform=ax3.transAxes, ha='left', va='top')
-        plt.tight_layout()
-        plt.show()
+        n_params = len(test_network.actual_dParam_history)
+        fig, axes = plt.subplots(n_params, 1, figsize=(8,n_params*2))
+        ax_top = axes[0]
+
+    angles = {}
+
+    for i, param_name in enumerate(test_network.actual_dParam_history):
+        angles[param_name] = []
+        for predicted_dParam, actual_dParam in zip(test_network.predicted_dParam_history[param_name], test_network.actual_dParam_history[param_name]):
+            # Compute angle between parameter update (dW) vectors
+            predicted_dParam = predicted_dParam.flatten()
+            actual_dParam = actual_dParam.flatten()
+            vector_product = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-100)
+            angle_rad = np.arccos(torch.round(vector_product,decimals=5))
+            angle = angle_rad * 180 / np.pi
+            angles[param_name].append(angle)
+        
+        if plot:
+            ax = axes[n_params-(i+1)]
+            ax.plot(angles[param_name])
+            ax_top.plot(angles[param_name], color='gray', alpha=0.3)
+            ax.plot([0, len(angles[param_name])], [90, 90], color='gray', linestyle='--', alpha=0.5)
+            ax.set_xlabel('Training step')
+            ax.set_ylabel('Angle between \nlearning rules (degrees)')
+
+            max_angle = max(95, np.max(angles[param_name]))
+            ax.set_ylim(bottom=0, top=max_angle)
+            ax.set_yticks(np.arange(0, max_angle+1, 30))
+            if i == n_params-1:
+                ax.set_ylim(bottom=0, top=120)
+                ax.set_yticks(np.arange(0, 121, 30))
+
+            avg_angle = np.mean(angles[param_name])
+            ax.text(0.03, 0.08, f'Avg angle = {avg_angle:.2f} degrees', transform=ax.transAxes)
+            if '.' in param_name:
+                param_name = param_name.split('.')[1]
+            ax.set_title(param_name)
+
+            plt.tight_layout()
+            fig.show()
 
     return angles
-
-
+    
 
 # *******************************************************************
 # MNIST-specific functions
