@@ -386,8 +386,8 @@ class Network(nn.Module):
                 self.loss_history.append(loss.item())
                 self.target_history.append(sample_target.clone())
 
-                if store_params and store_params_interval[2] > 2: # Store parameters for dW comparison
-                    self.prev_param_history.append(deepcopy(self.state_dict()))
+                if store_params and (train_step in store_params_range) and store_params_interval[2] > 1: 
+                    self.prev_param_history.append(deepcopy(self.state_dict())) # Store parameters for dW comparison
                         
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
