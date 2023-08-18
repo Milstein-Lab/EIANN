@@ -330,7 +330,9 @@ class Network(nn.Module):
         if store_params:
             self.param_history = []
             self.param_history_steps = []
+            self.prev_param_history = []
             if store_params_interval is None:
+                store_params_interval = val_interval
                 store_params_range = val_range
             else:
                 store_params_range = torch.arange(train_step_range[store_params_interval[0]],
@@ -384,6 +386,9 @@ class Network(nn.Module):
                 self.loss_history.append(loss.item())
                 self.target_history.append(sample_target.clone())
 
+                if store_params and store_params_interval[2] > 2: # Store parameters for dW comparison
+                    self.prev_param_history.append(deepcopy(self.state_dict()))
+                        
                 # Update state variables required for weight and bias updates
                 for backward in self.backward_methods:
                     backward(self, output, sample_target, store_history=store_history, store_dynamics=store_dynamics)
