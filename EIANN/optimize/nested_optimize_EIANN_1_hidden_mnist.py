@@ -187,7 +187,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         plot_batch_accuracy(network, test_dataloader, population='all', title='Initial')
 
     network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-    saved_network_path = f"{context.output_dir}/{network_name}_{seed}.pkl"
+    if context.label is None:
+        saved_network_path = f"{context.output_dir}/{network_name}_{seed}.pkl"
+    else:
+        saved_network_path = f"{context.output_dir}/{network_name}_{seed}_{context.label}.pkl"
     if os.path.exists(saved_network_path) and not context.retrain:
         network.load(saved_network_path)
     else:
@@ -291,44 +294,45 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
                   (os.getpid(), context.export_network_config_file_path))
 
-    if export:
-        if context.temp_output_path is not None:
-            # Compute test activity and metrics
-            idx, data, target = next(iter(test_dataloader))
-            network.forward(data)
-            network.output_pop.activity = network.output_pop.activity[:, sorted_output_idx]
-
-            with h5py.File(context.temp_output_path, 'a') as f:
-                if context.label is None:
-                    label = str(len(f))
-                else:
-                    label = context.label
-                group = f.create_group(label)
-                model_group = group.create_group(str(seed))
-
-                activity_group = model_group.create_group('activity')
-                metrics_group = model_group.create_group('metrics')
-
-                for layer in network:
-                    layer_activity = activity_group.create_group(layer.name)
-                    for pop in layer:
-                        activity_data = pop.activity.T.detach()
-                        layer_activity.create_dataset(pop.name, data=activity_data)
-
-                metrics_group.create_dataset('val_loss', data=sorted_val_loss_history)
-                metrics_group.create_dataset('val_loss_steps', data=network.val_history_train_steps)
-                metrics_group.create_dataset('val_accuracy', data=sorted_val_accuracy_history)
-                if context.store_history:
-                    metrics_group.create_dataset('train_loss', data=sorted_train_loss_history)
-                    metrics_group.create_dataset('binned_train_loss_steps', data=binned_train_loss_steps)
-                    metrics_group.create_dataset('train_accuracy', data=sorted_train_accuracy_history)
-
-                if context.full_analysis:
-                    metrics_group.create_dataset('test_loss', data=test_loss_history)
-                    metrics_group.create_dataset('test_loss_steps', data=network.param_history_steps)
-                    metrics_group.create_dataset('test_accuracy', data=test_accuracy_history)
-                    for metric in metrics_dict:
-                        metrics_group.create_dataset(metric, data=metrics_dict[metric])
+    # if export:
+    #     if context.temp_output_path is not None:
+    #         # Compute test activity and metrics
+    #         idx, data, target = next(iter(test_dataloader))
+    #         network.forward(data)
+    #         network.output_pop.activity = network.output_pop.activity[:, sorted_output_idx]
+    #
+    #         with h5py.File(context.temp_output_path, 'a') as f:
+    #             if context.label is None:
+    #                 label = str(len(f))
+    #             else:
+    #                 label = context.label
+    #             group = f.create_group(label)
+    #             model_group = group.create_group(str(seed))
+    #
+    #             activity_group = model_group.create_group('activity')
+    #             metrics_group = model_group.create_group('metrics')
+    #
+    #             for layer in network:
+    #                 layer_activity = activity_group.create_group(layer.name)
+    #                 for pop in layer:
+    #                     # can't call .T with dim > 2, check for store_dynamics
+    #                     activity_data = pop.activity.T.detach()
+    #                     layer_activity.create_dataset(pop.name, data=activity_data)
+    #
+    #             metrics_group.create_dataset('val_loss', data=sorted_val_loss_history)
+    #             metrics_group.create_dataset('val_loss_steps', data=network.val_history_train_steps)
+    #             metrics_group.create_dataset('val_accuracy', data=sorted_val_accuracy_history)
+    #             if context.store_history:
+    #                 metrics_group.create_dataset('train_loss', data=sorted_train_loss_history)
+    #                 metrics_group.create_dataset('binned_train_loss_steps', data=binned_train_loss_steps)
+    #                 metrics_group.create_dataset('train_accuracy', data=sorted_train_accuracy_history)
+    #
+    #             if context.full_analysis:
+    #                 metrics_group.create_dataset('test_loss', data=test_loss_history)
+    #                 metrics_group.create_dataset('test_loss_steps', data=network.param_history_steps)
+    #                 metrics_group.create_dataset('test_accuracy', data=test_accuracy_history)
+    #                 for metric in metrics_dict:
+    #                     metrics_group.create_dataset(metric, data=metrics_dict[metric])
 
     if not context.interactive:
         del network
