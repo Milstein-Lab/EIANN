@@ -2573,7 +2573,7 @@ class BTSP_11(LearningRule):
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
         projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
         projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
-
+    
     def reinit(self):
         self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
                                              requires_grad=False)
@@ -2596,8 +2596,7 @@ class BTSP_11(LearningRule):
             self.projection.post.IS_decayed = True
             self.projection.post.IS_incremented = False
             self.projection.post.plateau_refractory[self.projection.post.plateau == 1] += 1
-            self.projection.post.plateau_refractory[self.projection.post.plateau_refractory >= self.refractory] == 0
-
+            self.projection.post.plateau_refractory[self.projection.post.plateau_refractory >= self.refractory] = 0
 
     def step(self):
         # BTSP
@@ -2744,6 +2743,7 @@ class BTSP_11(LearningRule):
                             pop.IS += pop.plateau
                             pop.IS.clamp_(0., 1.)
                             pop.IS_incremented = True
+                            pop.IS_decayed = False
                             if pop is output_pop:
                                 pop.meets_BTSP_anti_hebb_criterion = \
                                     ((pop.plateau == 0) &
@@ -2759,10 +2759,11 @@ class BTSP_11(LearningRule):
                                 pop.append_attribute_history('plateau', pop.plateau.detach().clone())
                                 pop.append_attribute_history('backward_dendritic_state',
                                                              pop.dendritic_state.detach().clone())
-                        if not projection.pre.ET_updated:
+                        if not projection.pre.ET_incremented:
                             projection.pre.ET += projection.pre.activity
                             projection.pre.ET.clamp_(0., 1.)
-                            projection.pre.ET_updated = True
+                            projection.pre.ET_incremented = True
+                            projection.pre.ET_decayed = False
                             if store_history:
                                 projection.pre.append_attribute_history('ET', projection.pre.ET.detach().clone())
                 if pop.backward_projections or pop is output_pop:
