@@ -65,7 +65,7 @@ class Network(nn.Module):
         if self.seed is not None:
             torch.manual_seed(self.seed)
 
-        self.backward_methods = set()
+        self.backward_methods = []
         self.module_dict = nn.ModuleDict()
         self.parameter_dict = nn.ParameterDict()
         self.optimizer_params_list = []
@@ -654,7 +654,8 @@ class Population(object):
         self.include_bias = include_bias
 
         self.bias_learning_rule = bias_learning_rule_class(self, **bias_learning_rule_kwargs)
-        self.network.backward_methods.add(bias_learning_rule_class.backward)
+        if bias_learning_rule_class.backward not in self.network.backward_methods:
+            self.network.backward_methods.append(bias_learning_rule_class.backward)
 
         self.network.parameter_dict[self.fullname+'_bias'] = self.bias
         self.network.optimizer_params_list.append({'params': self.bias,
@@ -738,7 +739,8 @@ class Population(object):
         Register Projection parameters as Network module parameters. Enables convenient attribute access syntax.
         :param projection: :class:'Projection'
         """
-        self.network.backward_methods.add(projection.learning_rule.__class__.backward)
+        if projection.learning_rule.__class__.backward not in self.network.backward_methods:
+            self.network.backward_methods.append(projection.learning_rule.__class__.backward)
 
         if projection.pre.layer.name not in self.projections:
             self.projections[projection.pre.layer.name] = {}

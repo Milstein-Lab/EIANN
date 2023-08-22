@@ -1,4 +1,5 @@
 import torch
+# torch.use_deterministic_algorithms(mode=True)
 import torchvision
 import torchvision.transforms as T
 from torch.utils.data import DataLoader
@@ -188,9 +189,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
     if context.label is None:
-        saved_network_path = f"{context.output_dir}/{network_name}_{seed}.pkl"
+        saved_network_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}.pkl"
     else:
-        saved_network_path = f"{context.output_dir}/{network_name}_{seed}_{context.label}.pkl"
+        saved_network_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}_{context.label}.pkl"
     if os.path.exists(saved_network_path) and not context.retrain:
         network.load(saved_network_path)
     else:
@@ -201,6 +202,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       store_history=context.store_history, store_dynamics=context.store_dynamics,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar)
+        # final_weights = deepcopy(network.Output.E.H1.E.weight.data)
         if export:
             network.save(path=saved_network_path)
 
@@ -263,6 +265,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                 return dict()
 
     if plot:
+        # print('Weights match: %s' % torch.all(final_weights == network.Output.E.H1.E.weight.data))
         plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
                             title='Final')
         plot_train_loss_history(network)

@@ -86,18 +86,22 @@ class BCM(LearningRule):
         projection.post.__class__.theta_history = property(lambda self: self.get_attribute_history('theta'))
 
     def reinit(self):
+        self.projection.post.BCM_theta_stored = False
         self.projection.post.BCM_theta_updated = False
 
     def update(self):
-        self.projection.post.BCM_theta_updated = False
+        if not self.projection.post.BCM_theta_updated:
+            delta_theta = (-self.projection.post.theta + self.projection.post.activity ** 2. / self.k) / self.theta_tau
+            self.projection.post.theta += delta_theta
+            self.projection.post.BCM_theta_updated = True
 
     def step(self):
         if self.projection.direction in ['forward', 'F']:
             delta_weight = (torch.outer(self.projection.post.activity, self.projection.pre.activity) *
-                            (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1))
+                            (self.projection.post.activity - self.projection.post.theta).unsqueeze(1))
         elif self.projection.direction in ['recurrent', 'R']:
             delta_weight = (torch.outer(self.projection.post.activity, self.projection.pre.prev_activity) *
-                            (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1))
+                            (self.projection.post.activity - self.projection.post.theta).unsqueeze(1))
         if self.sign > 0:
             self.projection.weight.data += self.learning_rate * delta_weight
         else:
@@ -111,14 +115,10 @@ class BCM(LearningRule):
                     for projection in population:
                         if projection.learning_rule.__class__ == cls:
                             # only update theta once per population
-                            if not population.BCM_theta_updated:
-                                population.prev_theta = population.theta.detach().clone()
-                                delta_theta = (-population.theta + population.activity ** 2. /
-                                               projection.learning_rule.k) / projection.learning_rule.theta_tau
-                                population.theta += delta_theta
-                                population.BCM_theta_updated = True
-                                if store_history:
-                                    population.append_attribute_history('theta', population.prev_theta.detach().clone())
+                            population.BCM_theta_updated = False
+                            if store_history and not population.BCM_theta_stored:
+                                population.append_attribute_history('theta', population.theta.detach().clone())
+                                population.BCM_theta_stored = True
                             break
 
 
@@ -144,18 +144,23 @@ class Supervised_BCM(LearningRule):
             property(lambda self: self.get_attribute_history('backward_activity'))
 
     def reinit(self):
+        self.projection.post.BCM_theta_stored = False
         self.projection.post.BCM_theta_updated = False
 
     def update(self):
-        self.projection.post.BCM_theta_updated = False
+        if not self.projection.post.BCM_theta_updated:
+            delta_theta = (-self.projection.post.theta + self.projection.post.activity ** 2. / self.k) / self.theta_tau
+            self.projection.post.theta += delta_theta
+            self.projection.post.BCM_theta_updated = True
+            self.projection.post.BCM_theta_stored = False
 
     def step(self):
         if self.projection.direction in ['forward', 'F']:
             delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity) * \
-                       (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1)
+                       (self.projection.post.activity - self.projection.post.theta).unsqueeze(1)
         elif self.projection.direction in ['recurrent', 'R']:
             delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.prev_activity) * \
-            (self.projection.post.activity - self.projection.post.prev_theta).unsqueeze(1)
+            (self.projection.post.activity - self.projection.post.theta).unsqueeze(1)
         if self.sign > 0:
             self.projection.weight.data += self.learning_rate * delta_weight
         else:
@@ -226,14 +231,10 @@ class Supervised_BCM(LearningRule):
                     for projection in population:
                         if projection.learning_rule.__class__ == cls:
                             # only update theta once per population
-                            if not population.BCM_theta_updated:
-                                population.prev_theta = population.theta.detach().clone()
-                                delta_theta = (-population.theta + population.activity ** 2. /
-                                               projection.learning_rule.k) / projection.learning_rule.theta_tau
-                                population.theta += delta_theta
-                                population.BCM_theta_updated = True
-                                if store_history:
-                                    population.append_attribute_history('theta', population.prev_theta.detach().clone())
+                            population.BCM_theta_updated = False
+                            if store_history and not population.BCM_theta_stored:
+                                population.append_attribute_history('theta', population.theta.detach().clone())
+                                population.BCM_theta_stored = True
                             break
 
 
@@ -2501,6 +2502,248 @@ class BTSP_10(LearningRule):
                             pop.IS += pop.plateau
                             pop.IS.clamp_(0., 1.)
                             pop.IS_updated = True
+                            if pop is output_pop:
+                                pop.meets_BTSP_anti_hebb_criterion = \
+                                    ((pop.plateau == 0) &
+                                     (pop.dendritic_state < -projection.learning_rule.anti_hebb_th[1]))
+                            else:
+                                pop.meets_BTSP_anti_hebb_criterion = \
+                                    ((pop.plateau == 0) &
+                                     (pop.activity > 0) &
+                                     (pop.dendritic_state > projection.learning_rule.anti_hebb_th[0]) &
+                                     (pop.dendritic_state <= projection.learning_rule.anti_hebb_th[1]))
+                            if store_history:
+                                pop.append_attribute_history('IS', pop.IS.detach().clone())
+                                pop.append_attribute_history('plateau', pop.plateau.detach().clone())
+                                pop.append_attribute_history('backward_dendritic_state',
+                                                             pop.dendritic_state.detach().clone())
+                        if not projection.pre.ET_updated:
+                            projection.pre.ET += projection.pre.activity
+                            projection.pre.ET.clamp_(0., 1.)
+                            projection.pre.ET_updated = True
+                            if store_history:
+                                projection.pre.append_attribute_history('ET', projection.pre.ET.detach().clone())
+                if pop.backward_projections or pop is output_pop:
+                    if store_history:
+                        if store_dynamics:
+                            pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                        else:
+                            pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
+
+
+class BTSP_11(LearningRule):
+    def __init__(self, projection, pos_loss_th=2.440709E-01, decay_tau=2, dep_ratio=1., dep_th=0.01, dep_width=0.01,
+                 anti_hebb_th=(-0.1, 0.1), learning_rate=None, anti_hebb_learning_rate=None, refractory=1):
+        """
+        Similar to variant 10. Anti-Hebbian depression is triggered when an active unit has a dendritic state that
+        is between a min and max bound. Cells cannot plateau within a refractory period.
+        :param projection: :class:'nn.Linear'
+        :param projection: :class:'nn.Linear'
+        :param pos_loss_th: float
+        :param decay_tau: float
+        :param dep_ratio: float
+        :param dep_th: float
+        :param dep_width: float
+        :param anti_hebb_th: tuple of float
+        :param learning_rate: float
+        :param anti_hebb_learning_rate: float
+        :param refractor: int
+        """
+        super().__init__(projection, learning_rate)
+        self.q_dep = get_scaled_rectified_sigmoid(dep_th, dep_th + dep_width)
+        self.pos_loss_th = pos_loss_th
+        self.decay_tau = decay_tau
+        self.dep_ratio = dep_ratio
+        self.anti_hebb_th = anti_hebb_th
+        if anti_hebb_learning_rate is None:
+            self.anti_hebb_learning_rate = self.learning_rate
+        else:
+            self.anti_hebb_learning_rate = anti_hebb_learning_rate
+        if self.projection.weight_bounds is None or self.projection.weight_bounds[1] is None:
+            self.w_max = 2.
+        else:
+            self.w_max = self.projection.weight_bounds[1]
+        self.refractory = refractory
+        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.__class__.forward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
+        projection.post.__class__.backward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
+        projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
+
+    def reinit(self):
+        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
+                                             requires_grad=False)
+        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
+                                              requires_grad=False)
+        self.projection.post.plateau_refractory = (
+            torch.zeros(self.projection.post.size, device=self.projection.post.network.device, requires_grad=False))
+        self.projection.pre.ET_incremented = False
+        self.projection.post.IS_incremented = False
+        self.projection.pre.ET_decayed = False
+        self.projection.post.IS_decayed = False
+
+    def update(self):
+        if not self.projection.pre.ET_decayed:
+            self.projection.pre.ET *= (1. - 1./self.decay_tau)
+            self.projection.pre.ET_decayed = True
+            self.projection.pre.ET_incremented = False
+        if not self.projection.post.IS_decayed:
+            self.projection.post.IS *= (1. - 1./self.decay_tau)
+            self.projection.post.IS_decayed = True
+            self.projection.post.IS_incremented = False
+            self.projection.post.plateau_refractory[self.projection.post.plateau == 1] += 1
+            self.projection.post.plateau_refractory[self.projection.post.plateau_refractory >= self.refractory] == 0
+
+
+    def step(self):
+        # BTSP
+        ET_IS = torch.outer(self.projection.post.IS, self.projection.pre.ET)
+        delta_weight = self.learning_rate * (
+                (self.w_max - self.projection.weight) * ET_IS -
+                self.projection.weight * self.dep_ratio * self.q_dep(ET_IS))
+        self.projection.weight.data += delta_weight
+
+        # anti-Hebbian depression
+        post_activity = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
+                                    requires_grad=False)
+        meets_criterion = self.projection.post.meets_BTSP_anti_hebb_criterion
+        post_activity[meets_criterion] = self.projection.post.activity[meets_criterion]
+        # TODO: Should these activities be clamped?
+        delta_weight = -self.anti_hebb_learning_rate * torch.outer(post_activity, self.projection.pre.activity)
+        self.projection.weight.data += delta_weight
+
+    @classmethod
+    def backward_update_activity(cls, network, store_dynamics=False):
+        """
+        Update somatic state and activity for all populations that receive projections with update_phase in
+        ['B', 'backward', 'A', 'all'].
+        :param layer:
+        :param store_dynamics: bool
+        """
+        for layer in network:
+            for post_pop in layer:
+                post_pop.prev_activity = post_pop.activity
+        for layer in network:
+            for post_pop in layer:
+                if post_pop.backward_projections or post_pop is post_pop.network.output_pop:
+                    # update somatic state and activity
+                    delta_state = -post_pop.state + post_pop.bias
+                    for projection in post_pop:
+                        pre_pop = projection.pre
+                        if projection.compartment in [None, 'soma']:
+                            if projection.direction in ['forward', 'F']:
+                                delta_state = delta_state + projection(pre_pop.activity)
+                            elif projection.direction in ['recurrent', 'R']:
+                                delta_state = delta_state + projection(pre_pop.prev_activity)
+                    post_pop.state = post_pop.state + delta_state / post_pop.tau
+                    post_pop.activity = post_pop.activation(post_pop.state)
+                    if hasattr(post_pop, 'dend_to_soma'):
+                        post_pop.activity = post_pop.activity + post_pop.dend_to_soma
+                    if store_dynamics:
+                        post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
+
+    @classmethod
+    def backward_update_layer_dendritic_state(cls, layer):
+        """
+        Update dendritic state for all populations that receive projections that target the dendritic
+        compartment.
+        """
+        for post_pop in layer:
+            if post_pop.backward_projections:
+                # update dendritic state
+                init_dend_state = False
+                for projection in post_pop:
+                    pre_pop = projection.pre
+                    if projection.compartment == 'dend':
+                        if not init_dend_state:
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
+                                                                   requires_grad=False)
+                            init_dend_state = True
+                        if projection.direction in ['forward', 'F']:
+                            post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
+                        elif projection.direction in ['recurrent', 'R']:
+                            post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.prev_activity)
+                if init_dend_state:
+                    post_pop.dendritic_state = torch.clamp(post_pop.dendritic_state, min=-1, max=1)
+
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        """
+        Integrate top-down inputs and update dendritic state variables.
+        :param network:
+        :param output:
+        :param target:
+        :param store_history: bool
+        :param store_dynamics: bool
+        """
+        reversed_layers = list(network)[1:]
+        reversed_layers.reverse()
+        output_pop = network.output_pop
+
+        # compute the forward_dendritic_state before comparing output to target
+        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device, requires_grad=False)
+        for layer in reversed_layers:
+            cls.backward_update_layer_dendritic_state(layer)
+            # initialize populations that are updated during the backward phase
+            for pop in layer:
+                if pop.backward_projections or pop is output_pop:
+                    if store_dynamics:
+                        pop.backward_steps_activity = []
+                # store the forward_activity before comparing output to target
+                pop.forward_activity = pop.activity.detach().clone()
+                # initialize dendritic state variables
+                for projection in pop:
+                    if projection.learning_rule.__class__ == cls:
+                        pop.plateau = torch.zeros(pop.size, device=pop.network.device, requires_grad=False)
+                        pop.dend_to_soma = torch.zeros(pop.size, device=pop.network.device, requires_grad=False)
+                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
+                        if store_history:
+                            # store the forward_dendritic_state
+                            pop.append_attribute_history('forward_dendritic_state',
+                                                         pop.dendritic_state.detach().clone())
+                        break
+
+        for t in range(network.forward_steps):
+            for layer in reversed_layers:
+                # update dendritic state variables
+                cls.backward_update_layer_dendritic_state(layer)
+                for pop in layer:
+                    for projection in pop:
+                        # compute plateau events and nudge somatic state
+                        if projection.learning_rule.__class__ == cls:
+                            if pop is output_pop:
+                                output_pop.dendritic_state = torch.clamp(target - output_pop.activity, min=-1, max=1)
+                                pos_indexes = (output_pop.dendritic_state >
+                                               projection.learning_rule.pos_loss_th).nonzero(as_tuple=True)
+                                output_pop.plateau[pos_indexes] = 1.  # output_pop.dendritic_state[pos_indexes]
+                                output_pop.dend_to_soma[pos_indexes] = 1.  # output_pop.dendritic_state[pos_indexes]
+                            else:
+                                sorted, sorted_indexes = torch.sort(pop.dendritic_state, descending=True,
+                                                                    stable=True)
+                                candidate_indexes = \
+                                    ((pop.dendritic_state[sorted_indexes] > projection.learning_rule.pos_loss_th) &
+                                     (pop.plateau[sorted_indexes] == 0) &
+                                     (pop.plateau_refractory < projection.learning_rule.refractory)).nonzero().squeeze(1)
+                                if len(candidate_indexes) > 0:
+                                    plateau_index = sorted_indexes[candidate_indexes][0]
+                                    pop.plateau[plateau_index] = 1.
+                                    pop.dend_to_soma[plateau_index] = 1.  # pop.dendritic_state[pos_plateau_indexes]
+                            break
+            # update activities
+            cls.backward_update_activity(network, store_dynamics=store_dynamics)
+
+        for layer in network:
+            for pop in layer:
+                for projection in pop:
+                    if projection.learning_rule.__class__ == cls:
+                        if not pop.IS_incremented:
+                            pop.IS += pop.plateau
+                            pop.IS.clamp_(0., 1.)
+                            pop.IS_incremented = True
                             if pop is output_pop:
                                 pop.meets_BTSP_anti_hebb_criterion = \
                                     ((pop.plateau == 0) &
