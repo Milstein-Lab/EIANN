@@ -2,8 +2,8 @@ import torch
 from torch.utils.data import DataLoader
 from torch.nn.functional import softplus, relu, sigmoid, elu
 import numpy as np
-# from skimage import metrics
-from scipy import signal
+from scipy import signal, stats
+from skimage import metrics
 from sklearn.metrics.pairwise import cosine_similarity
 import math
 import yaml
@@ -13,12 +13,14 @@ import os
 import copy
 from . import plot as plot
 from . import external as external
+import matplotlib.pyplot as plt
+from tqdm.autonotebook import tqdm
+
 try:
     from collections import Iterable
 except:
     from collections.abc import Iterable
-import matplotlib.pyplot as plt
-from tqdm.autonotebook import tqdm
+
 
 
 def nested_convert_scalars(data):
@@ -867,6 +869,7 @@ def compute_batch_accuracy(network, test_dataloader):
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
     percent_correct = torch.round(percent_correct, decimals=2)
     print(f'Batch accuracy = {percent_correct}%')
+    return percent_correct
 
 
 def compute_dParam_history(network):
@@ -928,7 +931,7 @@ def linear(x):
     return x
 
 
-def spatial_structure_similarity(img1, img2):
+def spatial_structure_similarity_fft(img1, img2):
     '''
     Compute the structural similarity of two images based on the correlation of their 2D spatial frequency distributions
     :param img1: 2D numpy array of pixels
@@ -945,16 +948,23 @@ def spatial_structure_similarity(img1, img2):
     return spatial_structure_similarity
 
 
-def compute_rf_structure(receptive_fields):
+def compute_rf_structure(receptive_fields, method='fft'):
     structure_sim_ls = []
     for unit_rf in receptive_fields:
         s = 0
-        if torch.all(unit_rf != 0):
+        if torch.all(a == 0): # if receptive field is all zeros
+            structure_sim_ls.append(np.nan)
+        else:
             for i in range(3):  # structural similarity to noise (averaged across 3 random noise images)
                 noise = np.random.uniform(min(unit_rf), max(unit_rf), (28, 28))
-                reference_correlation = spatial_structure_similarity(noise, noise)
-                s += spatial_structure_similarity(unit_rf.view(28, 28).numpy(), noise) / reference_correlation
-        structure_sim_ls.append(s / 3)
+
+                if method == 'fft':
+                    reference_correlation = spatial_structure_similarity_fft(noise, noise)
+                    s += spatial_structure_similarity_fft(unit_rf.view(28, 28).numpy(), noise) / reference_correlation
+                elif method == 'ssim':
+                    s += metrics.structural_similarity(unit_rf.view(28, 28).numpy(), noise)
+
+            structure_sim_ls.append(s / 3)
     structure = 1 - np.array(structure_sim_ls)
     return structure
 
@@ -1353,6 +1363,10 @@ def compute_PSD(receptive_field, plot=False):
     '''
     Compute the power spectral density of a receptive field image
     Function based on https://bertvandenbroucke.netlify.app/2019/05/24/computing-a-power-spectrum-in-python/
+
+    :param receptive_field: 2D numpy array of pixels
+    :param plot: bool
+    :return: frequencies, spectral_power, peak_spatial_frequency
     '''
 
     # Take Fourier transform of the receptive field
@@ -1371,7 +1385,7 @@ def compute_PSD(receptive_field, plot=False):
     # Create the frequency power spectrum
     kbins = np.arange(0.5, npix//2+1, 1.)
     kvals = 0.5 * (kbins[1:] + kbins[:-1])
-    Abins, _, _ = stats.binned_statistic(knrm, fourier_amplitudes,
+    Abins, _, _ = stats.binned_statistic(knorm, fourier_amplitudes,
                                          statistic = "mean",
                                          bins = kbins)
     Abins *= np.pi * (kbins[1:]**2 - kbins[:-1]**2)
