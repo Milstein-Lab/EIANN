@@ -952,7 +952,7 @@ def compute_rf_structure(receptive_fields, method='fft'):
     structure_sim_ls = []
     for unit_rf in receptive_fields:
         s = 0
-        if torch.all(a == 0): # if receptive field is all zeros
+        if torch.all(unit_rf == 0): # if receptive field is all zeros
             structure_sim_ls.append(np.nan)
         else:
             for i in range(3):  # structural similarity to noise (averaged across 3 random noise images)
