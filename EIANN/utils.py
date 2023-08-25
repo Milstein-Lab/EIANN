@@ -49,6 +49,88 @@ def nested_convert_scalars(data):
 
 
 # *******************************************************************
+# EIANN helper functions
+# *******************************************************************
+
+def scaled_kaining_init(data, fan_in, scale=1):
+    kaining_bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+    data.uniform_(-scale * kaining_bound, scale * kaining_bound)
+
+
+def half_kaining_init(data, fan_in, scale=1, bounds=None):
+    kaining_bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+    if bounds is None or (bounds[0] is not None and bounds[0] >= 0):
+        data.uniform_(bounds[0], scale * kaining_bound)
+    elif bounds[1] is not None and bounds[1] <= 0:
+        data.uniform_(-scale * kaining_bound, bounds[1])
+    else:
+        raise RuntimeError('half_kaining_init: bounds should be either >=0 or <=0: %s' % str(bounds))
+
+
+def linear(x):
+    """
+    Linear activation function
+    """
+    return x
+
+
+def get_scaled_rectified_sigmoid_orig(th, peak, x=None, ylim=None):
+    """
+    Transform a sigmoid to intersect x and y range limits.
+    :param th: float
+    :param peak: float
+    :param x: array
+    :param ylim: pair of float
+    :return: callable
+    """
+    if x is None:
+        x = (0., 1.)
+    if ylim is None:
+        ylim = (0., 1.)
+    if th < x[0] or th > x[-1]:
+        raise ValueError('scaled_single_sigmoid: th: %.2E is out of range for xlim: [%.2E, %.2E]' % (th, x[0], x[-1]))
+    if peak == th:
+        raise ValueError('scaled_single_sigmoid: peak and th: %.2E cannot be equal' % th)
+    slope = 2. / (peak - th)
+    y = lambda x: 1. / (1. + np.exp(-slope * (x - th)))
+    start_val = y(x[0])
+    end_val = y(x[-1])
+    amp = end_val - start_val
+    target_amp = ylim[1] - ylim[0]
+    return np.vectorize(
+        lambda xi:
+        (target_amp / amp) * (1. / (1. + np.exp(-slope * (max(min(xi, x[-1]), x[0]) - th))) - start_val) + ylim[0])
+
+
+def get_scaled_rectified_sigmoid(th, peak, x=None, ylim=None):
+    """
+    Transform a sigmoid to intersect x and y range limits.
+    :param th: float
+    :param peak: float
+    :param x: array
+    :param ylim: pair of float
+    :return: callable
+    """
+    if x is None:
+        x = (0., 1.)
+    if ylim is None:
+        ylim = (0., 1.)
+    if th < x[0] or th > x[-1]:
+        raise ValueError('scaled_single_sigmoid: th: %.2E is out of range for xlim: [%.2E, %.2E]' % (th, x[0], x[-1]))
+    if peak == th:
+        raise ValueError('scaled_single_sigmoid: peak and th: %.2E cannot be equal' % th)
+    slope = 2. / (peak - th)
+    y = lambda x: 1. / (1. + np.exp(-slope * (x - th)))
+    start_val = y(x[0])
+    end_val = y(x[-1])
+    amp = end_val - start_val
+    target_amp = ylim[1] - ylim[0]
+    return lambda xi: (target_amp / amp) * (1. / (1. + torch.exp(-slope * (torch.clamp(xi, x[0], x[-1]) - th))) -
+                                            start_val) + ylim[0]
+
+
+
+# *******************************************************************
 # Functions to import and export data
 # *******************************************************************
 
@@ -166,6 +248,7 @@ def hdf5_to_dict_helper(group):
     return data_dict
 
 
+
 # *******************************************************************
 # Functions to generate and process data
 # *******************************************************************
@@ -200,76 +283,6 @@ def n_hot_patterns(n, length):
     idx = torch.where(pattern_hotness == n)[0]
     n_hot_patterns = all_permutations[idx]
     return n_hot_patterns
-
-
-def get_scaled_rectified_sigmoid_orig(th, peak, x=None, ylim=None):
-    """
-    Transform a sigmoid to intersect x and y range limits.
-    :param th: float
-    :param peak: float
-    :param x: array
-    :param ylim: pair of float
-    :return: callable
-    """
-    if x is None:
-        x = (0., 1.)
-    if ylim is None:
-        ylim = (0., 1.)
-    if th < x[0] or th > x[-1]:
-        raise ValueError('scaled_single_sigmoid: th: %.2E is out of range for xlim: [%.2E, %.2E]' % (th, x[0], x[-1]))
-    if peak == th:
-        raise ValueError('scaled_single_sigmoid: peak and th: %.2E cannot be equal' % th)
-    slope = 2. / (peak - th)
-    y = lambda x: 1. / (1. + np.exp(-slope * (x - th)))
-    start_val = y(x[0])
-    end_val = y(x[-1])
-    amp = end_val - start_val
-    target_amp = ylim[1] - ylim[0]
-    return np.vectorize(
-        lambda xi:
-        (target_amp / amp) * (1. / (1. + np.exp(-slope * (max(min(xi, x[-1]), x[0]) - th))) - start_val) + ylim[0])
-
-
-def get_scaled_rectified_sigmoid(th, peak, x=None, ylim=None):
-    """
-    Transform a sigmoid to intersect x and y range limits.
-    :param th: float
-    :param peak: float
-    :param x: array
-    :param ylim: pair of float
-    :return: callable
-    """
-    if x is None:
-        x = (0., 1.)
-    if ylim is None:
-        ylim = (0., 1.)
-    if th < x[0] or th > x[-1]:
-        raise ValueError('scaled_single_sigmoid: th: %.2E is out of range for xlim: [%.2E, %.2E]' % (th, x[0], x[-1]))
-    if peak == th:
-        raise ValueError('scaled_single_sigmoid: peak and th: %.2E cannot be equal' % th)
-    slope = 2. / (peak - th)
-    y = lambda x: 1. / (1. + np.exp(-slope * (x - th)))
-    start_val = y(x[0])
-    end_val = y(x[-1])
-    amp = end_val - start_val
-    target_amp = ylim[1] - ylim[0]
-    return lambda xi: (target_amp / amp) * (1. / (1. + torch.exp(-slope * (torch.clamp(xi, x[0], x[-1]) - th))) -
-                                            start_val) + ylim[0]
-
-
-def scaled_kaining_init(data, fan_in, scale=1):
-    kaining_bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-    data.uniform_(-scale * kaining_bound, scale * kaining_bound)
-
-
-def half_kaining_init(data, fan_in, scale=1, bounds=None):
-    kaining_bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-    if bounds is None or (bounds[0] is not None and bounds[0] >= 0):
-        data.uniform_(bounds[0], scale * kaining_bound)
-    elif bounds[1] is not None and bounds[1] <= 0:
-        data.uniform_(-scale * kaining_bound, bounds[1])
-    else:
-        raise RuntimeError('half_kaining_init: bounds should be either >=0 or <=0: %s' % str(bounds))
 
 
 def get_diag_argmax_row_indexes(data):
@@ -924,13 +937,6 @@ def count_dict_elements(dict1, leaf=0):
     return leaf
 
 
-def linear(x):
-    """
-    Linear activation function
-    """
-    return x
-
-
 def spatial_structure_similarity_fft(img1, img2):
     '''
     Compute the structural similarity of two images based on the correlation of their 2D spatial frequency distributions
@@ -1216,6 +1222,7 @@ def compute_dW_angles(test_network, plot=False):
             fig.show()
 
     return angles
+
 
 
 # *******************************************************************
