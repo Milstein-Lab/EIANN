@@ -958,7 +958,7 @@ def compute_rf_structure(receptive_fields, method='fft'):
     structure_sim_ls = []
     for unit_rf in receptive_fields:
         s = 0
-        if torch.all(a == 0): # if receptive field is all zeros
+        if torch.all(unit_rf == 0): # if receptive field is all zeros
             structure_sim_ls.append(np.nan)
         else:
             for i in range(3):  # structural similarity to noise (averaged across 3 random noise images)
@@ -1058,7 +1058,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
             'discriminability': discriminability, 'structure': structure}
 
 
-def compute_alternate_dParam_history(dataloader, network, network2=None, data_seed=0, save_path=None):
+def compute_alternate_dParam_history(dataloader, network, network2=None, save_path=None, fullbatch=True):
     """
     Iterate through the parameter history and compute both the actual dParam at each training step 
     and the alternate dParam predicted from either a backprop/gradient descent step or from an identical 
@@ -1070,33 +1070,34 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, data_se
     :return: list of angles (in degrees)
     """
     assert len(network.param_history)>0, 'Network must have param_history'
+    assert len(dataloader)==1, 'Dataloader must have a single large batch'
 
-    if len(dataloader) > 1: # if dataloader is split into batches
-        if dataloader.generator is not None:
-            dataloader.generator.manual_seed(data_seed)
-        data_iter = iter(train_sub_dataloader)
-    else:
-        idx, data, target = next(iter(dataloader)) # if dataloader is a single batch
+    idx, data, target = next(iter(dataloader)) # if dataloader is a single batch
 
-    if network2 is None:
-        # Turn on gradient tracking to compute backprop dW
+    if network2 is None: # Turn on gradient tracking to compute backprop dW
         test_network = copy.copy(network)
         test_network.backward_steps = 3
         for parameter in network.parameters(): 
             if parameter.is_learned:
                 parameter.requires_grad = True
+        sample_data = data
+        sample_target = target.squeeze()
     else:
         test_network = copy.copy(network2)
         if "Backprop" in str(test_network.backward_methods):
             assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
+
     test_network.reset_history()
 
+    # Align param_history and prev_param_history (exclude initial params)
     if len(network.prev_param_history)==0: # if interval step is 1
         prev_param_history = network.param_history[:]
-        param_history = network.param_history[1:]
+        param_history = network.param_history[1:] 
+        param_history_steps = network.param_history_steps[1:]
     else:
         prev_param_history = network.prev_param_history
-        param_history = network.param_history[1:] # exclude initial params
+        param_history = network.param_history[1:] 
+        param_history_steps = network.param_history_steps[1:]
 
 
     actual_dParam_history_dict = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
@@ -1113,11 +1114,13 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, data_se
         test_network.param_history.append(copy.deepcopy(state_dict))
 
         # Compute forward pass
-        if len(dataloader) > 1:
-            idx, data, target = next(data_iter)
-        target = target.squeeze()
-        output = test_network.forward(data)
-        loss = test_network.criterion(output, target)            
+        if network2 is not None or fullbatch==False:
+            sample_id = param_history_steps[t]
+            sample_data = data_all[sample_id]
+            sample_target = target_all[sample_id]
+
+        output = test_network.forward(sample_data)
+        loss = test_network.criterion(output, sample_target)            
 
         # Compute backward pass update
         if network2 is None:
@@ -1176,7 +1179,11 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, data_se
 def compute_dW_angles(test_network, plot=False):
     '''
     Compute the angle between the actual and predicted parameter updates (dW) for each training step.
-    The angle is computed as the arccosine of the dot product between the two vectors, normalized by the product of their norms.    
+    The angle is computed as the arccosine of the dot product between the two vectors, normalized by the product of their norms.  
+
+    :param test_network: network generated from compute_alternate_dParam_history (with actual_dParam_history and predicted_dParam_history)
+    :param plot: bool, plot the angle for each parameter
+    :return: dictionary of angles (in degrees)
     '''
 
     if plot:
