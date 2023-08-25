@@ -2573,7 +2573,7 @@ class BTSP_11(LearningRule):
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
         projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
         projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
-    
+
     def reinit(self):
         self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
                                              requires_grad=False)
