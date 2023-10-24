@@ -1101,8 +1101,10 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
 
 
     actual_dParam_history_dict = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
-    predicted_dParam_history_dict = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
     actual_dParam_history_all = []
+    actual_dParam_history_dict_stepaveraged = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
+    actual_dParam_history_stepaveraged_all = []
+    predicted_dParam_history_dict = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
     predicted_dParam_history_all = []
 
     for t in tqdm(range(len(param_history))):  
@@ -1116,8 +1118,8 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         # Compute forward pass
         if network2 is not None or fullbatch==False:
             sample_id = param_history_steps[t]
-            sample_data = data_all[sample_id]
-            sample_target = target_all[sample_id]
+            sample_data = data[sample_id]
+            sample_target = target[sample_id]
 
         output = test_network.forward(sample_data)
         loss = test_network.criterion(output, sample_target)            
@@ -1162,11 +1164,25 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             dParam_vec.append(dParam.flatten())
         actual_dParam_history_all.append(torch.cat(dParam_vec))
 
+        if network2 is None and t<len(param_history)-1:
+            # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
+            next_state_dict = prev_param_history[t+1]
+            dParam_vec = []
+            for key in actual_dParam_history_dict_stepaveraged:
+                dParam = (next_state_dict[key]-state_dict[key])
+                actual_dParam_history_dict_stepaveraged[key].append(dParam)
+                dParam_vec.append(dParam.flatten())
+            actual_dParam_history_stepaveraged_all.append(torch.cat(dParam_vec))
+
     predicted_dParam_history_dict['all_params'] = predicted_dParam_history_all
     actual_dParam_history_dict['all_params'] = actual_dParam_history_all
+    if network2 is None:
+        actual_dParam_history_dict_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
 
     test_network.predicted_dParam_history = predicted_dParam_history_dict
     test_network.actual_dParam_history = actual_dParam_history_dict
+    if network2 is None:
+        test_network.actual_dParam_history_stepaveraged = actual_dParam_history_dict_stepaveraged
 
     if save_path is not None:
         test_network.params_to_save.append('predicted_dParam_history')
@@ -1176,10 +1192,10 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     return test_network
 
 
-def compute_dW_angles(test_network, plot=False):
+def compute_dW_angles(test_network, plot=False, step_averaged=False):
     '''
     Compute the angle between the actual and predicted parameter updates (dW) for each training step.
-    The angle is computed as the arccosine of the dot product between the two vectors, normalized by the product of their norms.  
+    The angle is computed as the arccosine of the dot product between the two vectors, normalized by the product of their norms (resulting in a value between 0 and 180 degrees).
 
     :param test_network: network generated from compute_alternate_dParam_history (with actual_dParam_history and predicted_dParam_history)
     :param plot: bool, plot the angle for each parameter
@@ -1190,12 +1206,18 @@ def compute_dW_angles(test_network, plot=False):
         n_params = len(test_network.actual_dParam_history)
         fig, axes = plt.subplots(n_params, 1, figsize=(8,n_params*2))
         ax_top = axes[0]
-
+  
     angles = {}
 
     for i, param_name in enumerate(test_network.actual_dParam_history):
         angles[param_name] = []
-        for predicted_dParam, actual_dParam in zip(test_network.predicted_dParam_history[param_name], test_network.actual_dParam_history[param_name]):
+
+        if hasattr(test_network, 'actual_dParam_history_stepaveraged') and step_averaged:
+            zip_iter = zip(test_network.predicted_dParam_history[param_name], test_network.actual_dParam_history_stepaveraged[param_name])
+        else:
+            zip_iter = zip(test_network.predicted_dParam_history[param_name], test_network.actual_dParam_history[param_name])
+
+        for predicted_dParam, actual_dParam in zip_iter:
             # Compute angle between parameter update (dW) vectors
             predicted_dParam = predicted_dParam.flatten()
             actual_dParam = actual_dParam.flatten()
@@ -1203,7 +1225,7 @@ def compute_dW_angles(test_network, plot=False):
             angle_rad = np.arccos(torch.round(vector_product,decimals=5))
             angle = angle_rad * 180 / np.pi
             angles[param_name].append(angle)
-        
+
         if plot:
             ax = axes[n_params-(i+1)]
             ax.plot(angles[param_name])
