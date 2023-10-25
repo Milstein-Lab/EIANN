@@ -6,14 +6,14 @@ layer_config:
         E:
             size: 500
             activation: relu
-        I:
+        SomaI:
             size: 50
             activation: relu
     Output:
         E:
             size: 10
             activation: relu
-        I:
+        SomaI:
             size: 10
             activation: relu
 projection_config:
@@ -35,7 +35,7 @@ projection_config:
                         theta_tau: 0.29434780488671874
                         k: 0.1
             H1:
-                I:
+                SomaI:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
@@ -44,7 +44,7 @@ projection_config:
                         - 0
                     direction: R
                     learning_rule: null
-        I:
+        SomaI:
             Input:
                 E:
                     weight_init: half_kaining
@@ -65,7 +65,7 @@ projection_config:
                         - null
                     direction: R
                     learning_rule: null
-                I:
+                SomaI:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
@@ -93,7 +93,7 @@ projection_config:
                         theta_tau: 0.29434780488671874
                         k: 0.1
             Output:
-                I:
+                SomaI:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
@@ -102,7 +102,7 @@ projection_config:
                         - 0
                     direction: R
                     learning_rule: null
-        I:
+        SomaI:
             H1:
                 E:
                     weight_init: half_kaining
@@ -123,7 +123,7 @@ projection_config:
                         - null
                     direction: R
                     learning_rule: null
-                I:
+                SomaI:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.

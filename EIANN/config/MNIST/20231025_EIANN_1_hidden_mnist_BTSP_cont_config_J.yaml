@@ -9,6 +9,9 @@ layer_config:
         SomaI:
             size: 50
             activation: relu
+        DendI:
+            size: 50
+            activation: relu
     Output:
         E:
             size: 10
@@ -23,17 +26,14 @@ projection_config:
                 E:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
-                        - 1.
+                        - 0.061735095235877606
                     weight_bounds: !!python/tuple
                         - 0
-                        - null
+                        - 3.737942984542882
                     direction: F
-                    learning_rule: BCM
+                    learning_rule: BTSP_12_cont
                     learning_rule_kwargs:
-                        sign: 1
-                        learning_rate: 0.29434780488671874
-                        theta_tau: 0.29434780488671874
-                        k: 0.1
+                        learning_rate: 0.006900684389813614
             H1:
                 SomaI:
                     weight_init: half_kaining
@@ -44,6 +44,33 @@ projection_config:
                         - 0
                     direction: R
                     learning_rule: null
+                DendI:
+                    weight_init: half_kaining
+                    weight_init_args: !!python/tuple
+                        - 0.061041432117914914
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
+                    update_phase: B
+                    compartment: dend
+                    direction: R
+                    learning_rule: DendriticLoss_5
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.015920951416174885
+            Output:
+                E:
+                    weight_init: half_kaining
+                    weight_init_args: !!python/tuple
+                        - 0.26856846831362047
+                    weight_bounds: !!python/tuple
+                        - 0
+                        - 3.106144439387247
+                    update_phase: B
+                    compartment: dend
+                    learning_rule: BTSP_12_cont
+                    learning_rule_kwargs:
+                        learning_rate: 0.1237506954463254
         SomaI:
             Input:
                 E:
@@ -75,8 +102,7 @@ projection_config:
                     weight_constraint: no_autapses
                     direction: R
                     learning_rule: null
-    Output:
-        E:
+        DendI:
             H1:
                 E:
                     weight_init: half_kaining
@@ -85,13 +111,33 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    direction: R
+                    update_phase: A
+                    learning_rule: null
+                DendI:
+                    weight_init: half_kaining
+                    weight_init_args: !!python/tuple
+                        - 1.
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
+                    weight_constraint: no_autapses
+                    direction: R
+                    learning_rule: null
+    Output:
+        E:
+            H1:
+                E:
+                    weight_init: half_kaining
+                    weight_init_args: !!python/tuple
+                        - 0.15660723756451086
+                    weight_bounds: !!python/tuple
+                        - 0
+                        - 3.1607571174129747
                     direction: F
-                    learning_rule: Supervised_BCM
+                    learning_rule: BTSP_12_cont
                     learning_rule_kwargs:
-                        sign: 1
-                        learning_rate: 0.29434780488671874
-                        theta_tau: 0.29434780488671874
-                        k: 0.1
+                        learning_rate: 0.05248973408306354
             Output:
                 SomaI:
                     weight_init: half_kaining
@@ -121,11 +167,10 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    direction: R
                     update_phase: A
+                    direction: R
                     learning_rule: null
                 SomaI:
-                    weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
                     weight_bounds: !!python/tuple

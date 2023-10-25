@@ -49,7 +49,7 @@ Supervised_Gjorgjieva_Hebb_C:
     Output_FBI_size: 10.0
 BTSP_D1:
     # accuracy: 87.828995;
-    # stablity: dynamics oscillate and loss increases when training extended to 50000 steps
+    # stability: dynamics oscillate and loss increases when training extended to 50000 steps
     BTSP_neg_loss_ET_discount: 0.09096472533667882
     FB_BTSP_init_weight_factor: 0.9719980864708379
     FF_BTSP_init_weight_factor: 0.013889941313286842
@@ -72,7 +72,7 @@ BTSP_D1:
     Output_FBI_Output_E_weight_scale: 0.25429227724377235
 BTSP_E1:
     # accuracy: 83.9434
-    # stablity: dynamics oscillate and loss increases when training extended to 50000 steps
+    # stability: dynamics oscillate and loss increases when training extended to 50000 steps
     BTSP_neg_loss_ET_discount: 0.05124066541542986
     FB_BTSP_init_weight_factor: 0.3454681828227319
     FF_BTSP_init_weight_factor: 0.01447906193343185

@@ -5,6 +5,13 @@ bpDale_G:
     # stability: after 50000 steps:
     # accuracy: 94.7621
     # loss: 0.010341975
+    # CL:
+    #    final_accuracy: 22.40999984741211
+    #    final_loss: 0.11384888738393784
+    #    phase1_accuracy: 85.14066
+    #    phase1_loss: 0.019875024
+    #    phase2_accuracy: 98.55
+    #    phase2_loss: 0.004561116
     E_E_learning_rate: 0.20906601706686329
     H1_E_H1_I_init_weight_scale: 1.085742013295119
     H1_E_Input_E_init_weight_scale: 2.251133247968139
@@ -19,6 +26,25 @@ bpDale_G:
     Output_I_Output_I_init_weight_scale: 2.59125301963123
     Output_I_size: 10.0
     softplus_beta: 19.826044970749372
+bpDale_relu_G_test:
+    # not tuned - 1 output unit is dead
+    # after 20000 steps:
+    # accuracy: 91.8375
+    # loss: loss: 0.020862091
+    # stability: after 50000 steps:
+    E_E_learning_rate: 0.20906601706686329
+    H1_E_H1_I_init_weight_scale: 1.085742013295119
+    H1_E_Input_E_init_weight_scale: 2.251133247968139
+    H1_I_H1_E_init_weight_scale: 0.7885014927826658
+    H1_I_H1_I_init_weight_scale: 1.263174413780597
+    H1_I_Input_E_init_weight_scale: 2.6556826115424506
+    H_I_size: 50.0
+    Output_E_H1_E_init_weight_scale: 5.237143930095102
+    Output_E_Output_I_init_weight_scale: 5.40911925776929
+    Output_I_H1_E_init_weight_scale: 1.5252082242589289
+    Output_I_Output_E_init_weight_scale: 1.5922520967196439
+    Output_I_Output_I_init_weight_scale: 2.59125301963123
+    Output_I_size: 10.0
 Supervised_BCM_G:
     # accuracy: 86.8903
     # loss: 0.07188301
@@ -44,6 +70,9 @@ Supervised_BCM_G:
 Supervised_BCM_cotuned_I_H2:
     # accuracy: 84.2451
     # loss: 0.07846327
+    # stability to 50000 steps:
+    # accuracy: 80.52999
+    # loss: 0.05858899
     E_I_learning_rate: 0.00013494384183458059
     H1_E_BCM_k: 0.0016413193206349774
     H1_E_H1_I_init_weight_scale: 1.1617075950099855
@@ -70,8 +99,12 @@ Supervised_BCM_cotuned_I_H2:
     Output_I_size: 10.0
     Output_I_theta_tau: 6.969355566274409
 Supervised_BCM_antituned_I_I2:
+    # Output.E initialized silent
     # accuracy: 83.3774
     # loss: 0.042848807
+    # stability at 50000 steps:
+    # accuracy: 58.634502
+    # loss: 0.10018472
     E_I_learning_rate: 0.00018030858458974186
     H1_E_BCM_k: 0.00484142820191258
     H1_E_H1_I_init_weight_scale: 3.711221998606644
@@ -283,8 +316,19 @@ BTSP_G2:
     Output_I_size: 10.0
 BTSP_G3:
     # Uses BTSP_11 rule variant
+    # Output.E, H1.E, H1.DendI initialized silent
     # accuracy: 86.468704
     # loss: 0.029768893
+    # stability: after 50000 steps:
+    # accuracy: 85.637
+    # loss: 0.029989058
+    # CL:
+    #    final_accuracy: 25.979999542236328
+    #    final_loss: 0.08802662044763565
+    #    phase1_accuracy: 89.45
+    #    phase1_loss: 0.025670579
+    #    phase2_accuracy: 94.946
+    #    phase2_loss: 0.020046772
     BTSP_decay_tau: 1.0012236709618623
     FB_BTSP_init_weight_factor: 0.7503001334260427
     FF_BTSP_init_weight_factor: 0.037637010932010655

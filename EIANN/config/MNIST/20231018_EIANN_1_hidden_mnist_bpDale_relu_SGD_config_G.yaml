@@ -6,14 +6,14 @@ layer_config:
         E:
             size: 500
             activation: relu
-        SomaI:
+        I:
             size: 50
             activation: relu
     Output:
         E:
             size: 10
             activation: relu
-        SomaI:
+        I:
             size: 10
             activation: relu
 projection_config:
@@ -24,33 +24,30 @@ projection_config:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
-                    weight_bounds: !!python/tuple
+                    weight_bounds:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BCM
+                    learning_rule: Backprop
                     learning_rule_kwargs:
-                        sign: 1
-                        learning_rate: 0.29434780488671874
-                        theta_tau: 0.29434780488671874
-                        k: 0.1
+                        learning_rate: 0.1
             H1:
-                SomaI:
+                I:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
-                    weight_bounds: !!python/tuple
+                    weight_bounds:
                         - null
                         - 0
                     direction: R
                     learning_rule: null
-        SomaI:
+        I:
             Input:
                 E:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
-                    weight_bounds: !!python/tuple
+                    weight_bounds:
                         - 0
                         - null
                     direction: F
@@ -60,18 +57,18 @@ projection_config:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
-                    weight_bounds: !!python/tuple
+                    weight_bounds:
                         - 0
                         - null
                     direction: R
                     learning_rule: null
-                SomaI:
+                I:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
-                    weight_bounds: !!python/tuple
+                    weight_bounds:
                         - null
-                        - 0
+                        - 0.
                     weight_constraint: no_autapses
                     direction: R
                     learning_rule: null
@@ -82,33 +79,30 @@ projection_config:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
-                    weight_bounds: !!python/tuple
+                    weight_bounds:
                         - 0
                         - null
                     direction: F
-                    learning_rule: Supervised_BCM
+                    learning_rule: Backprop
                     learning_rule_kwargs:
-                        sign: 1
-                        learning_rate: 0.29434780488671874
-                        theta_tau: 0.29434780488671874
-                        k: 0.1
+                        learning_rate: 0.1
             Output:
-                SomaI:
+                I:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
-                    weight_bounds: !!python/tuple
+                    weight_bounds:
                         - null
                         - 0
                     direction: R
                     learning_rule: null
-        SomaI:
+        I:
             H1:
                 E:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
-                    weight_bounds: !!python/tuple
+                    weight_bounds:
                         - 0
                         - null
                     direction: F
@@ -118,17 +112,16 @@ projection_config:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
-                    weight_bounds: !!python/tuple
+                    weight_bounds:
                         - 0
                         - null
                     direction: R
-                    update_phase: A
                     learning_rule: null
-                SomaI:
+                I:
                     weight_init: half_kaining
                     weight_init_args: !!python/tuple
                         - 1.
-                    weight_bounds: !!python/tuple
+                    weight_bounds:
                         - null
                         - 0
                     weight_constraint: no_autapses
@@ -137,5 +130,7 @@ projection_config:
 training_kwargs:
     tau: 3
     forward_steps: 15
-    backward_steps: 0
-    learning_rate: 0.9553728
+    backward_steps: 3
+    learning_rate: 0.2
+    verbose: False
+    optimizer: SGD
