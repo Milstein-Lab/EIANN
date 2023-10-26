@@ -337,15 +337,15 @@ def update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F(x, context):
     H1_I_size = int(param_dict['H1_I_size'])
     Output_I_size = int(param_dict['Output_I_size'])
 
-    context.layer_config['H1']['I']['size'] = H1_I_size
-    context.layer_config['Output']['I']['size'] = Output_I_size
+    context.layer_config['H1']['SomaI']['size'] = H1_I_size
+    context.layer_config['Output']['SomaI']['size'] = Output_I_size
 
     H1_E_Input_E_weight_scale = param_dict['H1_E_Input_E_weight_scale'] * \
                                 math.sqrt(context.layer_config['Input']['E']['size']) / 2
     H1_E_Input_E_learning_rate = param_dict['H1_E_Input_E_learning_rate']
 
     H1_E_H1_I_weight_scale = param_dict['H1_E_H1_I_weight_scale'] * \
-                               math.sqrt(context.layer_config['H1']['I']['size']) / 2
+                               math.sqrt(context.layer_config['H1']['SomaI']['size']) / 2
     E_I_learning_rate = param_dict['E_I_learning_rate']
     H1_I_H1_E_weight_scale = param_dict['H1_I_H1_E_weight_scale'] * \
                                math.sqrt(context.layer_config['H1']['E']['size']) / 2
@@ -353,7 +353,7 @@ def update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F(x, context):
                              math.sqrt(context.layer_config['Input']['E']['size']) / 2
     I_E_learning_rate = param_dict['I_E_learning_rate']
     H1_I_H1_I_weight_scale = param_dict['H1_I_H1_I_weight_scale'] * \
-                                 math.sqrt(context.layer_config['H1']['I']['size']) / 2
+                                 math.sqrt(context.layer_config['H1']['SomaI']['size']) / 2
     I_I_learning_rate = param_dict['I_I_learning_rate']
 
     Output_E_H1_E_weight_scale = param_dict['Output_E_H1_E_weight_scale'] * \
@@ -361,50 +361,50 @@ def update_EIANN_config_1_hidden_Gjorgjieva_Hebb_F(x, context):
     Output_E_H1_E_learning_rate = param_dict['Output_E_H1_E_learning_rate']
 
     Output_E_Output_I_weight_scale = param_dict['Output_E_Output_I_weight_scale'] * \
-                                       math.sqrt(context.layer_config['Output']['I']['size']) / 2
+                                       math.sqrt(context.layer_config['Output']['SomaI']['size']) / 2
     Output_I_Output_E_weight_scale = param_dict['Output_I_Output_E_weight_scale'] * \
                                        math.sqrt(context.layer_config['Output']['E']['size']) / 2
     Output_I_H1_E_weight_scale = param_dict['Output_I_H1_E_weight_scale'] * \
                                      math.sqrt(context.layer_config['H1']['E']['size']) / 2
     Output_I_Output_I_weight_scale = param_dict['Output_I_Output_I_weight_scale'] * \
-                                         math.sqrt(context.layer_config['Output']['I']['size']) / 2
+                                         math.sqrt(context.layer_config['Output']['SomaI']['size']) / 2
 
     context.projection_config['H1']['E']['Input']['E']['weight_constraint_kwargs']['scale'] = H1_E_Input_E_weight_scale
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
         H1_E_Input_E_learning_rate
 
-    context.projection_config['H1']['E']['H1']['I']['weight_constraint_kwargs']['scale'] = H1_E_H1_I_weight_scale
-    context.projection_config['H1']['E']['H1']['I']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_constraint_kwargs']['scale'] = H1_E_H1_I_weight_scale
+    context.projection_config['H1']['E']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
 
-    context.projection_config['H1']['I']['Input']['E']['weight_constraint_kwargs']['scale'] = H1_I_Input_E_weight_scale
-    context.projection_config['H1']['I']['H1']['E']['weight_constraint_kwargs']['scale'] = H1_I_H1_E_weight_scale
-    context.projection_config['H1']['I']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
-    context.projection_config['H1']['I']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
-    context.projection_config['H1']['I']['H1']['I']['weight_constraint_kwargs']['scale'] = \
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_constraint_kwargs']['scale'] = H1_I_Input_E_weight_scale
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_constraint_kwargs']['scale'] = H1_I_H1_E_weight_scale
+    context.projection_config['H1']['SomaI']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_constraint_kwargs']['scale'] = \
         H1_I_H1_I_weight_scale
-    context.projection_config['H1']['I']['H1']['I']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
 
     context.projection_config['Output']['E']['H1']['E']['weight_constraint_kwargs']['scale'] = \
         Output_E_H1_E_weight_scale
     context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
         Output_E_H1_E_learning_rate
 
-    context.projection_config['Output']['E']['Output']['I']['weight_constraint_kwargs']['scale'] = \
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_constraint_kwargs']['scale'] = \
         Output_E_Output_I_weight_scale
-    context.projection_config['Output']['E']['Output']['I']['learning_rule_kwargs']['learning_rate'] = \
+    context.projection_config['Output']['E']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = \
         E_I_learning_rate
 
-    context.projection_config['Output']['I']['H1']['E']['weight_constraint_kwargs']['scale'] = \
+    context.projection_config['Output']['SomaI']['H1']['E']['weight_constraint_kwargs']['scale'] = \
         Output_I_H1_E_weight_scale
-    context.projection_config['Output']['I']['Output']['E']['weight_constraint_kwargs']['scale'] = \
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_constraint_kwargs']['scale'] = \
         Output_I_Output_E_weight_scale
-    context.projection_config['Output']['I']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+    context.projection_config['Output']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
         I_E_learning_rate
-    context.projection_config['Output']['I']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+    context.projection_config['Output']['SomaI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
         I_E_learning_rate
-    context.projection_config['Output']['I']['Output']['I']['weight_constraint_kwargs']['scale'] = \
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_constraint_kwargs']['scale'] = \
         Output_I_Output_I_weight_scale
-    context.projection_config['Output']['I']['Output']['I']['learning_rule_kwargs']['learning_rate'] = \
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = \
         I_I_learning_rate
 
 

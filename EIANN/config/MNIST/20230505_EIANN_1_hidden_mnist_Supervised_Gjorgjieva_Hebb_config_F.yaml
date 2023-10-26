@@ -6,14 +6,14 @@ layer_config:
         E:
             size: 500
             activation: relu
-        I:
+        SomaI:
             size: 50
             activation: relu
     Output:
         E:
             size: 10
             activation: relu
-        I:
+        SomaI:
             size: 10
             activation: relu
 projection_config:
@@ -34,7 +34,7 @@ projection_config:
                         sign: 1
                         learning_rate: 0.29434780488671874
             H1:
-                I:
+                SomaI:
                     weight_init: half_kaining
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
@@ -47,7 +47,7 @@ projection_config:
                     learning_rule_kwargs:
                         sign: -1
                         learning_rate: 0.11205994529904711
-        I:
+        SomaI:
             Input:
                 E:
                     weight_init: half_kaining
@@ -76,7 +76,7 @@ projection_config:
                     learning_rule_kwargs:
                         sign: 1
                         learning_rate: 0.4840460345190343
-                I:
+                SomaI:
                     weight_init: half_kaining
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
@@ -106,7 +106,7 @@ projection_config:
                         sign: 1
                         learning_rate: 0.29434780488671874
             Output:
-                I:
+                SomaI:
                     weight_init: half_kaining
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
@@ -119,7 +119,7 @@ projection_config:
                     learning_rule_kwargs:
                         sign: -1
                         learning_rate: 0.11205994529904711
-        I:
+        SomaI:
             H1:
                 E:
                     weight_init: half_kaining
@@ -149,7 +149,7 @@ projection_config:
                     learning_rule_kwargs:
                         sign: 1
                         learning_rate: 0.4840460345190343
-                I:
+                SomaI:
                     weight_init: half_kaining
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
