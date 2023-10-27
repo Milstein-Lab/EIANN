@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from torch.nn.functional import softplus, relu, sigmoid, elu
+import torchvision
 import numpy as np
 from scipy import signal, stats
 from skimage import metrics
@@ -127,6 +128,61 @@ def get_scaled_rectified_sigmoid(th, peak, x=None, ylim=None):
     target_amp = ylim[1] - ylim[0]
     return lambda xi: (target_amp / amp) * (1. / (1. + torch.exp(-slope * (torch.clamp(xi, x[0], x[-1]) - th))) -
                                             start_val) + ylim[0]
+
+
+def recursive_dict_rename(my_dict, old_name, new_name):
+    for key in list(my_dict):
+        if key == old_name:
+            my_dict[new_name] = my_dict.pop(old_name)
+        elif isinstance(my_dict[key], dict):
+            recursive_dict_rename(my_dict[key], old_name, new_name)
+    return 
+
+
+def rename_population(network, old_name, new_name):
+    recursive_dict_rename(network.__dict__, old_name, new_name)
+
+    # Rename populations in module_dict
+    for key in list(network.module_dict):
+        post_pop, pre_pop = key.split('_')
+
+        for layer_name in list(network.layers):
+            if pre_pop.startswith(layer_name):
+                pre_pop_name = pre_pop[len(layer_name):]
+                if pre_pop_name == old_name:
+                    pre_pop = layer_name+new_name
+            if post_pop.startswith(layer_name):
+                post_pop_name = post_pop[len(layer_name):]
+                if post_pop_name == old_name:
+                    post_pop = layer_name+new_name
+        new_key = f'{post_pop}_{pre_pop}'
+        if new_key != key:
+            network.module_dict[new_key] = network.module_dict.pop(key)
+
+    # Rename populations in parameter_dict
+    for key in list(network.parameter_dict):
+        pop_fullname, param_name = key.split('_')
+
+        for layer_name in list(network.layers):
+            if pop_fullname.startswith(layer_name):
+                pop_name = pop_fullname[len(layer_name):]
+                if pop_name == old_name:
+                    pop_fullname = layer_name+new_name
+        new_key = f'{pop_fullname}_{param_name}'
+        if new_key != key:
+            network.parameter_dict[new_key] = network.parameter_dict.pop(key)
+
+    # Rename populations in layers and projections
+    for layer in network:
+        recursive_dict_rename(layer.__dict__, old_name, new_name)
+        for population in layer:
+            if population.name == old_name:
+                population.name = new_name
+                population.fullname = layer.name+new_name
+            recursive_dict_rename(population.__dict__, old_name, new_name)
+
+            for projection in population:
+                projection.name = f'{projection.post.layer.name}{projection.post.name}_{projection.pre.layer.name}{projection.pre.name}'
 
 
 
@@ -1058,7 +1114,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
             'discriminability': discriminability, 'structure': structure}
 
 
-def compute_alternate_dParam_history(dataloader, network, network2=None, save_path=None, fullbatch=True):
+def compute_alternate_dParam_history(dataloader, network, network2=None, save_path=None, batch_size=None, constrain_params=None):
     """
     Iterate through the parameter history and compute both the actual dParam at each training step 
     and the alternate dParam predicted from either a backprop/gradient descent step or from an identical 
@@ -1067,23 +1123,28 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     :param dataloader:
     :param network: network with param_history
     :param network2: (optional) network with a custom learning rule
+    :param save_path: (optional) path to save network clone with new param_history
+    :param batch_size: (optional) batch size to use for alternate dParam computation
+    :param constrain_params: (optional) constrain weights and biases to valid range (e.g. to obey Dale's law)
     :return: list of angles (in degrees)
     """
     assert len(network.param_history)>0, 'Network must have param_history'
     assert len(dataloader)==1, 'Dataloader must have a single large batch'
 
     idx, data, target = next(iter(dataloader)) # if dataloader is a single batch
+    if batch_size is None:
+        print('Warning: batch_size not specified, default batch_size is full dataset')
+        sample_data = data
+        sample_target = target.squeeze()
 
     if network2 is None: # Turn on gradient tracking to compute backprop dW
-        test_network = copy.copy(network)
+        test_network = copy.deepcopy(network)
         test_network.backward_steps = 3
         for parameter in network.parameters(): 
             if parameter.is_learned:
                 parameter.requires_grad = True
-        sample_data = data
-        sample_target = target.squeeze()
     else:
-        test_network = copy.copy(network2)
+        test_network = copy.deepcopy(network2)
         if "Backprop" in str(test_network.backward_methods):
             assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
 
@@ -1100,26 +1161,27 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         param_history_steps = network.param_history_steps[1:]
 
 
-    actual_dParam_history_dict = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
+    actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
     actual_dParam_history_all = []
-    actual_dParam_history_dict_stepaveraged = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
+    actual_dParam_history_dict_stepaveraged = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
     actual_dParam_history_stepaveraged_all = []
-    predicted_dParam_history_dict = {name:[] for name,param in test_network.named_parameters() if param.is_learned}
+    predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
     predicted_dParam_history_all = []
 
     for t in tqdm(range(len(param_history))):  
         # Load params into network
         state_dict = prev_param_history[t]
         if network2 is not None:
+            # Select only params that are in both networks
             state_dict = {name:param for name,param in state_dict.items() if name in test_network.state_dict()}
         test_network.load_state_dict(state_dict)
-        test_network.param_history.append(copy.deepcopy(state_dict))
+        test_network.prev_param_history.append(copy.deepcopy(state_dict))
 
         # Compute forward pass
-        if network2 is not None or fullbatch==False:
+        if batch_size is not None:
             sample_id = param_history_steps[t]
-            sample_data = data[sample_id]
-            sample_target = target[sample_id]
+            sample_data = data[sample_id:sample_id+batch_size]
+            sample_target = target[sample_id:sample_id+batch_size]
 
         output = test_network.forward(sample_data)
         loss = test_network.criterion(output, sample_target)            
@@ -1130,8 +1192,10 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             test_network.zero_grad()
             loss.backward() 
             test_network.optimizer.step()    
+            if constrain_params==True:
+                test_network.constrain_weights_and_biases()
         else:
-            # Backward update speficied by learning rules in network2
+            # Backward update specified by learning rules in network2
             for backward in test_network.backward_methods:
                 backward(test_network, output, target)
 
@@ -1142,7 +1206,8 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
                         population.bias_learning_rule.step()
                     for projection in population:
                         projection.learning_rule.step()
-            test_network.constrain_weights_and_biases()
+            if constrain_params is None or constrain_params==True:
+                test_network.constrain_weights_and_biases()
 
         new_state_dict = test_network.state_dict() 
         test_network.param_history.append(copy.deepcopy(new_state_dict))
@@ -1164,7 +1229,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             dParam_vec.append(dParam.flatten())
         actual_dParam_history_all.append(torch.cat(dParam_vec))
 
-        if network2 is None and t<len(param_history)-1:
+        if t<len(param_history)-1:
             # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
             next_state_dict = prev_param_history[t+1]
             dParam_vec = []
@@ -1176,23 +1241,23 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
 
     predicted_dParam_history_dict['all_params'] = predicted_dParam_history_all
     actual_dParam_history_dict['all_params'] = actual_dParam_history_all
-    if network2 is None:
-        actual_dParam_history_dict_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
+    actual_dParam_history_dict_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
 
     test_network.predicted_dParam_history = predicted_dParam_history_dict
     test_network.actual_dParam_history = actual_dParam_history_dict
-    if network2 is None:
-        test_network.actual_dParam_history_stepaveraged = actual_dParam_history_dict_stepaveraged
+    test_network.actual_dParam_history_stepaveraged = actual_dParam_history_dict_stepaveraged
 
+    test_network.params_to_save.append('predicted_dParam_history')
+    test_network.params_to_save.append('actual_dParam_history')
+    test_network.params_to_save.append('actual_dParam_history_stepaveraged')
     if save_path is not None:
-        test_network.params_to_save.append('predicted_dParam_history')
-        test_network.params_to_save.append('actual_dParam_history')
         test_network.save(save_path)
 
     return test_network
 
 
-def compute_dW_angles(test_network, plot=False, step_averaged=False):
+def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=False, recompute_allparams_vector=False):
+
     '''
     Compute the angle between the actual and predicted parameter updates (dW) for each training step.
     The angle is computed as the arccosine of the dot product between the two vectors, normalized by the product of their norms (resulting in a value between 0 and 180 degrees).
@@ -1203,21 +1268,16 @@ def compute_dW_angles(test_network, plot=False, step_averaged=False):
     '''
 
     if plot:
-        n_params = len(test_network.actual_dParam_history)
+        n_params = len(actual_dParam_history)
         fig, axes = plt.subplots(n_params, 1, figsize=(8,n_params*2))
         ax_top = axes[0]
   
     angles = {}
 
-    for i, param_name in enumerate(test_network.actual_dParam_history):
+    for i, param_name in enumerate(actual_dParam_history):
         angles[param_name] = []
-
-        if hasattr(test_network, 'actual_dParam_history_stepaveraged') and step_averaged:
-            zip_iter = zip(test_network.predicted_dParam_history[param_name], test_network.actual_dParam_history_stepaveraged[param_name])
-        else:
-            zip_iter = zip(test_network.predicted_dParam_history[param_name], test_network.actual_dParam_history[param_name])
-
-        for predicted_dParam, actual_dParam in zip_iter:
+        
+        for predicted_dParam, actual_dParam in zip(predicted_dParam_history[param_name], actual_dParam_history[param_name]):
             # Compute angle between parameter update (dW) vectors
             predicted_dParam = predicted_dParam.flatten()
             actual_dParam = actual_dParam.flatten()
@@ -1241,7 +1301,7 @@ def compute_dW_angles(test_network, plot=False, step_averaged=False):
                 ax.set_ylim(bottom=0, top=120)
                 ax.set_yticks(np.arange(0, 121, 30))
 
-            avg_angle = np.mean(angles[param_name])
+            avg_angle = np.nanmean(angles[param_name])
             ax.text(0.03, 0.08, f'Avg angle = {avg_angle:.2f} degrees', transform=ax.transAxes)
             if '.' in param_name:
                 param_name = param_name.split('.')[1]
@@ -1499,3 +1559,40 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
         fig.tight_layout()
         fig.show()
     return True
+
+
+def get_MNIST_dataloaders(sub_dataloader_size=1000):
+    """
+    Load MNIST dataset into custom dataloaders with sample index
+    """
+
+    # Load dataset
+    tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Lambda(torch.flatten)])
+    MNIST_train_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=True, download=False,
+                                            transform=tensor_flatten)
+    MNIST_test_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/',
+                                            train=False, download=False,
+                                            transform=tensor_flatten)
+
+    # Add index to train & test data
+    MNIST_train = []
+    for idx,(data,target) in enumerate(MNIST_train_dataset):
+        target = torch.eye(len(MNIST_train_dataset.classes))[target]
+        MNIST_train.append((idx, data, target))
+        
+    MNIST_test = []
+    for idx,(data,target) in enumerate(MNIST_test_dataset):
+        target = torch.eye(len(MNIST_test_dataset.classes))[target]
+        MNIST_test.append((idx, data, target))
+        
+    # Put data in dataloader
+    data_generator = torch.Generator()
+    train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=50_000)
+    train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=1)
+    val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10_000:], batch_size=10_000, shuffle=False)
+    test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10_000, shuffle=False)
+
+    return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
+
+
+
