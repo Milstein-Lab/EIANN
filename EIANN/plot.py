@@ -1168,10 +1168,18 @@ def compute_loss(network, state_dict, test_dataloader):
 
 def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, vmax=1.2, plot_line_loss=False):
     """
-    :param test_dataloader:
-    :param network1:
-    :param network2:
+    Plots the loss landscape (with respect to the given test dataloader) of a network in the PC space defined by the first two 
+    principal components of the weight history. The loss is computed for a grid of points in the PC space, as well as for the 
+    weight trajectory of the network through the landscape.
 
+    :param test_dataloader: dataloader with (data,target) to use for computing loss.
+    :param network1: EIANN network
+    :param network2: EIANN network
+    :param num_points: number of points in each dimension of the PC space grid
+    :param extension: fraction of PC space to extend the grid beyond the range of the weight history
+    :param vmax: maximum value for the loss heatmap
+    :param plot_line_loss: if True, plot the loss for the weight history of the network
+    
     :return:
     """
     flat_param_history, param_metadata = get_flat_param_history(network1.param_history)
@@ -1180,18 +1188,17 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
     if network2 is not None:
         flat_param_history2, param_metadata2 = get_flat_param_history(network2.param_history)
         flat_param_history = torch.cat([flat_param_history, flat_param_history2])
-
         assert param_metadata == param_metadata2, "Network architecture must match"
 
     # Center the data (mean=0, std=1)
     p_mean = torch.mean(flat_param_history, axis=0)
     p_std = torch.std(flat_param_history, axis=0)
-    centered_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
+    flat_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
 
     # Get weights in gridplane defined by PC dimensions
     pca = PCA(n_components=2)
-    pca.fit(centered_param_history)
-    param_hist_pca_space = pca.transform(centered_param_history)
+    pca.fit(flat_param_history)
+    param_hist_pca_space = pca.transform(flat_param_history)
 
     explained_variance = pca.explained_variance_ratio_
     percent_exp_var = np.round(explained_variance * 100, decimals=2)
@@ -1220,7 +1227,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         losses[i] = compute_loss(test_network, state_dict, test_dataloader)
     loss_grid = losses.reshape([PC1_range.size, PC2_range.size])
 
-    plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
+    # plot_3D_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
 
     if network2 is not None:
         PC1_network1 = PC1[0:history_len1]
@@ -1230,17 +1237,18 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         PC2_network2 = PC2[history_len1:]
 
     if plot_line_loss:
+        fig = plt.figure()
+
         # Compute loss for points in weight history
-        loss_history = torch.zeros(flat_weight_history.shape[0])
+        loss_history = torch.zeros(flat_param_history.shape[0])
         for i, flat_params in enumerate(tqdm(flat_param_history)):
             state_dict = unflatten_params(flat_params, param_metadata)
-            loss_history[i] = compute_loss(network, state_dict, test_dataloader)
+            loss_history[i] = compute_loss(network1, state_dict, test_dataloader)
 
         # Plot loss heatmap
         vmax = torch.max(torch.cat([loss_history, loss_grid.flatten()]))
         vmin = torch.min(torch.cat([loss_history, loss_grid.flatten()]))
 
-        fig = plt.figure()
         im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax, vmin=vmin,
                         extent=[np.min(PC1_range), np.max(PC1_range),
                                 np.max(PC2_range), np.min(PC2_range)])
@@ -1250,22 +1258,24 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         plt.ylabel('PC2')
     else:
         fig = plt.figure()
-
-        if network2 is not None:
-            vmax_net = vmax*torch.max(torch.cat([network1.test_loss_history, network2.test_loss_history]))
+        if network2 is None: # Set color scale
+            vmax_net = vmax*torch.max(network1.val_loss_history)
         else:
-            vmax_net = vmax*torch.max(network1.test_loss_history)
+            vmax_net = vmax*torch.max(torch.cat([network1.val_loss_history, network2.val_loss_history]))
         vmax_grid = torch.max(loss_grid)
         vmax = torch.min(vmax_grid,vmax_net)
 
         im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax,
                         extent=[np.min(PC1_range), np.max(PC1_range),
                                 np.max(PC2_range), np.min(PC2_range)])
-
         plt.colorbar(im)
         plt.scatter(PC1, PC2, s=0.1, color='k')
 
-        if network2 is not None:
+        if network2 is None:
+            plt.scatter(PC1[0], PC2[0], s=80, color='b', edgecolor='k', label='Start')
+            plt.scatter(PC1[-1], PC2[-1], s=80, color='orange', edgecolor='k', label='End')
+
+        else:
             plt.scatter(PC1_network1[0], PC2_network1[0], s=80, color='b', edgecolor='k', label='Start')
             plt.scatter(PC1_network2[0], PC2_network2[0], s=80, color='b', edgecolor='k')
 
@@ -1277,9 +1287,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
                         label=f'End {network1.name}')
             plt.scatter(PC1_network2[-1], PC2_network2[-1], s=80, color='cyan', edgecolor='k',
                         label=f'End {network2.name}')
-        else:
-            plt.scatter(PC1[0], PC2[0], s=80, color='b', edgecolor='k', label='Start')
-            plt.scatter(PC1[-1], PC2[-1], s=80, color='orange', edgecolor='k', label='End')
+
         plt.legend()
         plt.xlabel(f'PC1 \n({percent_exp_var[0]}% var. explained)')
         plt.ylabel(f'PC2 \n({percent_exp_var[1]}% var. explained)')
@@ -1287,7 +1295,11 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
     return fig
 
 
-def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataloader, networksnum_points=20, extension=0.2):
+def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataloader, num_points=20, extension=0.2):
+    """
+    Plot PCA loss landscape for combined weights from multiple networks
+    """
+
     flat_param_history_all = []
 
     for network_name in param_history_dict:
@@ -1300,12 +1312,10 @@ def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataload
     num_networks = ut.count_dict_elements(param_history_dict)
     flat_param_history = flat_param_history_all
 
-
     # Center the data (mean=0, std=1)
     p_mean = torch.mean(flat_param_history, axis=0)
     p_std = torch.std(flat_param_history, axis=0)
     centered_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
-
 
     # Get weights in gridplane defined by PC dimensions
     pca = PCA(n_components=2)
@@ -1320,7 +1330,6 @@ def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataload
     PC2_range = np.linspace(np.min(PC2) - PC2_extension, np.max(PC2) + PC2_extension, num_points)
     PC1_mesh, PC2_mesh = np.meshgrid(PC1_range, PC2_range)
 
-
     # Convert PC coordinates into full weight vectors
     flat_PC1_vals = PC1_mesh.reshape(1, num_points ** 2)
     flat_PC2_vals = PC2_mesh.reshape(1, num_points ** 2)
@@ -1328,7 +1337,6 @@ def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataload
 
     gridpoints_paramspace = pca.inverse_transform(meshgrid_points)
     gridpoints_paramspace = torch.tensor(gridpoints_paramspace) * p_std + p_mean
-
 
     # Compute loss for points in grid
     test_network = copy(test_network)  # create copy to avoid modifying original networks
@@ -1367,7 +1375,10 @@ def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataload
     plt.ylabel('PC2')
 
 
-def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
+
+
+
+def plot_3D_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
     """
     Function plots loss surface from the grid based on PCs
 
@@ -1389,9 +1400,9 @@ def plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
     ax.tick_params(axis='x', pad=0)
     ax.tick_params(axis='y', pad=0)
     ax.tick_params(axis='z', pad=10)
-
     plt.tight_layout()
-    # fig.show()
+
+    return fig
 
 
 def plot_FB_weight_alignment(*projections, title=None):
