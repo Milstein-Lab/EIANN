@@ -2800,7 +2800,8 @@ class BTSP_12_cont(LearningRule):
         IS[plateau < 0.] = 0.
         IS = IS.unsqueeze(1)
         ET = torch.clamp(self.projection.pre.activity, 0., 1.)
-        delta_weight = IS * ((self.w_max - self.projection.weight) * ET.unsqueeze(0) -
+        unsqueezed_ET = ET.unsqueeze(0)
+        delta_weight = IS * ((self.w_max - self.projection.weight) * unsqueezed_ET -
                              self.projection.weight * self.dep_ratio * self.q_dep(ET).unsqueeze(0))
         self.projection.weight.data += self.learning_rate * delta_weight
         
@@ -2808,7 +2809,7 @@ class BTSP_12_cont(LearningRule):
         neg_error = plateau.detach().clone()
         neg_error[plateau > 0.] = 0.
         neg_error = neg_error.unsqueeze(1)
-        delta_weight = neg_error * self.projection.weight * ET.unsqueeze(0)
+        delta_weight = neg_error * self.projection.weight * unsqueezed_ET
         self.projection.weight.data += self.learning_rate * delta_weight
 
     @classmethod
@@ -2911,9 +2912,11 @@ class BTSP_12_cont(LearningRule):
                         # compute plateau events and nudge somatic state
                         if projection.learning_rule.__class__ == cls:
                             if pop is output_pop:
-                                output_pop.dendritic_state = torch.clamp(target - output_pop.activity, min=-1, max=1)
-                                output_pop.plateau = output_pop.dendritic_state.detach().clone()
-                                output_pop.dend_to_soma = output_pop.dendritic_state.detach().clone()
+                                if t == 0:
+                                    output_pop.dendritic_state = (
+                                        torch.clamp(target - output_pop.activity, min=-1, max=1))
+                                    output_pop.plateau = output_pop.dendritic_state.detach().clone()
+                                    output_pop.dend_to_soma = output_pop.dendritic_state.detach().clone()
                             else:
                                 pop.plateau = pop.dendritic_state.detach().clone()
                                 pop.dend_to_soma = pop.dendritic_state.detach().clone()

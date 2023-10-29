@@ -369,6 +369,13 @@ BTSP_F8:
     # accuracy: 87.0385
     # stability: good stability to 50000 train steps
     # H1 is sparse; some weights remain un-utilized
+    # CL:
+    #    final_accuracy: 16.709999084472656
+    #    final_loss: 0.09863107651472092
+    #    phase1_accuracy: 91.020676
+    #    phase1_loss: 0.023467544
+    #    phase2_accuracy: 31.028
+    #    phase2_loss: 0.09429215
     BTSP_decay_tau: 1.0251306989395386
     E_I_learning_rate: 0.21665683022133034
     FB_BTSP_init_weight_factor: 0.32171067283153587
