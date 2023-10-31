@@ -390,6 +390,9 @@ def plot_hidden_weights(weights, sort=False):
 def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort=False, num_cols=None, num_rows=None,
                           activity_threshold=1e-10):
     """
+    Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
+    structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
+    custom so that negative values are blue and positive values are gray.
 
     :param receptive_fields:
     :param activity_preferred_inputs:
@@ -422,7 +425,8 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
     if num_cols is None:
         if num_units < 25:
             num_cols = 5
-        num_cols = int(np.ceil(num_units**0.5))
+        else:
+            num_cols = int(np.ceil(num_units**0.5))
     if num_rows is None:
         num_rows = int(np.ceil(num_units / num_cols))
     receptive_fields = receptive_fields[:num_cols * num_rows]
@@ -828,11 +832,11 @@ def plot_correlations(network, test_dataloader):
             continue
 
         # Compute correlations
-        activity_matrix = torch.cat([layer.E.activity.T, layer.FBI.activity.T])
+        activity_matrix = torch.cat([layer.E.activity.T, layer.SomaI.activity.T])
         activity_corr_mat = cosine_similarity(activity_matrix)
 
-        E_I_weights = network.module_dict[f"{layer.E.fullname}_{layer.FBI.fullname}"].weight.data
-        I_E_weights = network.module_dict[f"{layer.FBI.fullname}_{layer.E.fullname}"].weight.data
+        E_I_weights = network.module_dict[f"{layer.E.fullname}_{layer.SomaI.fullname}"].weight.data
+        I_E_weights = network.module_dict[f"{layer.SomaI.fullname}_{layer.E.fullname}"].weight.data
 
         # Generate plots
         fig, ax = plt.subplots(1, 4, figsize=[14, 3])
@@ -841,6 +845,8 @@ def plot_correlations(network, test_dataloader):
         ax[plot_nr].scatter(I_E_weights, E_I_weights.T, c='k', alpha=0.2)
         ax[plot_nr].invert_yaxis()
         ax[plot_nr].set_title('Weight correlations')
+        ax[plot_nr].set_xlabel('E->SomaI weights')
+        ax[plot_nr].set_ylabel('SomaI->E weights')
         m, b = np.polyfit(I_E_weights.flatten(), E_I_weights.T.flatten(), 1)
         x = np.linspace(0, torch.max(I_E_weights))
         y = m * x + b
@@ -864,19 +870,19 @@ def plot_correlations(network, test_dataloader):
         plt.colorbar(im, ax=ax[plot_nr])
         ax[plot_nr].set_xticks([])
         ax[plot_nr].set_yticks([])
-        ax[plot_nr].set_ylabel('FBI units')
+        ax[plot_nr].set_ylabel('I units')
         ax[plot_nr].set_xlabel('E units')
         ax[plot_nr].set_title(f'E/I correlation')
         plot_nr += 1
 
         im = ax[plot_nr].imshow(activity_corr_mat[layer.E.size:, layer.E.size:],
                                 vmin=np.min(activity_corr_mat), vmax=np.max(activity_corr_mat))
-        ax[plot_nr].set_title(f'{layer.FBI.fullname} ')
+        ax[plot_nr].set_title(f'{layer.SomaI.fullname} ')
         plt.colorbar(im, ax=ax[plot_nr])
         ax[plot_nr].set_xticks([])
         ax[plot_nr].set_yticks([])
-        ax[plot_nr].set_ylabel('FBI units')
-        ax[plot_nr].set_xlabel('FBI units')
+        ax[plot_nr].set_ylabel('I units')
+        ax[plot_nr].set_xlabel('I units')
         plot_nr += 1
 
         plt.suptitle(f'{layer.name} activity similarity matrix', fontsize=18)
@@ -885,6 +891,7 @@ def plot_correlations(network, test_dataloader):
         plt.show()
         print(f'Pearson correlation: r={r_val:.3f}, r^2={r_val ** 2:.3f}, p={p_val:.2E}')
 
+        # Plot weight vs. activity correlation
         EI_corr = activity_corr_mat[layer.E.size:, 0:layer.E.size]
         fig, ax = plt.subplots(1, 2, figsize=[8, 2])
         ax[0].scatter(EI_corr, I_E_weights, c='r', alpha=0.2)
@@ -1373,9 +1380,6 @@ def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataload
     plt.legend()
     plt.xlabel('PC1')
     plt.ylabel('PC2')
-
-
-
 
 
 def plot_3D_loss_surface(loss_grid, PC1_mesh, PC2_mesh):

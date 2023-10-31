@@ -40,6 +40,8 @@ class Network(nn.Module):
         """
         super().__init__()
         self.device = torch.device(device)
+        self.layer_config = layer_config
+        self.projection_config = projection_config
 
         # Load loss criterion
         if isinstance(criterion, str):

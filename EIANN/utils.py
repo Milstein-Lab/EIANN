@@ -1148,6 +1148,8 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         if "Backprop" in str(test_network.backward_methods):
             assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
 
+    test_network.batch_size = batch_size
+    test_network.constrain_params = constrain_params
     test_network.reset_history()
 
     # Align param_history and prev_param_history (exclude initial params)
@@ -1197,7 +1199,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         else:
             # Backward update specified by learning rules in network2
             for backward in test_network.backward_methods:
-                backward(test_network, output, target)
+                backward(test_network, output, sample_target)
 
             # Step weights and biases
             for layer in test_network:
@@ -1256,7 +1258,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     return test_network
 
 
-def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=False, recompute_allparams_vector=False):
+def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=False, binarize=False):
 
     '''
     Compute the angle between the actual and predicted parameter updates (dW) for each training step.
@@ -1281,6 +1283,10 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
             # Compute angle between parameter update (dW) vectors
             predicted_dParam = predicted_dParam.flatten()
             actual_dParam = actual_dParam.flatten()
+            if binarize:
+                predicted_dParam = torch.sign(predicted_dParam)
+                actual_dParam = torch.sign(actual_dParam)
+                
             vector_product = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-100)
             angle_rad = np.arccos(torch.round(vector_product,decimals=5))
             angle = angle_rad * 180 / np.pi
