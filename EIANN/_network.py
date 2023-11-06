@@ -13,7 +13,7 @@ import time
 from collections import defaultdict
 from functools import partial
 
-from EIANN.utils import half_kaining_init, scaled_kaining_init, linear
+from EIANN.utils import half_kaining_init, scaled_kaining_init, linear, read_from_yaml
 import EIANN.rules as rules
 import EIANN.external as external
 
@@ -40,6 +40,8 @@ class Network(nn.Module):
         """
         super().__init__()
         self.device = torch.device(device)
+        self.layer_config = layer_config
+        self.projection_config = projection_config
 
         # Load loss criterion
         if isinstance(criterion, str):
@@ -177,6 +179,8 @@ class Network(nn.Module):
         self.loss_history = []
         self.param_history = []
         self.param_history_steps = []
+        self.prev_param_history = []
+        self.target_history = []
         for layer in self:
             for population in layer:
                 population.reinit(self.device)
@@ -340,9 +344,9 @@ class Network(nn.Module):
                 store_params_range = torch.arange(train_step_range[store_params_interval[0]],
                                                    train_step_range[store_params_interval[1]] + 1,
                                                    store_params_interval[2])
-            if train_step in store_params_range:
+            if store_params_interval[2] == 1:
                 self.param_history.append(deepcopy(self.state_dict()))
-                self.param_history_steps.append(train_step)
+                self.param_history_steps.append(train_step-1)
 
         if status_bar:
             from tqdm.autonotebook import tqdm
@@ -374,7 +378,6 @@ class Network(nn.Module):
             for sample_count, (sample_idx, sample_data, sample_target) in enumerate(dataloader_iter):
                 if sample_count >= samples_per_epoch:
                     break
-                train_step += 1
                 sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
                 if not train_data_on_device:
@@ -433,6 +436,8 @@ class Network(nn.Module):
                     val_accuracy_history.append(accuracy.item())
                     self.val_history_train_steps.append(train_step)
 
+                train_step += 1
+
             epoch_sample_order = torch.concat(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
             self.sorted_sample_indexes.extend(torch.add(epoch * samples_per_epoch, torch.argsort(epoch_sample_order)))
@@ -472,10 +477,9 @@ class Network(nn.Module):
         #         print('Model not saved')
         #         return
 
-        self.params_to_save.extend(['param_history', 'param_history_steps', 'sample_order', 'target_history',
+        self.params_to_save.extend(['param_history', 'param_history_steps', 'prev_param_history', 'sample_order', 'target_history',
                                     'sorted_sample_indexes', 'loss_history', 'val_output_history', 'val_loss_history',
-                                    'val_history_train_steps', 'val_accuracy_history', 'val_target',
-                                    'attribute_history_dict'])
+                                    'val_history_train_steps', 'val_accuracy_history', 'val_target', 'attribute_history_dict'])
 
         data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
                                  if param_name in self.params_to_save},
@@ -522,31 +526,10 @@ class Network(nn.Module):
             yield layer
 
 
-class AttrDict(dict):
-    """
-    Enables Layers, Populations, and Projections to be accessed as attributes of the network object.
-    """
-    def __init__(self, value=None):
-        if value is None:
-            pass
-        elif isinstance(value, dict):
-            for key in value:
-                self.__setitem__(key, value[key])
-        else:
-            raise TypeError('expected dict')
-
-    def __setitem__(self, key, value):
-        if isinstance(value, dict) and not isinstance(value, AttrDict):
-            value = AttrDict(value)
-        super(AttrDict, self).__setitem__(key, value)
-
-    def __getitem__(self, key):
-        found = self.get(key)
-        if found is None:
-            raise KeyError
-        return found
-
-    __setattr__, __getattr__ = __setitem__, __getitem__
+class AttrDict:
+    def __iter__(self):
+        for key in self.__dict__:
+            yield key
 
 
 class Layer(object):
@@ -746,7 +729,7 @@ class Population(object):
             self.projections[projection.pre.layer.name] = {}
             self.__dict__[projection.pre.layer.name] = AttrDict()
         self.projections[projection.pre.layer.name][projection.pre.name] = projection
-        self.__dict__[projection.pre.layer.name][projection.pre.name] = projection
+        self.__dict__[projection.pre.layer.name].__dict__[projection.pre.name] = projection
 
         self.network.module_dict[projection.name] = projection
         self.network.optimizer_params_list.append({'params': projection.weight,
@@ -918,3 +901,16 @@ class Projection(nn.Linear):
     @property
     def weight_history(self):
         return self.get_weight_history()
+    
+
+
+def build_EIANN_from_config(config_path, network_seed=42):
+    '''
+    Build an EIANN network from a config file
+    '''
+    network_config = read_from_yaml(config_path)
+    layer_config = network_config['layer_config']
+    projection_config = network_config['projection_config']
+    training_kwargs = network_config['training_kwargs']
+    network = Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
+    return network
