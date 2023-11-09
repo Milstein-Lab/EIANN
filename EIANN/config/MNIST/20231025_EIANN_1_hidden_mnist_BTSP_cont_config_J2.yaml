@@ -71,9 +71,7 @@ projection_config:
                         transpose: True
                     update_phase: B
                     compartment: dend
-                    learning_rule: BTSP_12_cont
-                    learning_rule_kwargs:
-                        learning_rate: 0.1237506954463254
+                    learning_rule: null
         SomaI:
             Input:
                 E:
