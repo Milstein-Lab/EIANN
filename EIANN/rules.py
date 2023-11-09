@@ -3162,9 +3162,9 @@ class BP_like_1(LearningRule):
     
     def step(self):
         self.projection.weight.data += \
-            (self.learning_rate * torch.outer(self.projection.post.dendritic_state -
-                                              self.projection.post.forward_dendritic_state,
-                                              self.projection.pre.activity))
+            (self.learning_rate * torch.outer(torch.clamp(self.projection.post.dendritic_state -
+                                              self.projection.post.forward_dendritic_state, min=-1, max=1),
+                                              torch.clamp(self.projection.pre.activity, min=0, max=1)))
         
     @classmethod
     def backward_update_activity(cls, network, store_dynamics=False):
@@ -3271,6 +3271,8 @@ class BP_like_1(LearningRule):
                                         torch.clamp(target - output_pop.activity, min=-1, max=1))
                                     output_pop.plateau = output_pop.dendritic_state.detach().clone()
                                     output_pop.dend_to_soma = output_pop.dendritic_state.detach().clone()
+                                else:
+                                    output_pop.dendritic_state = output_pop.plateau.detach().clone()
                             break
             # update activities
             cls.backward_update_activity(network, store_dynamics=store_dynamics)
