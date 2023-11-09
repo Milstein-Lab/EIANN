@@ -262,6 +262,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
                                             context.debug, context.disp, context.debug and plot):
             if not context.debug:
+                if context.interactive:
+                    context.update(locals())
                 return dict()
 
     if plot:

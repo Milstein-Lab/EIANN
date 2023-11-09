@@ -23,3 +23,44 @@ BTSP_cont_J:
     Output_I_Output_I_init_weight_scale: 5.649098732973941
     H1_I_size: 50.0
     Output_I_size: 10.0
+BTSP_cont_J2_test:
+    H1_E_Input_E_max_weight_scale: 6.703968730055465
+    FF_BTSP_init_weight_factor: 0.10220177607888674
+    H1_E_Input_E_BTSP_learning_rate: 0.0142912609586897
+    H1_E_H1_SomaI_init_weight_scale: 1.8255369176803904
+    H1_SomaI_H1_E_init_weight_scale: 1.929021462688893
+    H1_SomaI_Input_E_init_weight_scale: 1.5548944523570798
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.236080634549799
+    H1_E_H1_DendI_init_weight_scale: 0.8264359385855641
+    H1_E_H1_DendI_learning_rate: 0.018935752597018428
+    H1_DendI_H1_E_init_weight_scale: 5.908747314893644
+    H1_DendI_H1_DendI_init_weight_scale: 1.352768419002555
+    Output_E_H1_E_max_weight_scale: 18.825374515229953
+    Output_E_BTSP_learning_rate: 0.045617381037145945
+    Output_E_Output_I_init_weight_scale: 0.4652576767324213
+    Output_I_Output_E_init_weight_scale: 0.384000347914311
+    Output_I_H1_E_init_weight_scale: 1.16120957786729
+    Output_I_Output_I_init_weight_scale: 5.649098732973941
+    H1_I_size: 50.0
+    Output_I_size: 10.0
+BTSP_cont_J3_test:
+    H1_E_Input_E_max_weight_scale: 6.703968730055465
+    FF_BTSP_init_weight_factor: 0.10220177607888674
+    H1_E_Input_E_BTSP_learning_rate: 0.0142912609586897
+    H1_E_Output_E_init_weight_scale: 1.4981528687258885
+    H1_E_H1_SomaI_init_weight_scale: 1.8255369176803904
+    H1_SomaI_H1_E_init_weight_scale: 1.929021462688893
+    H1_SomaI_Input_E_init_weight_scale: 1.5548944523570798
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.236080634549799
+    H1_E_H1_DendI_init_weight_scale: 0.8264359385855641
+    H1_E_H1_DendI_learning_rate: 0.018935752597018428
+    H1_DendI_H1_E_init_weight_scale: 5.908747314893644
+    H1_DendI_H1_DendI_init_weight_scale: 1.352768419002555
+    Output_E_H1_E_max_weight_scale: 18.825374515229953
+    Output_E_BTSP_learning_rate: 0.045617381037145945
+    Output_E_Output_I_init_weight_scale: 0.4652576767324213
+    Output_I_Output_E_init_weight_scale: 0.384000347914311
+    Output_I_H1_E_init_weight_scale: 1.16120957786729
+    Output_I_Output_I_init_weight_scale: 5.649098732973941
+    H1_I_size: 50.0
+    Output_I_size: 10.0

@@ -3222,7 +3222,7 @@ class DendriticLoss_5(LearningRule):
                                                    torch.clamp(self.projection.pre.forward_activity, 0, 1))
 
 
-def clone_weight(projection, source=None, sign=1, scale=1, source2=None):
+def clone_weight(projection, source=None, sign=1, scale=1, source2=None, transpose=False):
     """
     Force a projection to exactly copy the weights of another projection (or product of two projections).
     """
@@ -3240,6 +3240,8 @@ def clone_weight(projection, source=None, sign=1, scale=1, source2=None):
                 source2_pre_pop]
         source2_weight_data = source2_projection.weight.data.clone()
         source_weight_data = source_weight_data * source2_weight_data
+    if transpose:
+        source_weight_data = source_weight_data.T
     if source_weight_data.shape != projection.weight.data.shape:
         raise Exception('clone_weight: projection shapes do not match; target: %s, %s; source: %s, %s' %
                         (projection.name, str(projection.weight.data.shape), source_projection.name,
