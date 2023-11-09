@@ -330,7 +330,7 @@ class Network(nn.Module):
                 accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
                            output.shape[0]
                 val_accuracy_history.append(accuracy.item())
-                self.val_history_train_steps.append(train_step)
+                self.val_history_train_steps.append(train_step-1)
 
         # Store history of weights and biases
         if store_params:

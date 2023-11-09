@@ -332,6 +332,13 @@ BTSP_F7:
     # accuracy: 87.9724
     # stability: good stability to 50000 train steps
     # H1 is sparse despite removing hard cap on # of plateaus, but there are no longer unutilized weights
+    # CL:
+    #    final_accuracy: 18.959999084472656
+    #    final_loss: 0.12817199528217316
+    #    phase1_accuracy: 92.085335
+    #    phase1_loss: 0.021253183
+    #    phase2_accuracy: 93.616
+    #    phase2_loss: 0.024156032
     BTSP_decay_tau: 1.0189490287747094
     E_I_learning_rate: 0.14645460023593235
     FB_BTSP_init_weight_factor: 0.5458138304597818
