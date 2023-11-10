@@ -1,6 +1,7 @@
 BTSP_cont_J:
     #    accuracy: 85.0199
     #    loss: 0.04375933
+    # update_function had error that scaled down the init_weight scale of H1.E.H1.DendI
     H1_E_Input_E_max_weight_scale: 6.703968730055465
     FF_BTSP_init_weight_factor: 0.10220177607888674
     H1_E_Input_E_BTSP_learning_rate: 0.0142912609586897
@@ -92,7 +93,7 @@ BP_like_2A_test:
     Output_I_Output_E_init_weight_scale: 0.384000347914311
     Output_I_H1_E_init_weight_scale: 1.16120957786729
     Output_I_Output_I_init_weight_scale: 5.649098732973941
-    H1_E_H1_DendI_init_weight_scale: 0.8264359385855641
+    H1_E_H1_DendI_init_weight_scale: 5.
     H1_E_H1_DendI_learning_rate: 0.018935752597018428
     H1_DendI_H1_E_init_weight_scale: 5.908747314893644
     H1_DendI_H1_DendI_init_weight_scale: 1.352768419002555
