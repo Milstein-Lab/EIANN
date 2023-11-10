@@ -1591,6 +1591,7 @@ def update_EIANN_config_1_hidden_BTSP_F1(x, context):
                              math.sqrt(context.layer_config['H1']['SomaI']['size']) / 2
     I_I_learning_rate = param_dict['I_I_learning_rate']
 
+    # TODO: This scaling of a kaining_init seems wrong
     H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
                                       math.sqrt(context.layer_config['H1']['DendI']['size'])
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
@@ -1720,7 +1721,8 @@ def update_EIANN_config_1_hidden_BTSP_F2(x, context):
     H1_I_H1_I_weight_scale = param_dict['H1_I_H1_I_weight_scale'] * \
                              math.sqrt(context.layer_config['H1']['SomaI']['size']) / 2
     I_I_learning_rate = param_dict['I_I_learning_rate']
-
+    
+    # TODO: This scaling of a kaining_init seems wrong
     H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
                                       math.sqrt(context.layer_config['H1']['DendI']['size'])
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
@@ -1845,7 +1847,8 @@ def update_EIANN_config_1_hidden_BTSP_F3(x, context):
     H1_I_H1_I_weight_scale = param_dict['H1_I_H1_I_weight_scale'] * \
                              math.sqrt(context.layer_config['H1']['SomaI']['size']) / 2
     I_I_learning_rate = param_dict['I_I_learning_rate']
-
+    
+    # TODO: This scaling of a kaining_init seems wrong
     H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
                                       math.sqrt(context.layer_config['H1']['DendI']['size'])
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
@@ -1975,6 +1978,8 @@ def update_EIANN_config_1_hidden_BTSP_F5(x, context):
                                  math.sqrt(context.layer_config['H1']['E']['size']) / 2
     H1_DendI_H1_DendI_weight_scale = param_dict['H1_DendI_H1_DendI_weight_scale'] * \
                                      math.sqrt(context.layer_config['H1']['DendI']['size']) / 2
+    
+    # TODO: This scaling of a kaining_init seems wrong
     H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
                                       math.sqrt(context.layer_config['H1']['DendI']['size'])
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
@@ -2114,6 +2119,8 @@ def update_EIANN_config_1_hidden_BTSP_F6(x, context):
                                  math.sqrt(context.layer_config['H1']['E']['size']) / 2
     H1_DendI_H1_DendI_weight_scale = param_dict['H1_DendI_H1_DendI_weight_scale'] * \
                                      math.sqrt(context.layer_config['H1']['DendI']['size']) / 2
+    
+    # TODO: This scaling of a kaining_init seems wrong
     H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
                                       math.sqrt(context.layer_config['H1']['DendI']['size'])
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
@@ -2257,6 +2264,8 @@ def update_EIANN_config_1_hidden_BTSP_F7(x, context):
                                  math.sqrt(context.layer_config['H1']['E']['size']) / 2
     H1_DendI_H1_DendI_weight_scale = param_dict['H1_DendI_H1_DendI_weight_scale'] * \
                                      math.sqrt(context.layer_config['H1']['DendI']['size']) / 2
+    
+    # TODO: This scaling of a kaining_init seems wrong
     H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
                                       math.sqrt(context.layer_config['H1']['DendI']['size'])
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
@@ -2407,6 +2416,8 @@ def update_EIANN_config_1_hidden_BTSP_F8(x, context):
                                  math.sqrt(context.layer_config['H1']['E']['size']) / 2
     H1_DendI_H1_DendI_weight_scale = param_dict['H1_DendI_H1_DendI_weight_scale'] * \
                                      math.sqrt(context.layer_config['H1']['DendI']['size']) / 2
+    
+    # TODO: This scaling of a kaining_init seems wrong
     H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
                                       math.sqrt(context.layer_config['H1']['DendI']['size'])
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
@@ -2557,6 +2568,8 @@ def update_EIANN_config_1_hidden_BTSP_G(x, context):
 
     H1_DendI_H1_E_init_weight_scale = param_dict['H1_DendI_H1_E_init_weight_scale']
     H1_DendI_H1_DendI_init_weight_scale = param_dict['H1_DendI_H1_DendI_init_weight_scale']
+    
+    # TODO: This scaling of a kaining_init seems wrong
     H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
                                       math.sqrt(context.layer_config['H1']['DendI']['size'])
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
@@ -2683,6 +2696,8 @@ def update_EIANN_config_1_hidden_BTSP_G3(x, context):
 
     H1_DendI_H1_E_init_weight_scale = param_dict['H1_DendI_H1_E_init_weight_scale']
     H1_DendI_H1_DendI_init_weight_scale = param_dict['H1_DendI_H1_DendI_init_weight_scale']
+    
+    # TODO: This scaling of a kaining_init seems wrong
     H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
                                       math.sqrt(context.layer_config['H1']['DendI']['size'])
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
@@ -2798,6 +2813,8 @@ def update_EIANN_config_1_hidden_BTSP_cont_J(x, context):
     
     H1_DendI_H1_E_init_weight_scale = param_dict['H1_DendI_H1_E_init_weight_scale']
     H1_DendI_H1_DendI_init_weight_scale = param_dict['H1_DendI_H1_DendI_init_weight_scale']
+    
+    # TODO: This scaling of a kaining_init seems wrong
     H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
                                       math.sqrt(context.layer_config['H1']['DendI']['size'])
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
@@ -2883,8 +2900,7 @@ def update_EIANN_config_1_hidden_BTSP_cont_J2(x, context):
     
     H1_DendI_H1_E_init_weight_scale = param_dict['H1_DendI_H1_E_init_weight_scale']
     H1_DendI_H1_DendI_init_weight_scale = param_dict['H1_DendI_H1_DendI_init_weight_scale']
-    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
-                                      math.sqrt(context.layer_config['H1']['DendI']['size'])
+    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale']
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
     
     Output_E_H1_E_max_weight_scale = param_dict['Output_E_H1_E_max_weight_scale']
@@ -2964,8 +2980,7 @@ def update_EIANN_config_1_hidden_BTSP_cont_J3(x, context):
     
     H1_DendI_H1_E_init_weight_scale = param_dict['H1_DendI_H1_E_init_weight_scale']
     H1_DendI_H1_DendI_init_weight_scale = param_dict['H1_DendI_H1_DendI_init_weight_scale']
-    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale'] / \
-                                      math.sqrt(context.layer_config['H1']['DendI']['size'])
+    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale']
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
     
     Output_E_H1_E_max_weight_scale = param_dict['Output_E_H1_E_max_weight_scale']
@@ -3110,8 +3125,8 @@ def update_EIANN_config_1_hidden_BTSP_K1(x, context):
 
     H1_DendI_H1_E_init_weight_scale = param_dict['H1_DendI_H1_E_init_weight_scale']
     H1_DendI_H1_DendI_init_weight_scale = param_dict['H1_DendI_H1_DendI_init_weight_scale']
-    H1_E_H1_DendI_init_weight_scale = (param_dict['H1_E_H1_DendI_init_weight_scale'] /
-                                       math.sqrt(context.layer_config['H1']['DendI']['size']))
+    
+    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale']
     H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
 
     Output_E_H1_E_max_weight_scale = param_dict['Output_E_H1_E_max_weight_scale']
