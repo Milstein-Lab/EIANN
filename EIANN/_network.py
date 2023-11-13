@@ -170,7 +170,17 @@ class Network(nn.Module):
                     for projection in post_pop:
                         if projection.weight_bounds is not None:
                             projection.weight.data = projection.weight.data.clamp(*projection.weight_bounds)
-                        if projection.constrain_weight is not None:
+                        if (projection.constrain_weight is not None and
+                                projection.weight_constraint_name != 'clone_weight'):
+                            projection.constrain_weight()
+        
+        # After all constraints have been applied, clone weights
+        for i, post_layer in enumerate(self):
+            if i > 0:
+                for post_pop in post_layer:
+                    for projection in post_pop:
+                        if (projection.constrain_weight is not None and
+                                projection.weight_constraint_name == 'clone_weight'):
                             projection.constrain_weight()
 
     def reset_history(self):
@@ -805,6 +815,7 @@ class Projection(nn.Linear):
             self.constrain_weight = None
         else:
             if isinstance(weight_constraint, str):
+                self.weight_constraint_name = weight_constraint
                 if hasattr(rules, weight_constraint):
                     weight_constraint = getattr(rules, weight_constraint)
                 elif hasattr(external, weight_constraint):
@@ -813,6 +824,8 @@ class Projection(nn.Linear):
                 raise RuntimeError \
                     ('Projection: weight_constraint: %s must be imported and callable' %
                      weight_constraint)
+            else:
+                self.weight_constraint_name = weight_constraint.__name__
             if weight_constraint_kwargs is None:
                 weight_constraint_kwargs = {}
             self.constrain_weight = \
