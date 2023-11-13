@@ -3261,3 +3261,62 @@ def normalize_weight(projection, scale, autapses=False, axis=1):
 def no_autapses(projection):
     if projection.pre is projection.post:
         projection.weight.data.fill_diagonal_(0.)
+
+
+
+class almost_backprop(LearningRule):
+    def __init__(self, projection, learning_rate=None):
+        super().__init__(projection, learning_rate)
+
+        self.w_max = 2.
+        self.k_dep = 0.5
+        self.dep_sigmoid = get_scaled_rectified_sigmoid(0.01, 0.02)
+
+    def step(self):
+        # Update the weights
+        
+        # ETxIS = torch.outer(self.projection.post.IS, self.projection.pre.ET)
+        # delta_weight = ETxIS #*(self.w_max-self.projection.weight) - self.projection.weight * self.k_dep * self.dep_sigmoid(ETxIS)
+        
+        # ~BTSP weight update (pot component only)
+        ETxIS = torch.outer(self.projection.post.dendritic_state, self.projection.pre.activity)
+        weight_dependance = self.w_max - (self.projection.weight*self.projection.weight.sign())
+        delta_weight = ETxIS * weight_dependance - self.projection.weight*self.k_dep*self.dep_sigmoid(ETxIS)
+
+        # # ~Backprop weight update
+        # delta_weight = torch.outer(self.projection.post.dendritic_state, self.projection.pre.activity)
+
+        self.projection.weight.data += self.learning_rate * delta_weight
+
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        """
+        Integrate top-down inputs and update dendritic state variables.
+        :param network:
+        :param output:
+        :param target:
+        :param store_history: bool
+        :param store_dynamics: bool
+        """
+
+        # Compute Output loss & set dendritic state
+        global_error = target - output
+
+        # Set dendritic state with the local loss in each layer
+        reversed_layers = list(network)[::-1]
+        network.output_pop.dendritic_state = global_error
+        for i,layer in enumerate(reversed_layers[:-1]): # Iterate over populations in reverse order starting from the output layer
+            # layer.E.activity *= 0 # Reset activity (~= zero_grad, removes the forward activity)
+
+            layer.E.backward_activity = layer.E.activity + layer.E.dendritic_state # nudge somatic state
+
+            pre_layer = reversed_layers[i+1]
+            forward_weight_transpose = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight.T
+
+            inhibition = forward_weight_transpose @ layer.E.activity
+            pre_layer.E.dendritic_state = forward_weight_transpose @ layer.E.backward_activity - inhibition
+
+
+            # layer.E.append_attribute_history('backward_dendritic_state', layer.E.dendritic_state.detach().clone())
+
+

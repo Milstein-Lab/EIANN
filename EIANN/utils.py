@@ -1140,8 +1140,8 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     if network2 is None: # Turn on gradient tracking to compute backprop dW
         test_network = copy.deepcopy(network)
         test_network.backward_steps = 3
-        for parameter in network.parameters(): 
-            if parameter.is_learned:
+        for parameter, orig_param in zip(test_network.parameters(), network.parameters()): 
+            if orig_param.is_learned:
                 parameter.requires_grad = True
     else:
         test_network = copy.deepcopy(network2)
@@ -1154,14 +1154,14 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
 
     # Align param_history and prev_param_history (exclude initial params)
     if len(network.prev_param_history)==0: # if interval step is 1
-        prev_param_history = network.param_history[:]
-        param_history = network.param_history[1:] 
+        print('WARNING: network.prev_param_history is empty, using network.param_history instead')
+        prev_param_history = network.param_history[:-2] # exclude final params
+        param_history = network.param_history[1:] # exclude initial params
         param_history_steps = network.param_history_steps[1:]
     else:
         prev_param_history = network.prev_param_history
-        param_history = network.param_history[1:] 
-        param_history_steps = network.param_history_steps[1:]
-
+        param_history = network.param_history
+        param_history_steps = network.param_history_steps
 
     actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
     actual_dParam_history_all = []
@@ -1181,12 +1181,12 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
 
         # Compute forward pass
         if batch_size is not None:
-            sample_id = param_history_steps[t]
-            sample_data = data[sample_id:sample_id+batch_size]
-            sample_target = target[sample_id:sample_id+batch_size]
+            sample_idx = network.sample_order[param_history_steps[t]:param_history_steps[t]+batch_size]            
+            sample_data = data[sample_idx]
+            sample_target = target[sample_idx]
 
         output = test_network.forward(sample_data)
-        loss = test_network.criterion(output, sample_target)            
+        loss = test_network.criterion(output, sample_target)   
 
         # Compute backward pass update
         if network2 is None:
@@ -1231,8 +1231,8 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             dParam_vec.append(dParam.flatten())
         actual_dParam_history_all.append(torch.cat(dParam_vec))
 
+        # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
         if t<len(param_history)-1:
-            # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
             next_state_dict = prev_param_history[t+1]
             dParam_vec = []
             for key in actual_dParam_history_dict_stepaveraged:
@@ -1300,7 +1300,7 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
             ax.set_xlabel('Training step')
             ax.set_ylabel('Angle between \nlearning rules (degrees)')
 
-            max_angle = max(95, np.max(angles[param_name]))
+            max_angle = max(95, np.nanmax(angles[param_name]))
             ax.set_ylim(bottom=0, top=max_angle)
             ax.set_yticks(np.arange(0, max_angle+1, 30))
             if i == n_params-1:
@@ -1318,6 +1318,39 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
 
     return angles
 
+
+def recompute_dParam_history_all(network):
+    '''
+    Recompute the 'all_params' key in dParam history (in case any changes are made to the dParam_history dicts)
+    '''
+
+    actual_dParam_history_all = []
+    actual_dParam_history_stepaveraged_all = []
+    predicted_dParam_history_all = []
+
+    for t in range(len(network.param_history)):
+        # Compute the predicted dParam (from the test network)
+        dParam_vec = []
+        for name,dParam_history in network.predicted_dParam_history.items():
+            dParam_vec.append(dParam_history[t].flatten())
+        predicted_dParam_history_all.append(torch.cat(dParam_vec))
+
+        # Compute the actual dParam of the first network
+        dParam_vec = []
+        for name,dParam_history in network.actual_dParam_history.items():
+            dParam_vec.append(dParam_history[t].flatten())
+        actual_dParam_history_all.append(torch.cat(dParam_vec))
+
+        # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
+        if t<len(network.param_history)-1:
+            dParam_vec = []
+            for name,dParam_history in network.actual_dParam_history_stepaveraged.items():
+                dParam_vec.append(dParam_history[t].flatten())
+            actual_dParam_history_stepaveraged_all.append(torch.cat(dParam_vec))
+
+    network.actual_dParam_history['all_params'] = actual_dParam_history_all
+    network.actual_dParam_history_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
+    network.predicted_dParam_history['all_params'] = predicted_dParam_history_all
 
 
 # *******************************************************************
@@ -1574,11 +1607,8 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000):
 
     # Load dataset
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=True, download=False,
-                                            transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/',
-                                            train=False, download=False,
-                                            transform=tensor_flatten)
+    MNIST_train_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=True, download=False, transform=tensor_flatten)
+    MNIST_test_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=False, download=False, transform=tensor_flatten)
 
     # Add index to train & test data
     MNIST_train = []
