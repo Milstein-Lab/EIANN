@@ -1,5 +1,8 @@
 bounds:
-    E_E_learning_rate:
+    H1_E_E_learning_rate:
+        - 0.0001
+        - 1.
+    Output_E_E_learning_rate:
         - 0.0001
         - 1.
     H1_E_Input_E_init_weight_scale:
@@ -60,7 +63,7 @@ kwargs:
     constrain_equilibration_dynamics: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
-      function: update_EIANN_config_1_hidden_backprop_Dale_softplus_SGD_G
+      function: update_EIANN_config_1_hidden_backprop_Dale_relu_SGD_G
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       get_args_static: get_random_seeds
@@ -69,7 +72,8 @@ stages:
       get_objectives: get_objectives
 optimization_title: EIANN_1_hidden_mnist_bpDale_relu_SGD_G
 x0:
-    E_E_learning_rate: 0.5
+    H1_E_E_learning_rate: 0.5
+    Output_E_E_learning_rate: 0.5
     H_I_size: 50
     Output_I_size: 10
     H1_E_Input_E_init_weight_scale: 1.

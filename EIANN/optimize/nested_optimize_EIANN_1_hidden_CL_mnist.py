@@ -70,8 +70,6 @@ def config_worker():
         context.interactive = False
     else:
         context.interactive = str_to_bool(context.interactive)
-    if 'export_network_config_file_path' not in context():
-        context.export_network_config_file_path = None
     if 'eval_accuracy' not in context():
         context.eval_accuracy = 'final'
     else:
@@ -110,6 +108,9 @@ def config_worker():
         context.constrain_equilibration_dynamics = True
     else:
         context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
+    if 'export_network_config_file_path' not in context():
+        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+        context.export_network_config_file_path = f"{context.output_dir}/{network_name}_optimized.yaml"
     if 'retrain' not in context():
         context.retrain = True
     else:
@@ -298,7 +299,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         sys.stdout.flush()
         context.update(locals())
 
-    if context.export_network_config_file_path is not None:
+    if export:
         config_dict = {'layer_config': context.layer_config,
                        'projection_config': context.projection_config,
                        'training_kwargs': context.training_kwargs}

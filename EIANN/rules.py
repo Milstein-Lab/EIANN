@@ -3015,8 +3015,8 @@ class BTSP_13(LearningRule):
                                 delta_state = delta_state + projection(pre_pop.prev_activity)
                     post_pop.state = post_pop.state + delta_state / post_pop.tau
                     post_pop.activity = post_pop.activation(post_pop.state)
-                if store_dynamics:
-                    post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
+                    if store_dynamics:
+                        post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
     
     @classmethod
     def backward_update_layer_dendritic_state(cls, layer):
@@ -3135,6 +3135,7 @@ class BTSP_13(LearningRule):
                                 pop.append_attribute_history('plateau', pop.plateau.detach().clone())
                                 pop.append_attribute_history('backward_dendritic_state',
                                                              pop.dendritic_state.detach().clone())
+                            break
                     if pop.backward_projections or pop is output_pop:
                         if store_history:
                             if store_dynamics:

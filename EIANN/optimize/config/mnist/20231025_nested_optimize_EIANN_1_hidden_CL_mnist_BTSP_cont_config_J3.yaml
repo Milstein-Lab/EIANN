@@ -1,0 +1,114 @@
+bounds:
+    H1_E_Input_E_max_weight_scale:
+        - 0.01
+        - 20.
+    FF_BTSP_init_weight_factor:
+        - 0.01
+        - 1.
+    H1_E_Input_E_BTSP_learning_rate:
+        - 0.0001
+        - 0.25
+    H1_E_Output_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_E_H1_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_H1_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_E_H1_DendI_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_E_H1_DendI_learning_rate:
+        - 0.0001
+        - 0.25
+    H1_DendI_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_DendI_H1_DendI_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_H1_E_max_weight_scale:
+        - 0.01
+        - 20.
+    Output_E_BTSP_learning_rate:
+        - 0.0001
+        - 0.25
+    Output_E_Output_I_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_I_size:
+        - 1
+        - 100
+    Output_I_size:
+        - 1
+        - 10
+default_params:
+    H1_I_size: 50
+    Output_I_size: 10
+rel_bounds:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 20000
+    split: 0.75
+    epochs: 1
+    network_config_file_path: config/MNIST/20231025_EIANN_1_hidden_mnist_BTSP_cont_config_J3.yaml
+    val_interval:
+        - -2001
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 2000
+    constrain_equilibration_dynamics: True
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
+      function: update_EIANN_config_1_hidden_BTSP_cont_J3
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_1_hidden_CL_mnist_BTSP_cont_J3
+x0:
+    FF_BTSP_init_weight_factor: 0.14933762086546284
+    H1_E_H1_SomaI_init_weight_scale: 0.01320454234508166
+    H1_E_H1_DendI_init_weight_scale: 0.15693539946852347
+    H1_E_H1_DendI_learning_rate: 0.17678741629227127
+    H1_E_Input_E_BTSP_learning_rate: 0.007971513519070807
+    H1_E_Input_E_max_weight_scale: 2.6271244086908077
+    H1_E_Output_E_init_weight_scale: 3.188187856987675
+    H1_SomaI_H1_E_init_weight_scale: 1.
+    H1_DendI_H1_E_init_weight_scale: 1.
+    H1_SomaI_Input_E_init_weight_scale: 3.056677478413984
+    H1_SomaI_H1_SomaI_init_weight_scale: 2.2349494313586358
+    H1_DendI_H1_DendI_init_weight_scale: 2.2349494313586358
+    Output_E_BTSP_learning_rate: 0.11277464693344395
+    Output_E_H1_E_max_weight_scale: 4.006206567051037
+    Output_E_Output_I_init_weight_scale: 0.3002765663599449
+    Output_I_Output_E_init_weight_scale: 1.
+    Output_I_H1_E_init_weight_scale: 0.36606750462367517
+    Output_I_Output_I_init_weight_scale: 1.1113407626461944
+    H1_I_size: 50
+    Output_I_size: 10
