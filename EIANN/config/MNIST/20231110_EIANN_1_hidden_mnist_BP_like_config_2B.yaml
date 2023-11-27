@@ -1,5 +1,6 @@
 # H1.E.Output.E cloned from Output.E.H1.E
-# With H1.DendI.Output.E input at H1.E.H1.DendI learned with DendriticLoss_5
+# With H1.DendI.Output.E input
+# H1.E.H1.DendI learned with DendriticLoss_5
 layer_config:
     Input:
         E:

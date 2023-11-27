@@ -465,12 +465,13 @@ class Network(nn.Module):
         if save_to_file is not None:
             self.save(path=save_to_file)
 
-    def save(self, path=None, dir='saved_networks', file_name_base=None):
+    def save(self, path=None, dir='saved_networks', file_name_base=None, disp=True):
         """
 
         :param path: str (path to file)
         :param dir: str (path to dir)
         :param file_name_base: str
+        :param disp: str
         """
         if path is None:
             if file_name_base is None:
@@ -487,10 +488,11 @@ class Network(nn.Module):
         #         print('Model not saved')
         #         return
 
-        self.params_to_save.extend(['param_history', 'param_history_steps', 'prev_param_history', 'sample_order', 'target_history',
-                                    'sorted_sample_indexes', 'loss_history', 'val_output_history', 'val_loss_history',
-                                    'val_history_train_steps', 'val_accuracy_history', 'val_target', 'attribute_history_dict'])
-
+        self.params_to_save.extend(['param_history', 'param_history_steps', 'prev_param_history', 'sample_order',
+                                    'target_history', 'sorted_sample_indexes', 'loss_history', 'val_output_history',
+                                    'val_loss_history', 'val_history_train_steps', 'val_accuracy_history',
+                                    'val_target', 'attribute_history_dict'])
+        
         data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
                                  if param_name in self.params_to_save},
                      'layers': {},
@@ -509,7 +511,8 @@ class Network(nn.Module):
 
         with open(path, 'wb') as file:
             pickle.dump(data_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
-        print(f'Model saved to {path}')
+        if disp:
+            print(f'Model saved to {path}')
 
     def load(self, filepath):
         print(f"Loading model data from '{filepath}'...")

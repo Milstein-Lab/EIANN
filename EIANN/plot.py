@@ -1417,7 +1417,7 @@ def plot_FB_weight_alignment(*projections, title=None):
     """
     fig, axes = plt.subplots()
     indexes = torch.where((projections[1].weight.data.T.flatten() == projections[1].initial_weight.T.flatten())
-                          & (projections[0].weight.data.T.flatten() == projections[0].initial_weight.T.flatten()))
+                          & (projections[0].weight.data.flatten() == projections[0].initial_weight.flatten()))
     axes.scatter(projections[0].weight.data.flatten()[indexes], projections[1].weight.data.T.flatten()[indexes], s=4.,
                  label='Un-allocated weights', color='orange', zorder=3)
     axes.scatter(projections[0].weight.data.flatten(), projections[1].weight.data.T.flatten(), s=4.,

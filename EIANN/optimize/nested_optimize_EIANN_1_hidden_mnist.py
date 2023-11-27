@@ -210,7 +210,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       status_bar=context.status_bar)
         # final_weights = deepcopy(network.Output.E.H1.E.weight.data)
         if export:
-            network.save(path=context.data_file_path)
+            network.save(path=context.data_file_path, disp=False)
             if context.disp:
                 print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network history to %s' %
                       (os.getpid(), context.data_file_path))
