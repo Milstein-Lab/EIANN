@@ -388,7 +388,7 @@ def plot_hidden_weights(weights, sort=False):
 
 
 def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort=False, num_cols=None, num_rows=None,
-                          activity_threshold=1e-10):
+                          activity_threshold=1e-10, cmap='bwr'):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
     structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
@@ -438,7 +438,7 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
     fig = plt.figure(figsize=(size, size * num_rows / num_cols))
 
     colorscale_max = torch.max(receptive_fields.abs())
-    if torch.min(receptive_fields) < 0:
+    if torch.min(receptive_fields)<0 and cmap is None:
         # Create custom colormap
         top_rgba = plt.get_cmap('gray')(np.linspace(0, 1, 256))
         bottom_rgba = plt.get_cmap('Blues')(np.linspace(0, 1, 256))
@@ -446,9 +446,12 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
 
         my_cmap = plt.matplotlib.colors.LinearSegmentedColormap.from_list('custom', colors)
         colorscale_min = -colorscale_max
-    else:
+    elif cmap is None: # all positive values
         my_cmap = 'gray'
         colorscale_min = 0
+    elif cmap is not None:
+        my_cmap = cmap
+        colorscale_min = -colorscale_max
 
     for i in range(receptive_fields.shape[0]):
         row_idx = i // num_cols

@@ -1401,10 +1401,11 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
     network = population.network
 
     # turn on network gradients
-    if network.forward(data[0]).requires_grad == False:
-        network.backward_steps = 1
-        for param in network.parameters():
-            param.requires_grad = True
+    if network.backward_steps == 0:
+    # if network.forward(data[0]).requires_grad == False:
+        network.backward_steps = 3
+        # for param in network.parameters():
+        #     param.requires_grad = True
 
     weighted_avg_input, activity_preferred_inputs = compute_act_weighted_avg(population, dataloader)
 
@@ -1603,7 +1604,7 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
     return True
 
 
-def get_MNIST_dataloaders(sub_dataloader_size=1000):
+def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None):
     """
     Load MNIST dataset into custom dataloaders with sample index
     """
@@ -1615,9 +1616,17 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000):
 
     # Add index to train & test data
     MNIST_train = []
-    for idx,(data,target) in enumerate(MNIST_train_dataset):
-        target = torch.eye(len(MNIST_train_dataset.classes))[target]
+    MNIST_train_CL1 = [] # phase 1 dataset for continual learning
+    MNIST_train_CL2 = [] # phase 1 dataset for continual learning
+    for idx,(data,label) in enumerate(MNIST_train_dataset):
+        target = torch.eye(len(MNIST_train_dataset.classes))[label]
         MNIST_train.append((idx, data, target))
+
+        if classes is not None:
+            if label in classes:
+                MNIST_train_CL1.append((idx, data, target))
+            else:
+                MNIST_train_CL2.append((idx, data, target))
         
     MNIST_test = []
     for idx,(data,target) in enumerate(MNIST_test_dataset):
@@ -1631,7 +1640,12 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000):
     val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10_000:], batch_size=10_000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10_000, shuffle=False)
 
-    return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
+    if classes is not None:
+        train_dataloader_CL1 = torch.utils.data.DataLoader(MNIST_train_CL1[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=1)
+        train_dataloader_CL2 = torch.utils.data.DataLoader(MNIST_train_CL2[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=1)
 
+        return train_dataloader, train_dataloader_CL1, train_dataloader_CL2, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
+    else:
+        return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
 
 
