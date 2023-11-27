@@ -1,8 +1,10 @@
-van_bp_relu_test:
-    H1_learning_rate: 0.13315131781400405
-    Output_learning_rate: 0.13315131781400405
-    H1_init_weight_scale: 1.
-    Output_init_weight_scale: 1.
+van_bp_relu:
+    #    accuracy: 96.126396
+    #    loss: 0.010285329
+    H1_learning_rate: 0.13709859352406537
+    Output_learning_rate: 0.03970608050384832
+    H1_init_weight_scale: 0.634534257421716
+    Output_init_weight_scale: 2.0299549637012495
 bpDale_G:
     # after 20000 steps:
     # accuracy: 95.453
@@ -31,21 +33,22 @@ bpDale_G:
     Output_I_Output_I_init_weight_scale: 2.59125301963123
     Output_I_size: 10.0
     softplus_beta: 19.826044970749372
-bpDale_relu_G_test:
-    # not tuned -
-    H1_E_E_learning_rate: 0.20906601706686329
-    Output_E_E_learning_rate: 0.20906601706686329
-    H1_E_H1_I_init_weight_scale: 1.085742013295119
-    H1_E_Input_E_init_weight_scale: 2.251133247968139
-    H1_I_H1_E_init_weight_scale: 0.7885014927826658
-    H1_I_H1_I_init_weight_scale: 1.263174413780597
-    H1_I_Input_E_init_weight_scale: 2.6556826115424506
+bpDale_relu_G:
+    #    accuracy: 95.4102
+    #    loss: 0.011326423
+    H1_E_E_learning_rate: 0.34550143532972744
+    Output_E_E_learning_rate: 0.06262950732425976
+    H1_E_Input_E_init_weight_scale: 2.585264903876833
+    H1_E_H1_I_init_weight_scale: 0.8302984803847608
+    H1_I_Input_E_init_weight_scale: 4.007700187449406
+    H1_I_H1_E_init_weight_scale: 0.7721199222079216
+    H1_I_H1_I_init_weight_scale: 1.2626866515090391
+    Output_E_H1_E_init_weight_scale: 3.211298847983967
+    Output_E_Output_I_init_weight_scale: 2.539853079807821
+    Output_I_H1_E_init_weight_scale: 1.6009446582329483
+    Output_I_Output_E_init_weight_scale: 2.8928388870156447
+    Output_I_Output_I_init_weight_scale: 2.135162029101487
     H_I_size: 50.0
-    Output_E_H1_E_init_weight_scale: 5.237143930095102
-    Output_E_Output_I_init_weight_scale: 5.40911925776929
-    Output_I_H1_E_init_weight_scale: 1.5252082242589289
-    Output_I_Output_E_init_weight_scale: 1.5922520967196439
-    Output_I_Output_I_init_weight_scale: 2.59125301963123
     Output_I_size: 10.0
 BTSP_cont_J:
     #    accuracy: 85.0199
@@ -151,20 +154,22 @@ BP_like_1:
     Output_I_Output_I_init_weight_scale: 0.7456114219354519
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_1B_test:
-    H1_E_Input_E_init_weight_scale: 0.399649089246867
-    H1_E_Output_E_init_weight_scale: 3.3268672423108434
-    H1_E_Input_E_learning_rate: 0.0057518854794140995
-    H1_E_H1_SomaI_init_weight_scale: 0.8959769425643707
-    H1_SomaI_H1_E_init_weight_scale: 0.7233232956024319
-    H1_SomaI_Input_E_init_weight_scale: 2.515710970122298
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.4255361483568867
-    Output_E_H1_E_init_weight_scale: 3.3268672423108434
-    Output_E_H1_E_learning_rate: 0.014932675166145465
-    Output_E_Output_I_init_weight_scale: 1.3122673018469384
-    Output_I_Output_E_init_weight_scale: 0.31091077042902143
-    Output_I_H1_E_init_weight_scale: 1.4930178898694935
-    Output_I_Output_I_init_weight_scale: 0.7456114219354519
+BP_like_1B:
+    #    accuracy: 91.110596
+    #    loss: 0.01948171
+    H1_E_Input_E_init_weight_scale: 0.5749881774875949
+    H1_E_Output_E_init_weight_scale: 0.3152471875703664
+    H1_E_Input_E_learning_rate: 0.009276770550523799
+    H1_E_H1_SomaI_init_weight_scale: 1.2536645531002846
+    H1_SomaI_H1_E_init_weight_scale: 0.3818492361246564
+    H1_SomaI_Input_E_init_weight_scale: 1.5080092834018965
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.4228051474964212
+    Output_E_H1_E_init_weight_scale: 1.7570638642089267
+    Output_E_H1_E_learning_rate: 0.0049293634274409975
+    Output_E_Output_I_init_weight_scale: 1.4446250923370998
+    Output_I_Output_E_init_weight_scale: 0.624812867534826
+    Output_I_H1_E_init_weight_scale: 1.5469175712299161
+    Output_I_Output_I_init_weight_scale: 8.703162720271115
     H1_I_size: 50.0
     Output_I_size: 10.0
 BP_like_2A:
@@ -244,193 +249,211 @@ BP_like_2C:
     Output_I_Output_I_init_weight_scale: 0.6346751609884036
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_3A_test:
-    H1_E_Input_E_init_weight_scale: 1.9981401387447646
-    H1_E_Input_E_learning_rate: 0.00012818681527232079
-    H1_E_H1_SomaI_init_weight_scale: 1.3344407983835092
-    H1_SomaI_H1_E_init_weight_scale: 0.23967009696130231
-    H1_SomaI_Input_E_init_weight_scale: 1.3052580365801507
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.322279943670868
-    H1_E_H1_DendI_init_weight_scale: 1.616297053945518
-    H1_E_H1_DendI_learning_rate: 0.10903684173076521
-    H1_DendI_H1_E_init_weight_scale: 1.866603726167943
-    H1_DendI_H1_DendI_init_weight_scale: 1.012278461679176
-    Output_E_H1_E_init_weight_scale: 5.218948037498512
-    Output_E_H1_E_learning_rate: 0.023222511415773864
-    Output_E_Output_I_init_weight_scale: 1.9292426826186557
-    Output_I_Output_E_init_weight_scale: 0.3007812794356349
-    Output_I_H1_E_init_weight_scale: 2.39967999137052
-    Output_I_Output_I_init_weight_scale: 3.3674481216468783
-    max_pop_fraction: 0.025
+BP_like_3A:
+    #    accuracy: 90.795105
+    #    loss: 0.020486346
+    H1_E_Input_E_init_weight_scale: 2.4617843853690418
+    H1_E_Input_E_learning_rate: 0.000124304217755931
+    H1_E_H1_SomaI_init_weight_scale: 2.287239667229408
+    H1_SomaI_H1_E_init_weight_scale: 0.10271111208818622
+    H1_SomaI_Input_E_init_weight_scale: 1.574342692119415
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.2942836853948132
+    H1_E_H1_DendI_init_weight_scale: 2.378952403221696
+    H1_E_H1_DendI_learning_rate: 0.09539990205124707
+    H1_DendI_H1_E_init_weight_scale: 2.0889676880202166
+    H1_DendI_H1_DendI_init_weight_scale: 0.6467113034771773
+    Output_E_H1_E_init_weight_scale: 0.8615353446155052
+    Output_E_H1_E_learning_rate: 0.01494596236489886
+    Output_E_Output_I_init_weight_scale: 0.43825044632173515
+    Output_I_Output_E_init_weight_scale: 2.1352435502063725
+    Output_I_H1_E_init_weight_scale: 7.739910430738086
+    Output_I_Output_I_init_weight_scale: 0.4931470124835404
+    max_pop_fraction: 0.09694991508440064
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_3B_test:
-    H1_E_Input_E_init_weight_scale: 0.8802552716669506
-    H1_E_Input_E_learning_rate: 0.00010741386999429885
-    H1_E_H1_SomaI_init_weight_scale: 0.9171574280897584
-    H1_SomaI_H1_E_init_weight_scale: 0.2363871866611512
-    H1_SomaI_Input_E_init_weight_scale: 0.7403446465582852
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.1054786945623845
-    H1_E_H1_DendI_init_weight_scale: 0.7452329762577602
-    H1_E_H1_DendI_learning_rate: 0.04899156174143528
-    H1_DendI_Output_E_init_weight_scale: 0.31569278977359105
-    H1_DendI_H1_DendI_init_weight_scale: 0.6733598880902508
-    Output_E_H1_E_init_weight_scale: 1.2743426673731117
-    Output_E_H1_E_learning_rate: 0.015276602238341382
-    Output_E_Output_I_init_weight_scale: 0.6603143605227739
-    Output_I_Output_E_init_weight_scale: 0.8995974428909921
-    Output_I_H1_E_init_weight_scale: 4.208137386938848
-    Output_I_Output_I_init_weight_scale: 4.704360710412224
-    max_pop_fraction: 0.025
+BP_like_3B:
+    #    accuracy: 86.438
+    #    loss: 0.027034577
+    H1_E_Input_E_init_weight_scale: 0.27888611312794187
+    H1_E_Input_E_learning_rate: 0.01500255687101684
+    H1_E_H1_SomaI_init_weight_scale: 0.6647900284701531
+    H1_SomaI_H1_E_init_weight_scale: 2.3069248415527555
+    H1_SomaI_Input_E_init_weight_scale: 8.671367257936076
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.4926035779286446
+    H1_E_H1_DendI_init_weight_scale: 1.4905099328535767
+    H1_E_H1_DendI_learning_rate: 0.012811028777685059
+    H1_DendI_Output_E_init_weight_scale: 0.3373461401741606
+    H1_DendI_H1_DendI_init_weight_scale: 1.9663992067226626
+    Output_E_H1_E_init_weight_scale: 2.6369117042882513
+    Output_E_H1_E_learning_rate: 0.001232239875762814
+    Output_E_Output_I_init_weight_scale: 0.840871181812201
+    Output_I_Output_E_init_weight_scale: 1.7626671871405195
+    Output_I_H1_E_init_weight_scale: 0.7403480019013738
+    Output_I_Output_I_init_weight_scale: 6.702055712351007
+    max_pop_fraction: 0.04393356299503265
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_3C_test:
-    H1_E_Input_E_init_weight_scale: 2.319864175892962
-    H1_E_Input_E_learning_rate: 0.0001661581450197104
-    H1_E_H1_SomaI_init_weight_scale: 0.8842398125753185
-    H1_SomaI_H1_E_init_weight_scale: 0.3382674870649224
-    H1_SomaI_Input_E_init_weight_scale: 2.6982703863964983
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.4008727155709924
-    H1_E_H1_DendI_init_weight_scale: 1.073864054633906
-    H1_E_H1_DendI_learning_rate: 0.0822036081283002
-    H1_DendI_Output_E_init_weight_scale: 0.013967681846014896
-    H1_DendI_H1_E_init_weight_scale: 1.3083484193346873
-    H1_DendI_H1_DendI_init_weight_scale: 0.6198152058373022
-    Output_E_H1_E_init_weight_scale: 1.8487924684890886
-    Output_E_H1_E_learning_rate: 0.011758089842788753
-    Output_E_Output_I_init_weight_scale: 0.6562581697420845
-    Output_I_Output_E_init_weight_scale: 1.8998790324415373
-    Output_I_H1_E_init_weight_scale: 5.64465443044634
-    Output_I_Output_I_init_weight_scale: 0.6346751609884036
-    max_pop_fraction: 0.025
+BP_like_3C:
+    #    accuracy: 89.7704
+    #    loss: 0.022460746
+    H1_E_Input_E_init_weight_scale: 2.0627266561105984
+    H1_E_Input_E_learning_rate: 0.00014346510082719732
+    H1_E_H1_SomaI_init_weight_scale: 2.0178171991990412
+    H1_SomaI_H1_E_init_weight_scale: 0.31275340330056955
+    H1_SomaI_Input_E_init_weight_scale: 1.5160117792382923
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.4599274778362183
+    H1_E_H1_DendI_init_weight_scale: 2.2201976253336473
+    H1_E_H1_DendI_learning_rate: 0.036001658829352745
+    H1_DendI_Output_E_init_weight_scale: 0.8323731354003734
+    H1_DendI_H1_E_init_weight_scale: 3.0969371025923262
+    H1_DendI_H1_DendI_init_weight_scale: 0.48387192870999796
+    Output_E_H1_E_init_weight_scale: 1.9739881574078124
+    Output_E_H1_E_learning_rate: 0.012092804204178064
+    Output_E_Output_I_init_weight_scale: 2.0584046632180164
+    Output_I_Output_E_init_weight_scale: 0.6048348159882257
+    Output_I_H1_E_init_weight_scale: 1.689931117137977
+    Output_I_Output_I_init_weight_scale: 2.3674643765652363
+    max_pop_fraction: 0.09274031482086516
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_4A_test:
-    H1_E_Input_E_init_weight_scale: 1.9981401387447646
-    H1_E_Output_E_init_weight_scale: 1.
-    H1_E_Input_E_learning_rate: 0.00012818681527232079
-    H1_E_H1_SomaI_init_weight_scale: 1.3344407983835092
-    H1_SomaI_H1_E_init_weight_scale: 0.23967009696130231
-    H1_SomaI_Input_E_init_weight_scale: 1.3052580365801507
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.322279943670868
-    H1_E_H1_DendI_init_weight_scale: 1.616297053945518
-    H1_E_H1_DendI_learning_rate: 0.10903684173076521
-    H1_DendI_H1_E_init_weight_scale: 1.866603726167943
-    H1_DendI_H1_DendI_init_weight_scale: 1.012278461679176
-    Output_E_H1_E_init_weight_scale: 5.218948037498512
-    Output_E_H1_E_learning_rate: 0.023222511415773864
-    Output_E_Output_I_init_weight_scale: 1.9292426826186557
-    Output_I_Output_E_init_weight_scale: 0.3007812794356349
-    Output_I_H1_E_init_weight_scale: 2.39967999137052
-    Output_I_Output_I_init_weight_scale: 3.3674481216468783
+BP_like_4A:
+    #    accuracy: 89.6089
+    #    loss: 0.021307176
+    H1_E_Input_E_init_weight_scale: 0.9902484027351773
+    H1_E_Output_E_init_weight_scale: 0.17609412415685288
+    H1_E_Input_E_learning_rate: 0.0036346315898934823
+    H1_E_H1_SomaI_init_weight_scale: 0.7153390102598999
+    H1_SomaI_H1_E_init_weight_scale: 0.0875919631247862
+    H1_SomaI_Input_E_init_weight_scale: 0.970343102064806
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.0768262351141669
+    H1_E_H1_DendI_init_weight_scale: 0.12643129536426667
+    H1_E_H1_DendI_learning_rate: 0.08982949866077403
+    H1_DendI_H1_E_init_weight_scale: 1.8960324555361627
+    H1_DendI_H1_DendI_init_weight_scale: 1.3262097381960518
+    Output_E_H1_E_init_weight_scale: 0.8157066468479743
+    Output_E_H1_E_learning_rate: 0.009953318804535153
+    Output_E_Output_I_init_weight_scale: 1.2125979256907427
+    Output_I_Output_E_init_weight_scale: 1.1494149836675964
+    Output_I_H1_E_init_weight_scale: 5.46763425364635
+    Output_I_Output_I_init_weight_scale: 5.569086958899788
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_4B_test:
-    H1_E_Input_E_init_weight_scale: 0.8802552716669506
-    H1_E_Output_E_init_weight_scale: 1.
-    H1_E_Input_E_learning_rate: 0.00010741386999429885
-    H1_E_H1_SomaI_init_weight_scale: 0.9171574280897584
-    H1_SomaI_H1_E_init_weight_scale: 0.2363871866611512
-    H1_SomaI_Input_E_init_weight_scale: 0.7403446465582852
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.1054786945623845
-    H1_E_H1_DendI_init_weight_scale: 0.7452329762577602
-    H1_E_H1_DendI_learning_rate: 0.04899156174143528
-    H1_DendI_Output_E_init_weight_scale: 0.31569278977359105
-    H1_DendI_H1_DendI_init_weight_scale: 0.6733598880902508
-    Output_E_H1_E_init_weight_scale: 1.2743426673731117
-    Output_E_H1_E_learning_rate: 0.015276602238341382
-    Output_E_Output_I_init_weight_scale: 0.6603143605227739
-    Output_I_Output_E_init_weight_scale: 0.8995974428909921
-    Output_I_H1_E_init_weight_scale: 4.208137386938848
-    Output_I_Output_I_init_weight_scale: 4.704360710412224
+BP_like_4B:
+    #    accuracy: 87.9142
+    #    loss: 0.02370342
+    H1_E_Input_E_init_weight_scale: 0.46684968182186104
+    H1_E_Output_E_init_weight_scale: 0.5546973646316636
+    H1_E_Input_E_learning_rate: 0.0006596438904575891
+    H1_E_H1_SomaI_init_weight_scale: 0.7308361928157218
+    H1_SomaI_H1_E_init_weight_scale: 0.6451001131216878
+    H1_SomaI_Input_E_init_weight_scale: 0.9263756255010498
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.7339083864323162
+    H1_E_H1_DendI_init_weight_scale: 0.2788841702364548
+    H1_E_H1_DendI_learning_rate: 0.05976483445472656
+    H1_DendI_Output_E_init_weight_scale: 0.3933243806319831
+    H1_DendI_H1_DendI_init_weight_scale: 0.17939581449080433
+    Output_E_H1_E_init_weight_scale: 0.5291372356369146
+    Output_E_H1_E_learning_rate: 0.009615794011887285
+    Output_E_Output_I_init_weight_scale: 3.2643921567410343
+    Output_I_Output_E_init_weight_scale: 0.7115946481592674
+    Output_I_H1_E_init_weight_scale: 1.2567206039335046
+    Output_I_Output_I_init_weight_scale: 0.6126366786069315
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_4C_test:
-    H1_E_Input_E_init_weight_scale: 2.319864175892962
-    H1_E_Output_E_init_weight_scale: 1.
-    H1_E_Input_E_learning_rate: 0.0001661581450197104
-    H1_E_H1_SomaI_init_weight_scale: 0.8842398125753185
-    H1_SomaI_H1_E_init_weight_scale: 0.3382674870649224
-    H1_SomaI_Input_E_init_weight_scale: 2.6982703863964983
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.4008727155709924
-    H1_E_H1_DendI_init_weight_scale: 1.073864054633906
-    H1_E_H1_DendI_learning_rate: 0.0822036081283002
-    H1_DendI_Output_E_init_weight_scale: 0.013967681846014896
-    H1_DendI_H1_E_init_weight_scale: 1.3083484193346873
-    H1_DendI_H1_DendI_init_weight_scale: 0.6198152058373022
-    Output_E_H1_E_init_weight_scale: 1.8487924684890886
-    Output_E_H1_E_learning_rate: 0.011758089842788753
-    Output_E_Output_I_init_weight_scale: 0.6562581697420845
-    Output_I_Output_E_init_weight_scale: 1.8998790324415373
-    Output_I_H1_E_init_weight_scale: 5.64465443044634
-    Output_I_Output_I_init_weight_scale: 0.6346751609884036
+BP_like_4C:
+    #    accuracy: 89.6347
+    #    loss: 0.021819878
+    H1_E_Input_E_init_weight_scale: 1.5823679776891615
+    H1_E_Output_E_init_weight_scale: 0.17729221538848805
+    H1_E_Input_E_learning_rate: 0.0011894718189769463
+    H1_E_H1_SomaI_init_weight_scale: 0.6773774576563001
+    H1_SomaI_H1_E_init_weight_scale: 0.5344705202376816
+    H1_SomaI_Input_E_init_weight_scale: 2.0935184227575414
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.3365368811868266
+    H1_E_H1_DendI_init_weight_scale: 0.9040073324363544
+    H1_E_H1_DendI_learning_rate: 0.14301981968915162
+    H1_DendI_Output_E_init_weight_scale: 1.0408544965357778
+    H1_DendI_H1_E_init_weight_scale: 1.1601431543880136
+    H1_DendI_H1_DendI_init_weight_scale: 0.6728790711879725
+    Output_E_H1_E_init_weight_scale: 0.6425760660223344
+    Output_E_H1_E_learning_rate: 0.012517207706585754
+    Output_E_Output_I_init_weight_scale: 4.185194333156047
+    Output_I_Output_E_init_weight_scale: 0.13267599920862153
+    Output_I_H1_E_init_weight_scale: 1.3691448524802277
+    Output_I_Output_I_init_weight_scale: 0.02437430479094147
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_5A_test:
-    H1_E_Input_E_init_weight_scale: 1.9981401387447646
-    H1_E_Input_E_learning_rate: 0.00012818681527232079
-    H1_E_H1_SomaI_init_weight_scale: 1.3344407983835092
-    H1_SomaI_H1_E_init_weight_scale: 0.23967009696130231
-    H1_SomaI_Input_E_init_weight_scale: 1.3052580365801507
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.322279943670868
-    H1_E_H1_DendI_init_weight_scale: 1.616297053945518
-    H1_E_H1_DendI_learning_rate: 0.10903684173076521
-    H1_DendI_H1_E_init_weight_scale: 1.866603726167943
-    H1_DendI_H1_DendI_init_weight_scale: 1.012278461679176
-    Output_E_H1_E_init_weight_scale: 5.218948037498512
-    Output_E_H1_E_learning_rate: 0.023222511415773864
-    Output_E_Output_I_init_weight_scale: 1.9292426826186557
-    Output_I_Output_E_init_weight_scale: 0.3007812794356349
-    Output_I_H1_E_init_weight_scale: 2.39967999137052
-    Output_I_Output_I_init_weight_scale: 3.3674481216468783
-    max_pop_fraction: 0.025
-    pos_loss_th: 0.2
-    neg_loss_th: -0.2
+BP_like_5A:
+    #    accuracy: 90.8564
+    #    loss: 0.020013947
+    H1_E_Input_E_init_weight_scale: 1.836313716758084
+    H1_E_Input_E_learning_rate: 0.005802908171210106
+    H1_E_H1_SomaI_init_weight_scale: 2.867679899192817
+    H1_SomaI_H1_E_init_weight_scale: 0.2562439571689086
+    H1_SomaI_Input_E_init_weight_scale: 2.2756792554165197
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.4070534654248525
+    H1_E_H1_DendI_init_weight_scale: 0.47389710295563553
+    H1_E_H1_DendI_learning_rate: 0.0008116734574649426
+    H1_DendI_H1_E_init_weight_scale: 6.166265259539826
+    H1_DendI_H1_DendI_init_weight_scale: 0.26910497232178365
+    Output_E_H1_E_init_weight_scale: 6.6798639385760055
+    Output_E_H1_E_learning_rate: 0.004200994033969022
+    Output_E_Output_I_init_weight_scale: 1.246706541927774
+    Output_I_Output_E_init_weight_scale: 0.49074634331017414
+    Output_I_H1_E_init_weight_scale: 1.5643998505411079
+    Output_I_Output_I_init_weight_scale: 2.13868167034665
+    max_pop_fraction: 0.0884316199673384
+    pos_loss_th: 0.2095663260677644
+    neg_loss_th: -0.4116339465013096
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_5B_test:
-    H1_E_Input_E_init_weight_scale: 0.8802552716669506
-    H1_E_Input_E_learning_rate: 0.00010741386999429885
-    H1_E_H1_SomaI_init_weight_scale: 0.9171574280897584
-    H1_SomaI_H1_E_init_weight_scale: 0.2363871866611512
-    H1_SomaI_Input_E_init_weight_scale: 0.7403446465582852
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.1054786945623845
-    H1_E_H1_DendI_init_weight_scale: 0.7452329762577602
-    H1_E_H1_DendI_learning_rate: 0.04899156174143528
-    H1_DendI_Output_E_init_weight_scale: 0.31569278977359105
-    H1_DendI_H1_DendI_init_weight_scale: 0.6733598880902508
-    Output_E_H1_E_init_weight_scale: 1.2743426673731117
-    Output_E_H1_E_learning_rate: 0.015276602238341382
-    Output_E_Output_I_init_weight_scale: 0.6603143605227739
-    Output_I_Output_E_init_weight_scale: 0.8995974428909921
-    Output_I_H1_E_init_weight_scale: 4.208137386938848
-    Output_I_Output_I_init_weight_scale: 4.704360710412224
-    max_pop_fraction: 0.025
-    pos_loss_th: 0.2
-    neg_loss_th: -0.2
+BP_like_5B:
+    #    accuracy: 86.0277
+    #    loss: 0.028027583
+    H1_E_Input_E_init_weight_scale: 0.9960572701873303
+    H1_E_Input_E_learning_rate: 0.0014608150901023393
+    H1_E_H1_SomaI_init_weight_scale: 1.2489976870345145
+    H1_SomaI_H1_E_init_weight_scale: 0.025002202423368616
+    H1_SomaI_Input_E_init_weight_scale: 0.5323618533324718
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.287633231770885
+    H1_E_H1_DendI_init_weight_scale: 2.9675143002598503
+    H1_E_H1_DendI_learning_rate: 0.04291776730105986
+    H1_DendI_Output_E_init_weight_scale: 2.349039815453126
+    H1_DendI_H1_DendI_init_weight_scale: 1.7488430496226288
+    Output_E_H1_E_init_weight_scale: 0.24161063984608488
+    Output_E_H1_E_learning_rate: 0.004806847260477863
+    Output_E_Output_I_init_weight_scale: 3.715794379262479
+    Output_I_Output_E_init_weight_scale: 0.18953189375697618
+    Output_I_H1_E_init_weight_scale: 1.77002447323973
+    Output_I_Output_I_init_weight_scale: 1.4154809383296474
+    max_pop_fraction: 0.09969280139793603
+    pos_loss_th: 0.05343182658431838
+    neg_loss_th: -0.056755272041849665
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_5C_test:
-    H1_E_Input_E_init_weight_scale: 2.319864175892962
-    H1_E_Input_E_learning_rate: 0.0001661581450197104
-    H1_E_H1_SomaI_init_weight_scale: 0.8842398125753185
-    H1_SomaI_H1_E_init_weight_scale: 0.3382674870649224
-    H1_SomaI_Input_E_init_weight_scale: 2.6982703863964983
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.4008727155709924
-    H1_E_H1_DendI_init_weight_scale: 1.073864054633906
-    H1_E_H1_DendI_learning_rate: 0.0822036081283002
-    H1_DendI_Output_E_init_weight_scale: 0.013967681846014896
-    H1_DendI_H1_E_init_weight_scale: 1.3083484193346873
-    H1_DendI_H1_DendI_init_weight_scale: 0.6198152058373022
-    Output_E_H1_E_init_weight_scale: 1.8487924684890886
-    Output_E_H1_E_learning_rate: 0.011758089842788753
-    Output_E_Output_I_init_weight_scale: 0.6562581697420845
-    Output_I_Output_E_init_weight_scale: 1.8998790324415373
-    Output_I_H1_E_init_weight_scale: 5.64465443044634
-    Output_I_Output_I_init_weight_scale: 0.6346751609884036
-    max_pop_fraction: 0.025
-    pos_loss_th: 0.2
-    neg_loss_th: -0.2
+BP_like_5C:
+    #    accuracy: 89.63411
+    #    loss: 0.022938268
+    H1_E_Input_E_init_weight_scale: 2.671640210820621
+    H1_E_Input_E_learning_rate: 0.00016335118981974039
+    H1_E_H1_SomaI_init_weight_scale: 1.187711402390751
+    H1_SomaI_H1_E_init_weight_scale: 0.39945624123671714
+    H1_SomaI_Input_E_init_weight_scale: 2.102998309377661
+    H1_SomaI_H1_SomaI_init_weight_scale: 0.8039993190512396
+    H1_E_H1_DendI_init_weight_scale: 1.8293855584866412
+    H1_E_H1_DendI_learning_rate: 0.048633285379311976
+    H1_DendI_Output_E_init_weight_scale: 1.1274198613917472
+    H1_DendI_H1_E_init_weight_scale: 3.877989656406644
+    H1_DendI_H1_DendI_init_weight_scale: 1.0221444149415955
+    Output_E_H1_E_init_weight_scale: 1.556275235683889
+    Output_E_H1_E_learning_rate: 0.010445570173109459
+    Output_E_Output_I_init_weight_scale: 1.0289654477904577
+    Output_I_Output_E_init_weight_scale: 0.5050616751764505
+    Output_I_H1_E_init_weight_scale: 3.371367160970185
+    Output_I_Output_I_init_weight_scale: 4.405784444708283
+    max_pop_fraction: 0.07568577210001663
+    pos_loss_th: 0.07175371618073065
+    neg_loss_th: -0.15428563068555126
     H1_I_size: 50.0
     Output_I_size: 10.0
 BTSP_K1:
@@ -439,6 +462,13 @@ BTSP_K1:
     # after extending training to 50000 steps:
     #    accuracy: 88.280495
     #    loss: 0.057000477
+    # CL:
+    #    final_accuracy: 31.850000381469727
+    #    final_loss: 0.07918669283390045
+    #    phase1_accuracy: 91.27933
+    #    phase1_loss: 0.040577132
+    #    phase2_accuracy: 95.536
+    #    phase2_loss: 0.031519502
     H1_E_Input_E_max_weight_scale: 2.96449473109923
     FF_BTSP_init_weight_factor: 0.07825520474720292
     H1_E_Input_E_BTSP_learning_rate: 0.008290915886095694
@@ -467,30 +497,32 @@ BTSP_K1:
     BTSP_max_pop_fraction: 0.07553644026616202
     H1_I_size: 50.0
     Output_I_size: 10.0
-BTSP_K2_test:
-    H1_E_Input_E_max_weight_scale: 2.96449473109923
-    FF_BTSP_init_weight_factor: 0.07825520474720292
-    H1_E_Input_E_BTSP_learning_rate: 0.008290915886095694
-    H1_E_BTSP_pos_loss_th: 0.34068365808708734
-    H1_E_BTSP_neg_loss_th: -0.3353300648114936
-    H1_E_H1_SomaI_init_weight_scale: 1.056179283386283
-    H1_SomaI_H1_E_init_weight_scale: 0.6109942861931263
-    H1_SomaI_Input_E_init_weight_scale: 1.4952578439559987
-    H1_SomaI_H1_SomaI_init_weight_scale: 0.7688268154734568
-    H1_E_H1_DendI_init_weight_scale: 0.992350705556423
-    H1_E_H1_DendI_learning_rate: 0.16829240461906753
-    H1_DendI_H1_E_init_weight_scale: 2.095034912544551
-    H1_DendI_H1_DendI_init_weight_scale: 1.0669558554191554
-    Output_E_H1_E_max_weight_scale: 10.236634766366508
-    Output_E_BTSP_learning_rate: 0.009818764863021271
-    Output_E_BTSP_pos_loss_th: 0.39258648202607255
-    Output_E_BTSP_neg_loss_th: -0.29392095213815367
-    Output_E_Output_I_init_weight_scale: 0.6415744175607055
-    Output_I_Output_E_init_weight_scale: 0.48010232902301664
-    Output_I_H1_E_init_weight_scale: 1.6285617345640713
-    Output_I_Output_I_init_weight_scale: 4.392441303925266
-    BTSP_neg_loss_ET_discount: 0.05080425143747973
-    BTSP_max_pop_fraction: 0.07553644026616202
+BTSP_K2:
+    #    accuracy: 82.930595
+    #    loss: 0.16071227
+    H1_E_Input_E_max_weight_scale: 3.722833005631368
+    FF_BTSP_init_weight_factor: 0.2709243812895328
+    H1_E_Input_E_BTSP_learning_rate: 0.11209771151492132
+    H1_E_BTSP_pos_loss_th: 0.08318421107718552
+    H1_E_BTSP_neg_loss_th: -0.20633220238555272
+    H1_E_H1_SomaI_init_weight_scale: 1.5080645683152498
+    H1_SomaI_H1_E_init_weight_scale: 0.9866929791276604
+    H1_SomaI_Input_E_init_weight_scale: 2.0317783236299185
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.1500477583405795
+    H1_E_H1_DendI_init_weight_scale: 0.27291402811309684
+    H1_E_H1_DendI_learning_rate: 0.03260130256000906
+    H1_DendI_H1_E_init_weight_scale: 2.9516935281616345
+    H1_DendI_H1_DendI_init_weight_scale: 0.9524302942460532
+    Output_E_H1_E_max_weight_scale: 15.347507717155796
+    Output_E_BTSP_learning_rate: 0.0021993255057291103
+    Output_E_BTSP_pos_loss_th: 0.07541413722501107
+    Output_E_BTSP_neg_loss_th: -0.4408244982975439
+    Output_E_Output_I_init_weight_scale: 0.2213424075179537
+    Output_I_Output_E_init_weight_scale: 0.39706942268699397
+    Output_I_H1_E_init_weight_scale: 1.330063540332998
+    Output_I_Output_I_init_weight_scale: 0.32498057961606364
+    BTSP_neg_loss_ET_discount: 0.15758570701442037
+    BTSP_max_pop_fraction: 0.061889488822972245
     H1_I_size: 50.0
     Output_I_size: 10.0
 BTSP_K3_test:

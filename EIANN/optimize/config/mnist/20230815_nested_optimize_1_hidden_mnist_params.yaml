@@ -53,6 +53,13 @@ Supervised_BCM_G:
     # accuracy: 86.8903
     # loss: 0.07188301
     # stability: slight decrease in accuracy when training extended to 50000 steps
+    # CL:
+    #    final_accuracy: 44.130001068115234
+    #    final_loss: 0.09231849759817123
+    #    phase1_accuracy: 56.192005
+    #    phase1_loss: 0.09317846
+    #    phase2_accuracy: 0.0
+    #    phase2_loss: 0.10021819
     H1_E_BCM_k: 0.004339627479038111
     H1_E_H1_I_init_weight_scale: 1.979314748480211
     H1_E_Input_E_init_weight_scale: 0.9554606194040144
