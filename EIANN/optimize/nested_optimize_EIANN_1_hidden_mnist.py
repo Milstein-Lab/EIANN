@@ -69,8 +69,6 @@ def config_worker():
         context.interactive = False
     else:
         context.interactive = str_to_bool(context.interactive)
-    if 'export_network_config_file_path' not in context():
-        context.export_network_config_file_path = None
     if 'eval_accuracy' not in context():
         context.eval_accuracy = 'final'
     else:
@@ -109,6 +107,9 @@ def config_worker():
         context.constrain_equilibration_dynamics = True
     else:
         context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
+    if 'export_network_config_file_path' not in context():
+        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+        context.export_network_config_file_path = f"{context.output_dir}/{network_name}_optimized.yaml"
     if 'retrain' not in context():
         context.retrain = True
     else:
@@ -186,14 +187,19 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         except:
             pass
         plot_batch_accuracy(network, test_dataloader, population='all', title='Initial')
-
-    network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-    if context.label is None:
-        saved_network_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}.pkl"
-    else:
-        saved_network_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}_{context.label}.pkl"
-    if os.path.exists(saved_network_path) and not context.retrain:
-        network.load(saved_network_path)
+    
+    if 'data_file_path' not in context():
+        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+        if context.label is None:
+            context.data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}.pkl"
+        else:
+            context.data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}_{context.label}.pkl"
+    
+    if os.path.exists(context.data_file_path) and not context.retrain:
+        network.load(context.data_file_path)
+        if context.disp:
+            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i loaded network history from %s' %
+                  (os.getpid(), context.data_file_path))
     else:
         data_generator.manual_seed(data_seed)
         network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
@@ -204,7 +210,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       status_bar=context.status_bar)
         # final_weights = deepcopy(network.Output.E.H1.E.weight.data)
         if export:
-            network.save(path=saved_network_path)
+            network.save(path=context.data_file_path)
+            if context.disp:
+                print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network history to %s' %
+                      (os.getpid(), context.data_file_path))
 
     if plot:
         try:
@@ -291,7 +300,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot,
                                            status_bar=context.status_bar)
 
-    if context.export_network_config_file_path is not None:
+    if export:
         config_dict = {'layer_config': context.layer_config,
                        'projection_config': context.projection_config,
                        'training_kwargs': context.training_kwargs}

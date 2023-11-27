@@ -192,6 +192,7 @@ def rename_population(network, old_name, new_name):
 # Functions to import and export data
 # *******************************************************************
 
+
 def write_to_yaml(file_path, data, convert_scalars=True):
     """
 
