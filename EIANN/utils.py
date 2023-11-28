@@ -1576,10 +1576,11 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
         if i > 0:
             col = i - 1
             for row, population in enumerate(layer):
-                pop_activity = torch.stack(population.forward_steps_activity)
-                if pop_activity.shape[0] == 1:
+                if len(population.forward_steps_activity) == 1:
                     return True
-                average_activity = torch.mean(pop_activity, dim=(1, 2))
+                # for memory efficiency
+                average_activity = torch.mean(torch.stack(population.forward_steps_activity), dim=(1, 2))
+                population.forward_steps_activity = []
                 if plot:
                     this_axis = axes[row][col]
                     this_axis.plot(average_activity)
