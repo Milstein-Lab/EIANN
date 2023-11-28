@@ -179,7 +179,16 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     epochs = context.epochs
 
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
-
+    
+    if export:
+        config_dict = {'layer_config': context.layer_config,
+                       'projection_config': context.projection_config,
+                       'training_kwargs': context.training_kwargs}
+        write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
+        if context.disp:
+            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
+                  (os.getpid(), context.export_network_config_file_path))
+    
     if plot:
         try:
             network.Output.E.H1.E.initial_weight = network.Output.E.H1.E.weight.data.detach().clone()
@@ -266,15 +275,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.debug and context.interactive:
             context.update(locals())
         return dict()
-
-    if context.constrain_equilibration_dynamics or context.debug:
-        if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                            context.debug, context.disp, context.debug and plot):
-            if not context.debug:
-                if context.interactive:
-                    context.update(locals())
-                return dict()
-
+    
     if plot:
         # print('Weights match: %s' % torch.all(final_weights == network.Output.E.H1.E.weight.data))
         plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
@@ -299,16 +300,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         test_loss_history, test_accuracy_history = \
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot,
                                            status_bar=context.status_bar)
-
-    if export:
-        config_dict = {'layer_config': context.layer_config,
-                       'projection_config': context.projection_config,
-                       'training_kwargs': context.training_kwargs}
-        write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
-        if context.disp:
-            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
-                  (os.getpid(), context.export_network_config_file_path))
-
+    
+    if context.constrain_equilibration_dynamics or context.debug:
+        if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
+                                            context.debug, context.disp, context.debug and plot):
+            if not context.debug:
+                if context.interactive:
+                    context.update(locals())
+                return dict()
+    
     # if export:
     #     if context.temp_output_path is not None:
     #         # Compute test activity and metrics
