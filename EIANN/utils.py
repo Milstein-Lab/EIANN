@@ -1557,7 +1557,9 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
     """
     idx, data, targets = next(iter(dataloader))
     network.forward(data, store_dynamics=True, no_grad=True)
-
+    
+    passed = True
+    
     if plot:
         max_rows = 1
         for layer in network:
@@ -1597,12 +1599,12 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
                             print('population: %s failed check_equilibration_dynamics: %.2f' %
                                   (population.fullname, equil_error))
                         if not debug:
-                            return False
+                            passed = False
     if plot:
         fig.suptitle('Activity dynamics')
         fig.tight_layout()
         fig.show()
-    return True
+    return passed
 
 
 def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None):

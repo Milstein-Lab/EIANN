@@ -88,6 +88,9 @@ BTSP_cont_J:
 BTSP_cont_J2:
     #    accuracy: 86.0248
     #    loss: 0.0417948
+    # after extending training to 50000 steps:
+    #    accuracy: 85.5905
+    #    loss: 0.041649442
     H1_E_Input_E_max_weight_scale: 15.273536838427416
     FF_BTSP_init_weight_factor: 0.08440655416778205
     H1_E_Input_E_BTSP_learning_rate: 0.014558243152726292
@@ -272,6 +275,9 @@ BP_like_3A:
     # H1.E.Output.E is W.T
     #    accuracy: 90.795105
     #    loss: 0.020486346
+    # after extending training to 50000 steps:
+    #    accuracy: 90.9535
+    #    loss: 0.019281121
     H1_E_Input_E_init_weight_scale: 2.4617843853690418
     H1_E_Input_E_learning_rate: 0.000124304217755931
     H1_E_H1_SomaI_init_weight_scale: 2.287239667229408
@@ -296,6 +302,7 @@ BP_like_3B:
     # H1.E.Output.E is W.T
     #    accuracy: 86.438
     #    loss: 0.027034577
+    # after extending training to 50000 steps:
     H1_E_Input_E_init_weight_scale: 0.27888611312794187
     H1_E_Input_E_learning_rate: 0.01500255687101684
     H1_E_H1_SomaI_init_weight_scale: 0.6647900284701531
@@ -419,6 +426,9 @@ BP_like_5A:
     # with thresholds and H1.E nudges
     #    accuracy: 90.8564
     #    loss: 0.020013947
+    # after extending training to 50000 steps:
+    #    accuracy: 90.725
+    #    loss: 0.020131638
     H1_E_Input_E_init_weight_scale: 1.836313716758084
     H1_E_Input_E_learning_rate: 0.005802908171210106
     H1_E_H1_SomaI_init_weight_scale: 2.867679899192817
@@ -495,6 +505,62 @@ BP_like_5C:
     neg_loss_th: -0.15428563068555126
     H1_I_size: 50.0
     Output_I_size: 10.0
+BP_like_6A_test:
+    # H1.DendI receives H1.E input
+    # H1.E.Output.E is random and fixed
+    # with thresholds and H1.E nudges
+    # after extending training to 50000 steps:
+    H1_E_Input_E_init_weight_scale: 1.836313716758084
+    H1_E_Output_E_init_weight_scale: 1.836313716758084
+    H1_E_Input_E_learning_rate: 0.005802908171210106
+    H1_E_H1_SomaI_init_weight_scale: 2.867679899192817
+    H1_SomaI_H1_E_init_weight_scale: 0.2562439571689086
+    H1_SomaI_Input_E_init_weight_scale: 2.2756792554165197
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.4070534654248525
+    H1_E_H1_DendI_init_weight_scale: 0.47389710295563553
+    H1_E_H1_DendI_learning_rate: 0.0008116734574649426
+    H1_DendI_H1_E_init_weight_scale: 6.166265259539826
+    H1_DendI_H1_DendI_init_weight_scale: 0.26910497232178365
+    Output_E_H1_E_init_weight_scale: 6.6798639385760055
+    Output_E_H1_E_learning_rate: 0.004200994033969022
+    Output_E_Output_I_init_weight_scale: 1.246706541927774
+    Output_I_Output_E_init_weight_scale: 0.49074634331017414
+    Output_I_H1_E_init_weight_scale: 1.5643998505411079
+    Output_I_Output_I_init_weight_scale: 2.13868167034665
+    max_pop_fraction: 0.0884316199673384
+    pos_loss_th: 0.2095663260677644
+    neg_loss_th: -0.4116339465013096
+    H1_I_size: 50.0
+    Output_I_size: 10.0
+BP_like_6C_test:
+    # H1.DendI receives H1.E and Output.E input
+    # H1.E.Output.E is random and fixed
+    # with thresholds and H1.E nudges
+    #    accuracy: 89.63411
+    #    loss: 0.022938268
+    H1_E_Input_E_init_weight_scale: 2.671640210820621
+    H1_E_Output_E_init_weight_scale: 2.671640210820621
+    H1_E_Input_E_learning_rate: 0.00016335118981974039
+    H1_E_H1_SomaI_init_weight_scale: 1.187711402390751
+    H1_SomaI_H1_E_init_weight_scale: 0.39945624123671714
+    H1_SomaI_Input_E_init_weight_scale: 2.102998309377661
+    H1_SomaI_H1_SomaI_init_weight_scale: 0.8039993190512396
+    H1_E_H1_DendI_init_weight_scale: 1.8293855584866412
+    H1_E_H1_DendI_learning_rate: 0.048633285379311976
+    H1_DendI_Output_E_init_weight_scale: 1.1274198613917472
+    H1_DendI_H1_E_init_weight_scale: 3.877989656406644
+    H1_DendI_H1_DendI_init_weight_scale: 1.0221444149415955
+    Output_E_H1_E_init_weight_scale: 1.556275235683889
+    Output_E_H1_E_learning_rate: 0.010445570173109459
+    Output_E_Output_I_init_weight_scale: 1.0289654477904577
+    Output_I_Output_E_init_weight_scale: 0.5050616751764505
+    Output_I_H1_E_init_weight_scale: 3.371367160970185
+    Output_I_Output_I_init_weight_scale: 4.405784444708283
+    max_pop_fraction: 0.07568577210001663
+    pos_loss_th: 0.07175371618073065
+    neg_loss_th: -0.15428563068555126
+    H1_I_size: 50.0
+    Output_I_size: 10.0
 BTSP_K1:
     #    accuracy: 87.1325
     #    loss: 0.05355035
@@ -539,6 +605,9 @@ BTSP_K1:
 BTSP_K2:
     #    accuracy: 82.930595
     #    loss: 0.16071227
+    # after extending training to 50000 steps:
+    #    accuracy: 82.192
+    #    loss: 0.14907195
     H1_E_Input_E_max_weight_scale: 3.722833005631368
     FF_BTSP_init_weight_factor: 0.2709243812895328
     H1_E_Input_E_BTSP_learning_rate: 0.11209771151492132
