@@ -31,7 +31,7 @@ projection_config:
         E:
             Input:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_bounds:
                         - 0
                         - null
@@ -41,7 +41,7 @@ projection_config:
                         learning_rate: 0.1
             H1:
                 FFI:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_bounds:
                         - null
                         - 0
@@ -52,7 +52,7 @@ projection_config:
         FFI:
             Input:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_bounds:
                         - 0
                         - null
@@ -64,7 +64,7 @@ projection_config:
         E:
             H1:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_bounds:
                         - 0
                         - null
@@ -74,7 +74,7 @@ projection_config:
                         learning_rate: 0.1
             Output:
                 FFI:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_bounds:
                         - null
                         - 0
@@ -85,7 +85,7 @@ projection_config:
         FFI:
             H1:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_bounds:
                         - 0
                         - null

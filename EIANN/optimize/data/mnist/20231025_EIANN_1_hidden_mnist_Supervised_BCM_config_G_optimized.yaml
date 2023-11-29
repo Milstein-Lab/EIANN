@@ -21,7 +21,7 @@ projection_config:
     E:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.9554606194040144
           weight_bounds: !!python/tuple
@@ -36,7 +36,7 @@ projection_config:
             k: 0.004339627479038111
       H1:
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 1.979314748480211
           weight_bounds: !!python/tuple
@@ -47,7 +47,7 @@ projection_config:
     SomaI:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.5901758593837346
           weight_bounds: !!python/tuple
@@ -57,7 +57,7 @@ projection_config:
           learning_rule: null
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 1.0489752092798035
           weight_bounds: !!python/tuple
@@ -66,7 +66,7 @@ projection_config:
           direction: R
           learning_rule: null
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 1.0274812167644503
           weight_bounds: !!python/tuple
@@ -79,7 +79,7 @@ projection_config:
     E:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.5063175475332442
           weight_bounds: !!python/tuple
@@ -94,7 +94,7 @@ projection_config:
             k: 0.12835470575576177
       Output:
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.5247691421785957
           weight_bounds: !!python/tuple
@@ -105,7 +105,7 @@ projection_config:
     SomaI:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 1.137811546265507
           weight_bounds: !!python/tuple
@@ -115,7 +115,7 @@ projection_config:
           learning_rule: null
       Output:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.4592415060174847
           weight_bounds: !!python/tuple
@@ -125,7 +125,7 @@ projection_config:
           update_phase: A
           learning_rule: null
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 1.5173776338652374
           weight_bounds: !!python/tuple

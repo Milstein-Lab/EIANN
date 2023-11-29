@@ -15,7 +15,7 @@ projection_config:
     E:
       Input:
         E:
-          weight_init: scaled_kaining
+          weight_init: scaled_kaiming
           weight_init_args: !!python/tuple
           - 0.634534257421716
           direction: F
@@ -26,7 +26,7 @@ projection_config:
     E:
       H1:
         E:
-          weight_init: scaled_kaining
+          weight_init: scaled_kaiming
           weight_init_args: !!python/tuple
           - 2.0299549637012495
           direction: F

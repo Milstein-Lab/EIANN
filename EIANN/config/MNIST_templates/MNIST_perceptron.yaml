@@ -12,7 +12,7 @@ projection_config:
     E:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args:
           - 0.00956
           weight_bounds:

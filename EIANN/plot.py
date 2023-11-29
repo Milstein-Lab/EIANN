@@ -438,16 +438,19 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
     fig = plt.figure(figsize=(size, size * num_rows / num_cols))
 
     colorscale_max = torch.max(receptive_fields.abs())
-    if torch.min(receptive_fields)<0:
+    if torch.min(receptive_fields) < 0:
         colorscale_min = -colorscale_max
     else:
         colorscale_min = 0
         
     if cmap == 'custom':
         # Create custom colormap
-        top_rgba = plt.get_cmap('gray')(np.linspace(0, 1, 256))
-        bottom_rgba = plt.get_cmap('Blues')(np.linspace(0, 1, 256))
-        colors = np.concatenate((bottom_rgba, top_rgba))
+        top_rgba = plt.get_cmap('Greys')(np.linspace(0, 1, 256))
+        if torch.min(receptive_fields) < 0:
+            bottom_rgba = plt.get_cmap('Blues')(np.linspace(1, 0, 256))
+            colors = np.concatenate((bottom_rgba, top_rgba))
+        else:
+            colors = top_rgba
         my_cmap = plt.matplotlib.colors.LinearSegmentedColormap.from_list('custom', colors)
     else:
         my_cmap = cmap

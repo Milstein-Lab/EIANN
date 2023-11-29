@@ -17,13 +17,13 @@ projection_config:
     E:
       Input:
         E:
-          # weight_init: half_kaining
+          # weight_init: half_kaiming
           direction: F
           learning_rule: almost_backprop
 
       # Output:
       #   E:
-      #     weight_init: half_kaining
+      #     weight_init: half_kaiming
       #     update_phase: B
       #     compartment: dend
       #     learning_rule: null
@@ -32,7 +32,7 @@ projection_config:
     E:
       H1:
         E:
-          # weight_init: half_kaining
+          # weight_init: half_kaiming
           direction: F
           learning_rule: almost_backprop
 

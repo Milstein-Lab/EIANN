@@ -21,7 +21,7 @@ projection_config:
     E:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 3.92049455609659
@@ -35,7 +35,7 @@ projection_config:
             learning_rate: 0.005647880371398828
       H1:
         FBI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 1.3735974385274785
@@ -50,7 +50,7 @@ projection_config:
     FBI:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 34.17469313513158
@@ -63,7 +63,7 @@ projection_config:
             sign: 1
             learning_rate: 0.00048379300778867
         FBI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 1.935522983730164
@@ -79,7 +79,7 @@ projection_config:
     E:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 8.964029625148111
@@ -93,7 +93,7 @@ projection_config:
             learning_rate: 0.09220619156590634
       Output:
         FBI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 6.269369119752526
@@ -108,7 +108,7 @@ projection_config:
     FBI:
       Output:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 5.788035459925164
@@ -121,7 +121,7 @@ projection_config:
             sign: 1
             learning_rate: 0.00048379300778867
         FBI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 1.4701656399053455

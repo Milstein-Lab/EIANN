@@ -28,7 +28,7 @@ projection_config:
         E:
             Input:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 9.48517424257211
@@ -85,7 +85,7 @@ projection_config:
         E:
             H1:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 5.36355008130285

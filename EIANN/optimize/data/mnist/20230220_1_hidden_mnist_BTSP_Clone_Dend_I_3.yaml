@@ -27,7 +27,7 @@ projection_config:
     E:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.1628052983924217
           weight_bounds: !!python/tuple
@@ -63,7 +63,7 @@ projection_config:
           learning_rule: null
       Output:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 2.070107545990758
           weight_bounds: !!python/tuple
@@ -125,7 +125,7 @@ projection_config:
     E:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.15175141667475828
           weight_bounds: !!python/tuple

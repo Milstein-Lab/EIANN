@@ -21,7 +21,7 @@ projection_config:
         E:
             Input:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 9.48517424257211
@@ -35,7 +35,7 @@ projection_config:
                         learning_rate: 0.29434780488671874
             H1:
                 FBI:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 1.301412672000941
@@ -50,7 +50,7 @@ projection_config:
         FBI:
             H1:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 2.9882012251682943
@@ -63,7 +63,7 @@ projection_config:
                         sign: 1
                         learning_rate: 0.4840460345190343
                 FBI:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 7.3406424124335174
@@ -79,7 +79,7 @@ projection_config:
         E:
             H1:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 5.36355008130285
@@ -93,7 +93,7 @@ projection_config:
                         learning_rate: 0.29434780488671874
             Output:
                 FBI:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 9.334091380215222
@@ -108,7 +108,7 @@ projection_config:
         FBI:
             Output:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 8.229265739454137
@@ -122,7 +122,7 @@ projection_config:
                         sign: 1
                         learning_rate: 0.4840460345190343
                 FBI:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
                         scale: 0.25475779357057554

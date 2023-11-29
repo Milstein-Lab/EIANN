@@ -29,7 +29,7 @@ projection_config:
     E:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_bounds: !!python/tuple
           - 0
           - null
@@ -39,7 +39,7 @@ projection_config:
             learning_rate: 9.99769696149066
       H1:
         FBI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_bounds: !!python/tuple
           - null
           - 0
@@ -50,7 +50,7 @@ projection_config:
     FBI:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_bounds: !!python/tuple
           - 0
           - null
@@ -62,7 +62,7 @@ projection_config:
     E:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_bounds: !!python/tuple
           - 0
           - null
@@ -72,7 +72,7 @@ projection_config:
             learning_rate: 9.99769696149066
       Output:
         FBI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_bounds: !!python/tuple
           - null
           - 0
@@ -83,7 +83,7 @@ projection_config:
     FBI:
       Output:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_bounds: !!python/tuple
           - 0
           - null

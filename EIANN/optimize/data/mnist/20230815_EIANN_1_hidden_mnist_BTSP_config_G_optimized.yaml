@@ -24,7 +24,7 @@ projection_config:
     E:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.3216870990886332
           weight_bounds: !!python/tuple
@@ -42,7 +42,7 @@ projection_config:
             decay_tau: 1.0018623473736468
       H1:
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 1.7623296102013586
           weight_bounds: !!python/tuple
@@ -51,7 +51,7 @@ projection_config:
           direction: R
           learning_rule: null
         DendI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.1151485500296075
           weight_bounds: !!python/tuple
@@ -66,7 +66,7 @@ projection_config:
             learning_rate: 0.029759761694566962
       Output:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.581404408224055
           weight_bounds: !!python/tuple
@@ -86,7 +86,7 @@ projection_config:
     SomaI:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 1.407651107475839
           weight_bounds: !!python/tuple
@@ -96,7 +96,7 @@ projection_config:
           learning_rule: null
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 1.0972823923819646
           weight_bounds: !!python/tuple
@@ -105,7 +105,7 @@ projection_config:
           direction: R
           learning_rule: null
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.480913587260168
           weight_bounds: !!python/tuple
@@ -117,7 +117,7 @@ projection_config:
     DendI:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.7275169821711509
           weight_bounds: !!python/tuple
@@ -127,7 +127,7 @@ projection_config:
           update_phase: A
           learning_rule: null
         DendI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.1563318382338782
           weight_bounds: !!python/tuple
@@ -140,7 +140,7 @@ projection_config:
     E:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.29758945841776613
           weight_bounds: !!python/tuple
@@ -158,7 +158,7 @@ projection_config:
             decay_tau: 1.0018623473736468
       Output:
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 1.3125418707572165
           weight_bounds: !!python/tuple
@@ -169,7 +169,7 @@ projection_config:
     SomaI:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.9162643926020508
           weight_bounds: !!python/tuple
@@ -179,7 +179,7 @@ projection_config:
           learning_rule: null
       Output:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.20979418439657815
           weight_bounds: !!python/tuple

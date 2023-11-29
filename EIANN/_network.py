@@ -13,7 +13,7 @@ import time
 from collections import defaultdict
 from functools import partial
 
-from EIANN.utils import half_kaining_init, scaled_kaining_init, linear, read_from_yaml
+from EIANN.utils import half_kaiming_init, scaled_kaiming_init, linear, read_from_yaml
 import EIANN.rules as rules
 import EIANN.external as external
 
@@ -134,30 +134,30 @@ class Network(nn.Module):
                         fan_in = projection.pre.size
                         total_fan_in += fan_in
                         if projection.weight_init is not None:
-                            if projection.weight_init == 'half_kaining':
-                                 half_kaining_init(projection.weight.data, fan_in, *projection.weight_init_args,
+                            if projection.weight_init == 'half_kaiming':
+                                 half_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args,
                                                    bounds=projection.weight_bounds)
-                            elif projection.weight_init == 'scaled_kaining':
-                                scaled_kaining_init(projection.weight.data, fan_in, *projection.weight_init_args)
+                            elif projection.weight_init == 'scaled_kaiming':
+                                scaled_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args)
                             else:
                                 try:
                                     getattr(projection.weight.data,
                                             projection.weight_init)(*projection.weight_init_args)
                                 except:
                                     raise RuntimeError('Network.init_weights_and_biases: callable for weight_init: %s '
-                                                       'must be half_kaining, scaled_kaining, or a method of Tensor' %
+                                                       'must be half_kaiming, scaled_kaiming, or a method of Tensor' %
                                                        projection.weight_init)
                     if post_pop.include_bias:
                         if post_pop.bias_init is None:
-                            scaled_kaining_init(post_pop.bias.data, total_fan_in)
-                        elif post_pop.bias_init == 'scaled_kaining':
-                            scaled_kaining_init(post_pop.bias.data, total_fan_in, *post_pop.bias_init_args)
+                            scaled_kaiming_init(post_pop.bias.data, total_fan_in)
+                        elif post_pop.bias_init == 'scaled_kaiming':
+                            scaled_kaiming_init(post_pop.bias.data, total_fan_in, *post_pop.bias_init_args)
                         else:
                             try:
                                 getattr(post_pop.bias.data, post_pop.bias_init)(*post_pop.bias_init_args)
                             except:
                                 raise RuntimeError('Network.init_weights_and_biases: callable for bias_init: %s '
-                                                   'must be scaled_kaining, or a method of Tensor' % post_pop.bias_init)
+                                                   'must be scaled_kaiming, or a method of Tensor' % post_pop.bias_init)
 
         self.constrain_weights_and_biases()
 

@@ -21,7 +21,7 @@ projection_config:
     E:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 3.185535556468811
@@ -35,7 +35,7 @@ projection_config:
             learning_rate: 0.018075543891854
       H1:
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 1.9347809648405399
@@ -50,7 +50,7 @@ projection_config:
     SomaI:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 9.075361706260399
@@ -64,7 +64,7 @@ projection_config:
             learning_rate: 0.011681659173533036
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 10.603887165314186
@@ -77,7 +77,7 @@ projection_config:
             sign: 1
             learning_rate: 0.011681659173533036
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 5.057325411368133
@@ -93,7 +93,7 @@ projection_config:
     E:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 5.550872188773149
@@ -107,7 +107,7 @@ projection_config:
             learning_rate: 0.25092996555043057
       Output:
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 0.341303182474694
@@ -122,7 +122,7 @@ projection_config:
     SomaI:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 21.634786331675993
@@ -136,7 +136,7 @@ projection_config:
             learning_rate: 0.011681659173533036
       Output:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 2.5407789449901395
@@ -150,7 +150,7 @@ projection_config:
             sign: 1
             learning_rate: 0.011681659173533036
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 1.497861664103919

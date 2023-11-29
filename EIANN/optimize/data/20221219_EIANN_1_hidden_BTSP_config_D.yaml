@@ -44,7 +44,7 @@ projection_config:
           direction: R
           learning_rule: null
         Dend_I:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.15693539946852347
           weight_bounds: !!python/tuple
@@ -83,7 +83,7 @@ projection_config:
     Dend_I:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_bounds: !!python/tuple
           - 0
           - null
@@ -96,7 +96,7 @@ projection_config:
             sign: 1
             learning_rate: 0.12088626416087091
         Dend_I:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_bounds: !!python/tuple
           - null
           - 0

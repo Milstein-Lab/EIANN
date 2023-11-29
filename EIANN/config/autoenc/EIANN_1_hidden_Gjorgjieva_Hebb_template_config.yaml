@@ -10,7 +10,7 @@ population_templates:
 projection_templates:
   default:
     learning_rule: Backprop
-    weight_init: half_kaining
+    weight_init: half_kaiming
   E:
     direction: F
     weight_bounds:

@@ -25,7 +25,7 @@ projection_config:
     E:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.7428897756547762
           weight_bounds: !!python/tuple
@@ -40,7 +40,7 @@ projection_config:
             decay_tau: 1.0189490287747094
       H1:
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 1.1186934723749018
@@ -53,7 +53,7 @@ projection_config:
             sign: -1
             learning_rate: 0.14645460023593235
         DendI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 0.004373244912563212
           weight_bounds: !!python/tuple
@@ -68,7 +68,7 @@ projection_config:
             learning_rate: 0.01965782007949526
       Output:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 1.2491342252497355
           weight_bounds: !!python/tuple
@@ -85,7 +85,7 @@ projection_config:
     SomaI:
       Input:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 12.889587210842825
@@ -99,7 +99,7 @@ projection_config:
             learning_rate: 0.0017214788341343489
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 10.60624794693998
@@ -113,7 +113,7 @@ projection_config:
             sign: 1
             learning_rate: 0.0017214788341343489
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 2.6552143001095976
@@ -128,7 +128,7 @@ projection_config:
     DendI:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 6.671664117190115
@@ -142,7 +142,7 @@ projection_config:
             sign: 1
             learning_rate: 0.0017214788341343489
         DendI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 2.9503613256764454
@@ -158,7 +158,7 @@ projection_config:
     E:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_init_args: !!python/tuple
           - 2.194238507184084
           weight_bounds: !!python/tuple
@@ -173,7 +173,7 @@ projection_config:
             decay_tau: 1.0189490287747094
       Output:
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 0.04297760425896881
@@ -188,7 +188,7 @@ projection_config:
     SomaI:
       H1:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 2.209203513214724
@@ -202,7 +202,7 @@ projection_config:
             learning_rate: 0.0017214788341343489
       Output:
         E:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 0.10416669718786145
@@ -216,7 +216,7 @@ projection_config:
             sign: 1
             learning_rate: 0.0017214788341343489
         SomaI:
-          weight_init: half_kaining
+          weight_init: half_kaiming
           weight_constraint: normalize_weight
           weight_constraint_kwargs:
             scale: 3.6529342218745375

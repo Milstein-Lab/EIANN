@@ -25,7 +25,7 @@ projection_config:
         E:
             Input:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_init_args: !!python/tuple
                         - 0.061735095235877606
                     weight_bounds: !!python/tuple
@@ -39,7 +39,7 @@ projection_config:
                         learning_rate: 0.006900684389813614
             H1:
                 FBI:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_init_args: !!python/tuple
                         - 0.1857735617689173
                     weight_bounds: !!python/tuple
@@ -50,7 +50,7 @@ projection_config:
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                 Dend_I:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_init_args: !!python/tuple
                         - 0.061041432117914914
                     weight_bounds: !!python/tuple
@@ -64,7 +64,7 @@ projection_config:
                         learning_rate: 0.015920951416174885
             Output:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_init_args: !!python/tuple
                         - 0.26856846831362047
                     weight_bounds: !!python/tuple
@@ -80,7 +80,7 @@ projection_config:
         FBI:
             H1:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_init_args: !!python/tuple
                         - 1.0
                     weight_bounds: !!python/tuple
@@ -103,7 +103,7 @@ projection_config:
         E:
             H1:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_init_args: !!python/tuple
                         - 0.15660723756451086
                     weight_bounds: !!python/tuple
@@ -117,7 +117,7 @@ projection_config:
                         learning_rate: 0.05248973408306354
             Output:
                 FBI:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_init_args: !!python/tuple
                         - 3.668729508940908
                     weight_bounds: !!python/tuple
@@ -130,7 +130,7 @@ projection_config:
         FBI:
             Output:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_init_args: !!python/tuple
                         - 1.0
                     weight_bounds: !!python/tuple

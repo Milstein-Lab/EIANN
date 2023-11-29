@@ -32,7 +32,7 @@ projection_config:
                         learning_rate: 0.04
             Output:
                 FBI:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_bounds: !!python/tuple
                         - null
                         - 0
@@ -47,7 +47,7 @@ projection_config:
         FBI:
             Output:
                 E:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_bounds: !!python/tuple
                         - 0
                         - null
@@ -60,7 +60,7 @@ projection_config:
                         sign: 1
                         learning_rate: 0.112
                 FBI:
-                    weight_init: half_kaining
+                    weight_init: half_kaiming
                     weight_bounds: !!python/tuple
                         - null
                         - 0

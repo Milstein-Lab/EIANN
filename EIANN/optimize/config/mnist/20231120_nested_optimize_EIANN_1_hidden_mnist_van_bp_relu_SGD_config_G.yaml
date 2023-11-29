@@ -28,7 +28,7 @@ kwargs:
         - -1
         - 100
     num_training_steps_accuracy_window: 2000
-    constrain_equilibration_dynamics: True
+    constrain_equilibration_dynamics: False
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       function: update_EIANN_config_1_hidden_van_bp_relu_SGD_G
