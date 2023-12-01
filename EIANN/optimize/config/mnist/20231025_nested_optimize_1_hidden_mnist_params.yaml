@@ -483,6 +483,7 @@ BP_like_5C:
     # with thresholds and H1.E nudges
     #    accuracy: 89.63411
     #    loss: 0.022938268
+    # after extending training to 50000 steps:
     H1_E_Input_E_init_weight_scale: 2.671640210820621
     H1_E_Input_E_learning_rate: 0.00016335118981974039
     H1_E_H1_SomaI_init_weight_scale: 1.187711402390751
