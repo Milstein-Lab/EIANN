@@ -2,16 +2,19 @@ van_bp_relu:
     #    accuracy: 96.0245
     #    loss: 0.009116223
     # stability: after 50000 steps:
+    #    accuracy: 96.99451
+    #    loss: 0.0066554025
     H_learning_rate: 0.1652392249674756
     Output_learning_rate: 0.02168234235499228
     H1_init_weight_scale: 2.957309048541877
     H2_init_weight_scale: 0.30688143784094596
     Output_init_weight_scale: 2.093606302139006
-
 bpDale_relu_G:
     #    accuracy: 95.4102
     #    loss: 0.011326423
     # stability: after 50000 steps:
+    #    accuracy: 96.481
+    #    loss: 0.00842079
     H_E_E_learning_rate: 0.3980860680942911
     Output_E_E_learning_rate: 0.07078468081982983
     H1_E_Input_E_init_weight_scale: 2.416858991797159
