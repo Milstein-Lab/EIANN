@@ -32,6 +32,9 @@ bounds:
     Output_I_Output_I_init_weight_scale:
         - 0.01
         - 10.
+    H1_E_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
     H1_E_H1_SomaI_init_weight_scale:
         - 0.01
         - 10.

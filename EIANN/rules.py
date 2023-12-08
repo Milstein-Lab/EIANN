@@ -240,7 +240,8 @@ class Supervised_BCM(LearningRule):
 
 
 class Supervised_BCM_2(LearningRule):
-    def __init__(self, projection, theta_tau, k, sign=1, learning_rate=None):
+    def __init__(self, projection, theta_tau, k, sign=1, pos_loss_th=0.2, neg_loss_th=-0.2, max_pop_fraction=0.025,
+                 learning_rate=None):
         """
         Output units are nudged to target.
         Nudges to somatic state are applied instantaneously, rather than being subject to slow equilibration.
@@ -256,6 +257,9 @@ class Supervised_BCM_2(LearningRule):
         self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device,
                                                 requires_grad=False) * k
         self.sign = sign
+        self.max_pop_fraction = max_pop_fraction
+        self.pos_loss_th = pos_loss_th
+        self.neg_loss_th = neg_loss_th
         projection.post.__class__.theta_history = property(lambda self: self.get_attribute_history('theta'))
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
