@@ -87,7 +87,7 @@ kwargs:
     constrain_equilibration_dynamics: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
-      function: update_EIANN_config_1_hidden_BP_like_5A
+      function: update_EIANN_config_1_hidden_BP_like_7A
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       get_args_static: get_random_seeds
