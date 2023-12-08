@@ -1,4 +1,3 @@
-# H1.E.Output.E cloned from Output.E.H1.E
 layer_config:
     Input:
         E:
@@ -27,16 +26,17 @@ projection_config:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 0.061735095235877606
+                        - 1.
                     weight_bounds: !!python/tuple
                         - 0
-                        - 3.737942984542882
+                        - null
                     direction: F
-                    learning_rule: BTSP_14
+                    learning_rule: Supervised_BCM_2
                     learning_rule_kwargs:
-                        pos_loss_th: 0.05104425602423604
-                        neg_loss_th: -0.06319409127791972
-                        learning_rate: 0.006900684389813614
+                        sign: 1
+                        learning_rate: 0.29434780488671874
+                        theta_tau: 0.29434780488671874
+                        k: 0.1
             H1:
                 SomaI:
                     weight_init: half_kaiming
@@ -133,16 +133,17 @@ projection_config:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 0.15660723756451086
+                        - 1.
                     weight_bounds: !!python/tuple
                         - 0
-                        - 3.1607571174129747
+                        - null
                     direction: F
-                    learning_rule: BTSP_14
+                    learning_rule: Supervised_BCM_2
                     learning_rule_kwargs:
-                        pos_loss_th: 0.18353579868351752
-                        neg_loss_th: -0.36870478612294805
-                        learning_rate: 0.05248973408306354
+                        sign: 1
+                        learning_rate: 0.29434780488671874
+                        theta_tau: 0.29434780488671874
+                        k: 0.1
             Output:
                 SomaI:
                     weight_init: half_kaiming
@@ -172,8 +173,8 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    update_phase: A
                     direction: R
+                    update_phase: A
                     learning_rule: null
                 SomaI:
                     weight_init: half_kaiming

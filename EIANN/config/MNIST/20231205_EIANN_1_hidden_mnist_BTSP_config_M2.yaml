@@ -176,6 +176,7 @@ projection_config:
                     direction: R
                     learning_rule: null
                 SomaI:
+                    weight_init: half_kaiming
                     weight_init_args: !!python/tuple
                         - 1.
                     weight_bounds: !!python/tuple

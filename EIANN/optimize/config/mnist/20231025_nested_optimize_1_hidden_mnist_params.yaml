@@ -176,7 +176,7 @@ BP_like_1:
     Output_E_Output_I_init_weight_scale: 1.3122673018469384
     Output_I_Output_E_init_weight_scale: 0.31091077042902143
     Output_I_H1_E_init_weight_scale: 1.4930178898694935
-    Output_I_Output_I_init_weight_scale: 0.7456114219354519
+    Output_I_Output_I_init_weight_scale: 10. #0.7456114219354519
     H1_I_size: 50.0
     Output_I_size: 10.0
 BP_like_1B:
@@ -598,6 +598,9 @@ BP_like_6C:
 BP_like_7A:
     #    accuracy: 91.08
     #    loss: 0.019237071
+    # after extending training to 50000 steps:
+    #    accuracy: 91.68599
+    #    loss: 0.018079579
     H1_E_Input_E_init_weight_scale: 0.44089236706630164
     H1_E_Input_E_learning_rate: 0.005207935302930559
     H1_E_H1_SomaI_init_weight_scale: 0.5175833547541574
@@ -625,7 +628,7 @@ BTSP_K1:
     # after extending training to 50000 steps:
     #    accuracy: 88.280495
     #    loss: 0.057000477
-    # CL:
+    # CL (75%):
     #    final_accuracy: 31.850000381469727
     #    final_loss: 0.07918669283390045
     #    phase1_accuracy: 91.27933
