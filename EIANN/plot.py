@@ -388,7 +388,7 @@ def plot_hidden_weights(weights, sort=False):
 
 
 def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort=False, num_cols=None, num_rows=None,
-                          activity_threshold=1e-10, cmap='bwr'):
+                          activity_threshold=1e-10, cmap='custom'):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
     structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is

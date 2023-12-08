@@ -1,0 +1,36 @@
+van_bp_relu:
+    #    accuracy: 96.0245
+    #    loss: 0.009116223
+    # stability: after 50000 steps:
+    #    accuracy: 96.99451
+    #    loss: 0.0066554025
+    H_learning_rate: 0.1652392249674756
+    Output_learning_rate: 0.02168234235499228
+    H1_init_weight_scale: 2.957309048541877
+    H2_init_weight_scale: 0.30688143784094596
+    Output_init_weight_scale: 2.093606302139006
+bpDale_relu_G:
+    #    accuracy: 95.4102
+    #    loss: 0.011326423
+    # stability: after 50000 steps:
+    #    accuracy: 96.481
+    #    loss: 0.00842079
+    H_E_E_learning_rate: 0.3980860680942911
+    Output_E_E_learning_rate: 0.07078468081982983
+    H1_E_Input_E_init_weight_scale: 2.416858991797159
+    H1_E_H1_I_init_weight_scale: 1.1158572938882887
+    H1_I_Input_E_init_weight_scale: 3.1371037827062644
+    H1_I_H1_E_init_weight_scale: 0.4835575833031128
+    H1_I_H1_I_init_weight_scale: 1.295863932103535
+    H2_E_H1_E_init_weight_scale: 0.5427969492492737
+    H2_E_H2_I_init_weight_scale: 0.47127118148939817
+    H2_I_H1_E_init_weight_scale: 1.4413459916540117
+    H2_I_H2_E_init_weight_scale: 1.5897266841738924
+    H2_I_H2_I_init_weight_scale: 2.408542744903562
+    Output_E_H2_E_init_weight_scale: 3.281687708158219
+    Output_E_Output_I_init_weight_scale: 1.5076419625966615
+    Output_I_H2_E_init_weight_scale: 2.94991175072541
+    Output_I_Output_E_init_weight_scale: 0.598405721617929
+    Output_I_Output_I_init_weight_scale: 1.532615660819997
+    H_I_size: 50.0
+    Output_I_size: 10.0

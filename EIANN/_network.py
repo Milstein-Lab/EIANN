@@ -721,15 +721,7 @@ class Population(object):
 
         """
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
-        self.activity_history_list = []
-        self._activity_history = None
-        self.backward_activity_history_list = []
-        self._backward_activity_history = None
-        self.plateau_history_list = []
-        self._plateau_history = None
-        self.nudge_history_list = []
-        self._nudge_history = None
-
+    
     def append_projection(self, projection):
         """
         Register Projection parameters as Network module parameters. Enables convenient attribute access syntax.

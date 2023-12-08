@@ -676,6 +676,89 @@ def update_EIANN_config_1_hidden_BCM_G(x, context):
     context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = (Output_I_Output_I_init_weight_scale,)
 
 
+def update_EIANN_config_1_hidden_Supervised_BCM_K(x, context):
+    """
+
+    :param x:
+    :param context:
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    max_pop_fraction = param_dict['max_pop_fraction']
+    pos_loss_th = param_dict['pos_loss_th']
+    neg_loss_th = param_dict['neg_loss_th']
+    H1_I_size = int(param_dict['H1_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+    
+    context.layer_config['H1']['SomaI']['size'] = H1_I_size
+    context.layer_config['H1']['DendI']['size'] = H1_I_size
+    context.layer_config['Output']['SomaI']['size'] = Output_I_size
+    
+    H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
+    H1_E_Input_E_learning_rate = param_dict['H1_E_Input_E_learning_rate']
+    H1_E_theta_tau = param_dict['H1_E_theta_tau']
+    H1_E_BCM_k = param_dict['H1_E_BCM_k']
+    
+    H1_E_H1_SomaI_init_weight_scale = param_dict['H1_E_H1_SomaI_init_weight_scale']
+    H1_SomaI_H1_E_init_weight_scale = param_dict['H1_SomaI_H1_E_init_weight_scale']
+    H1_SomaI_Input_E_init_weight_scale = param_dict['H1_SomaI_Input_E_init_weight_scale']
+    H1_SomaI_H1_SomaI_init_weight_scale = param_dict['H1_SomaI_H1_SomaI_init_weight_scale']
+    
+    H1_DendI_H1_E_init_weight_scale = param_dict['H1_DendI_H1_E_init_weight_scale']
+    H1_DendI_H1_DendI_init_weight_scale = param_dict['H1_DendI_H1_DendI_init_weight_scale']
+    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale']
+    H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
+    
+    Output_E_H1_E_init_weight_scale = param_dict['Output_E_H1_E_init_weight_scale']
+    Output_E_H1_E_learning_rate = param_dict['Output_E_H1_E_learning_rate']
+    Output_E_theta_tau = param_dict['Output_E_theta_tau']
+    Output_E_BCM_k = param_dict['Output_E_BCM_k']
+    
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_H1_E_init_weight_scale = param_dict['Output_I_H1_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+    
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_Input_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['theta_tau'] = H1_E_theta_tau
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['k'] = H1_E_BCM_k
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['max_pop_fraction'] = max_pop_fraction
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = pos_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_th'] = neg_loss_th
+    
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['E']['H1']['DendI']['weight_init_args'] = (H1_E_H1_DendI_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['DendI']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_H1_DendI_learning_rate
+    
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_SomaI_Input_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_init_args'] = (H1_SomaI_H1_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_SomaI_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['DendI']['H1']['E']['weight_init_args'] = (H1_DendI_H1_E_init_weight_scale,)
+    context.projection_config['H1']['DendI']['H1']['DendI']['weight_init_args'] = (H1_DendI_H1_DendI_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_H1_E_learning_rate
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['theta_tau'] = \
+        Output_E_theta_tau
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['k'] = \
+        Output_E_BCM_k
+    
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
+        (Output_E_Output_I_init_weight_scale,)
+    
+    context.projection_config['Output']['SomaI']['H1']['E']['weight_init_args'] = (Output_I_H1_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_init_args'] = \
+        (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = \
+        (Output_I_Output_I_init_weight_scale,)
+
+
 def update_EIANN_config_1_hidden_BCM_cotuned_I_H(x, context):
     """
 
@@ -3695,7 +3778,7 @@ def update_EIANN_config_2_hidden_BP_like_5A(x, context):
 def update_EIANN_config_1_hidden_BP_like_6A(x, context):
     """
     H1.SomaI, Output.SomaI are not learned.
-    E<-E weights are learned with the BP_like_4 rule.
+    E<-E weights are learned with the BP_like_5 rule.
     Inits are half-kaiming with parameterized scale.
     H1.E.Output.E weights are random and fixed
     Contains H1.DendI.H1.E; H1.E.H1.DendI is learned with DendriticLoss_5
@@ -3742,6 +3825,82 @@ def update_EIANN_config_1_hidden_BP_like_6A(x, context):
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = pos_loss_th
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_th'] = neg_loss_th
     context.projection_config['H1']['E']['Output']['E']['weight_init_args'] = (H1_E_Output_E_init_weight_scale,)
+    
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['E']['H1']['DendI']['weight_init_args'] = (H1_E_H1_DendI_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['DendI']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_H1_DendI_learning_rate
+    
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_SomaI_Input_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_init_args'] = (H1_SomaI_H1_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_SomaI_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['DendI']['H1']['E']['weight_init_args'] = (H1_DendI_H1_E_init_weight_scale,)
+    context.projection_config['H1']['DendI']['H1']['DendI']['weight_init_args'] = (H1_DendI_H1_DendI_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_H1_E_learning_rate
+    
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
+        (Output_E_Output_I_init_weight_scale,)
+    
+    context.projection_config['Output']['SomaI']['H1']['E']['weight_init_args'] = (Output_I_H1_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_init_args'] = \
+        (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = \
+        (Output_I_Output_I_init_weight_scale,)
+
+
+def update_EIANN_config_1_hidden_BP_like_7A(x, context):
+    """
+    H1.SomaI, Output.SomaI are not learned.
+    E<-E weights are learned with the BP_like_5 rule.
+    Inits are half-kaiming with parameterized scale.
+    H1.E.Output.E weights are cloned W.T
+    Contains H1.DendI.H1.E; H1.E.H1.DendI is learned with DendriticLoss_5
+    :param x:
+    :param context:
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    max_pop_fraction = param_dict['max_pop_fraction']
+    pos_loss_th = param_dict['pos_loss_th']
+    neg_loss_th = param_dict['neg_loss_th']
+    H1_I_size = int(param_dict['H1_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+    
+    context.layer_config['H1']['SomaI']['size'] = H1_I_size
+    context.layer_config['H1']['DendI']['size'] = H1_I_size
+    context.layer_config['Output']['SomaI']['size'] = Output_I_size
+    
+    H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
+    H1_E_Input_E_learning_rate = param_dict['H1_E_Input_E_learning_rate']
+    
+    H1_E_H1_SomaI_init_weight_scale = param_dict['H1_E_H1_SomaI_init_weight_scale']
+    H1_SomaI_H1_E_init_weight_scale = param_dict['H1_SomaI_H1_E_init_weight_scale']
+    H1_SomaI_Input_E_init_weight_scale = param_dict['H1_SomaI_Input_E_init_weight_scale']
+    H1_SomaI_H1_SomaI_init_weight_scale = param_dict['H1_SomaI_H1_SomaI_init_weight_scale']
+    
+    H1_DendI_H1_E_init_weight_scale = param_dict['H1_DendI_H1_E_init_weight_scale']
+    H1_DendI_H1_DendI_init_weight_scale = param_dict['H1_DendI_H1_DendI_init_weight_scale']
+    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale']
+    H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
+    
+    Output_E_H1_E_init_weight_scale = param_dict['Output_E_H1_E_init_weight_scale']
+    Output_E_H1_E_learning_rate = param_dict['Output_E_H1_E_learning_rate']
+    
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_H1_E_init_weight_scale = param_dict['Output_I_H1_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+    
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_Input_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['max_pop_fraction'] = max_pop_fraction
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = pos_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_th'] = neg_loss_th
     
     context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_SomaI_init_weight_scale,)
     
@@ -4553,6 +4712,107 @@ def update_EIANN_config_1_hidden_BTSP_K1(x, context):
         (Output_I_Output_I_init_weight_scale,)
 
 
+def update_EIANN_config_1_hidden_BTSP_L1(x, context):
+    """
+    H1.SomaI, H1.DendI.H1.E, and Output.SomaI are not learned.
+    H1.E.H1.DendI weights are learned with the DendriticLoss_5 rule.
+    E<-E weights are learned with the BTSP_14 rule.
+    Inits are half-kaiming with parameterized scale.
+    Separate pos and neg mod event thresholds.
+    :param x:
+    :param context:
+
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    H1_I_size = int(param_dict['H1_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+    
+    context.layer_config['H1']['SomaI']['size'] = H1_I_size
+    context.layer_config['H1']['DendI']['size'] = H1_I_size
+    context.layer_config['Output']['SomaI']['size'] = Output_I_size
+    
+    FF_BTSP_init_weight_factor = param_dict['FF_BTSP_init_weight_factor']
+    FB_BTSP_init_weight_factor = param_dict['FB_BTSP_init_weight_factor']
+    BTSP_max_pop_fraction = param_dict['BTSP_max_pop_fraction']
+    
+    H1_E_Input_E_max_weight_scale = param_dict['H1_E_Input_E_max_weight_scale']
+    H1_E_Input_E_max_weight = H1_E_Input_E_max_weight_scale / math.sqrt(context.layer_config['Input']['E']['size'])
+    H1_E_Input_E_init_weight_scale = H1_E_Input_E_max_weight_scale * FF_BTSP_init_weight_factor
+    H1_E_Input_E_BTSP_learning_rate = param_dict['H1_E_Input_E_BTSP_learning_rate']
+    H1_E_Output_E_BTSP_learning_rate = param_dict['H1_E_Output_E_BTSP_learning_rate']
+    H1_E_BTSP_pos_loss_th = param_dict['H1_E_BTSP_pos_loss_th']
+    H1_E_BTSP_neg_loss_th = param_dict['H1_E_BTSP_neg_loss_th']
+    H1_E_Output_E_max_weight_scale = param_dict['H1_E_Output_E_max_weight_scale']
+    H1_E_Output_E_max_weight = H1_E_Output_E_max_weight_scale / math.sqrt(context.layer_config['Output']['E']['size'])
+    H1_E_Output_E_init_weight_scale = H1_E_Output_E_max_weight_scale * FB_BTSP_init_weight_factor
+    
+    H1_E_H1_SomaI_init_weight_scale = param_dict['H1_E_H1_SomaI_init_weight_scale']
+    H1_SomaI_H1_E_init_weight_scale = param_dict['H1_SomaI_H1_E_init_weight_scale']
+    H1_SomaI_Input_E_init_weight_scale = param_dict['H1_SomaI_Input_E_init_weight_scale']
+    H1_SomaI_H1_SomaI_init_weight_scale = param_dict['H1_SomaI_H1_SomaI_init_weight_scale']
+    
+    H1_DendI_H1_E_init_weight_scale = param_dict['H1_DendI_H1_E_init_weight_scale']
+    H1_DendI_H1_DendI_init_weight_scale = param_dict['H1_DendI_H1_DendI_init_weight_scale']
+    
+    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale']
+    H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
+    
+    Output_E_H1_E_max_weight_scale = param_dict['Output_E_H1_E_max_weight_scale']
+    Output_E_H1_E_max_weight = Output_E_H1_E_max_weight_scale / math.sqrt(context.layer_config['H1']['E']['size'])
+    Output_E_H1_E_init_weight_scale = Output_E_H1_E_max_weight_scale * FF_BTSP_init_weight_factor
+    Output_E_BTSP_learning_rate = param_dict['Output_E_BTSP_learning_rate']
+    
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_H1_E_init_weight_scale = param_dict['Output_I_H1_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+    
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['Input']['E']['weight_bounds'] = (0, H1_E_Input_E_max_weight)
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = H1_E_BTSP_pos_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_th'] = H1_E_BTSP_neg_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_Input_E_BTSP_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['max_pop_fraction'] = \
+        BTSP_max_pop_fraction
+    
+    context.projection_config['H1']['E']['Output']['E']['weight_init_args'] = (H1_E_Output_E_init_weight_scale,)
+    context.projection_config['H1']['E']['Output']['E']['weight_bounds'] = (0, H1_E_Output_E_max_weight)
+    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['pos_loss_th'] = H1_E_BTSP_pos_loss_th
+    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['neg_loss_th'] = H1_E_BTSP_neg_loss_th
+    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_Output_E_BTSP_learning_rate
+    context.projection_config['H1']['E']['Output']['E']['learning_rule_kwargs']['max_pop_fraction'] = \
+        BTSP_max_pop_fraction
+    
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['E']['H1']['DendI']['weight_init_args'] = (H1_E_H1_DendI_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['DendI']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_H1_DendI_learning_rate
+    
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_SomaI_Input_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_init_args'] = (H1_SomaI_H1_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_SomaI_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['DendI']['H1']['E']['weight_init_args'] = (H1_DendI_H1_E_init_weight_scale,)
+    context.projection_config['H1']['DendI']['H1']['DendI']['weight_init_args'] = (H1_DendI_H1_DendI_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
+    context.projection_config['Output']['E']['H1']['E']['weight_bounds'] = (0, Output_E_H1_E_max_weight)
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_BTSP_learning_rate
+    
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
+        (Output_E_Output_I_init_weight_scale,)
+    
+    context.projection_config['Output']['SomaI']['H1']['E']['weight_init_args'] = (Output_I_H1_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_init_args'] = \
+        (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = \
+        (Output_I_Output_I_init_weight_scale,)
+
+
 def update_EIANN_config_1_hidden_BTSP_K2(x, context):
     """
     H1.SomaI, H1.DendI.H1.E, and Output.SomaI are not learned.
@@ -4642,6 +4902,94 @@ def update_EIANN_config_1_hidden_BTSP_K2(x, context):
         Output_E_BTSP_learning_rate
     context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['neg_loss_ET_discount'] = \
         BTSP_neg_loss_ET_discount
+    
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
+        (Output_E_Output_I_init_weight_scale,)
+    
+    context.projection_config['Output']['SomaI']['H1']['E']['weight_init_args'] = (Output_I_H1_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_init_args'] = \
+        (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = \
+        (Output_I_Output_I_init_weight_scale,)
+
+
+def update_EIANN_config_1_hidden_BTSP_L2(x, context):
+    """
+    H1.SomaI, H1.DendI.H1.E, and Output.SomaI are not learned.
+    H1.E.H1.DendI weights are learned with the DendriticLoss_5 rule.
+    E<-E weights are learned with the BTSP_14 rule.
+    H1.E.Output.E weights are cloned from Output.E.H1.E
+    Inits are half-kaiming with parameterized scale.
+    Separate pos and neg mod event thresholds.
+    :param x:
+    :param context:
+
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    H1_I_size = int(param_dict['H1_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+    
+    context.layer_config['H1']['SomaI']['size'] = H1_I_size
+    context.layer_config['H1']['DendI']['size'] = H1_I_size
+    context.layer_config['Output']['SomaI']['size'] = Output_I_size
+    
+    FF_BTSP_init_weight_factor = param_dict['FF_BTSP_init_weight_factor']
+    BTSP_max_pop_fraction = param_dict['BTSP_max_pop_fraction']
+    
+    H1_E_Input_E_max_weight_scale = param_dict['H1_E_Input_E_max_weight_scale']
+    H1_E_Input_E_max_weight = H1_E_Input_E_max_weight_scale / math.sqrt(context.layer_config['Input']['E']['size'])
+    H1_E_Input_E_init_weight_scale = H1_E_Input_E_max_weight_scale * FF_BTSP_init_weight_factor
+    H1_E_Input_E_BTSP_learning_rate = param_dict['H1_E_Input_E_BTSP_learning_rate']
+    H1_E_BTSP_pos_loss_th = param_dict['H1_E_BTSP_pos_loss_th']
+    H1_E_BTSP_neg_loss_th = param_dict['H1_E_BTSP_neg_loss_th']
+    
+    H1_E_H1_SomaI_init_weight_scale = param_dict['H1_E_H1_SomaI_init_weight_scale']
+    H1_SomaI_H1_E_init_weight_scale = param_dict['H1_SomaI_H1_E_init_weight_scale']
+    H1_SomaI_Input_E_init_weight_scale = param_dict['H1_SomaI_Input_E_init_weight_scale']
+    H1_SomaI_H1_SomaI_init_weight_scale = param_dict['H1_SomaI_H1_SomaI_init_weight_scale']
+    
+    H1_DendI_H1_E_init_weight_scale = param_dict['H1_DendI_H1_E_init_weight_scale']
+    H1_DendI_H1_DendI_init_weight_scale = param_dict['H1_DendI_H1_DendI_init_weight_scale']
+    
+    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale']
+    H1_E_H1_DendI_learning_rate = param_dict['H1_E_H1_DendI_learning_rate']
+    
+    Output_E_H1_E_max_weight_scale = param_dict['Output_E_H1_E_max_weight_scale']
+    Output_E_H1_E_max_weight = Output_E_H1_E_max_weight_scale / math.sqrt(context.layer_config['H1']['E']['size'])
+    Output_E_H1_E_init_weight_scale = Output_E_H1_E_max_weight_scale * FF_BTSP_init_weight_factor
+    Output_E_BTSP_learning_rate = param_dict['Output_E_BTSP_learning_rate']
+    
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_H1_E_init_weight_scale = param_dict['Output_I_H1_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+    
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['Input']['E']['weight_bounds'] = (0, H1_E_Input_E_max_weight)
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = H1_E_BTSP_pos_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_th'] = H1_E_BTSP_neg_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_Input_E_BTSP_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['max_pop_fraction'] = \
+        BTSP_max_pop_fraction
+    
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['E']['H1']['DendI']['weight_init_args'] = (H1_E_H1_DendI_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['DendI']['learning_rule_kwargs']['learning_rate'] = \
+        H1_E_H1_DendI_learning_rate
+    
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_SomaI_Input_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_init_args'] = (H1_SomaI_H1_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_SomaI_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['DendI']['H1']['E']['weight_init_args'] = (H1_DendI_H1_E_init_weight_scale,)
+    context.projection_config['H1']['DendI']['H1']['DendI']['weight_init_args'] = (H1_DendI_H1_DendI_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H1']['E']['weight_init_args'] = (Output_E_H1_E_init_weight_scale,)
+    context.projection_config['Output']['E']['H1']['E']['weight_bounds'] = (0, Output_E_H1_E_max_weight)
+    context.projection_config['Output']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_BTSP_learning_rate
     
     context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
         (Output_E_Output_I_init_weight_scale,)

@@ -292,8 +292,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         receptive_fields = network.H1.E.Input.E.weight.detach()
         activity_preferred_inputs = None
     if plot:
-        plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=True, num_cols=10, num_rows=10,
-                              cmap='custom')
+        plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=True, num_cols=10, num_rows=10)
 
     if context.full_analysis:
         metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields,

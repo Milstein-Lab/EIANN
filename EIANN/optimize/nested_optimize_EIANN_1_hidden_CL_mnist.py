@@ -115,8 +115,14 @@ def config_worker():
         context.retrain = True
     else:
         context.retrain = str_to_bool(context.retrain)
-
+    
     context.train_steps = int(context.train_steps)
+    context.train_steps1 = context.train_steps
+    
+    if 'train_steps2' not in context() or context.train_steps2 is None:
+        context.train_steps2 = context.train_steps
+    else:
+        context.train_steps2 = int(context.train_steps2)
 
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
@@ -133,14 +139,22 @@ def config_worker():
     # Add index to train & test data
     MNIST_phase1_train = []
     MNIST_phase2_train = []
+    MNIST_phase1_val = []
+    MNIST_phase2_val = []
     num_classes = len(MNIST_train_dataset.classes)
     phase_label_split = round(num_classes * context.split)
     for idx, (data, label) in enumerate(MNIST_train_dataset):
         target = torch.eye(num_classes)[label]
-        if label < phase_label_split:
-            MNIST_phase1_train.append((idx, data, target))
+        if idx < 50000:
+            if label < phase_label_split:
+                MNIST_phase1_train.append((idx, data, target))
+            else:
+                MNIST_phase2_train.append((idx, data, target))
         else:
-            MNIST_phase2_train.append((idx, data, target))
+            if label < phase_label_split:
+                MNIST_phase1_val.append((idx, data, target))
+            else:
+                MNIST_phase2_val.append((idx, data, target))
 
     MNIST_full_test = []
     MNIST_phase1_test = []
@@ -155,22 +169,18 @@ def config_worker():
 
     # Put data in dataloader
     context.data_generator = torch.Generator()
-    phase1_num_train_samples = round(context.train_steps * context.split)
-    phase2_num_train_samples = context.train_steps - phase1_num_train_samples
-    phase1_num_val_samples = round(10000 * context.split)
-    phase2_num_val_samples = 10000 - phase1_num_val_samples
-
     context.phase1_train_dataloader = \
-        torch.utils.data.DataLoader(MNIST_phase1_train[:phase1_num_train_samples], shuffle=True, generator=context.data_generator)
-    context.phase1_val_dataloader = torch.utils.data.DataLoader(MNIST_phase1_train[-phase1_num_val_samples:], batch_size=10000, shuffle=False)
+        torch.utils.data.DataLoader(MNIST_phase1_train, shuffle=True, generator=context.data_generator)
+    context.phase1_val_dataloader = torch.utils.data.DataLoader(MNIST_phase1_val, batch_size=len(MNIST_phase1_val),
+                                                                shuffle=False)
 
     context.phase2_train_dataloader = \
-        torch.utils.data.DataLoader(MNIST_phase2_train[:phase2_num_train_samples], shuffle=True,
-                                    generator=context.data_generator)
-    context.phase2_val_dataloader = torch.utils.data.DataLoader(MNIST_phase2_train[-phase2_num_val_samples:],
-                                                                batch_size=10000, shuffle=False)
+        torch.utils.data.DataLoader(MNIST_phase2_train, shuffle=True, generator=context.data_generator)
+    context.phase2_val_dataloader = torch.utils.data.DataLoader(MNIST_phase2_val, batch_size=len(MNIST_phase2_val),
+                                                                shuffle=False)
 
-    context.full_test_dataloader = torch.utils.data.DataLoader(MNIST_full_test, batch_size=len(MNIST_full_test), shuffle=False)
+    context.full_test_dataloader = torch.utils.data.DataLoader(MNIST_full_test, batch_size=len(MNIST_full_test),
+                                                               shuffle=False)
     context.phase1_test_dataloader = torch.utils.data.DataLoader(MNIST_phase1_test, batch_size=len(MNIST_phase1_test),
                                                                shuffle=False)
     context.phase2_test_dataloader = torch.utils.data.DataLoader(MNIST_phase2_test, batch_size=len(MNIST_phase2_test),
@@ -209,7 +219,16 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     epochs = context.epochs
 
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
-
+    
+    if export:
+        config_dict = {'layer_config': context.layer_config,
+                       'projection_config': context.projection_config,
+                       'training_kwargs': context.training_kwargs}
+        write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
+        if context.disp:
+            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
+                  (os.getpid(), context.export_network_config_file_path))
+    
     if plot:
         try:
             network.Output.E.H1.E.initial_weight = network.Output.E.H1.E.weight.data.detach().clone()
@@ -217,20 +236,32 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         except:
             pass
         plot_batch_accuracy(network, full_test_dataloader, population='all', title='Initial')
-
-    network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-    saved_network_path = f"{context.output_dir}/{network_name}_phase1_{seed}.pkl"
-    if os.path.exists(saved_network_path) and not context.retrain:
-        network.load(saved_network_path)
+    
+    if 'data_file_path1' not in context():
+        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+        if context.label is None:
+            context.data_file_path1 = f"{context.output_dir}/{network_name}_phase1_{seed}_{data_seed}.pkl"
+        else:
+            context.data_file_path1 = f"{context.output_dir}/{network_name}_phase1_{seed}_{data_seed}_{context.label}.pkl"
+    
+    if os.path.exists(context.data_file_path1) and not context.retrain:
+        network.load(context.data_file_path1)
+        if context.disp:
+            print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i loaded phase1 network history from %s' %
+                  (os.getpid(), context.data_file_path1))
     else:
         data_generator.manual_seed(data_seed)
         network.train(phase1_train_dataloader, phase1_val_dataloader, epochs=epochs,
                       val_interval=context.val_interval,  # e.g. (-201, -1, 10)
+                      samples_per_epoch=context.train_steps1,
                       store_history=context.store_history, store_dynamics=context.store_dynamics,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar)
         if export:
-            network.save(path=saved_network_path)
+            network.save(path=context.data_file_path1, disp=False)
+            if context.disp:
+                print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i exported phase1 network history to %s' %
+                      (os.getpid(), context.data_file_path1))
 
     # reorder output units if using unsupervised/Hebbian rule
     if not context.supervised:
@@ -274,14 +305,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                         context.eval_accuracy)
 
     if torch.isnan(results['phase1_loss']):
+        if context.debug and context.interactive:
+            context.update(locals())
         return dict()
-
-    if context.constrain_equilibration_dynamics or context.debug:
-        if not check_equilibration_dynamics(network, full_test_dataloader, context.equilibration_activity_tolerance,
-                                            context.debug, context.disp, context.debug and plot):
-            if not context.debug:
-                return dict()
-
+    
     if plot:
         plot_batch_accuracy(network, full_test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
                             title='After Phase 1')
@@ -293,21 +320,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             compute_test_loss_and_accuracy_history(network, phase1_test_dataloader,
                                                    sorted_output_idx=sorted_output_idx, plot=plot,
                                                    status_bar=context.status_bar)
-
-    if context.debug:
-        print('pid: %i, seed: %i' % (os.getpid(), seed))
-        sys.stdout.flush()
-        context.update(locals())
-
-    if export:
-        config_dict = {'layer_config': context.layer_config,
-                       'projection_config': context.projection_config,
-                       'training_kwargs': context.training_kwargs}
-        write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
-        if context.disp:
-            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
-                  (os.getpid(), context.export_network_config_file_path))
-
+    
+    if context.constrain_equilibration_dynamics or context.debug:
+        if not check_equilibration_dynamics(network, full_test_dataloader, context.equilibration_activity_tolerance,
+                                            context.debug, context.disp, plot):
+            if not context.debug:
+                if context.interactive:
+                    context.update(locals())
+                return dict()
+    
     # if export:
     #     if context.temp_output_path is not None:
     #         # Compute test activity and metrics
@@ -339,20 +360,33 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     #             metrics_group.create_dataset('phase1_accuracy', data=final_argmax_accuracy)
 
     network.reset_history()
-
-    saved_network_path = f"{context.output_dir}/{network_name}_phase2_{seed}.pkl"
-    if os.path.exists(saved_network_path) and not context.retrain:
-        network.load(saved_network_path)
+    
+    if 'data_file_path2' not in context():
+        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+        if context.label is None:
+            context.data_file_path2 = f"{context.output_dir}/{network_name}_phase2_{seed}_{data_seed}.pkl"
+        else:
+            context.data_file_path2 = f"{context.output_dir}/{network_name}_phase2_{seed}_{data_seed}_{context.label}.pkl"
+    
+    if os.path.exists(context.data_file_path2) and not context.retrain:
+        network.load(context.data_file_path2)
+        if context.disp:
+            print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i loaded phase2 network history from %s' %
+                  (os.getpid(), context.data_file_path2))
     else:
         data_generator.manual_seed(data_seed)
         network.train(phase2_train_dataloader, phase2_val_dataloader, epochs=epochs,
                       val_interval=context.val_interval,  # e.g. (-201, -1, 10)
+                      samples_per_epoch=context.train_steps2,
                       store_history=context.store_history, store_dynamics=context.store_dynamics,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar)
         if export:
-            network.save(path=saved_network_path)
-
+            network.save(path=context.data_file_path2, disp=False)
+            if context.disp:
+                print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i exported phase2 network history to %s' %
+                      (os.getpid(), context.data_file_path2))
+    
     # reorder output units if using unsupervised/Hebbian rule
     if not context.supervised:
         min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
@@ -396,6 +430,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                         context.eval_accuracy)
 
     if torch.isnan(results['phase2_loss']):
+        if context.debug and context.interactive:
+            context.update(locals())
         return dict()
 
     if plot:
@@ -421,12 +457,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         test_loss_history, test_accuracy_history = \
             compute_test_loss_and_accuracy_history(network, phase2_test_dataloader, sorted_output_idx=sorted_output_idx,
                                                    plot=plot, status_bar=context.status_bar, title='Phase 2')
-
-
-    # if context.debug:
-    #     context.update(locals())
-    #     return dict()
-
+    
     final_total_loss, final_total_accuracy = \
         compute_test_loss_and_accuracy_single_batch(network, full_test_dataloader, sorted_output_idx=sorted_output_idx)
 
