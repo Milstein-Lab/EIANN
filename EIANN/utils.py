@@ -1134,7 +1134,8 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     assert len(network.param_history)>0, 'Network must have param_history'
     assert len(dataloader)==1, 'Dataloader must have a single large batch'
 
-    idx, data, target = next(iter(dataloader)) # if dataloader is a single batch
+    idx, data, target = next(iter(dataloader))
+
     if batch_size is None:
         print('Warning: batch_size not specified, default batch_size is full dataset')
         sample_data = data
@@ -1172,7 +1173,6 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     actual_dParam_history_stepaveraged_all = []
     predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
     predicted_dParam_history_all = []
-
     for t in tqdm(range(len(param_history))):  
         # Load params into network
         state_dict = prev_param_history[t]
@@ -1181,7 +1181,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             state_dict = {name:param for name,param in state_dict.items() if name in test_network.state_dict()}
         test_network.load_state_dict(state_dict)
         test_network.prev_param_history.append(copy.deepcopy(state_dict))
-
+ 
         # Compute forward pass
         if batch_size is not None:
             sample_idx = network.sample_order[param_history_steps[t]:param_history_steps[t]+batch_size]            
@@ -1223,7 +1223,17 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             dParam = (new_state_dict[key]-state_dict[key])
             predicted_dParam_history_dict[key].append(dParam)
             dParam_vec.append(dParam.flatten())
+
+
+            if torch.all(dParam==0) and t>100 and "DendI" not in key:
+                print(f'Warning: dParam is all zeros at step {t}, {key}')
+                print(torch.all(new_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
+                return state_dict, new_state_dict, output, loss, dParam
+
+
         predicted_dParam_history_all.append(torch.cat(dParam_vec))
+
+        
 
         # Compute the actual dParam of the first network
         next_state_dict = param_history[t]
@@ -1232,6 +1242,12 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             dParam = (next_state_dict[key]-state_dict[key])
             actual_dParam_history_dict[key].append(dParam)
             dParam_vec.append(dParam.flatten())
+
+            if torch.all(dParam==0) and t>100 and "DendI" not in key:
+                print(f'Warning: actual dParam is all zeros at step {t}, {key}')
+                print(torch.all(next_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
+                return state_dict, new_state_dict, output, loss, dParam
+
         actual_dParam_history_all.append(torch.cat(dParam_vec))
 
         # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
@@ -1261,7 +1277,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     return test_network
 
 
-def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=False, binarize=False):
+def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=False, binarize=False, only_updated_params=False):
 
     '''
     Compute the angle between the actual and predicted parameter updates (dW) for each training step.
@@ -1282,18 +1298,30 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
     for i, param_name in enumerate(actual_dParam_history):
         angles[param_name] = []
         
-        for predicted_dParam, actual_dParam in zip(predicted_dParam_history[param_name], actual_dParam_history[param_name]):
+        for j, (predicted_dParam, actual_dParam) in enumerate(zip(predicted_dParam_history[param_name], actual_dParam_history[param_name])):
+
             # Compute angle between parameter update (dW) vectors
             predicted_dParam = predicted_dParam.flatten()
             actual_dParam = actual_dParam.flatten()
             if binarize:
                 predicted_dParam = torch.sign(predicted_dParam)
                 actual_dParam = torch.sign(actual_dParam)
+            if only_updated_params:
+                updated_idx = torch.where(actual_dParam != 0)
+                # if len(updated_idx[0]) != len(actual_dParam):
+                #     print(f"Percentage updated = {len(updated_idx[0])/len(actual_dParam)*100:.2f}%")
+                predicted_dParam = predicted_dParam[actual_dParam != 0]
+                actual_dParam = actual_dParam[actual_dParam != 0]
+
+
                 
             vector_product = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-100)
             angle_rad = np.arccos(torch.round(vector_product,decimals=5))
             angle = angle_rad * 180 / np.pi
             angles[param_name].append(angle)
+            # if torch.isnan(angle):
+            #     print(f'Warning: angle is NaN at step {j}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
+            #     return predicted_dParam, actual_dParam
 
         if plot:
             ax = axes[n_params-(i+1)]
@@ -1354,6 +1382,24 @@ def recompute_dParam_history_all(network):
     network.actual_dParam_history['all_params'] = actual_dParam_history_all
     network.actual_dParam_history_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
     network.predicted_dParam_history['all_params'] = predicted_dParam_history_all
+
+
+def compute_diag_fisher(network, train_dataloader_CL1_full):
+    '''
+    Compute the diagonal of the Fisher Information Matrix for the network, for implementation of the EWC continual learning algorithm.
+    '''
+    assert len(train_dataloader_CL1_full) == 1, "The dataloader should only have one batch"
+    idx, data, target = next(iter(train_dataloader_CL1_full))
+
+    params_with_grad = {name:param for name,param in network.named_parameters() if param.requires_grad}
+    output = network(data)
+    label = torch.argmax(target, dim=1)
+    loss = torch.nn.NLLLoss()(output, label)
+    # loss = network.criterion(output, target)
+    loss.backward()
+    
+    diag_fisher = {name: param.grad.data**2 for name, param in params_with_grad.items()} # Diagonal of the Fisher Information Matrix
+    return diag_fisher
 
 
 # *******************************************************************
@@ -1646,8 +1692,10 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None):
     if classes is not None:
         train_dataloader_CL1 = torch.utils.data.DataLoader(MNIST_train_CL1[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=1)
         train_dataloader_CL2 = torch.utils.data.DataLoader(MNIST_train_CL2[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=1)
+        train_dataloader_CL1_full = torch.utils.data.DataLoader(MNIST_train_CL1[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=sub_dataloader_size)
+        train_dataloader_CL2_full = torch.utils.data.DataLoader(MNIST_train_CL2[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=sub_dataloader_size)
 
-        return train_dataloader, train_dataloader_CL1, train_dataloader_CL2, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
+        return train_dataloader, train_dataloader_CL1_full, train_dataloader_CL2_full, train_dataloader_CL1, train_dataloader_CL2, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
     else:
         return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
 
