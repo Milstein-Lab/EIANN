@@ -804,6 +804,8 @@ class Projection(nn.Linear):
         self.weight_init = weight_init
         if weight_init_args is None:
             weight_init_args = ()
+        elif weight_init is None:
+            raise RuntimeError('Projection: weight_init_args provided for unspecified method')
         self.weight_init_args = weight_init_args
 
         if weight_constraint is None:

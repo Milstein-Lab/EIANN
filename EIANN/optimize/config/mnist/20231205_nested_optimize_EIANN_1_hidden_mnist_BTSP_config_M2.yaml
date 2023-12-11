@@ -12,8 +12,8 @@ bounds:
         - 0.
         - 0.5
     H1_E_BTSP_neg_loss_th:
+        - -0.5
         - 0.
-        - -0.05
     H1_E_H1_SomaI_init_weight_scale:
         - 0.01
         - 10.
