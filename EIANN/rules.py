@@ -60,6 +60,36 @@ class BackpropBias(BiasLearningRule):
     backward = Backprop.backward
 
 
+class Backprop_EWC(LearningRule):
+    '''
+    Implements the elastic weight consolidation (EWC) algorithm for continual learning.
+    '''
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+
+        ewc_penalty = 0
+        for name, param in network.named_parameters():
+            if name in network.phase1_params:
+                _penalty = network.diag_fisher[name] * (param - network.phase1_params[name])**2
+                ewc_penalty += _penalty.sum()
+
+        # ewc_penalty = 0
+        # for name, param in network.named_parameters():
+        #     if name in network.phase1_params:
+        #         _penalty = (param - network.phase1_params[name])**2
+        #         ewc_penalty += _penalty.sum()
+
+        network.optimizer.zero_grad()
+        loss = 0.3*network.criterion(output, target) + network.ewc_lambda * ewc_penalty
+
+        loss.backward()
+        network.optimizer.step()
+
+
+
+
+
+
 class Oja(LearningRule):
     def step(self):
         delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity) - \
