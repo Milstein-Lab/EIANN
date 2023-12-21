@@ -71,7 +71,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_mnist_BP_like_1
+optimization_title: EIANN_1_hidden_mnist_BP_like_1C
 x0:
     H1_E_H1_SomaI_init_weight_scale: 0.01320454234508166
     H1_E_Input_E_learning_rate: 0.007971513519070807

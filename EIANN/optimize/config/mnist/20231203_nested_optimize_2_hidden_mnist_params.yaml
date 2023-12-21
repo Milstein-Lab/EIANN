@@ -34,3 +34,36 @@ bpDale_relu_G:
     Output_I_Output_I_init_weight_scale: 1.532615660819997
     H_I_size: 50.0
     Output_I_size: 10.0
+BP_like_7A_test:
+    # only a fraction of H1.E units are updated;
+    # H1.E units must meet threshold to be updated and nudged
+    # stability: after 50000 steps:
+    H_E_H_DendI_learning_rate: 0.0015289801264842656
+    H_E_learning_rate: 0.007971513519070807
+    H1_E_Input_E_init_weight_scale: 0.07470958392776003
+    H1_E_H1_SomaI_init_weight_scale: 0.39804308824108225
+    H1_E_H1_DendI_init_weight_scale: 1.5407458926489135
+    H1_SomaI_H1_E_init_weight_scale: 1.858087639678583
+    H1_DendI_H1_E_init_weight_scale: 5.3049874606845355
+    H1_SomaI_Input_E_init_weight_scale: 8.326666013570318
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.1677797099859297
+    H1_DendI_H1_DendI_init_weight_scale: 1.2379391855238693
+    H2_E_H1_E_init_weight_scale: 7.83384366541219
+    H2_E_H2_SomaI_init_weight_scale: 0.39804308824108225
+    H2_E_H2_DendI_init_weight_scale: 1.5407458926489135
+    H2_SomaI_H2_E_init_weight_scale: 1.858087639678583
+    H2_DendI_H2_E_init_weight_scale: 5.3049874606845355
+    H2_SomaI_H1_E_init_weight_scale: 2.388128006048436
+    H2_SomaI_H2_SomaI_init_weight_scale: 1.1677797099859297
+    H2_DendI_H2_DendI_init_weight_scale: 1.2379391855238693
+    Output_E_H2_E_learning_rate: 0.004301601413559075
+    Output_E_H2_E_init_weight_scale: 7.83384366541219
+    Output_E_Output_I_init_weight_scale: 1.0199257816936012
+    Output_I_Output_E_init_weight_scale: 3.6446982090031343
+    Output_I_H2_E_init_weight_scale: 2.388128006048436
+    Output_I_Output_I_init_weight_scale: 1.369121623351083
+    max_pop_fraction: 0.038168648425968614
+    pos_loss_th: 0.22114380109426704
+    neg_loss_th: -0.367708348253202
+    H_I_size: 50
+    Output_I_size: 10
