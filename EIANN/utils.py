@@ -1627,7 +1627,7 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
                 if len(population.forward_steps_activity) == 1:
                     return True
                 # for memory efficiency
-                average_activity = torch.mean(torch.stack(population.forward_steps_activity), dim=(1, 2))
+                average_activity = torch.tensor([torch.mean(step) for step in population.forward_steps_activity])
                 population.forward_steps_activity = []
                 if plot:
                     this_axis = axes[row][col]
