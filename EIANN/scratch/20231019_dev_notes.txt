@@ -1,0 +1,577 @@
+Only E <- E projections learned:
+	bpDale:
+ 		20230815_nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_config_G.yaml
+ 		20230816_093246_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_bpDale_softplus_SGD_G_261698971134679225924628474894870057070.hdf5
+ 		20230815_nested_optimize_1_hidden_mnist_params.yaml
+ 		bpDale_G
+ 		20230815_EIANN_1_hidden_mnist_bpDale_config_G_optimized.yaml
+ 		20230815_EIANN_1_hidden_mnist_bpDale_softplus_SGD_config_G_66049_257_20000_steps.pkl <<-- need to re-generate to contain init_weights at each train_step
+ 		Need to generate 50000_steps.pkl
+	Gjorgjieva_Hebb:
+		20230815_nested_optimize_EIANN_1_hidden_mnist_Gjorgjieva_Hebb_config_G.yaml
+		20230816_093246_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_Gjorgjieva_Hebb_G_261698192321841710709101507516933283416.hdf5
+		20230815_nested_optimize_1_hidden_mnist_params.yaml
+		Gjorgjieva_Hebb_G
+	Supervised_Gjorgjieva_Hebb:
+		20230815_nested_optimize_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_G.yaml
+		20230816_093246_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_G_261698796040440069403248135730591625335.hdf5
+		20230815_nested_optimize_1_hidden_mnist_params.yaml
+		Supervised_Gjorgjieva_Hebb_G
+	BCM:
+		20230815_nested_optimize_EIANN_1_hidden_mnist_BCM_config_G.yaml
+		20230816_093246_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_BCM_G_261700273645670960431395451294962415565.hdf5
+ 		20230815_nested_optimize_1_hidden_mnist_params.yaml
+ 		BCM_G
+ 		20230815_EIANN_1_hidden_mnist_BCM_config_G_66049_257.pkl
+ 	Supervised_BCM:
+ 		20230815_nested_optimize_EIANN_1_hidden_mnist_Supervised_BCM_config_G.yaml
+ 		20230816_093246_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_Supervised_BCM_G_261698584501246156314358432800428588476.hdf5
+ 		20230815_nested_optimize_1_hidden_mnist_params.yaml
+ 		Supervised_BCM_G
+ 		20230815_EIANN_1_hidden_mnist_Supervised_BCM_config_G_66049_257.pkl
+ 	BTSP:
+ 		20230822_nested_optimize_EIANN_1_hidden_mnist_BTSP_config_G3.yaml
+ 		20230823_100904_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_BTSP_G3_340142593567724726124252670681892783073.hdf5
+ 		20230815_nested_optimize_1_hidden_mnist_params.yaml
+ 		BTSP_G3
+ 		20230825_EIANN_1_hidden_mnist_BTSP_config_G3_optimized.yaml
+ 		20230822_EIANN_1_hidden_mnist_BTSP_config_G3_66049_257_20000_steps.pkl <<-- need to re-generate to contain init_weights at each train_step
+ 		20230822_EIANN_1_hidden_mnist_BTSP_config_G3_66049_257_50000_steps.pkl <<-- check if need to re-generate to contain init_weights at each train_step
+ 		
+All projections are learned:
+	bpDale:
+		20230628_nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_config_F.yaml
+		20230722_001802_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_bpDale_softplus_SGD_F_44879672259740257609484635741105090679.hdf5
+		20230505_nested_optimize_mnist_1_hidden_params.yaml
+		bpDale_F
+	Gjorgjieva_Hebb:
+		20230712_nested_optimize_EIANN_1_hidden_mnist_Gjorgjieva_Hebb_config_F.yaml
+		nested_optimization_history lost to $SCRATCH purge
+		20230505_nested_optimize_mnist_1_hidden_params.yaml
+		Gjorgjieva_Hebb_F
+		20230717_EIANN_1_hidden_mnist_Gjorgjieva_Hebb_config_F_optimized.yaml
+		20230712_EIANN_1_hidden_mnist_Gjorgjieva_Hebb_config_F_66049_257.pkl
+	Supervised_Gjorgjieva_Hebb:
+		20230505_nested_optimize_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_F.yaml
+		20230512_055132_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_F_325472841421682863749146047014616743102.hdf5
+		20230505_nested_optimize_mnist_1_hidden_params.yaml
+		Supervised_Gjorgjieva_Hebb_F
+		20230505_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_F_66049_257.pkl
+	BCM_cotuned_I:
+		20230817_nested_optimize_EIANN_1_hidden_mnist_BCM_cotuned_I_config_H.yaml
+		20230823_074539_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_BCM_cotuned_I_H_327870983882229026629838122909042515063.hdf5
+		20230815_nested_optimize_1_hidden_mnist_params.yaml
+		BCM_cotuned_I_H2
+	BCM_antituned_I:
+		20230817_nested_optimize_EIANN_1_hidden_mnist_BCM_antituned_I_config_I.yaml
+		20230823_074539_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_BCM_antituned_I_I_327871372100225346528910820808456144059.hdf5
+		20230815_nested_optimize_1_hidden_mnist_params.yaml
+		BCM_antituned_I_I2
+	Supervised_BCM_cotuned_I:
+		20230817_nested_optimize_EIANN_1_hidden_mnist_Supervised_BCM_cotuned_I_config_H.yaml
+		20230824_124549_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_Supervised_BCM_cotuned_I_H_21535538811512087388203802097426955992.hdf5
+		20230815_nested_optimize_1_hidden_mnist_params.yaml
+		Supervised_BCM_cotuned_I_H2
+	Supervised_BCM_antituned_I:
+		20230817_nested_optimize_EIANN_1_hidden_mnist_Supervised_BCM_antituned_I_config_I.yaml
+		20230824_124549_nested_optimization_history_PopulationAnnealing_EIANN_1_hidden_mnist_Supervised_BCM_antituned_I_I_21534859826159340142918445618506301131.hdf5
+		20230815_nested_optimize_1_hidden_mnist_params.yaml
+		Supervised_BCM_antituned_I_I2
+	BTSP:
+		Need to re-optimize BTSP_F9 with BTSP_11 rule variant
+		
+Need to characterize mnist_CL
+
+
+
+20231019: BTSP config variant summary
+
+BTSP_D1:
+ - Problem: training loss increases with extended training to 50000 steps
+ - CL_mnist final accuracy is marginally better than backprop
+ - 10 forward steps
+ - 1 H1.FBI unit, 1 Output.FBI unit
+ - 1 H1.Dend_I unit
+ - E.E: BTSP_2 rule: 
+   - Includes both pos and neg mod events. Only pos events nudge activity.
+   - Max # of plateaus are specified, applies to both pos and neg
+   - dend2soma nudge = 1 for pos plateau, 0 for neg plateau
+   - Equilibrates each layer one at a time, sequentially from top to bottom
+ - H1.E.H1.Dend_I: DendriticLoss_3 rule:
+  - Consults (rectified) forward_dendritic_state and (un-rectified) forward_activity
+
+BTSP_E1:
+ - Problem: training loss increases with extended training to 50000 steps
+ - Does not pass equilibration constraints
+ - Poor CL_mnist performance
+ - Learned bias in E cells
+ - Like D1
+
+BTSP_F1:
+	 - E.E. BTSP_2 rule
+	 - H1.E.H1.DendI: DendriticLoss_3 rule
+
+BTSP_F2:
+	- E.E. BTSP_5 rule:
+		 - Phenomenological way to interact with previous and next samples
+		 - H1.E.H1.DendI: DendriticLoss_3 rule
+
+BTSP_F4:
+	- E.E: BTSP_6 rule:
+		- Refers to ET * IS
+		- Layer-wise equilibration
+
+BTSP_F4:
+	- Cloned some E-I and I-I weights.
+	- E.E: BTSP_7 rule
+	
+BTSP_F5:
+	- E.E: BTSP_7 rule:
+		- Refers to ET * IS
+		- Did not include any neg mod events or anti-Hebb depression
+		- Network-wise equilibration
+	- H1.E.H1.DendI: DendriticLoss_5 rule
+
+BTSP_F6:
+	- E.E: BTSP_8 rule:
+		 - Contained an error, compared activity to anti-Hebb threshold
+	- H1.E.H1.DendI: DendriticLoss_5 rule
+
+BTSP_F7:
+	- Problem: poor CL_mnist performance
+	- E.E: BTSP_9 rule
+	 	- Triggered anti-Hebbian plasticity when greater than a positive threshold?!
+ 	- H1.E.H1.DendI: DendriticLoss_5 rule
+
+BTSP_F8:
+ 	- Problem: poor CL_mnist performance
+	- E.E: BTSP_10 rule:
+   		- Includes only pos mod events
+   		- Includes anti-Hebbian depression; consults (un-rectified) post_activity and (un-rectified) pre_activity
+   		- Accumulates ET and IS across stimuli
+   		- dend2soma nudge = 1 for pos plateau
+   		- 1 pos plateau allowed per timestep (15 per stimulus)
+ 	- E.I and I.E: GjorgjievaHebb_2 rule
+ 	- H1.E.H1.DendI: DendriticLoss_5 rule
+ 	
+BTSP_G:
+  - Problem: training loss increases with extended training to 50000 steps
+  - 15 forward steps
+  - 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  - 50 H1.DendI units
+  - E.E: BTSP_10 rule:
+   - Includes only pos mod events
+   - Includes anti-Hebbian depression; consults (un-rectified) post_activity and (un-rectified) pre_activity
+   - Accumulates ET and IS across stimuli
+   - dend2soma nudge = 1 for pos plateau
+   - 1 pos plateau allowed per timestep (15 per stimulus)
+   
+  - H1.E.H1.DendI: DendriticLoss_5 rule:
+   - Consults (rectified) forward_dendritic_state and (rectified) forward_activity
+ 
+ BTSP_G2 config appears to have used BTSP_10 rule, like BTSP_G3 config, but can't find what was different about optimization
+ 
+ BTSP_G3:
+  - Problem: CL_mnist performance comparable to backprop
+  - 15 forward steps
+  - 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  - 50 H1.DendI units
+  - E.E: BTSP_11 rule:
+	- Includes a plateau refractory period  
+	- Only positive (binary) nudges when above pos threshold
+  - H1.E.H1.DendI: DendriticLoss_5 rule
+  
+  BTSP_cont_J:
+  	- 15 forward steps
+  	- 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  	- 50 H1.DendI units
+  	- E.E: BTSP_12_cont rule:
+		- No threshold - IS and dend2soma nudge are proportional to error
+		- Negative error triggers a linear weight-dependent depression
+		- Continuous nudges of all H1.E units
+  	- H1.E.H1.DendI: DendriticLoss_5 rule
+  
+  
+  
+  
+  
+ TODO:
+  - Make dend2soma nudge proportional to error
+  - Freeze FB weights
+  - Trigger neg event with neg threshold (why was this initially searched positive?)
+  - Try F variants without learning E-I and I-E weights
+  
+
+20231108: 
+Want to revisit the base rule of BTSP_2, but with:
+ - Simultaneous equilibration of all layers
+ - multiple SomaI (combined FF + FB) cells with random weights
+ - with either binary or error-proportional nudges up and down
+ - H1.E.H1.DendI: DendriticLoss_5 rule
+
+  BTSP_D1:
+ - Problem: training loss increases with extended training to 50000 steps
+ - CL_mnist final accuracy is marginally better than backprop
+ - 10 forward steps
+ - 1 H1.FBI unit, 1 Output.FBI unit
+ - 1 H1.Dend_I unit
+ - E.E: BTSP_2 rule: 
+   - Includes both pos and neg mod events. Only pos events nudge activity.
+   - Max # of plateaus are specified, applies to both pos and neg
+   - dend2soma nudge = 1 for pos plateau, 0 for neg plateau
+ - H1.E.H1.Dend_I: DendriticLoss_3 rule:
+  - Consults (rectified) forward_dendritic_state and (un-rectified) forward_activity
+  
+  
+20231120:
+
+van_bp_relu:
+  - Screen layer-wise learning rates and init_weight scales
+
+bp_Dale_relu:
+  - Screen layer-wise learning rates and init_weight scales
+
+BTSP_cont_J2:
+  - H1.E.Output.E is W.T
+  - E.E: BTSP_12_cont rule:
+  	- No threshold - IS and dend2soma nudge are proportional to error
+	- Negative error triggers a linear weight-dependent depression
+	- Continuous nudges of all H1.E units
+  - H1.E.H1.DendI: DendriticLoss_5 rule
+
+BTSP_cont_J3:
+  - H1.E.Output.E is random and fixed
+  - E.E: BTSP_12_cont rule:
+  	- No threshold - IS and dend2soma nudge are proportional to error
+	- Negative error triggers a linear weight-dependent depression
+	- Continuous nudges of all H1.E units
+  - H1.E.H1.DendI: DendriticLoss_5 rule
+
+BP_like_1:
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_1
+
+BP_like_1B:
+  - H1.E.Output.E is fixed and random
+  - E.E: BP_like_1
+
+
+BP_like_2A:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_2
+    - H1.E is not nudged
+
+BP_like_2B:
+  - H1.DendI <- Output.E
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_2
+    - H1.E is not nudged
+
+BP_like_2C:
+  - H1.DendI <- H1.E and Output.E
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_2
+    - H1.E is not nudged
+
+BP_like_3A:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_3
+    - Fixed fraction of H1.E units are updated
+    - H1.E is not nudged
+
+BP_like_3B:
+  - H1.DendI <- Output.E
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_3
+    - Fixed fraction of H1.E units are updated
+    - H1.E is not nudged
+
+BP_like_3C:
+  - H1.DendI <- H1.E and Output.E
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_3
+    - Fixed fraction of H1.E units are updated
+    - H1.E is not nudged
+
+BP_like_4A:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is random and fixed
+  - E.E: BP_like_2
+    - H1.E is not nudged
+
+BP_like_4B:
+  - H1.DendI <- Output.E
+  - H1.E.Output.E is random and fixed
+  - E.E: BP_like_2
+    - H1.E is not nudged
+
+BP_like_4C:
+  - H1.DendI <- H1.E and Output.E
+  - H1.E.Output.E is random and fixed
+  - E.E: BP_like_2
+    - H1.E is not nudged
+
+BP_like_5A:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_4
+    - Fixed fraction of H1.E units are updated
+    - Pos mod events above pos threshold
+	- Neg mod events below neg threshold
+    - H1.E is nudged
+
+BP_like_5B:
+  - H1.DendI <- Output.E
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_4
+    - Fixed fraction of H1.E units are updated
+    - Pos mod events above pos threshold
+	- Neg mod events below neg threshold
+    - H1.E is nudged
+
+BP_like_5C:
+  - H1.DendI <- H1.E and Output.E
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_4
+    - Fixed fraction of H1.E units are updated
+    - Pos mod events above pos threshold
+	- Neg mod events below neg threshold
+    - H1.E is nudged
+
+BP_like_6A:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is random and fixed
+  - E.E: BP_like_4
+    - Fixed fraction of H1.E units are updated
+    - Pos mod events above pos threshold
+	- Neg mod events below neg threshold
+    - H1.E is nudged
+
+BP_like_6C:
+  - H1.DendI <- H1.E and Output.E
+  - H1.E.Output.E is random and fixed
+  - E.E: BP_like_4
+    - Fixed fraction of H1.E units are updated
+    - Pos mod events above pos threshold
+	- Neg mod events below neg threshold
+    - H1.E is nudged
+
+BP_like_7A:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_5
+    - Fixed fraction of H1.E units are updated
+    - Pos mod events above pos threshold
+	- Neg mod events below neg threshold
+    - H1.E is nudged (instantly)
+
+
+BTSP_K1:
+  - 15 forward steps
+  - 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  - 50 H1.DendI units
+  - E.E: BTSP_13 rule:
+	- Back to basics from BTSP_2:
+	- Pos mod events above pos threshold
+	- Neg mod events below neg threshold
+	- Fixed max fraction of population allowed mod event
+  - H1.E.H1.DendI: DendriticLoss_5 rule
+
+BTSP_K2:
+  - 15 forward steps
+  - 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  - 50 H1.DendI units
+  - H1.E.Output.E is W.T
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BTSP_13 rule:
+	- Back to basics from BTSP_2:
+	- Pos mod events above pos threshold
+	- Neg mod events below neg threshold
+	- Fixed max fraction of population allowed mod event
+	
+BTSP_K3:
+  - 15 forward steps
+  - 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  - 50 H1.DendI units
+  - H1.E.Output.E is random and fixed
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BTSP_13 rule:
+	- Back to basics from BTSP_2:
+	- Pos mod events above pos threshold
+	- Neg mod events below neg threshold
+	- Fixed max fraction of population allowed mod event
+
+20231205 plan:
+
+BTSP_L1:
+  - 15 forward steps
+  - 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  - 50 H1.DendI units
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BTSP_14 rule:
+	- Pos mod events above pos threshold
+	- Neg mod events: dend_state below neg threshold triggers simple dendritic_loss-dependent weight update
+	- Fixed max fraction of population allowed mod event
+	- H1.E is nudged (instantly)
+
+BTSP_L2:
+  - 15 forward steps
+  - 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  - 50 H1.DendI units
+  - H1.E.Output.E is W.T
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BTSP_14 rule:
+	- Pos mod events above pos threshold
+	- Neg mod events dend_state below neg threshold triggers simple dendritic_loss-dependent weight update
+	- Fixed max fraction of population allowed mod event
+	- H1.E is nudged (instantly)
+	
+BTSP_M1:
+  - 15 forward steps
+  - 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  - 50 H1.DendI units
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BTSP_14 rule:
+	- Pos mod events above pos threshold
+	- Neg mod events: dend_state below neg threshold triggers simple dendritic_loss-dependent weight update
+	- Fixed max fraction of population allowed mod event
+	- Pos and neg thresholds set to zero
+	- H1.E is nudged (instantly)
+
+BTSP_M2:
+  - 15 forward steps
+  - 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  - 50 H1.DendI units
+  - H1.E.Output.E is W.T
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BTSP_14 rule:
+	- Pos mod events above pos threshold
+	- Neg mod events dend_state below neg threshold triggers simple dendritic_loss-dependent weight update
+	- Fixed max fraction of population allowed mod event
+	- Pos and neg thresholds set to zero
+	- H1.E is nudged (instantly)
+
+BTSP_N2:
+  - This config should be similar to BTSP_cont_J2, but with instant nudges and a with a non-weight-dependent update for neg mod events
+  - 15 forward steps
+  - 50 H1.SomaI units (combined FF + FB), 10 Output.SomaI units
+  - 50 H1.DendI units
+  - H1.E.Output.E is W.T
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BTSP_14 rule:
+	- Pos mod events above pos threshold
+	- Neg mod events dend_state below neg threshold triggers simple dendritic_loss-dependent weight update
+	- All H1.E units are allowed mod event (Fixed max fraction set to 1)
+	- Pos and neg thresholds set to zero
+	- H1.E is nudged (instantly)
+
+
+BP_like_8A:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is W.T
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BP_like_5
+    - Fixed fraction of H1.E units are updated
+    - No thresholds (set to zero)
+    - H1.E is nudged (instantly)
+    
+BP_like_9A:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is W.T
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BP_like_5
+    - All H1.E units are updated (Fixed fraction set to 1)
+    - No thresholds (set to zero)
+    - All H1.E units are nudged (instantly)
+    
+Tested CL (50%) for bpDale_relu_G, van_bp_relu, BP_like_3A, BP_like_5A.
+
+20231207:
+
+TODO:
+- Instant nudges both up and down for 
+ - Supervised_BCM_J (no nudges in H1)
+ - Supervised_BCM_K (with nudges in H1)
+ - Supervised_Hebb_WeightNorm_J (no nudges in H1)
+ - Supervised_Hebb_WeightNorm_K (with nudges in H1)
+
+- Turns out a large number of configurations were not searching the scale of the fixed and random Output.SomaI.Output.SomaI weights. They were by default initialized to kaiming, and then rectified, so half of the weights were set to zero and the scale was not searched.
+BTSP_G, BTSP_G3, BTSP_cont_J, BTSP_cont_J2, BTSP_cont_J3, BTSP_K1, BTSP_K2, BTSP_K3, BTSP_L1, BTSP_L2, BTSP_M1, BTSP_M2, BTSP_N2, BP_like_1, BP_like_1B, BP_like_2A, BP_like_2B, BP_like_2C, BP_like_3A, BP_like_3B, BP_like_3C, BP_like_4A, BP_like_4B, BP_like_4C, BP_like_5A, BP_like_5B, BP_like_5C, BP_like_6A, BP_like_6C, BP_like_7A, BP_like_8A, BP_like_9A
+
+I am going to create a new set of .yaml files with a new date stamp for a subset of the configurations that are worth exploring. For BP_like configs, I am going to revise some of them and include instant nudges for comparison to later configs.
+
+New date stamp:
+20231208_BP_like_7A
+
+Edited in-place and restarted:
+BP_like_8A, BP_like_9A, BTSP_L1, BTSP_L2, BTSP_M1, BTSP_M2, BTSP_N2
+
+BP_like_1C:
+  - No H1.DendI
+  - H1.E.Output.E is W.T
+  - E.E: BP_like_1C
+    - Error computed as backward_dendritic_state - forward_dendritic_state
+    - Output.E is nudged instantly
+    - H1.E is not nudged
+    
+BP_like_2D:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is W.T
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BP_like_5
+    - Output.E is nudged instantly
+    - All H1.E units are updated (fixed fraction set to 1)
+    - No thresholds (set to zero)
+    - H1.E is not nudged
+
+BP_like_3D:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is W.T
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BP_like_5
+    - Output.E is nudged instantly
+    - Fixed fraction of H1.E units are updated
+    - No thresholds (set to zero)
+    - H1.E is not nudged
+
+BP_like_10D:
+  - H1.DendI <- H1.E
+  - H1.E.Output.E is W.T
+  - H1.E.H1.DendI learned with DendriticLoss_5 rule
+  - E.E: BP_like_5
+    - Output.E is nudged instantly
+    - Fixed fraction of H1.E units are updated
+    - Only H1.E units that meet thresholds are updated
+    - H1.E is not nudged
+
+
+
+Currently the flow of the network modifications are:
+1. van_bp_relu_G
+2. bpDale_relu_G: introduce separate E and I, only learn E-E
+3. BP_like_1C: only propagate activity (not error) before and after nudge; weight update depends on change in dendritic state before and after nudge
+4.
+ a. BP_like_2D: weight update depends on dendritic state after nudge; lateral dendritic inhibition learns to cancel dendritic state before nudge; all H1.E units are updated
+ b. BP_like_3D: only a fraction of H1.E units are updated
+ c. BP_like_10D: only a fraction of H1.E units are updated; H1.E units must meet threshold to be updated
+5.
+ a. BP_like_9A: all H1.E units are updated and nudged
+ b. BP_like_8A: only a fraction of H1.E units are updated and nudged
+ c. BP_like_7A: only a fraction of H1.E units are updated; H1.E units must meet threshold to be updated and nudged
+6. 1, 2, and 5a - 5c with 2 hidden layers
+
+
+
+20231215: 
+Questions
+ - Why are some weights unchanged in BP_like_1C?
+ - For Supervised_Hebb_WeightNorm_K, why do Output nudges not decrease in amplitude? Why does H1E only have negative plateaus?
+
+TODO: 
+ - N1 (N2 with H1.E.Output.E learned)
+ - O1 and O2 like L1 and L2 but neg mod events are conditional on Output > 0.
+ - P1 like L1 but neg mod events do not modify top-down weights
+ - Q1 like O1 but neg mod events do not modify top-down weights
+ - Supervised_Hebb_WeightNorm_EI_J and Supervised_Hebb_WeightNorm_EI_K with learning other connections
