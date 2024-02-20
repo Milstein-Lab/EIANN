@@ -360,9 +360,20 @@ def plot_hidden_weights(weights, sort=False):
     axes = gs.GridSpec(num_rows, num_cols)
     fig = plt.figure(figsize=(12, 12 * num_rows / num_cols))
 
+    rf_width = rf_height = len(weights[0])**0.5
+    if rf_width != int(rf_width):
+        rf_width = np.ceil(rf_width)
+        for _ in range(int(rf_width)):
+            rf_width -= 1
+            rf_height = len(weights[0]) / rf_width
+            if rf_height == int(rf_height):
+                break
+    rf_width = int(rf_width)
+    rf_height = int(rf_height)
+
     if sort: # Sort units by tuning structure of their receptive fields
         print("Computing tuning strength...")
-        structure = utils.compute_rf_structure(weights.detach())
+        structure = utils.compute_rf_structure(weights.detach(), (rf_width, rf_height))
         sorted_idx = np.argsort(-structure)
         weights = weights[sorted_idx]
 
@@ -372,8 +383,8 @@ def plot_hidden_weights(weights, sort=False):
         row_idx = i // num_cols
         col_idx = i % num_cols
 
-        img_dim = int(unit_weight_vec.shape[0] ** 0.5)
-        img = unit_weight_vec.view(img_dim, img_dim).detach().cpu()
+        # img_dim = int(unit_weight_vec.shape[0] ** 0.5)
+        img = unit_weight_vec.view(rf_width, rf_height).detach().cpu()
 
         # Add a subplot to the figure at the specified row and column
         ax = fig.add_subplot(axes[row_idx, col_idx])
