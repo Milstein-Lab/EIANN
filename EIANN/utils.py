@@ -1013,21 +1013,23 @@ def spatial_structure_similarity_fft(img1, img2):
     return spatial_structure_similarity
 
 
-def compute_rf_structure(receptive_fields, method='fft'):
+def compute_rf_structure(receptive_fields, dimensions, method='fft'):
     structure_sim_ls = []
     for unit_rf in receptive_fields:
         s = 0
+        rf_width, rf_height = dimensions
+
         if torch.all(unit_rf == 0): # if receptive field is all zeros
             structure_sim_ls.append(np.nan)
         else:
             for i in range(3):  # structural similarity to noise (averaged across 3 random noise images)
-                noise = np.random.uniform(min(unit_rf), max(unit_rf), (28, 28))
+                noise = np.random.uniform(min(unit_rf), max(unit_rf), (rf_width, rf_height))
 
                 if method == 'fft':
                     reference_correlation = spatial_structure_similarity_fft(noise, noise)
-                    s += spatial_structure_similarity_fft(unit_rf.view(28, 28).numpy(), noise) / reference_correlation
+                    s += spatial_structure_similarity_fft(unit_rf.view(rf_width, rf_height).numpy(), noise) / reference_correlation
                 elif method == 'ssim':
-                    s += metrics.structural_similarity(unit_rf.view(28, 28).numpy(), noise)
+                    s += metrics.structural_similarity(unit_rf.view(rf_width, rf_height).numpy(), noise)
 
             structure_sim_ls.append(s / 3)
     structure = 1 - np.array(structure_sim_ls)
@@ -1224,11 +1226,10 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             predicted_dParam_history_dict[key].append(dParam)
             dParam_vec.append(dParam.flatten())
 
-
-            if torch.all(dParam==0) and t>100 and "DendI" not in key:
-                print(f'Warning: dParam is all zeros at step {t}, {key}')
-                print(torch.all(new_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
-                return state_dict, new_state_dict, output, loss, dParam
+            # if torch.all(dParam==0) and t>100 and "DendI" not in key:
+            #     print(f'Warning: dParam is all zeros at step {t}, {key}')
+            #     print(torch.all(new_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
+            #     return state_dict, new_state_dict, output, loss, dParam
 
 
         predicted_dParam_history_all.append(torch.cat(dParam_vec))
@@ -1243,10 +1244,10 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             actual_dParam_history_dict[key].append(dParam)
             dParam_vec.append(dParam.flatten())
 
-            if torch.all(dParam==0) and t>100 and "DendI" not in key:
-                print(f'Warning: actual dParam is all zeros at step {t}, {key}')
-                print(torch.all(next_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
-                return state_dict, new_state_dict, output, loss, dParam
+            # if torch.all(dParam==0) and t>100 and "DendI" not in key:
+            #     print(f'Warning: actual dParam is all zeros at step {t}, {key}')
+            #     print(torch.all(next_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
+            #     return state_dict, new_state_dict, output, loss, dParam
 
         actual_dParam_history_all.append(torch.cat(dParam_vec))
 
