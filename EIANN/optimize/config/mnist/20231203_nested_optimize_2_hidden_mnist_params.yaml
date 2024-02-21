@@ -35,6 +35,7 @@ bpDale_relu_G:
     H_I_size: 50.0
     Output_I_size: 10.0
 BP_like_7A:
+    # BAD: H2E used the wrong learning rule (BP_like_4 instead of BP_like_5)
     # only a fraction of H1.E units are updated;
     # H1.E units must meet threshold to be updated and nudged
     #    accuracy: 79.0074
@@ -70,3 +71,41 @@ BP_like_7A:
     H_I_size: 50.0
     Output_I_size: 10.0
 
+BP_like_7B_test:
+    # added scale hyperparameters for feedback projections
+    # only a fraction of H1.E units are updated;
+    # H1.E units must meet threshold to be updated and nudged
+    #    accuracy: 79.0074
+    #    loss: 0.0385467
+    # stability: after 50000 steps:
+    H1_E_Input_E_init_weight_scale: 1.2534380906418843
+    H1_E_H2_E_weight_scale: 1.
+    H2_E_H1_E_init_weight_scale: 1.7744808709892448
+    H2_E_Output_E_weight_scale: 1.
+    H_E_learning_rate: 0.0026224901749057243
+    H_E_H_DendI_learning_rate: 0.013408340631794559
+    H1_E_H1_SomaI_init_weight_scale: 1.2064483236608758
+    H1_SomaI_H1_E_init_weight_scale: 0.6887816806820657
+    H1_SomaI_Input_E_init_weight_scale: 0.8437136337144033
+    H1_SomaI_H1_SomaI_init_weight_scale: 0.44582290577806166
+    H1_E_H1_DendI_init_weight_scale: 2.3006396485597107
+    H1_DendI_H1_E_init_weight_scale: 0.6612409889701677
+    H1_DendI_H1_DendI_init_weight_scale: 0.9143439566116911
+    H2_E_H2_SomaI_init_weight_scale: 0.9972002917872435
+    H2_SomaI_H2_E_init_weight_scale: 0.16131854717728603
+    H2_SomaI_H1_E_init_weight_scale: 1.1038654239150116
+    H2_SomaI_H2_SomaI_init_weight_scale: 0.5780224379551633
+    H2_E_H2_DendI_init_weight_scale: 1.2994316867883877
+    H2_DendI_H2_E_init_weight_scale: 0.3970191456558776
+    H2_DendI_H2_DendI_init_weight_scale: 0.8776896011031841
+    Output_E_H2_E_init_weight_scale: 0.9764758483932152
+    Output_E_H2_E_learning_rate: 0.0010033388725517996
+    Output_E_Output_I_init_weight_scale: 2.057596034058897
+    Output_I_Output_E_init_weight_scale: 0.026915692024514548
+    Output_I_H2_E_init_weight_scale: 0.6024911247413816
+    Output_I_Output_I_init_weight_scale: 1.2606193375893862
+    max_pop_fraction: 0.05024994299642965
+    pos_loss_th: 0.3117386235658088
+    neg_loss_th: -0.4763416609382065
+    H_I_size: 50.0
+    Output_I_size: 10.0
