@@ -9,17 +9,19 @@ sbatch <<EOT
 #SBATCH -o /scratch1/06441/aaronmil/logs/EIANN/$JOB_NAME.%j.o
 #SBATCH -e /scratch1/06441/aaronmil/logs/EIANN/$JOB_NAME.%j.e
 #SBATCH -p development
-#SBATCH -N 4
-#SBATCH -n 224
+#SBATCH -N 18
+#SBATCH -n 1008
 #SBATCH -t 1:00:00
-#SBATCH --mail-user=neurosutras@gmail.com
-#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=milstein@cabm.rutgers.edu
+#SBATCH --mail-type=ALL
 
 set -x
 
+conda activate py310
+
 cd $WORK2/EIANN/EIANN
 
-ibrun -n 200 python3 -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
+ibrun -n 1008 ipython -m nested.optimize -- --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=$SCRATCH/data/EIANN --pop_size=200 --max_iter=1 --path_length=1 --disp \
   --framework=pc
 EOT
