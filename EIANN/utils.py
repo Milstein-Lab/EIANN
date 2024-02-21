@@ -1013,11 +1013,15 @@ def spatial_structure_similarity_fft(img1, img2):
     return spatial_structure_similarity
 
 
-def compute_rf_structure(receptive_fields, dimensions, method='fft'):
+def compute_rf_structure(receptive_fields, dimensions=None, method='fft'):
     structure_sim_ls = []
     for unit_rf in receptive_fields:
         s = 0
-        rf_width, rf_height = dimensions
+
+        if dimensions is None:
+            rf_width = rf_height = 28
+        else:
+            rf_width, rf_height = dimensions
 
         if torch.all(unit_rf == 0): # if receptive field is all zeros
             structure_sim_ls.append(np.nan)
@@ -1231,11 +1235,8 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             #     print(torch.all(new_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
             #     return state_dict, new_state_dict, output, loss, dParam
 
-
         predicted_dParam_history_all.append(torch.cat(dParam_vec))
-
         
-
         # Compute the actual dParam of the first network
         next_state_dict = param_history[t]
         dParam_vec = []
