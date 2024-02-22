@@ -3926,8 +3926,10 @@ def update_EIANN_config_2_hidden_BP_like_7B(x, context):
     """
     param_dict = param_array_to_dict(x, context.param_names)
     max_pop_fraction = param_dict['max_pop_fraction']
-    pos_loss_th = param_dict['pos_loss_th']
-    neg_loss_th = param_dict['neg_loss_th']
+    H1_pos_loss_th = param_dict['H1_pos_loss_th']
+    H1_neg_loss_th = param_dict['H1_neg_loss_th']
+    H2_pos_loss_th = param_dict['H2_pos_loss_th']
+    H2_neg_loss_th = param_dict['H2_neg_loss_th']
     H_I_size = int(param_dict['H_I_size'])
     Output_I_size = int(param_dict['Output_I_size'])
     
@@ -3942,7 +3944,8 @@ def update_EIANN_config_2_hidden_BP_like_7B(x, context):
     
     H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
     H1_E_H1_SomaI_init_weight_scale = param_dict['H1_E_H1_SomaI_init_weight_scale']
-    H1_E_H2_E_weight_scale = param_dict['H1_E_H2_E_weight_scale']
+    H1_E_H2_E_weight_scale = (math.sqrt(context.layer_config['H1']['E']['size']) /
+                              math.sqrt(context.layer_config['H2']['E']['size']))
     H1_SomaI_H1_E_init_weight_scale = param_dict['H1_SomaI_H1_E_init_weight_scale']
     H1_SomaI_Input_E_init_weight_scale = param_dict['H1_SomaI_Input_E_init_weight_scale']
     H1_SomaI_H1_SomaI_init_weight_scale = param_dict['H1_SomaI_H1_SomaI_init_weight_scale']
@@ -3953,7 +3956,8 @@ def update_EIANN_config_2_hidden_BP_like_7B(x, context):
     
     H2_E_H1_E_init_weight_scale = param_dict['H2_E_H1_E_init_weight_scale']
     H2_E_H2_SomaI_init_weight_scale = param_dict['H2_E_H2_SomaI_init_weight_scale']
-    H2_E_Output_E_weight_scale = param_dict['H2_E_Output_E_weight_scale']
+    H2_E_Output_E_weight_scale = (math.sqrt(context.layer_config['H2']['E']['size']) /
+                                  math.sqrt(context.layer_config['Output']['E']['size']))
     H2_SomaI_H2_E_init_weight_scale = param_dict['H2_SomaI_H2_E_init_weight_scale']
     H2_SomaI_H1_E_init_weight_scale = param_dict['H2_SomaI_H1_E_init_weight_scale']
     H2_SomaI_H2_SomaI_init_weight_scale = param_dict['H2_SomaI_H2_SomaI_init_weight_scale']
@@ -3974,8 +3978,8 @@ def update_EIANN_config_2_hidden_BP_like_7B(x, context):
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
         H_E_learning_rate
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['max_pop_fraction'] = max_pop_fraction
-    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = pos_loss_th
-    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_th'] = neg_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['pos_loss_th'] = H1_pos_loss_th
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['neg_loss_th'] = H1_neg_loss_th
     context.projection_config['H1']['E']['H2']['E']['weight_constraint_kwargs']['scale'] = H1_E_H2_E_weight_scale
     
     context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_SomaI_init_weight_scale,)
@@ -3996,8 +4000,8 @@ def update_EIANN_config_2_hidden_BP_like_7B(x, context):
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
         H_E_learning_rate
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['max_pop_fraction'] = max_pop_fraction
-    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['pos_loss_th'] = pos_loss_th
-    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['neg_loss_th'] = neg_loss_th
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['pos_loss_th'] = H2_pos_loss_th
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['neg_loss_th'] = H2_neg_loss_th
     context.projection_config['H2']['E']['Output']['E']['weight_constraint_kwargs']['scale'] = (
         H2_E_Output_E_weight_scale)
     

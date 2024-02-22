@@ -73,19 +73,19 @@ bounds:
         - 10.
     max_pop_fraction:
         - 0.01
-        - 0.1
+        - 1.
     H1_pos_loss_th:
-        - 0.05
+        - 0.
         - 0.5
     H1_neg_loss_th:
         - -0.5
-        - -0.05
+        - 0.
     H2_pos_loss_th:
-        - 0.05
+        - 0.
         - 0.5
     H2_neg_loss_th:
         - -0.5
-        - -0.05
+        - 0.
     H_I_size:
         - 1
         - 100
@@ -95,6 +95,11 @@ bounds:
 default_params:
     H_I_size: 50
     Output_I_size: 10
+    H1_pos_loss_th: 0.
+    H1_neg_loss_th: 0.
+    H2_pos_loss_th: 0.
+    H2_neg_loss_th: 0.
+    max_pop_fraction: 1.
 rel_bounds:
 kwargs:
     network_id: 1
@@ -106,7 +111,7 @@ kwargs:
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: config/MNIST/20240220_EIANN_2_hidden_mnist_BP_like_config_7B.yaml
+    network_config_file_path: config/MNIST/20240220_EIANN_2_hidden_mnist_BP_like_config_9B.yaml
     val_interval:
         - -2001
         - -1
@@ -122,7 +127,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_mnist_BP_like_7B
+optimization_title: EIANN_2_hidden_mnist_BP_like_9B
 x0:
     H_E_H_DendI_learning_rate: 0.17678741629227127
     H_E_learning_rate: 0.007971513519070807
@@ -148,10 +153,10 @@ x0:
     Output_I_Output_E_init_weight_scale: 1.
     Output_I_H2_E_init_weight_scale: 0.36606750462367517
     Output_I_Output_I_init_weight_scale: 1.1113407626461944
-    max_pop_fraction: 0.025
-    H1_pos_loss_th: 0.2
-    H1_neg_loss_th: -0.2
-    H2_pos_loss_th: 0.2
-    H2_neg_loss_th: -0.2
+    max_pop_fraction: 1.
+    H1_pos_loss_th: 0.
+    H1_neg_loss_th: 0.
+    H2_pos_loss_th: 0.
+    H2_neg_loss_th: 0.
     H_I_size: 50
     Output_I_size: 10
