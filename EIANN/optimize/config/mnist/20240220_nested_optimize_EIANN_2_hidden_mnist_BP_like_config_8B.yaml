@@ -2,9 +2,6 @@ bounds:
     H1_E_Input_E_init_weight_scale:
         - 0.01
         - 10.
-    H1_E_H2_E_weight_scale:
-        - 0.01
-        - 10
     H2_E_H1_E_init_weight_scale:
         - 0.01
         - 10.
@@ -47,9 +44,6 @@ bounds:
     H2_SomaI_H2_SomaI_init_weight_scale:
         - 0.01
         - 10.
-    H2_E_Output_E_weight_scale:
-        - 0.01
-        - 10.
     H2_E_H2_DendI_init_weight_scale:
         - 0.01
         - 10.
@@ -80,10 +74,16 @@ bounds:
     max_pop_fraction:
         - 0.01
         - 0.1
-    pos_loss_th:
+    H1_pos_loss_th:
         - 0.
         - 0.5
-    neg_loss_th:
+    H1_neg_loss_th:
+        - -0.5
+        - 0.
+    H2_pos_loss_th:
+        - 0.
+        - 0.5
+    H2_neg_loss_th:
         - -0.5
         - 0.
     H_I_size:
@@ -95,8 +95,10 @@ bounds:
 default_params:
     H_I_size: 50
     Output_I_size: 10
-    pos_loss_th: 0.
-    neg_loss_th: 0.
+    H1_pos_loss_th: 0.
+    H1_neg_loss_th: 0.
+    H2_pos_loss_th: 0.
+    H2_neg_loss_th: 0.
 rel_bounds:
 kwargs:
     network_id: 1
@@ -129,8 +131,6 @@ x0:
     H_E_H_DendI_learning_rate: 0.17678741629227127
     H_E_learning_rate: 0.007971513519070807
     H1_E_Input_E_init_weight_scale: 2.6271244086908077
-    H1_E_H2_E_weight_scale: 1.
-    H2_E_Output_E_weight_scale: 1.
     H1_E_H1_SomaI_init_weight_scale: 0.01320454234508166
     H1_E_H1_DendI_init_weight_scale: 0.15693539946852347
     H1_SomaI_H1_E_init_weight_scale: 1.
@@ -153,7 +153,9 @@ x0:
     Output_I_H2_E_init_weight_scale: 0.36606750462367517
     Output_I_Output_I_init_weight_scale: 1.1113407626461944
     max_pop_fraction: 0.025
-    pos_loss_th: 0.
-    neg_loss_th: 0.
+    H1_pos_loss_th: 0.
+    H1_neg_loss_th: 0.
+    H2_pos_loss_th: 0.
+    H2_neg_loss_th: 0.
     H_I_size: 50
     Output_I_size: 10
