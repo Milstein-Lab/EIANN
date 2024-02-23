@@ -23,7 +23,6 @@ except:
     from collections.abc import Iterable
 
 
-
 def nested_convert_scalars(data):
     """
     Crawls a nested dictionary, and converts any scalar objects from numpy types to python types.

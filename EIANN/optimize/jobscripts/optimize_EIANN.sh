@@ -17,11 +17,9 @@ sbatch <<EOT
 
 set -x
 
-conda activate py310
-
 cd $WORK2/EIANN/EIANN
 
-ibrun -n 1008 ipython -m nested.optimize -- --config-file-path=$CONFIG_FILE_PATH \
+ibrun -n 1008 python -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=$SCRATCH/data/EIANN --pop_size=200 --max_iter=50 --path_length=3 --disp \
   --framework=pc
 EOT
