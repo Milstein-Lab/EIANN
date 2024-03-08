@@ -1,0 +1,92 @@
+bounds:
+    H1_E_Input_E_learning_rate:
+        - 0.0001
+        - 1.
+    Output_E_H1_E_learning_rate:
+        - 0.0001
+        - 1.
+    E_I_learning_rate:
+        - 0.0001
+        - 1.
+    I_E_learning_rate:
+        - 0.0001
+        - 1.
+    I_I_learning_rate:
+        - 0.0001
+        - 1.
+    Output_E_H1_E_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_Output_FBI_weight_scale:
+        - 0.01
+        - 10.
+    Output_FBI_Output_E_weight_scale:
+        - 0.01
+        - 10.
+    Output_FBI_Output_FBI_weight_scale:
+        - 0.01
+        - 10.
+    H1_E_Input_E_weight_scale:
+        - 0.01
+        - 10.
+    H1_E_H1_FBI_weight_scale:
+        - 0.01
+        - 10.
+    H1_FBI_H1_E_weight_scale:
+        - 0.01
+        - 10.
+    H1_FBI_H1_FBI_weight_scale:
+        - 0.01
+        - 10.
+    H1_FBI_size:
+        - 1
+        - 7
+    Output_FBI_size:
+        - 1
+        - 21
+default_params:
+    H1_FBI_size: 7
+    Output_FBI_size: 7
+kwargs:
+    network_id: 1
+    task_id: 1
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    epochs: 300
+    val_interval:
+        - -1001
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    network_config_file_path: optimize/network_config/EIANN_1_hidden_Supervised_Gjorgjieva_Hebb_config_C.yaml
+    constrain_equilibration_dynamics: False
+    eval_accuracy: final
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_autoenc
+      function: update_EIANN_config_1_hidden_Gjorgjieva_Hebb_C
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_autoenc
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_1_hidden_Supervised_Gjorgjieva_Hebb_C
+x0:
+    H1_E_Input_E_learning_rate: 2.339308E-01
+    Output_E_H1_E_learning_rate: 2.339308E-01
+    E_I_learning_rate: 2.023946E-01
+    I_E_learning_rate: 5.947580E-02
+    I_I_learning_rate: 2.982688E-01
+    Output_E_H1_E_weight_scale: 5.066363E+00
+    Output_E_Output_FBI_weight_scale: 9.054215E+00
+    Output_FBI_Output_E_weight_scale: 7.679770E+00
+    Output_FBI_Output_FBI_weight_scale: 3.343300E-01
+    H1_E_Input_E_weight_scale: 9.927103E+00
+    H1_E_H1_FBI_weight_scale: 2.128817E+00
+    H1_FBI_H1_E_weight_scale: 1.597438E+00
+    H1_FBI_H1_FBI_weight_scale: 5.040185E+00
+    H1_FBI_size: 7
+    Output_FBI_size: 7

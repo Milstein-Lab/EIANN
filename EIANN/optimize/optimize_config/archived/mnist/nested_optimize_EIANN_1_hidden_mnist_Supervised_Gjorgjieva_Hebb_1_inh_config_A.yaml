@@ -1,0 +1,60 @@
+bounds:
+    H1_E_Input_E_weight_scale:
+        - 0.1
+        - 10.
+    H1_E_Input_E_learning_rate:
+        - 0.0001
+        - 1.
+    H1_E_H1_FBI_weight_scale:
+        - 0.1
+        - 10.
+    H1_FBI_H1_E_weight_scale:
+        - 0.1
+        - 10.
+    Output_E_H1_E_weight_scale:
+        - 0.1
+        - 10.
+    Output_E_H1_E_learning_rate:
+        - 0.0001
+        - 1.
+    Output_E_Output_FBI_weight_scale:
+        - 0.1
+        - 10.
+    Output_FBI_Output_E_weight_scale:
+        - 0.1
+        - 10.
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 10000
+    epochs: 1
+    network_config_file_path: optimize/network_config/MNIST/20230228_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_1_inh_config_A.yaml
+    val_interval:
+        - -201
+        - -1
+        - 10
+    num_training_steps_accuracy_window: 200
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+      function: update_EIANN_config_1_hidden_mnist_Gjorgjieva_Hebb_1_inh_A
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_1_inh_A
+x0:
+    H1_E_H1_FBI_weight_scale: 0.1320454234508166
+    H1_FBI_H1_E_weight_scale: 0.1320454234508166
+    H1_E_Input_E_learning_rate: 0.007971513519070807
+    H1_E_Input_E_weight_scale: 2.6271244086908077
+    Output_E_H1_E_learning_rate: 0.11277464693344395
+    Output_E_H1_E_weight_scale: 4.006206567051037
+    Output_E_Output_FBI_weight_scale: 0.3002765663599449
+    Output_FBI_Output_E_weight_scale: 0.3002765663599449
