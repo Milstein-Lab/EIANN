@@ -575,3 +575,42 @@ TODO:
  - P1 like L1 but neg mod events do not modify top-down weights
  - Q1 like O1 but neg mod events do not modify top-down weights
  - Supervised_Hebb_WeightNorm_EI_J and Supervised_Hebb_WeightNorm_EI_K with learning other connections
+
+
+20240305:
+
+- Testing BP_like_7B and BP_like_9B with 2 hidden layers revealed some problems with the strategy used to compute and propagate dendritic errors.
+
+- Large nudges in H1 increase firing rates in H2, which in turn increase firing rates in Output. Could be addressed with saturating activation functions, and by limiting equilibration in the backward phase.
+
+- Equilibration through each layer's recurrence disrupts the desired correlation between dendritic state and change in firing rate (nudge).
+
+TODO:
+
+- Test BP_like_7C with following revisions:
+ - Saturating activation function.
+ - No backwards equilibration. Proceed from Output layer to Hidden, passing nudged firing rates backwards but not laterally or forwards (no need to test with and without H1 nudges with 1 hidden layer, they will only impact weight updates of H1 when there is an H2).
+ - Consult the forward_activity for weight updates.
+ - Either select units stochastically, or based on sorting.
+
+** There is a bug in many configs. plateau and dend2soma must be set to values from dendritic_state after detach() and clone() so that they don't drift continuously after crossing threshold
+ 
+New plan for logical flow of the network modifications:
+1. van_bp_srelu
+
+2. bpDale_srelu: introduce separate E and I, only learn E-E
+
+3. BP_like_1: only propagate activity (not error) before and after nudge; weight update depends on change in dendritic state before and after nudge; W_FB is scaled W_FF.T
+ - BP_like_1E: all units are updated
+ - BP_like_1F: fixed fraction of (sorted) units are updated
+ - BP_like_1G: all units are updated stochastically
+ - BP_like_1H: units are updated stochastically, up to a max fraction of units
+
+4. BP_like_2: only propagate activity (not error) before and after nudge; weight update depends on change in dendritic state after nudge; lateral dendritic inhibition learns to cancel dendritic state before nudge; W_FB is scaled W_FF.T
+ - BP_like_2E: all units are updated
+ - BP_like_2F: fixed fraction of (sorted) units are updated
+ - BP_like_2G: all units are updated stochastically
+ - BP_like_2H: units are updated stochastically, up to a max fraction of unit
+ 
+5. Test 1 - 4 with 2 hidden layers
+ 

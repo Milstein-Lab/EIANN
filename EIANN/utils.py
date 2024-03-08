@@ -23,6 +23,10 @@ except:
     from collections.abc import Iterable
 
 
+def srelu(x, min=0, max=1):
+    return torch.clamp(x, min, max)
+
+
 def nested_convert_scalars(data):
     """
     Crawls a nested dictionary, and converts any scalar objects from numpy types to python types.

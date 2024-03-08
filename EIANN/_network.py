@@ -13,7 +13,7 @@ import time
 from collections import defaultdict
 from functools import partial
 
-from EIANN.utils import half_kaiming_init, scaled_kaiming_init, linear, read_from_yaml
+from EIANN.utils import half_kaiming_init, scaled_kaiming_init, linear, read_from_yaml, srelu
 import EIANN.rules as rules
 import EIANN.external as external
 

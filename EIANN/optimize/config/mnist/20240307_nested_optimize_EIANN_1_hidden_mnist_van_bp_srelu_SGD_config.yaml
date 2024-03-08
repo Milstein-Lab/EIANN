@@ -1,0 +1,46 @@
+bounds:
+    H1_learning_rate:
+        - 0.0001
+        - 1.
+    Output_learning_rate:
+        - 0.0001
+        - 1.
+    H1_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_init_weight_scale:
+        - 0.01
+        - 10.
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 20000
+    epochs: 1
+    network_config_file_path: config/MNIST/20240307_EIANN_1_hidden_mnist_van_bp_srelu_SGD_config.yaml
+    val_interval:
+        - -2001
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 2000
+    constrain_equilibration_dynamics: False
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+      function: update_EIANN_config_1_hidden_van_bp_relu_SGD_G
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_1_hidden_mnist_van_bp_relu_SGD_G
+x0:
+    H1_learning_rate: 0.5
+    Output_learning_rate: 0.5
+    H1_init_weight_scale: 1.
+    Output_init_weight_scale: 1.2
