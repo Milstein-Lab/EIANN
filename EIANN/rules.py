@@ -3853,6 +3853,7 @@ class BTSP_15(LearningRule):
         if self.neg_rate_th is None:
             neg_error[plateau > 0.] = 0.
         else:
+            # TODO: This will veto negative mod events when activity exceeds a threshold, should be opposite
             neg_error[(plateau > 0.) | (self.projection.post.activity > self.neg_rate_th)] = 0.
         delta_weight = torch.outer(neg_error, ET)
         self.projection.weight.data += self.learning_rate * delta_weight

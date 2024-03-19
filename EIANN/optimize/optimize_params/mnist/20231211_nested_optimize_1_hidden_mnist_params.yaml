@@ -288,10 +288,8 @@ BP_like_10D:
     neg_loss_th: -0.2713329541553605
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_1E:
+BP_like_1E_test:
     # all H1.E units are updated and nudged
-    #    accuracy: 82.017006
-    #    loss: 0.038390003
     # stability: after 50000 steps:
     H1_E_Input_E_init_weight_scale: 2.7059033440423947
     H1_E_Input_E_learning_rate: 0.00033367194932503943
@@ -309,10 +307,8 @@ BP_like_1E:
     max_pop_fraction: 1.0
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_1F:
+BP_like_1F_test:
     # only a fraction of (sorted) H1.E units are updated and nudged
-    #    accuracy: 85.89591
-    #    loss: 0.029417273
     # stability: after 50000 steps:
     H1_E_Input_E_init_weight_scale: 2.734854526514225
     H1_E_Input_E_learning_rate: 0.00012010090786600811
@@ -330,10 +326,8 @@ BP_like_1F:
     max_pop_fraction: 0.010446782449802657
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_1G:
+BP_like_1G_test:
     # all H1.E units are (stochastically) updated and nudged
-    #    accuracy: 86.5203
-    #    loss: 0.028685082
     # stability: after 50000 steps:
     H1_E_Input_E_init_weight_scale: 1.7243353444130274
     H1_E_Input_E_learning_rate: 0.0001474328612472282
@@ -351,10 +345,8 @@ BP_like_1G:
     max_pop_fraction: 1.0
     H1_I_size: 50.0
     Output_I_size: 10.0
-BP_like_1H:
+BP_like_1H_test:
     # only a fraction of H1.E units are (stochastically) updated and nudged
-    #    accuracy: 87.9482
-    #    loss: 0.02702123
     # stability: after 50000 steps:
     H1_E_Input_E_init_weight_scale: 2.2960546741429892
     H1_E_Input_E_learning_rate: 0.0060036029261316464
