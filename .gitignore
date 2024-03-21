@@ -15,3 +15,4 @@ EIANN/optimize/data/datasets/*
 EIANN.egg-info/*
 EIANN/optimize/data/*
 EIANN/optimize/__pycache__/*
+EIANN/data/*

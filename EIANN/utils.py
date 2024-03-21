@@ -1168,7 +1168,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     # Align param_history and prev_param_history (exclude initial params)
     if len(network.prev_param_history)==0: # if interval step is 1
         print('WARNING: network.prev_param_history is empty, using network.param_history instead')
-        prev_param_history = network.param_history[:-2] # exclude final params
+        prev_param_history = network.param_history[:-1] # exclude final params
         param_history = network.param_history[1:] # exclude initial params
         param_history_steps = network.param_history_steps[1:]
     else:
@@ -1182,6 +1182,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     actual_dParam_history_stepaveraged_all = []
     predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
     predicted_dParam_history_all = []
+
     for t in tqdm(range(len(param_history))):  
         # Load params into network
         state_dict = prev_param_history[t]
@@ -1658,7 +1659,7 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
     return passed
 
 
-def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None):
+def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
     """
     Load MNIST dataset into custom dataloaders with sample index
     """
@@ -1690,7 +1691,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None):
     # Put data in dataloader
     data_generator = torch.Generator()
     train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=50_000)
-    train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=1)
+    train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=batch_size)
     val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10_000:], batch_size=10_000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10_000, shuffle=False)
 
