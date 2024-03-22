@@ -100,7 +100,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_1C
+                    learning_rule: BP_like_1E
                     learning_rule_kwargs:
                         learning_rate: 0.05248973408306354
             Output:

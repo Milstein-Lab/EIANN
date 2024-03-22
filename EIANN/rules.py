@@ -3853,6 +3853,7 @@ class BTSP_15(LearningRule):
         if self.neg_rate_th is None:
             neg_error[plateau > 0.] = 0.
         else:
+            # TODO: This will veto negative mod events when activity exceeds a threshold, should be opposite
             neg_error[(plateau > 0.) | (self.projection.post.activity > self.neg_rate_th)] = 0.
         delta_weight = torch.outer(neg_error, ET)
         self.projection.weight.data += self.learning_rate * delta_weight
@@ -5052,6 +5053,19 @@ class BP_like_1E(LearningRule):
                     post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
     
     @classmethod
+    def backward_nudge_activity(cls, layer, store_dynamics=False):
+        """
+        Update somatic state and activity for all populations that receive a nudge.
+        :param layer:
+        :param store_dynamics: bool
+        """
+        for post_pop in layer:
+            if hasattr(post_pop, 'dend_to_soma'):
+                post_pop.activity = post_pop.activation(post_pop.state + post_pop.dend_to_soma)
+            if store_dynamics:
+                post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
+    
+    @classmethod
     def backward_update_layer_dendritic_state(cls, layer):
         """
         Update dendritic state for all populations that receive projections that target the dendritic
@@ -5154,7 +5168,7 @@ class BP_like_1E(LearningRule):
                                 local_loss[neg_event_indexes].detach().clone())
                         break
             # update activities
-            cls.backward_update_layer_activity(layer, store_dynamics=store_dynamics)
+            cls.backward_nudge_activity(layer, store_dynamics=store_dynamics)
         
         for layer in network:
             for pop in layer:
@@ -5231,6 +5245,19 @@ class BP_like_2E(LearningRule):
                     post_pop.activity = post_pop.activation(post_pop.state)
                 if store_dynamics:
                     post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
+    
+    @classmethod
+    def backward_nudge_activity(cls, layer, store_dynamics=False):
+        """
+        Update somatic state and activity for all populations that receive a nudge.
+        :param layer:
+        :param store_dynamics: bool
+        """
+        for post_pop in layer:
+            if hasattr(post_pop, 'dend_to_soma'):
+                post_pop.activity = post_pop.activation(post_pop.state + post_pop.dend_to_soma)
+            if store_dynamics:
+                post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
     
     @classmethod
     def backward_update_layer_dendritic_state(cls, layer):
@@ -5336,7 +5363,7 @@ class BP_like_2E(LearningRule):
                                 pop.dendritic_state[neg_event_indexes].detach().clone())
                         break
             # update activities
-            cls.backward_update_layer_activity(layer, store_dynamics=store_dynamics)
+            cls.backward_nudge_activity(layer, store_dynamics=store_dynamics)
         
         for layer in network:
             for pop in layer:
