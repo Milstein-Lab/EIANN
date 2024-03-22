@@ -1304,7 +1304,7 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
     for i, param_name in enumerate(actual_dParam_history):
         angles[param_name] = []
         
-        for j, (predicted_dParam, actual_dParam) in enumerate(zip(predicted_dParam_history[param_name], actual_dParam_history[param_name])):
+        for t, (predicted_dParam, actual_dParam) in enumerate(zip(predicted_dParam_history[param_name], actual_dParam_history[param_name])):
 
             # Compute angle between parameter update (dW) vectors
             predicted_dParam = predicted_dParam.flatten()
@@ -1326,7 +1326,7 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
             angle = angle_rad * 180 / np.pi
             angles[param_name].append(angle)
             # if torch.isnan(angle):
-            #     print(f'Warning: angle is NaN at step {j}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
+            #     print(f'Warning: angle is NaN at step {t}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
             #     return predicted_dParam, actual_dParam
 
         if plot:
@@ -1338,14 +1338,14 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
             ax.set_ylabel('Angle between \nlearning rules (degrees)')
 
             max_angle = max(95, np.nanmax(angles[param_name]))
-            ax.set_ylim(bottom=0, top=max_angle)
+            ax.set_ylim(bottom=-5, top=max_angle)
             ax.set_yticks(np.arange(0, max_angle+1, 30))
             if i == n_params-1:
-                ax.set_ylim(bottom=0, top=120)
+                ax.set_ylim(bottom=-5, top=120)
                 ax.set_yticks(np.arange(0, 121, 30))
 
             avg_angle = np.nanmean(angles[param_name])
-            ax.text(0.03, 0.08, f'Avg angle = {avg_angle:.2f} degrees', transform=ax.transAxes)
+            ax.text(0.03, 0.12, f'Avg angle = {avg_angle:.2f} degrees', transform=ax.transAxes)
             if '.' in param_name:
                 param_name = param_name.split('.')[1]
             ax.set_title(param_name)
