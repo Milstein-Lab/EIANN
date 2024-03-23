@@ -190,6 +190,33 @@ def rename_population(network, old_name, new_name):
                 projection.name = f'{projection.post.layer.name}{projection.post.name}_{projection.pre.layer.name}{projection.pre.name}'
 
 
+def convert_projection_config_dict(simple_format_dict):
+    """
+    Convert a projection config (formatted as "layer.population":{}) to the extended format with nested dicts (formatted as "layer": {"population": {}})
+    """
+    extended_format_dict = {}
+    
+    for key1, value1 in simple_format_dict.items():
+        k1_split = key1.split('.')
+        
+        if k1_split[0] not in extended_format_dict: # If the first part of the split key isn't in the extended format dictionary, add it
+            extended_format_dict[k1_split[0]] = {}
+
+        if k1_split[1] not in extended_format_dict[k1_split[0]]: # If the second part of the split key isn't in the sub-dictionary, add it
+            extended_format_dict[k1_split[0]][k1_split[1]] = {}
+        
+        # Iterate over the items in the sub-dictionary
+        for key2, value2 in value1.items():
+            k2_split = key2.split('.')
+            
+            if k2_split[0] not in extended_format_dict[k1_split[0]][k1_split[1]]: # If the first part of the split key isn't in the sub-sub-dictionary, add it
+                extended_format_dict[k1_split[0]][k1_split[1]][k2_split[0]] = {}
+            
+            # Add the second part of the split key to the sub-sub-dictionary, converting 'None' string values to Python None
+            extended_format_dict[k1_split[0]][k1_split[1]][k2_split[0]][k2_split[1]] = {k: v if v != 'None' else None for k, v in value2.items()}
+    
+    return extended_format_dict
+
 
 # *******************************************************************
 # Functions to import and export data

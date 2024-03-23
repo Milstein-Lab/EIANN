@@ -13,7 +13,8 @@ import time
 from collections import defaultdict
 from functools import partial
 
-from EIANN.utils import half_kaiming_init, scaled_kaiming_init, linear, read_from_yaml, srelu
+from EIANN.utils import half_kaiming_init, scaled_kaiming_init, linear, srelu
+import EIANN.utils as ut
 import EIANN.rules as rules
 import EIANN.external as external
 
@@ -788,7 +789,7 @@ class Projection(nn.Linear):
         :param weight_bounds: tuple of float
         :param direction: str in ['forward', 'recurrent', 'F', 'R']
         :param update_phase: str in ['forward', 'backward', 'F', B']
-        :param compartment: None or str in ['soma', 'dend']
+        :param compartment: None or str in ['soma', 'dend', 'dendrite']
         :param learning_rule: str
         :param learning_rule_kwargs: dict
         :param device:
@@ -840,8 +841,8 @@ class Projection(nn.Linear):
             self.post.backward_projections.append(self)
         self.update_phase = update_phase
 
-        if compartment is not None and compartment not in ['soma', 'dend']:
-            raise RuntimeError('Projection: compartment (%s) must be None, soma, or dend' % compartment)
+        if compartment is not None and compartment not in ['soma', 'dend', 'dendrite']:
+            raise RuntimeError('Projection: compartment (%s) must be None, soma, dend, or dendrite' % compartment)
         self.compartment = compartment
 
         # Set learning rule as callable of the projection
@@ -914,13 +915,16 @@ class Projection(nn.Linear):
     
 
 
-def build_EIANN_from_config(config_path, network_seed=42):
+def build_EIANN_from_config(config_path, network_seed=42, projection_config_format='simplified'):
     '''
     Build an EIANN network from a config file
     '''
-    network_config = read_from_yaml(config_path)
+    network_config = ut.read_from_yaml(config_path)
     layer_config = network_config['layer_config']
     projection_config = network_config['projection_config']
+    if projection_config_format == 'simplified':
+        projection_config = ut.convert_projection_config_dict(projection_config)
     training_kwargs = network_config['training_kwargs']
+    
     network = Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
     return network

@@ -5503,30 +5503,30 @@ def no_autapses(projection):
 
 
 
+########################################################################################################################
+########################################################################################################################
+
 
 class almost_backprop1(LearningRule):
+    '''
+    As close as possible to a manual version of backprop.
+    - Errors passed in dendrites
+    - Perfect cancellation of forward activity
+    - Gating with derivative of activation function (only accurate for ReLU)
+    - Does not factor gradients passing through recurrent connections (e.g. somaI)
+    '''
     def __init__(self, projection, learning_rate=None):
         super().__init__(projection, learning_rate)
 
     def step(self):
         ''' Update the weights '''
 
-        # ~Backprop weight update
+        # Backprop weight update
         delta_weight = torch.outer(self.projection.post.dendritic_state, self.projection.pre.activity)
-
         self.projection.weight.data += self.learning_rate * delta_weight
 
     @classmethod
     def backward(cls, network, output, target, store_history=False, store_dynamics=False):
-        """
-        Integrate top-down inputs and update dendritic state variables.
-        :param network:
-        :param output:
-        :param target:
-        :param store_history: bool
-        :param store_dynamics: bool
-        """
-
         # Compute Output loss & set dendritic state
         global_error = target - output
 
@@ -5534,19 +5534,60 @@ class almost_backprop1(LearningRule):
         reversed_layers = list(network)[::-1]
         network.output_pop.dendritic_state = global_error
         for i,layer in enumerate(reversed_layers[:-1]): # Iterate over populations in reverse order starting from the output layer
-            # layer.E.backward_activity = layer.E.activity + layer.E.dendritic_state # nudge somatic state
+            d_activation = layer.E.activity > 0
+            layer.E.dendritic_state = layer.E.dendritic_state * d_activation # gate updates based on derivative of activation function (in case of ReLU: = 1 if activity>0)
+
+            layer.E.backward_activity = layer.E.activity + layer.E.dendritic_state # nudge somatic state
 
             pre_layer = reversed_layers[i+1]
             forward_weight_transpose = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight.T
 
-            # inhibition = forward_weight_transpose @ layer.E.activity
-            # pre_layer.E.dendritic_state = forward_weight_transpose @ layer.E.backward_activity - inhibition
+            inhibition = forward_weight_transpose @ layer.E.activity
+            pre_layer.E.dendritic_state = forward_weight_transpose @ layer.E.backward_activity - inhibition
 
+
+class almost_backprop2(LearningRule):
+    '''
+    - Errors passed in dendrites
+    - Perfect cancellation of forward activity via dendI (with cloned weights)
+    - Gating with derivative of activation function (only accurate for ReLU)
+    - Does not factor gradients passing through recurrent connections (e.g. somaI)
+    '''
+    def __init__(self, projection, learning_rate=None):
+        super().__init__(projection, learning_rate)
+
+    def step(self):
+        ''' Update the weights '''
+
+        # Backprop weight update
+        delta_weight = torch.outer(self.projection.post.dendritic_state, self.projection.pre.activity)
+        self.projection.weight.data += self.learning_rate * delta_weight
+
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        # Compute Output loss & set dendritic state
+        global_error = target - output
+
+        # Set dendritic state with the local loss in each layer
+        reversed_layers = list(network)[::-1]
+        network.output_pop.dendritic_state = global_error
+        for i,layer in enumerate(reversed_layers[:-1]): # Iterate over populations in reverse order starting from the output layer
             d_activation = layer.E.activity > 0
-            layer.E.dendritic_state = layer.E.dendritic_state * d_activation
-            pre_layer.E.dendritic_state = forward_weight_transpose @ layer.E.dendritic_state
+            layer.E.dendritic_state = layer.E.dendritic_state * d_activation # gate updates based on derivative of activation function (in case of ReLU: = 1 if activity>0)
 
+            layer.E.backward_activity = layer.E.activity + layer.E.dendritic_state # nudge somatic state
 
+            pre_layer = reversed_layers[i+1]
+            forward_weights = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight
+
+            pre_layer.dendI.activity = layer.E.activity @ forward_weights
+            inhibition = forward_weights.T @ layer.dendI.activity
+
+            # inhibition2 = forward_weights.T @ layer.E.activity
+            # print("Inhibition accurte:", torch.all(inhibition==inhibition2))
+            # assert False
+
+            pre_layer.E.dendritic_state = forward_weights.T @ layer.E.backward_activity - inhibition
 
 
 
