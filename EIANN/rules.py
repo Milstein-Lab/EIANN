@@ -5571,25 +5571,24 @@ class almost_backprop2(LearningRule):
         # Set dendritic state with the local loss in each layer
         reversed_layers = list(network)[::-1]
         network.output_pop.dendritic_state = global_error
-        for i,layer in enumerate(reversed_layers[:-1]): # Iterate over populations in reverse order starting from the output layer
+        for i,layer in enumerate(reversed_layers[:-1]): # Iterate over populations in reverse order starting from the output layer (skipping the Input layer)
+            if i > 0: # Skip the output layer
+                layer.E.dendritic_state = torch.zeros(layer.E.size, device=network.device, requires_grad=False)
+                
+                for projection in layer.E:
+                    if projection.update_phase in ['B', 'backward', 'A', 'all'] and projection.compartment in ['dend', 'dendrite']:
+                        if hasattr(projection.pre, 'backward_activity'):                    
+                            layer.E.dendritic_state += projection.weight @ projection.pre.backward_activity
+                        else:
+                            layer.E.dendritic_state += projection.weight @ projection.pre.activity
+
+            
             d_activation = layer.E.activity > 0
             layer.E.dendritic_state = layer.E.dendritic_state * d_activation # gate updates based on derivative of activation function (in case of ReLU: = 1 if activity>0)
-
             layer.E.backward_activity = layer.E.activity + layer.E.dendritic_state # nudge somatic state
 
-            pre_layer = reversed_layers[i+1]
-            forward_weights = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight
-
-            pre_layer.dendI.activity = layer.E.activity @ forward_weights
-            inhibition = forward_weights.T @ layer.dendI.activity
-
-            # inhibition2 = forward_weights.T @ layer.E.activity
-            # print("Inhibition accurte:", torch.all(inhibition==inhibition2))
-            # assert False
-
-            pre_layer.E.dendritic_state = forward_weights.T @ layer.E.backward_activity - inhibition
-
-
+        
+        
 
 
 # class almost_backprop(LearningRule):

@@ -6,7 +6,7 @@ layer_config:
     E:
       size: 500
       activation: relu
-    dendI:
+    DendI:
       size: 10
       activation: relu
 
@@ -21,23 +21,35 @@ projection_config:
     Input.E:
       direction: F
       learning_rule: almost_backprop2
-    H1.dendI:
+
+    # Backward/dendrie projections  
+    H1.DendI:
       direction: F
       compartment: dendrite
       learning_rule: None
+      update_phase: B
       weight_constraint: clone_weight
       weight_constraint_kwargs:
         source: Output.E.H1.E
         transpose: true
         sign: -1
+    Output.E:
+      direction: F
+      compartment: dendrite
+      update_phase: B
+      learning_rule: None
+      weight_constraint: clone_weight
+      weight_constraint_kwargs:
+        source: Output.E.H1.E
+        transpose: true
 
-  H1.dendI:
+  H1.DendI:
     H1.E:
       direction: F
       learning_rule: None
-      # weight_constraint: clone_weight
-      # weight_constraint_kwargs:
-      #   source: H1.E.Output.E
+      weight_constraint: clone_weight
+      weight_constraint_kwargs:
+        source: Output.E.H1.E
 
   Output.E:
     H1.E:

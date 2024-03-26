@@ -378,6 +378,7 @@ class Network(nn.Module):
 
         train_data_on_device = False
 
+        # Main training loop
         for epoch in epoch_iter:
             epoch_sample_order = []
             if status_bar and len(train_dataloader) > epochs:
@@ -915,7 +916,7 @@ class Projection(nn.Linear):
     
 
 
-def build_EIANN_from_config(config_path, network_seed=42, projection_config_format='simplified'):
+def build_EIANN_from_config(config_path, network_seed=42, projection_config_format='normal'):
     '''
     Build an EIANN network from a config file
     '''
