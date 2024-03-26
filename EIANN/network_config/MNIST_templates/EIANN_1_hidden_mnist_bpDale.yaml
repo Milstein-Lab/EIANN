@@ -19,10 +19,8 @@ layer_config:
 
 
 projection_config:
-  H1:
-    E:
-      Input:
-        E:
+  H1.E:
+      Input.E:
           weight_init: half_kaiming
           weight_bounds:
           - 0
@@ -30,8 +28,7 @@ projection_config:
           direction: F
           learning_rule: Backprop
 
-      H1:
-        SomaI:
+      H1.SomaI:
           weight_init: half_kaiming
           weight_bounds:
           - null
@@ -39,9 +36,8 @@ projection_config:
           direction: R
           learning_rule: null
 
-    SomaI:
-      H1:
-        E:
+  H1.SomaI:
+      H1.E:
           weight_init: half_kaiming
           weight_bounds:
           - 0
@@ -50,10 +46,8 @@ projection_config:
           learning_rule: null
 
 
-  Output:
-    E:
-      H1:
-        E:
+  Output.E:
+      H1.E:
           weight_init: half_kaiming
           weight_bounds:
           - 0
@@ -61,8 +55,7 @@ projection_config:
           direction: F
           learning_rule: Backprop
 
-      Output:
-        SomaI:
+      Output.SomaI:
           weight_init: half_kaiming
           weight_bounds:
           - null
@@ -70,9 +63,8 @@ projection_config:
           direction: R
           learning_rule: null
 
-    SomaI:
-      Output:
-        E:
+  Output.SomaI:
+      Output.E:
           weight_init: half_kaiming
           weight_bounds:
           - 0

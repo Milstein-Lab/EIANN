@@ -17,6 +17,8 @@ from . import external as external
 import matplotlib.pyplot as plt
 from tqdm.autonotebook import tqdm
 
+import EIANN._network as nt
+
 try:
     from collections import Iterable
 except:
@@ -218,10 +220,58 @@ def convert_projection_config_dict(simple_format_dict):
     return extended_format_dict
 
 
+def build_EIANN_from_config(config_path, network_seed=42, projection_config_format='normal'):
+    '''
+    Build an EIANN network from a config file
+    '''
+    network_config = read_from_yaml(config_path)
+    layer_config = network_config['layer_config']
+    projection_config = network_config['projection_config']
+    if projection_config_format == 'simplified':
+        projection_config = convert_projection_config_dict(projection_config)
+    training_kwargs = network_config['training_kwargs']
+    
+    try:
+        network = nt.Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
+    except:
+        projection_config = convert_projection_config_dict(projection_config)
+        network = nt.Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
+
+    return network
+
+
+def build_clone_network(network, backprop=True):
+    '''
+    Build a clone network from an existing network, with the option to change the learning rule to backprop
+    '''
+    layer_config = network.layer_config
+    projection_config = network.projection_config
+    training_kwargs = network.training_kwargs
+    seed = network.seed
+    if backprop:
+        change_learning_rule_to_backprop(projection_config)
+        if 'backward_steps' not in training_kwargs or training_kwargs['backward_steps'] < 1:
+            training_kwargs['backward_steps'] = 3
+    clone_network = nt.Network(layer_config, projection_config, seed=seed, **training_kwargs)
+    return clone_network
+
+
+def change_learning_rule_to_backprop(projection_config):
+    '''
+    Recursively update the learning rule to 'Backprop' for all projections that have a learning rule specified.
+    '''
+    for key, value in projection_config.items():
+        if isinstance(value, dict):
+            change_learning_rule_to_backprop(value)
+        elif key == 'learning_rule':
+            if value not in [None, 'None', 'Backprop']:
+                projection_config[key] = 'Backprop'
+
+
+
 # *******************************************************************
 # Functions to import and export data
 # *******************************************************************
-
 
 def write_to_yaml(file_path, data, convert_scalars=True):
     """
@@ -1178,19 +1228,15 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         sample_target = target.squeeze()
 
     if network2 is None: # Turn on gradient tracking to compute backprop dW
-        test_network = copy.deepcopy(network)
-        test_network.backward_steps = 3
-        for parameter, orig_param in zip(test_network.parameters(), network.parameters()): 
-            if orig_param.is_learned:
-                parameter.requires_grad = True
+        test_network = build_clone_network(network, backprop=True)
     else:
-        test_network = copy.deepcopy(network2)
+        test_network = build_clone_network(network2, backprop=False)
         if "Backprop" in str(test_network.backward_methods):
             assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
 
     test_network.batch_size = batch_size
     test_network.constrain_params = constrain_params
-    test_network.reset_history()
+    # test_network.reset_history()
 
     # Align param_history and prev_param_history (exclude initial params)
     if len(network.prev_param_history)==0: # if interval step is 1

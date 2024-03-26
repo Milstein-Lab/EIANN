@@ -43,6 +43,9 @@ class Network(nn.Module):
         self.device = torch.device(device)
         self.layer_config = layer_config
         self.projection_config = projection_config
+        self.training_kwargs = {'learning_rate': learning_rate, 'optimizer': optimizer, 'optimizer_kwargs': optimizer_kwargs,
+                                'criterion': criterion, 'criterion_kwargs': criterion_kwargs, 'device': device,
+                                'tau': tau, 'forward_steps': forward_steps, 'backward_steps': backward_steps}
 
         # Load loss criterion
         if isinstance(criterion, str):
@@ -481,6 +484,9 @@ class Network(nn.Module):
             path = '%s/%s.pkl' % (dir, file_name_base)
             if not os.path.exists(dir):
                 os.makedirs(dir)
+                
+        elif os.path.exists(path):
+            print(f"WARNING: File '{path}' already exists. Overwriting...")
 
         # if os.path.exists(path):
         #     overwrite = input('File already exists. Overwrite? (y/n)')
@@ -915,17 +921,3 @@ class Projection(nn.Linear):
         return self.get_weight_history()
     
 
-
-def build_EIANN_from_config(config_path, network_seed=42, projection_config_format='normal'):
-    '''
-    Build an EIANN network from a config file
-    '''
-    network_config = ut.read_from_yaml(config_path)
-    layer_config = network_config['layer_config']
-    projection_config = network_config['projection_config']
-    if projection_config_format == 'simplified':
-        projection_config = ut.convert_projection_config_dict(projection_config)
-    training_kwargs = network_config['training_kwargs']
-    
-    network = Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
-    return network
