@@ -17,6 +17,8 @@ from . import external as external
 import matplotlib.pyplot as plt
 from tqdm.autonotebook import tqdm
 
+import EIANN._network as nt
+
 try:
     from collections import Iterable
 except:
@@ -190,11 +192,86 @@ def rename_population(network, old_name, new_name):
                 projection.name = f'{projection.post.layer.name}{projection.post.name}_{projection.pre.layer.name}{projection.pre.name}'
 
 
+def convert_projection_config_dict(simple_format_dict):
+    """
+    Convert a projection config (formatted as "layer.population":{}) to the extended format with nested dicts (formatted as "layer": {"population": {}})
+    """
+    extended_format_dict = {}
+    
+    for key1, value1 in simple_format_dict.items():
+        k1_split = key1.split('.')
+        
+        if k1_split[0] not in extended_format_dict: # If the first part of the split key isn't in the extended format dictionary, add it
+            extended_format_dict[k1_split[0]] = {}
+
+        if k1_split[1] not in extended_format_dict[k1_split[0]]: # If the second part of the split key isn't in the sub-dictionary, add it
+            extended_format_dict[k1_split[0]][k1_split[1]] = {}
+        
+        # Iterate over the items in the sub-dictionary
+        for key2, value2 in value1.items():
+            k2_split = key2.split('.')
+            
+            if k2_split[0] not in extended_format_dict[k1_split[0]][k1_split[1]]: # If the first part of the split key isn't in the sub-sub-dictionary, add it
+                extended_format_dict[k1_split[0]][k1_split[1]][k2_split[0]] = {}
+            
+            # Add the second part of the split key to the sub-sub-dictionary, converting 'None' string values to Python None
+            extended_format_dict[k1_split[0]][k1_split[1]][k2_split[0]][k2_split[1]] = {k: v if v != 'None' else None for k, v in value2.items()}
+    
+    return extended_format_dict
+
+
+def build_EIANN_from_config(config_path, network_seed=42, projection_config_format='normal'):
+    '''
+    Build an EIANN network from a config file
+    '''
+    network_config = read_from_yaml(config_path)
+    layer_config = network_config['layer_config']
+    projection_config = network_config['projection_config']
+    if projection_config_format == 'simplified':
+        projection_config = convert_projection_config_dict(projection_config)
+    training_kwargs = network_config['training_kwargs']
+    
+    try:
+        network = nt.Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
+    except:
+        projection_config = convert_projection_config_dict(projection_config)
+        network = nt.Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
+
+    return network
+
+
+def build_clone_network(network, backprop=True):
+    '''
+    Build a clone network from an existing network, with the option to change the learning rule to backprop
+    '''
+    layer_config = network.layer_config
+    projection_config = network.projection_config
+    training_kwargs = network.training_kwargs
+    seed = network.seed
+    if backprop:
+        change_learning_rule_to_backprop(projection_config)
+        if 'backward_steps' not in training_kwargs or training_kwargs['backward_steps'] < 1:
+            training_kwargs['backward_steps'] = 3
+    clone_network = nt.Network(layer_config, projection_config, seed=seed, **training_kwargs)
+    return clone_network
+
+
+def change_learning_rule_to_backprop(projection_config):
+    '''
+    Recursively update the learning rule to 'Backprop' for all projections that have a learning rule specified.
+    '''
+    for key, value in projection_config.items():
+        if isinstance(value, dict):
+            change_learning_rule_to_backprop(value)
+        elif key == 'learning_rule':
+            if value not in [None, 'None', 'Backprop']:
+                projection_config[key] = 'Backprop'
+
+
 
 # *******************************************************************
 # Functions to import and export data
 # *******************************************************************
-
 
 def write_to_yaml(file_path, data, convert_scalars=True):
     """
@@ -1151,24 +1228,20 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         sample_target = target.squeeze()
 
     if network2 is None: # Turn on gradient tracking to compute backprop dW
-        test_network = copy.deepcopy(network)
-        test_network.backward_steps = 3
-        for parameter, orig_param in zip(test_network.parameters(), network.parameters()): 
-            if orig_param.is_learned:
-                parameter.requires_grad = True
+        test_network = build_clone_network(network, backprop=True)
     else:
-        test_network = copy.deepcopy(network2)
+        test_network = build_clone_network(network2, backprop=False)
         if "Backprop" in str(test_network.backward_methods):
             assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
 
     test_network.batch_size = batch_size
     test_network.constrain_params = constrain_params
-    test_network.reset_history()
+    # test_network.reset_history()
 
     # Align param_history and prev_param_history (exclude initial params)
     if len(network.prev_param_history)==0: # if interval step is 1
         print('WARNING: network.prev_param_history is empty, using network.param_history instead')
-        prev_param_history = network.param_history[:-2] # exclude final params
+        prev_param_history = network.param_history[:-1] # exclude final params
         param_history = network.param_history[1:] # exclude initial params
         param_history_steps = network.param_history_steps[1:]
     else:
@@ -1182,6 +1255,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     actual_dParam_history_stepaveraged_all = []
     predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
     predicted_dParam_history_all = []
+
     for t in tqdm(range(len(param_history))):  
         # Load params into network
         state_dict = prev_param_history[t]
@@ -1303,7 +1377,7 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
     for i, param_name in enumerate(actual_dParam_history):
         angles[param_name] = []
         
-        for j, (predicted_dParam, actual_dParam) in enumerate(zip(predicted_dParam_history[param_name], actual_dParam_history[param_name])):
+        for t, (predicted_dParam, actual_dParam) in enumerate(zip(predicted_dParam_history[param_name], actual_dParam_history[param_name])):
 
             # Compute angle between parameter update (dW) vectors
             predicted_dParam = predicted_dParam.flatten()
@@ -1325,7 +1399,7 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
             angle = angle_rad * 180 / np.pi
             angles[param_name].append(angle)
             # if torch.isnan(angle):
-            #     print(f'Warning: angle is NaN at step {j}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
+            #     print(f'Warning: angle is NaN at step {t}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
             #     return predicted_dParam, actual_dParam
 
         if plot:
@@ -1337,14 +1411,14 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
             ax.set_ylabel('Angle between \nlearning rules (degrees)')
 
             max_angle = max(95, np.nanmax(angles[param_name]))
-            ax.set_ylim(bottom=0, top=max_angle)
+            ax.set_ylim(bottom=-5, top=max_angle)
             ax.set_yticks(np.arange(0, max_angle+1, 30))
             if i == n_params-1:
-                ax.set_ylim(bottom=0, top=120)
+                ax.set_ylim(bottom=-5, top=120)
                 ax.set_yticks(np.arange(0, 121, 30))
 
             avg_angle = np.nanmean(angles[param_name])
-            ax.text(0.03, 0.08, f'Avg angle = {avg_angle:.2f} degrees', transform=ax.transAxes)
+            ax.text(0.03, 0.12, f'Avg angle = {avg_angle:.2f} degrees', transform=ax.transAxes)
             if '.' in param_name:
                 param_name = param_name.split('.')[1]
             ax.set_title(param_name)
@@ -1658,7 +1732,7 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
     return passed
 
 
-def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None):
+def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
     """
     Load MNIST dataset into custom dataloaders with sample index
     """
@@ -1690,7 +1764,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None):
     # Put data in dataloader
     data_generator = torch.Generator()
     train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=50_000)
-    train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=1)
+    train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=batch_size)
     val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10_000:], batch_size=10_000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10_000, shuffle=False)
 

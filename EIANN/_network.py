@@ -13,7 +13,8 @@ import time
 from collections import defaultdict
 from functools import partial
 
-from EIANN.utils import half_kaiming_init, scaled_kaiming_init, linear, read_from_yaml, srelu
+from EIANN.utils import half_kaiming_init, scaled_kaiming_init, linear, srelu
+import EIANN.utils as ut
 import EIANN.rules as rules
 import EIANN.external as external
 
@@ -42,6 +43,9 @@ class Network(nn.Module):
         self.device = torch.device(device)
         self.layer_config = layer_config
         self.projection_config = projection_config
+        self.training_kwargs = {'learning_rate': learning_rate, 'optimizer': optimizer, 'optimizer_kwargs': optimizer_kwargs,
+                                'criterion': criterion, 'criterion_kwargs': criterion_kwargs, 'device': device,
+                                'tau': tau, 'forward_steps': forward_steps, 'backward_steps': backward_steps}
 
         # Load loss criterion
         if isinstance(criterion, str):
@@ -377,6 +381,7 @@ class Network(nn.Module):
 
         train_data_on_device = False
 
+        # Main training loop
         for epoch in epoch_iter:
             epoch_sample_order = []
             if status_bar and len(train_dataloader) > epochs:
@@ -479,6 +484,9 @@ class Network(nn.Module):
             path = '%s/%s.pkl' % (dir, file_name_base)
             if not os.path.exists(dir):
                 os.makedirs(dir)
+                
+        elif os.path.exists(path):
+            print(f"WARNING: File '{path}' already exists. Overwriting...")
 
         # if os.path.exists(path):
         #     overwrite = input('File already exists. Overwrite? (y/n)')
@@ -788,7 +796,7 @@ class Projection(nn.Linear):
         :param weight_bounds: tuple of float
         :param direction: str in ['forward', 'recurrent', 'F', 'R']
         :param update_phase: str in ['forward', 'backward', 'F', B']
-        :param compartment: None or str in ['soma', 'dend']
+        :param compartment: None or str in ['soma', 'dend', 'dendrite']
         :param learning_rule: str
         :param learning_rule_kwargs: dict
         :param device:
@@ -840,8 +848,8 @@ class Projection(nn.Linear):
             self.post.backward_projections.append(self)
         self.update_phase = update_phase
 
-        if compartment is not None and compartment not in ['soma', 'dend']:
-            raise RuntimeError('Projection: compartment (%s) must be None, soma, or dend' % compartment)
+        if compartment is not None and compartment not in ['soma', 'dend', 'dendrite']:
+            raise RuntimeError('Projection: compartment (%s) must be None, soma, dend, or dendrite' % compartment)
         self.compartment = compartment
 
         # Set learning rule as callable of the projection
@@ -913,14 +921,3 @@ class Projection(nn.Linear):
         return self.get_weight_history()
     
 
-
-def build_EIANN_from_config(config_path, network_seed=42):
-    '''
-    Build an EIANN network from a config file
-    '''
-    network_config = read_from_yaml(config_path)
-    layer_config = network_config['layer_config']
-    projection_config = network_config['projection_config']
-    training_kwargs = network_config['training_kwargs']
-    network = Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
-    return network
