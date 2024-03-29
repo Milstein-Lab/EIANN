@@ -69,7 +69,7 @@ kwargs:
     status_bar: False
     epochs: 300
     num_epochs_argmax_accuracy: 50
-    network_config_file_path: optimize/network_config//EIANN_1_hidden_BTSP_config_I.yaml
+    network_config_file_path: optimize/network_config/EIANN_1_hidden_BTSP_config_I.yaml
     eval_accuracy: final
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden

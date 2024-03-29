@@ -16,7 +16,7 @@ kwargs:
     status_bar: False
     train_steps: 10000
     epochs: 1
-    network_config_file_path: optimize/network_config//MNIST/EIANN_1_hidden_mnist_vanilla_backprop_softplus_SGD_config.yaml
+    network_config_file_path: optimize/network_config/MNIST/EIANN_1_hidden_mnist_vanilla_backprop_softplus_SGD_config.yaml
     val_interval:
         - -201
         - -1

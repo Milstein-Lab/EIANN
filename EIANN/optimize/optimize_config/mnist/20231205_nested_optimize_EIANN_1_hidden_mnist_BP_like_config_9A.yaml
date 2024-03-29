@@ -79,7 +79,7 @@ kwargs:
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: optimize/network_config//MNIST/20231205_EIANN_1_hidden_mnist_BP_like_config_9A.yaml
+    network_config_file_path: optimize/network_config/MNIST/20231205_EIANN_1_hidden_mnist_BP_like_config_9A.yaml
     val_interval:
         - -2001
         - -1

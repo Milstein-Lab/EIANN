@@ -68,7 +68,7 @@ kwargs:
         - -1
         - 100
     num_training_steps_accuracy_window: 1000
-    network_config_file_path: optimize/network_config//autoenc/20230720_EIANN_1_hidden_autoenc_Supervised_Gjorgjieva_Hebb_config_F.yaml
+    network_config_file_path: optimize/network_config/autoenc/20230720_EIANN_1_hidden_autoenc_Supervised_Gjorgjieva_Hebb_config_F.yaml
     constrain_equilibration_dynamics: True
     eval_accuracy: final
 update_context:

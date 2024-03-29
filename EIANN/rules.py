@@ -4964,8 +4964,6 @@ class BP_like_5(LearningRule):
                                     else:
                                         neg_avail_indexes = []
                                     # TODO: This should have been assignment to detached and cloned values (affects many configs)
-                                    # TODO: remove this debug print
-                                    print(t, pop.name, pos_avail_indexes, pop.dendritic_state[pos_avail_indexes])
                                     pop.plateau[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                     pop.plateau[neg_avail_indexes] = pop.dendritic_state[neg_avail_indexes]
                                     if projection.learning_rule.nudge:

@@ -115,7 +115,7 @@ kwargs:
         - -1001
         - -1
         - 100
-    network_config_file_path: optimize/network_config//autoenc/20230727_EIANN_1_hidden_autoenc_BTSP_config_F7.yaml
+    network_config_file_path: optimize/network_config/autoenc/20230727_EIANN_1_hidden_autoenc_BTSP_config_F7.yaml
     num_training_steps_accuracy_window: 1000
     constrain_equilibration_dynamics: True
     eval_accuracy: final

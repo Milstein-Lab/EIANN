@@ -62,7 +62,7 @@ kwargs:
     supervised: True
     status_bar: False
     epochs: 300
-    network_config_file_path: optimize/network_config//autoenc/20230720_EIANN_1_hidden_autoenc_bpDale_softplus_SGD_config_F.yaml
+    network_config_file_path: optimize/network_config/autoenc/20230720_EIANN_1_hidden_autoenc_bpDale_softplus_SGD_config_F.yaml
     val_interval:
         - -1001
         - -1
