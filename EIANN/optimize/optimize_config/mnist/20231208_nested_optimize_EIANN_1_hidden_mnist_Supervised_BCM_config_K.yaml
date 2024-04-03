@@ -90,7 +90,7 @@ kwargs:
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: optimize/network_config//MNIST/20231207_EIANN_1_hidden_mnist_Supervised_BCM_config_K.yaml
+    network_config_file_path: optimize/network_config/MNIST/20231207_EIANN_1_hidden_mnist_Supervised_BCM_config_K.yaml
     val_interval:
         - -2001
         - -1

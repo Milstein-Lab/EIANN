@@ -53,7 +53,7 @@ kwargs:
     supervised: True
     status_bar: False
     epochs: 150
-    network_config_file_path: optimize/network_config//moons/20230815_EIANN_1_hidden_moons_bpDale_softplus_SGD_config_G.yaml
+    network_config_file_path: optimize/network_config/moons/20230815_EIANN_1_hidden_moons_bpDale_softplus_SGD_config_G.yaml
     val_interval:
         - -2001
         - -1

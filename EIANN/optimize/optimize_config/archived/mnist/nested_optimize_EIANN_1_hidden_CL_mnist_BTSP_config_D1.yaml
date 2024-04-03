@@ -71,7 +71,7 @@ kwargs:
     train_steps: 20000
     split: 0.75
     epochs: 1
-    network_config_file_path: optimize/network_config//MNIST/20230219_EIANN_1_hidden_mnist_BTSP_config_D1.yaml
+    network_config_file_path: optimize/network_config/MNIST/20230219_EIANN_1_hidden_mnist_BTSP_config_D1.yaml
     val_interval:
         - -2001
         - -1

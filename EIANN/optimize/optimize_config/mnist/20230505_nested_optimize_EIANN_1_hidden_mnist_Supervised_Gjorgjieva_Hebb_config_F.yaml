@@ -63,7 +63,7 @@ kwargs:
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: optimize/network_config//MNIST/20230505_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_F.yaml
+    network_config_file_path: optimize/network_config/MNIST/20230505_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_F.yaml
     val_interval:
         - -2001
         - -1

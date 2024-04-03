@@ -16,7 +16,7 @@ kwargs:
     status_bar: False
     epochs: 300
     num_epochs_argmax_accuracy: 50
-    network_config_file_path: optimize/network_config//EIANN_1_hidden_backprop_1_inh_softplus_SGD_config_B.yaml
+    network_config_file_path: optimize/network_config/EIANN_1_hidden_backprop_1_inh_softplus_SGD_config_B.yaml
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden
       function: update_EIANN_config_1_hidden_backprop_softplus_SGD
