@@ -73,6 +73,7 @@ class Network(nn.Module):
 
         self.backward_methods = []
         self.module_dict = nn.ModuleDict()
+        self.projections = self.module_dict
         self.parameter_dict = nn.ParameterDict()
         self.optimizer_params_list = []
 
