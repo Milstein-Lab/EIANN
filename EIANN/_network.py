@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torch.nn import MSELoss, BCELoss
-from torch.nn.functional import softplus, relu, sigmoid, elu
 from torch.optim import Adam, SGD
 import sys
 import os
@@ -73,6 +72,7 @@ class Network(nn.Module):
 
         self.backward_methods = []
         self.module_dict = nn.ModuleDict()
+        self.projections = self.module_dict
         self.parameter_dict = nn.ParameterDict()
         self.optimizer_params_list = []
 
@@ -610,8 +610,8 @@ class Population(object):
 
         # Set callable activation function
         if isinstance(activation, str):
-            if activation in globals():
-                activation = globals()[activation]
+            if hasattr(torch.nn.functional, activation):
+                activation = getattr(torch.nn.functional, activation) 
             elif hasattr(external, activation):
                 activation = getattr(external, activation)
         if not callable(activation):

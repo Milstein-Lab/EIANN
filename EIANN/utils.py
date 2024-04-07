@@ -198,24 +198,34 @@ def convert_projection_config_dict(simple_format_dict):
     """
     extended_format_dict = {}
     
-    for key1, value1 in simple_format_dict.items():
-        k1_split = key1.split('.')
+    for layer_fullname, subdictionary in simple_format_dict.items():
+        layer_name, population_name = layer_fullname.split('.')
         
-        if k1_split[0] not in extended_format_dict: # If the first part of the split key isn't in the extended format dictionary, add it
-            extended_format_dict[k1_split[0]] = {}
+        if layer_name not in extended_format_dict: # If the first part of the split key isn't in the extended format dictionary, add it
+            extended_format_dict[layer_name] = {}
 
-        if k1_split[1] not in extended_format_dict[k1_split[0]]: # If the second part of the split key isn't in the sub-dictionary, add it
-            extended_format_dict[k1_split[0]][k1_split[1]] = {}
+        if population_name not in extended_format_dict[layer_name]: # If the second part of the split key isn't in the sub-dictionary, add it
+            extended_format_dict[layer_name][population_name] = {}
         
         # Iterate over the items in the sub-dictionary
-        for key2, value2 in value1.items():
-            k2_split = key2.split('.')
+        for pre_layer_fullname, subsubdictionary in subdictionary.items():
+            pre_layer_name, pre_pop_name = pre_layer_fullname.split('.')
             
-            if k2_split[0] not in extended_format_dict[k1_split[0]][k1_split[1]]: # If the first part of the split key isn't in the sub-sub-dictionary, add it
-                extended_format_dict[k1_split[0]][k1_split[1]][k2_split[0]] = {}
+            if pre_layer_name not in extended_format_dict[layer_name][population_name]: # If the first part of the split key isn't already in the sub-sub-dictionary, add it
+                extended_format_dict[layer_name][population_name][pre_layer_name] = {}
             
             # Add the second part of the split key to the sub-sub-dictionary, converting 'None' string values to Python None
-            extended_format_dict[k1_split[0]][k1_split[1]][k2_split[0]][k2_split[1]] = {k: v if v != 'None' else None for k, v in value2.items()}
+            extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name] = {}
+
+            # Translate projection properties in the subsubdictionary
+            for k, v in subsubdictionary.items():
+                if k == 'type':
+                    if v.lower() in ['e', 'exc', 'excitatory']:
+                        extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name]['weight_bounds'] = [0, None]
+                    elif v.lower() in ['i', 'inh', 'inhibitory']:
+                        extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name]['weight_bounds'] = [None, 0]
+                else:
+                    extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name][k] = None if v == 'None' else v
     
     return extended_format_dict
 
