@@ -593,12 +593,12 @@ TODO:
  - Consult the forward_activity for weight updates.
  - Either select units stochastically, or based on sorting.
 
-** There is a bug in many configs. plateau and dend2soma must be set to values from dendritic_state after detach() and clone() so that they don't drift continuously after crossing threshold
+** There is a potential issue in many configs. plateau and dend2soma must be set to values from dendritic_state after detach() and clone()
  
 New plan for logical flow of the network modifications:
-1. van_bp_srelu
+1. van_bp_relu_G
 
-2. bpDale_srelu: introduce separate E and I, only learn E-E
+2. bpDale_relu_G: introduce separate E and I, only learn E-E
 
 3. BP_like_1: only propagate activity (not error) before and after nudge; weight update depends on change in dendritic state before and after nudge; W_FB is scaled W_FF.T
  - BP_like_1E: all units are updated
@@ -614,3 +614,32 @@ New plan for logical flow of the network modifications:
  
 5. Test 1 - 4 with 2 hidden layers
  
+ 
+20240329:
+
+Just ran:
+ - 1_hidden_BP_like_1E, 1_hidden_BP_like_1F, 1_hidden_BP_like_1G, 1_hidden_BP_like_1H, 1_hidden_BP_like_2E, 1_hidden_BP_like_2F, 1_hidden_BP_like_2G, 1_hidden_BP_like_2H
+ - These configs use rule BP_like_1E, which:
+ 	- Instantly nudges E activity by dendritic state and sends changes in activity backward, but not forward or laterally.
+ 	- Consults forward activity for the weight update.
+ 	- R
+ 
+ Currently running:
+  - 2_hidden_BP_like_1E, which has hyperparamaters to rescale the weights of each top-down projection.
+ 	
+ But, looking back, the equivalent networks BP_like_9A (all H1E units are nudged and updated, like BP_like_2E) and BP_like_8A (a fraction of H1E units are nudged like BP_like_2F), which failed with 2 hidden layers, haven't been attempted with an appropriate re-scaling of top-down weights.
+ 
+TODO:
+ - 1_hidden_configs that bring back layer equilibration and revert to consulting the final activity for the weight update for consistency with supervised_hebb:
+ 	- BP_like_1I (like BP_like 1E)
+ 	- BP_like_1J (like BP_like 1F)
+ 	- BP_like_2I (like BP_like_2E)
+ 	- BP_like_2J (like BP_like_2F)
+ - 2_hidden_configs:
+ 	- BP_like_1F
+ 	- BP_like_1I
+ 	- BP_like_1J
+ 	- BP_like_2E
+ 	- BP_like_2F
+ 	- BP_like_2I
+ 	- BP_like_2J

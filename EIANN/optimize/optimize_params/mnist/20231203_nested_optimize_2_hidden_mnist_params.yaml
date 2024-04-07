@@ -181,3 +181,30 @@ BP_like_9B:
     H2_neg_loss_th: 0.0
     H_I_size: 50.0
     Output_I_size: 10.0
+BP_like_1E:
+    # all H1.E units are updated and nudged
+    #    accuracy: 91.909195
+    #    loss: 0.01720886
+    # stability: after 50000 steps:
+    H1_E_Input_E_init_weight_scale: 4.007929408198378
+    H2_E_H1_E_init_weight_scale: 0.30260436302293714
+    H_E_learning_rate: 0.09117913453491493
+    H1_E_H2_E_weight_scale: 0.2974413434505385
+    H2_E_Output_E_weight_scale: 0.03126962718203287
+    H1_E_H1_SomaI_init_weight_scale: 1.7486814766398162
+    H1_SomaI_H1_E_init_weight_scale: 0.02244167032082839
+    H1_SomaI_Input_E_init_weight_scale: 3.1475930923894397
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.114871116035535
+    H2_E_H2_SomaI_init_weight_scale: 0.22819541267975474
+    H2_SomaI_H2_E_init_weight_scale: 2.2753879551793004
+    H2_SomaI_H1_E_init_weight_scale: 1.667479051758245
+    H2_SomaI_H2_SomaI_init_weight_scale: 1.4653559444087332
+    Output_E_H2_E_init_weight_scale: 1.4087201967471097
+    Output_E_H2_E_learning_rate: 0.013611303651228273
+    Output_E_Output_I_init_weight_scale: 1.2110527788560608
+    Output_I_Output_E_init_weight_scale: 1.3742771629764805
+    Output_I_H2_E_init_weight_scale: 2.079823805789649
+    Output_I_Output_I_init_weight_scale: 1.2591778057344871
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
