@@ -6,6 +6,7 @@ layer_config:
     E:
       size: 500
       activation: relu
+      bias: uniform(-0.1, 0)
     SomaI:
       size: 50
       activation: relu
@@ -13,10 +14,10 @@ layer_config:
     E:
       size: 10
       activation: relu
+      bias: uniform(-0.1, 0)
     SomaI:
       size: 10
       activation: relu
-
 
 projection_config:
   H1.E:
@@ -37,7 +38,6 @@ projection_config:
       type: exc
       direction: F
       learning_rule: None
-
 
   Output.E:
     H1.E:
