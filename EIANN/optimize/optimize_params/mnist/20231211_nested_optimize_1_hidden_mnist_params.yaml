@@ -42,6 +42,26 @@ bpDale_relu_G:
     Output_I_Output_I_init_weight_scale: 2.135162029101487
     H_I_size: 50.0
     Output_I_size: 10.0
+bpDale_relu_F_test:
+
+    # stability: after 50000 steps:
+    H1_E_E_learning_rate: 0.215559448667304
+    Output_E_E_learning_rate: 0.215559448667304
+    E_I_learning_rate: 0.0026149854534126722
+    H1_E_H1_I_init_weight_scale: 2.6100372902368116
+    H1_E_Input_E_init_weight_scale: 1.3946524860671066
+    H1_I_H1_E_init_weight_scale: 0.4713348586741817
+    H1_I_H1_I_init_weight_scale: 3.117809602677552
+    H1_I_Input_E_init_weight_scale: 1.2631700563290804
+    H_I_size: 50.0
+    I_E_learning_rate: 0.18055033255571856
+    I_I_learning_rate: 0.0004293553235942274
+    Output_E_H1_E_init_weight_scale: 0.45252326709233986
+    Output_E_Output_I_init_weight_scale: 0.5020033450838103
+    Output_I_H1_E_init_weight_scale: 0.39650489698489216
+    Output_I_Output_E_init_weight_scale: 0.3097041376584422
+    Output_I_Output_I_init_weight_scale: 0.04787954553985202
+    Output_I_size: 10.0
 Supervised_BCM_J:
     # H1.E units are unsupervised
     #    accuracy: 86.572205
@@ -293,6 +313,8 @@ BP_like_1E:
     #    accuracy: 92.760605
     #    loss: 0.017543513
     # stability: after 50000 steps:
+    #    accuracy: 93.727
+    #    loss: 0.015447925
     H1_E_Input_E_init_weight_scale: 3.1624168857645176
     H1_E_Input_E_learning_rate: 0.005006100897789962
     H1_E_Output_E_weight_scale: 0.03303566171711183
@@ -379,6 +401,8 @@ BP_like_2E:
     #    accuracy: 91.9036
     #    loss: 0.018514672
     # stability: after 50000 steps:
+    #    accuracy: 91.95
+    #    loss: 0.017668689
     H1_E_Input_E_init_weight_scale: 3.5209866080939336
     H1_E_Input_E_learning_rate: 0.0003590881575490978
     H1_E_Output_E_weight_scale: 0.06327124212326306

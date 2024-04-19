@@ -1678,20 +1678,21 @@ def compute_PSD(receptive_field, plot=False):
     return frequencies, spectral_power, peak_spatial_frequency
 
 
-def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, debug=False, disp=False,
-                                 plot=False):
+def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, store_num_steps=None,
+                                 debug=False, disp=False, plot=False):
     """
 
     :param network: :class:'Network'
     :param dataloader: :class:'torch.DataLoader'
     :param equilibration_activity_tolerance: float in [0, 1]
+    :param store_num_steps: int
     :param debug: bool
     :param disp: bool
     :param: plot: bool
     :return: bool
     """
     idx, data, targets = next(iter(dataloader))
-    network.forward(data, store_dynamics=True, no_grad=True)
+    network.forward(data, store_dynamics=True, no_grad=True, store_num_steps=store_num_steps)
     
     passed = True
     
@@ -1748,9 +1749,12 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
     """
 
     # Load dataset
-    tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=True, download=False, transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=False, download=False, transform=tensor_flatten)
+    tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
+                                                     torchvision.transforms.Lambda(torch.flatten)])
+    MNIST_train_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=True, download=False,
+                                                     transform=tensor_flatten)
+    MNIST_test_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=False, download=False,
+                                                    transform=tensor_flatten)
 
     # Add index to train & test data
     MNIST_train = []

@@ -87,6 +87,10 @@ def config_worker():
         context.store_params = str_to_bool(context.store_params)
     if 'store_params_interval' not in context():
         context.store_params_interval = (0, -1, 100)
+    if 'store_num_steps' not in context():
+        context.store_num_steps = 2
+    else:
+        context.store_num_steps = int(context.store_num_steps)
     if 'full_analysis' not in context():
         context.full_analysis = False
     else:
@@ -95,6 +99,7 @@ def config_worker():
             context.val_interval = (0, -1, 100)
             context.store_params_interval = (0, -1, 100)
             context.store_params = True
+            context.store_num_steps = None
     if 'equilibration_activity_tolerance' not in context():
         context.equilibration_activity_tolerance = 0.2
     else:
@@ -298,12 +303,13 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields,
                                                             plot=plot)
         test_loss_history, test_accuracy_history = \
-            compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx, plot=plot,
-                                           status_bar=context.status_bar)
+            compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
+                                                   plot=plot, status_bar=context.status_bar)
     
     if context.constrain_equilibration_dynamics or context.debug:
         if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                            context.debug, context.disp, plot):
+                                            store_num_steps=context.store_num_steps, debug=context.debug,
+                                            disp=context.disp, plot=plot):
             if not context.debug:
                 if context.interactive:
                     context.update(locals())

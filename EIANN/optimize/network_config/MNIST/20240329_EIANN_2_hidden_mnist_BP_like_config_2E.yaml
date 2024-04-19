@@ -1,5 +1,5 @@
-# H2.E.Output.E cloned from Output.E.H2.E
-# H1.E.H2.E cloned from H2.E.H1.E
+# H2.E.Output.E cloned (and rescaled) from Output.E.H2.E
+# H1.E.H2.E cloned (and rescaled) from H2.E.H1.E
 # With H1.DendI and H2.DendI
 layer_config:
     Input:
@@ -44,7 +44,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_1E
+                    learning_rule: BP_like_2E
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
@@ -151,7 +151,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_1E
+                    learning_rule: BP_like_2E
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
@@ -258,7 +258,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_1E
+                    learning_rule: BP_like_2E
                     learning_rule_kwargs:
                         learning_rate: 0.05248973408306354
             Output:
