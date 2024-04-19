@@ -194,7 +194,7 @@ def rename_population(network, old_name, new_name):
 
 def convert_projection_config_dict(simple_format_dict):
     """
-    Convert a projection config (formatted as "layer.population":{}) to the extended format with nested dicts (formatted as "layer": {"population": {}})
+    Convert a projection config with simplified format (formatted as "layer.population":{}) to the extended format with nested dicts (formatted as "layer": {"population": {}})
     """
     extended_format_dict = {}
     
@@ -229,22 +229,41 @@ def convert_projection_config_dict(simple_format_dict):
     
     return extended_format_dict
 
-
-def build_EIANN_from_config(config_path, network_seed=42, projection_config_format='normal'):
+def convert_layer_config_dict(layer_config_dict):
+    """
+    Convert a layer config with simplified format to the extended format
+    """
+    for layer in layer_config_dict:
+        for population in layer_config_dict[layer]:
+            if 'bias' in layer_config_dict[layer][population]: # Allows for syntax like bias: 'uniform(0,1)'
+                bias_distribution = layer_config_dict[layer][population]['bias']
+                bias_init = bias_distribution.split('(')[0] + '_' 
+                init_args = bias_distribution.split('(')[1].split(')')[0].split(',')
+                init_args = [float(arg) for arg in init_args]
+                
+                del layer_config_dict[layer][population]['bias']
+                layer_config_dict[layer][population]['include_bias'] = True
+                layer_config_dict[layer][population]['bias_init'] = bias_init
+                layer_config_dict[layer][population]['bias_init_args'] = init_args
+    return layer_config_dict       
+                
+def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'):
     '''
     Build an EIANN network from a config file
     '''
     network_config = read_from_yaml(config_path)
     layer_config = network_config['layer_config']
     projection_config = network_config['projection_config']
-    if projection_config_format == 'simplified':
+    if config_format == 'simplified':
         projection_config = convert_projection_config_dict(projection_config)
+        layer_config = convert_layer_config_dict(layer_config)
     training_kwargs = network_config['training_kwargs']
     
     try:
         network = nt.Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
     except:
         projection_config = convert_projection_config_dict(projection_config)
+        layer_config = convert_layer_config_dict(layer_config)
         network = nt.Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
 
     return network
