@@ -261,6 +261,8 @@ projection_config:
                     learning_rule: BP_like_2E
                     learning_rule_kwargs:
                         learning_rate: 0.05248973408306354
+                        max_pop_fraction: 1.
+                        stochastic: False
             Output:
                 SomaI:
                     weight_init: half_kaiming
