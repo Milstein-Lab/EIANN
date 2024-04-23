@@ -880,6 +880,127 @@ class Supervised_Hebb_WeightNorm(LearningRule):
                             pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
 
 
+class Supervised_Hebb_WeightNorm_2(LearningRule):
+    """
+    Output units are instantaneously nudged to target, and the Output layer is allowed to equilibrate.
+    No top-down feedback in hidden layers.
+    """
+    
+    def __init__(self, projection, sign=1, pos_loss_th=0.2, neg_loss_th=-0.2, max_pop_fraction=0.025,
+                 learning_rate=None):
+        super().__init__(projection, learning_rate)
+        self.sign = sign
+        self.max_pop_fraction = max_pop_fraction
+        self.pos_loss_th = pos_loss_th
+        self.neg_loss_th = neg_loss_th
+        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
+        projection.post.__class__.backward_activity_history = \
+            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.__class__.forward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
+        projection.post.__class__.backward_dendritic_state_history = \
+            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+    
+    def step(self):
+        if self.projection.direction in ['forward', 'F']:
+            delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity)
+        elif self.projection.direction in ['recurrent', 'R']:
+            delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.prev_activity)
+        if self.sign > 0:
+            self.projection.weight.data += self.learning_rate * delta_weight
+        else:
+            self.projection.weight.data -= self.learning_rate * delta_weight
+    
+    @classmethod
+    def backward_update_layer_activity(cls, layer, store_dynamics=False):
+        """
+        Update somatic state and activity for all populations that receive projections with update_phase in
+        ['B', 'backward', 'A', 'all'].
+        :param layer:
+        :param store_dynamics: bool
+        """
+        for post_pop in layer:
+            post_pop.prev_activity = post_pop.activity
+        for post_pop in layer:
+            if post_pop.backward_projections or post_pop is post_pop.network.output_pop:
+                # update somatic state and activity
+                delta_state = -post_pop.state + post_pop.bias
+                for projection in post_pop:
+                    pre_pop = projection.pre
+                    if projection.compartment in [None, 'soma']:
+                        if projection.direction in ['forward', 'F']:
+                            delta_state = delta_state + projection(pre_pop.activity)
+                        elif projection.direction in ['recurrent', 'R']:
+                            delta_state = delta_state + projection(pre_pop.prev_activity)
+                post_pop.state = post_pop.state + delta_state / post_pop.tau
+                if hasattr(post_pop, 'dend_to_soma'):
+                    post_pop.activity = post_pop.activation(post_pop.state + post_pop.dend_to_soma)
+                else:
+                    post_pop.activity = post_pop.activation(post_pop.state)
+                if store_dynamics:
+                    post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        """
+        Integrate top-down inputs and update dendritic state variables.
+        :param network:
+        :param output:
+        :param target:
+        :param store_history: bool
+        :param store_dynamics: bool
+        """
+        output_pop = network.output_pop
+        output_layer = output_pop.layer
+        
+        # initialize populations that are updated during the backward phase
+        for pop in output_layer:
+            if pop.backward_projections or pop is output_pop:
+                if store_dynamics:
+                    pop.backward_steps_activity = []
+            # store the forward_activity before comparing output to target
+            pop.forward_activity = pop.activity.detach().clone()
+        
+        # compute the forward_dendritic_state before comparing output to target
+        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device, requires_grad=False)
+        
+        # initialize dendritic state variables
+        for projection in output_pop:
+            if projection.learning_rule.__class__ == cls:
+                output_pop.plateau = torch.zeros(pop.size, device=output_pop.network.device, requires_grad=False)
+                output_pop.dend_to_soma = torch.zeros(pop.size, device=output_pop.network.device, requires_grad=False)
+                output_pop.forward_dendritic_state = output_pop.dendritic_state.detach().clone()
+                if store_history:
+                    # store the forward_dendritic_state
+                    output_pop.append_attribute_history('forward_dendritic_state',
+                                                        output_pop.dendritic_state.detach().clone())
+                break
+        
+        for t in range(network.forward_steps):
+            for projection in output_pop:
+                if projection.learning_rule.__class__ == cls:
+                    if t == 0:
+                        output_pop.dendritic_state = torch.clamp(target - output_pop.activity, min=-1, max=1)
+                        output_pop.plateau = output_pop.dendritic_state.detach().clone()
+                        output_pop.dend_to_soma = output_pop.dendritic_state.detach().clone()
+                    break
+            cls.backward_update_layer_activity(output_layer, store_dynamics=store_dynamics)
+        
+        if store_history:
+            for projection in output_pop:
+                if projection.learning_rule.__class__ == cls:
+                    output_pop.append_attribute_history('plateau', output_pop.plateau.detach().clone())
+                    output_pop.append_attribute_history('backward_dendritic_state',
+                                                        output_pop.dendritic_state.detach().clone())
+                break
+            for pop in output_layer:
+                if pop.backward_projections or pop is output_pop:
+                    if store_dynamics:
+                        pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
+                    else:
+                        pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
+
+
 class BTSP(LearningRule):
     """
     This original rule variant is not compatible with equilibration of populations in both forward and backward phases.

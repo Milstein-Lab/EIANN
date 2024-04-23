@@ -199,20 +199,24 @@ class Network(nn.Module):
                 population.reinit(self.device)
                 population.reset_history()
 
-    def forward(self, sample, store_history=False, store_dynamics=False, no_grad=False):
+    def forward(self, sample, store_history=False, store_dynamics=False, store_num_steps=None, no_grad=False):
         """
 
         :param sample: tensor
         :param store_history: bool
         :param store_dynamics: bool
+        :param store_num_steps: int
         :param no_grad: bool
         :return: tensor
         """
-
         if len(sample.shape) > 1:
             batch_size = sample.shape[0]
         else:
             batch_size = 1
+        
+        if store_num_steps is None:
+            store_num_steps = self.forward_steps
+        
         for i, layer in enumerate(self):
             if i == 0:
                 input_pop = next(iter(layer))
@@ -242,7 +246,7 @@ class Network(nn.Module):
                                         delta_state = delta_state + projection(pre_pop.prev_activity)
                             post_pop.state = post_pop.state + delta_state / post_pop.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
-                        if store_dynamics:
+                        if store_dynamics and t >= (self.forward_steps - store_num_steps):
                             post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
 
         if store_history:
