@@ -629,17 +629,20 @@ Just ran:
  	
  But, looking back, the equivalent networks BP_like_9A (all H1E units are nudged and updated, like BP_like_2E) and BP_like_8A (a fraction of H1E units are nudged like BP_like_2F), which failed with 2 hidden layers, haven't been attempted with an appropriate re-scaling of top-down weights.
  
+20240424:
+ - 2_hidden_BP_like_1E performed as expected (~92%)
+ - 2_hidden_BP_like_2E performed worse than expected (~83%), suggesting that dimensionality of dendritic inhibition is not aligned to top-down feedback
+ - 1_hidden_Supervised_Hebb_WeightNorm_F is comparable to archived Supervised_Gjorgjieva_Hebb_F. Learns all connections, nudges are instantaneous, only Output layer is re-equilibrated.
+ 
 TODO:
- - 1_hidden_configs that bring back layer equilibration and revert to consulting the final activity for the weight update for consistency with supervised_hebb:
- 	- BP_like_1I (like BP_like 1E)
- 	- BP_like_1J (like BP_like 1F)
- 	- BP_like_2I (like BP_like_2E)
- 	- BP_like_2J (like BP_like_2F)
- - 2_hidden_configs:
- 	- BP_like_1F
- 	- BP_like_1I
- 	- BP_like_1J
- 	- BP_like_2E
- 	- BP_like_2F
- 	- BP_like_2I
- 	- BP_like_2J
+- 2_hidden_Hebb_WeightNorm_F
+- 2_hidden_Supervised_Hebb_WeightNorm_F
+- 1_hidden_Hebb_WeightNorm_G (copy from archived Gjorgjieva_Hebb_G)
+- 1_hidden_Supervised_Hebb_WeightNorm_G
+- 1_hidden_Supervised_BCM_G2 (switch to instant nudges)
+- 2_hidden_BCM_G
+- 2_hidden_Supervised_BCM_G2
+- 1_hidden_BP_like_1I (like BP_like_1E, but allowing network-wide equilibration)
+- 2_hidden_BP_like_1I (like BP_like_1E, but allowing network-wide equilibration)
+- 1_hidden_BP_like_2E2 (like BP_like_2E, but DendI.E and DendI.DendI are learned)
+- 2_hidden_BP_like_2E2 (like BP_like_2E, but DendI.E and DendI.DendI are learned)

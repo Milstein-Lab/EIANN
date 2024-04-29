@@ -81,25 +81,26 @@ def config_worker():
         context.store_dynamics = False
     else:
         context.store_dynamics = str_to_bool(context.store_dynamics)
+        
     if 'store_params' not in context():
         context.store_params = False
     else:
         context.store_params = str_to_bool(context.store_params)
     if 'store_params_interval' not in context():
         context.store_params_interval = (0, -1, 100)
-    if 'store_num_steps' not in context():
-        context.store_num_steps = 2
+    if context.debug:
+        context.store_num_steps = None
+    elif 'store_num_steps' not in context():
+        if context.store_dynamics:
+            context.store_num_steps = None
+        else:
+            context.store_num_steps = 2
     else:
         context.store_num_steps = int(context.store_num_steps)
     if 'full_analysis' not in context():
         context.full_analysis = False
     else:
         context.full_analysis = str_to_bool(context.full_analysis)
-        if context.full_analysis:
-            context.val_interval = (0, -1, 100)
-            context.store_params_interval = (0, -1, 100)
-            context.store_params = True
-            context.store_num_steps = None
     if 'equilibration_activity_tolerance' not in context():
         context.equilibration_activity_tolerance = 0.2
     else:
@@ -121,7 +122,13 @@ def config_worker():
         context.retrain = str_to_bool(context.retrain)
 
     context.train_steps = int(context.train_steps)
-
+    
+    if context.full_analysis:
+        context.val_interval = (0, -1, 100)
+        context.store_params_interval = (0, -1, 100)
+        context.store_params = True
+        context.store_num_steps = None
+    
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
