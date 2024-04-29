@@ -5150,10 +5150,11 @@ class BP_like_1E(LearningRule):
         :param store_dynamics: bool
         """
         for post_pop in layer:
-            if hasattr(post_pop, 'dend_to_soma'):
-                post_pop.activity = post_pop.activation(post_pop.state + post_pop.dend_to_soma)
-            if store_dynamics:
-                post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
+            if post_pop.backward_projections or post_pop is post_pop.network.output_pop:
+                if hasattr(post_pop, 'dend_to_soma'):
+                    post_pop.activity = post_pop.activation(post_pop.state + post_pop.dend_to_soma)
+                if store_dynamics:
+                    post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
     
     @classmethod
     def backward_update_layer_dendritic_state(cls, layer):
@@ -5528,10 +5529,11 @@ class BP_like_2E(LearningRule):
         :param store_dynamics: bool
         """
         for post_pop in layer:
-            if hasattr(post_pop, 'dend_to_soma'):
-                post_pop.activity = post_pop.activation(post_pop.state + post_pop.dend_to_soma)
-            if store_dynamics:
-                post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
+            if post_pop.backward_projections or post_pop is post_pop.network.output_pop:
+                if hasattr(post_pop, 'dend_to_soma'):
+                    post_pop.activity = post_pop.activation(post_pop.state + post_pop.dend_to_soma)
+                if store_dynamics:
+                    post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
     
     @classmethod
     def backward_update_layer_dendritic_state(cls, layer):
