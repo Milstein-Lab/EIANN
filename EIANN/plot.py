@@ -353,13 +353,17 @@ def plot_simple_EIANN_weight_history_diagnostic(network):
     fig.show()
 
 
-def plot_hidden_weights(weights, sort=False):
+def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
     num_rows = weights.shape[0]
     num_cols = int(num_rows ** 0.5)  # make the number of rows and columns approximately equal
 
-    axes = gs.GridSpec(num_rows, num_cols)
-    fig = plt.figure(figsize=(12, 12 * num_rows / num_cols))
+    if ax is None:
+        axes = gs.GridSpec(num_rows, num_cols)
+        fig = plt.figure(figsize=(12, 12 * num_rows / num_cols))
+    else:
+        fig = ax.get_figure()
 
+    # Define receptive field dimensions
     rf_width = rf_height = len(weights[0])**0.5
     if rf_width != int(rf_width):
         rf_width = np.ceil(rf_width)
