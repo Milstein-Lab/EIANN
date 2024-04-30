@@ -120,7 +120,7 @@ projection_config:
                     update_phase: A
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
-                        sign: -1
+                        sign: 1
                         learning_rate: 0.19840532653703197
                         forward_only: True
                 DendI:
