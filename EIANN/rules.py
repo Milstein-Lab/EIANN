@@ -680,15 +680,23 @@ class SupervisedGjorgjievaHebb_2(LearningRule):
 
 
 class Hebb_WeightNorm(LearningRule):
-    def __init__(self, projection, sign=1, learning_rate=None):
+    def __init__(self, projection, sign=1, learning_rate=None, forward_only=False):
         super().__init__(projection, learning_rate)
         self.sign = sign
+        self.forward_only = forward_only
 
     def step(self):
         if self.projection.direction in ['forward', 'F']:
-            delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity)
+            if self.forward_only:
+                delta_weight = torch.outer(self.projection.post.forward_activity, self.projection.pre.forward_activity)
+            else:
+                delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity)
         elif self.projection.direction in ['recurrent', 'R']:
-            delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.prev_activity)
+            if self.forward_only:
+                delta_weight = torch.outer(self.projection.post.forward_activity,
+                                           self.projection.pre.forward_prev_activity)
+            else:
+                delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.prev_activity)
         if self.sign > 0:
             self.projection.weight.data += self.learning_rate * delta_weight
         else:
@@ -5138,9 +5146,13 @@ class BP_like_1E(LearningRule):
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
     def step(self):
-        self.projection.weight.data += \
-            (self.learning_rate * torch.outer(self.projection.post.plateau,
-                                              torch.clamp(self.projection.pre.forward_activity, min=0, max=1)))
+        if self.projection.direction in ['forward', 'F']:
+            delta_weight = torch.outer(self.projection.post.plateau,
+                                       torch.clamp(self.projection.pre.forward_activity, min=0, max=1))
+        elif self.projection.direction in ['recurrent', 'R']:
+            delta_weight = torch.outer(self.projection.post.plateau,
+                                       torch.clamp(self.projection.pre.forward_prev_activity, min=0, max=1))
+        self.projection.weight.data += self.learning_rate * delta_weight
         
     @classmethod
     def backward_nudge_activity(cls, layer, store_dynamics=False):
@@ -5152,6 +5164,7 @@ class BP_like_1E(LearningRule):
         for post_pop in layer:
             if post_pop.backward_projections or post_pop is post_pop.network.output_pop:
                 if hasattr(post_pop, 'dend_to_soma'):
+                    post_pop.prev_activity = post_pop.activity
                     post_pop.activity = post_pop.activation(post_pop.state + post_pop.dend_to_soma)
                 if store_dynamics:
                     post_pop.backward_steps_activity.append(post_pop.activity.detach().clone())
@@ -5190,6 +5203,7 @@ class BP_like_1E(LearningRule):
         """
         for input_pop in next(iter(network)):
             input_pop.forward_activity = input_pop.activity
+            input_pop.forward_prev_activity = input_pop.prev_activity
         
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
@@ -5206,6 +5220,7 @@ class BP_like_1E(LearningRule):
                         pop.backward_steps_activity = []
                 # store the forward_activity before comparing output to target
                 pop.forward_activity = pop.activity.detach().clone()
+                pop.forward_prev_activity = pop.prev_activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
@@ -5304,9 +5319,13 @@ class BP_like_1I(LearningRule):
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
     def step(self):
-        self.projection.weight.data += \
-            (self.learning_rate * torch.outer(self.projection.post.plateau,
-                                              torch.clamp(self.projection.pre.activity, min=0, max=1)))
+        if self.projection.direction in ['forward', 'F']:
+            delta_weight = torch.outer(self.projection.post.plateau,
+                                       torch.clamp(self.projection.pre.activity, min=0, max=1))
+        elif self.projection.direction in ['recurrent', 'R']:
+            delta_weight = torch.outer(self.projection.post.plateau,
+                                       torch.clamp(self.projection.pre.prev_activity, min=0, max=1))
+        self.projection.weight.data += self.learning_rate * delta_weight
     
     @classmethod
     def backward_update_layer_activity(cls, layer, store_dynamics=False):
@@ -5487,9 +5506,13 @@ class BP_like_2E(LearningRule):
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
     def step(self):
-        self.projection.weight.data += \
-            (self.learning_rate * torch.outer(self.projection.post.plateau,
-                                              torch.clamp(self.projection.pre.forward_activity, min=0, max=1)))
+        if self.projection.direction in ['forward', 'F']:
+            delta_weight = torch.outer(self.projection.post.plateau,
+                                       torch.clamp(self.projection.pre.forward_activity, min=0, max=1))
+        elif self.projection.direction in ['recurrent', 'R']:
+            delta_weight = torch.outer(self.projection.post.plateau,
+                                       torch.clamp(self.projection.pre.forward_prev_activity, min=0, max=1))
+        self.projection.weight.data += self.learning_rate * delta_weight
     
     @classmethod
     def backward_update_layer_activity(cls, layer, store_dynamics=False):
@@ -5571,6 +5594,7 @@ class BP_like_2E(LearningRule):
         """
         for input_pop in next(iter(network)):
             input_pop.forward_activity = input_pop.activity
+            input_pop.forward_prev_activity = input_pop.prev_activity
         
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
@@ -5587,6 +5611,7 @@ class BP_like_2E(LearningRule):
                         pop.backward_steps_activity = []
                 # store the forward_activity before comparing output to target
                 pop.forward_activity = pop.activity.detach().clone()
+                pop.forward_prev_activity = pop.prev_activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:

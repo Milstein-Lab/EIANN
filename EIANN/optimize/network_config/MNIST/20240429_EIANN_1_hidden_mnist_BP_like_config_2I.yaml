@@ -122,6 +122,7 @@ projection_config:
                     learning_rule_kwargs:
                         sign: -1
                         learning_rate: 0.19840532653703197
+                        forward_only: True
                 DendI:
                     weight_init: half_kaiming
                     weight_constraint: normalize_weight
@@ -136,6 +137,7 @@ projection_config:
                     learning_rule_kwargs:
                         sign: -1
                         learning_rate: 0.19840532653703197
+                        forward_only: True
     Output:
         E:
             H1:
