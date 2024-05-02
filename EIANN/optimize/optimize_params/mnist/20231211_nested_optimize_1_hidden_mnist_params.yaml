@@ -15,7 +15,30 @@ van_bp_relu:
     Output_learning_rate: 0.03970608050384832
     H1_init_weight_scale: 0.634534257421716
     Output_init_weight_scale: 2.0299549637012495
+bpDale_relu_F:
+    # E and I connections are learned
+    #    accuracy: 95.0823
+    #    loss: 0.011500557
+    # stability: after 50000 steps:
+    H1_E_E_learning_rate: 0.7766521546880218
+    Output_E_E_learning_rate: 0.03526056175982627
+    E_I_learning_rate: 0.045549374141862414
+    I_E_learning_rate: 0.5335723094400662
+    I_I_learning_rate: 0.0031415158772067605
+    H1_E_Input_E_init_weight_scale: 3.203644532608368
+    H1_E_H1_I_init_weight_scale: 1.6441896859713336
+    H1_I_Input_E_init_weight_scale: 3.2689218933243502
+    H1_I_H1_E_init_weight_scale: 0.8245785660763586
+    H1_I_H1_I_init_weight_scale: 1.7763058839538277
+    Output_E_H1_E_init_weight_scale: 1.0030624132536317
+    Output_E_Output_I_init_weight_scale: 0.42366927677472205
+    Output_I_H1_E_init_weight_scale: 3.612753221512516
+    Output_I_Output_E_init_weight_scale: 1.5617628663375285
+    Output_I_Output_I_init_weight_scale: 3.031133586127758
+    H_I_size: 50.0
+    Output_I_size: 10.0
 bpDale_relu_G:
+    # only E connections are learned
     #    accuracy: 95.4102
     #    loss: 0.011326423
     # stability: after 50000 steps:
@@ -498,6 +521,32 @@ BP_like_2H:
     max_pop_fraction: 0.08600267291798211
     H1_I_size: 50.0
     Output_I_size: 10.0
+BP_like_2I_test:
+    # all H1.E units are updated and nudged
+    # DendI_E and DendI_DendI are learned with Hebb_WeightNorm
+    # stability: after 50000 steps:
+    H1_E_Input_E_init_weight_scale: 3.5209866080939336
+    H1_E_Input_E_learning_rate: 0.0003590881575490978
+    H1_E_Output_E_weight_scale: 0.06327124212326306
+    H1_E_H1_SomaI_init_weight_scale: 0.7405935933155423
+    H1_SomaI_H1_E_init_weight_scale: 0.7288780116334287
+    H1_SomaI_Input_E_init_weight_scale: 5.72162604570294
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.3133128494843576
+    H1_E_H1_DendI_init_weight_scale: 1.3308604685151206
+    H1_E_H1_DendI_learning_rate: 0.04537932238567541
+    H1_DendI_H1_E_weight_scale: 1.4028199000795747
+    DendI_E_learning_rate: 0.04537932238567541
+    DendI_DendI_learning_rate: 0.04537932238567541
+    H1_DendI_H1_DendI_weight_scale: 0.06943184662233213
+    Output_E_H1_E_init_weight_scale: 0.8005618662927602
+    Output_E_H1_E_learning_rate: 0.010177771489220734
+    Output_E_Output_I_init_weight_scale: 1.8914800001423369
+    Output_I_Output_E_init_weight_scale: 0.985504911524692
+    Output_I_H1_E_init_weight_scale: 2.047281815873526
+    Output_I_Output_I_init_weight_scale: 0.7273471129281462
+    max_pop_fraction: 1.0
+    H1_I_size: 50.0
+    Output_I_size: 10.0
 Supervised_Hebb_WeightNorm_J:
     #    accuracy: 23.101599
     #    loss: 0.08913423
@@ -769,7 +818,8 @@ BTSP_O2:
     BTSP_max_pop_fraction: 0.06425793415133141
     H1_I_size: 50.0
     Output_I_size: 10.0
-Hebb_WeightNorm_F_test:
+Hebb_WeightNorm_F:
+    # uses parameters optimized for archived Gjorgjieva_Hebb_F
     # stability: after 50000 steps:
     E_I_learning_rate: 0.062482489852286695
     H1_E_H1_I_weight_scale: 0.5472386961397587
@@ -788,7 +838,8 @@ Hebb_WeightNorm_F_test:
     Output_I_Output_E_weight_scale: 1.6069296994337003
     Output_I_Output_I_weight_scale: 0.9473308956836912
     Output_I_size: 10.0
-Supervised_Hebb_WeightNorm_F_test:
+Supervised_Hebb_WeightNorm_F_archived:
+    # uses parameters optimized for archived Supervised_Gjorgjieva_Hebb_F
     #    accuracy: 66.315
     #    loss: 0.07069443
     # stability: after 50000 steps:
@@ -809,3 +860,25 @@ Supervised_Hebb_WeightNorm_F_test:
     Output_I_Output_E_weight_scale: 0.5664646212794889
     Output_I_Output_I_weight_scale: 0.38566801800246875
     Output_I_size: 10.0
+Supervised_Hebb_WeightNorm_F:
+    #    accuracy: 63.515697
+    #    loss: 0.05590261
+    # stability: after 50000 steps:
+    H1_E_Input_E_learning_rate: 0.0082855269175203
+    Output_E_H1_E_learning_rate: 0.05551723619120614
+    E_I_learning_rate: 0.02582335866716333
+    I_E_learning_rate: 0.0004976440140148766
+    I_I_learning_rate: 0.050733505677388734
+    Output_E_H1_E_weight_scale: 0.49217028505719396
+    Output_E_Output_I_weight_scale: 0.195627184131013
+    Output_I_Output_E_weight_scale: 6.153033402251916
+    Output_I_H1_E_weight_scale: 0.1241152656818089
+    Output_I_Output_I_weight_scale: 2.7468619469844473
+    H1_E_Input_E_weight_scale: 0.6413932367154289
+    H1_E_H1_I_weight_scale: 1.2503783539598226
+    H1_I_H1_E_weight_scale: 1.2269285695745835
+    H1_I_Input_E_weight_scale: 0.7781035612616852
+    H1_I_H1_I_weight_scale: 1.1282795674696204
+    H1_I_size: 50.0
+    Output_I_size: 10.0
+
