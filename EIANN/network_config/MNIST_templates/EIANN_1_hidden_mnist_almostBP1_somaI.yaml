@@ -17,20 +17,21 @@ layer_config:
       size: 10
       activation: relu
 
+
 projection_config:
   H1.E:
     Input.E:
       weight_init: half_kaiming
       type: exc
       direction: F
-      learning_rule: Backprop
+      learning_rule: almost_backprop1
     H1.SomaI:
       weight_init: half_kaiming
       type: inh
       weight_init_args: [1.]
       direction: R
       learning_rule: None
-
+      
   H1.SomaI:
     H1.E:
       weight_init: half_kaiming
@@ -43,12 +44,12 @@ projection_config:
     H1.E:
       weight_init: half_kaiming
       type: exc
+      weight_init_args: [1.1]
       direction: F
-      learning_rule: Backprop
+      learning_rule: almost_backprop1
     Output.SomaI:
       weight_init: half_kaiming
       type: inh
-      weight_init_args: [1.4]
       direction: R
       learning_rule: None
 
