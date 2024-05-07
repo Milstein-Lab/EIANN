@@ -420,6 +420,7 @@ BP_like_1H:
     H1_I_size: 50.0
     Output_I_size: 10.0
 BP_like_1I:
+    # needs to be replaced - H.SomaI were not being equilibrated
     # all H1.E units are updated and nudged
     # with backward phase network equilibration
     #    accuracy: 91.46569

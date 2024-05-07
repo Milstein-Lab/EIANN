@@ -1,5 +1,6 @@
 # H1.E.Output.E cloned from Output.E.H1.E
-# With H1.DendI.H1.E input at H1.E.H1.DendI learned with DendriticLoss_5
+# DendI <- E and DendI <- DendI learned with Hebb_WeightNorm
+# E <- DendI learned with DendriticLoss_5
 layer_config:
     Input:
         E:
@@ -117,7 +118,6 @@ projection_config:
                         - 0
                         - null
                     direction: R
-                    update_phase: A
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         sign: 1
@@ -132,7 +132,6 @@ projection_config:
                         - null
                         - 0
                     direction: R
-                    update_phase: A
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         sign: -1
@@ -181,7 +180,6 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
