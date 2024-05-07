@@ -72,6 +72,7 @@ class Network(nn.Module):
 
         self.backward_methods = []
         self.module_dict = nn.ModuleDict()
+        # self.projections = self.module_dict
         self.parameter_dict = nn.ParameterDict()
         self.optimizer_params_list = []
 
@@ -121,7 +122,6 @@ class Network(nn.Module):
                 raise RuntimeError('Network: optimizer (%s) must be imported and callable' % optimizer)
             if optimizer_kwargs is None:
                 optimizer_kwargs = {}
-            # optimizer = optimizer(self.parameters(), lr=self.learning_rate, **optimizer_kwargs)
             optimizer = optimizer(self.optimizer_params_list, **optimizer_kwargs)
 
         self.optimizer = optimizer
@@ -142,6 +142,14 @@ class Network(nn.Module):
                                                    bounds=projection.weight_bounds)
                             elif projection.weight_init == 'scaled_kaiming':
                                 scaled_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args)
+                            elif projection.weight_init in ['clone', 'clone_weight']:
+                                # Copy the weight matrix from the source population
+                                source = projection.weight_init_args['source']
+                                projection.weight.data = self.module_dict[source].weight.data.clone()
+                                if 'transpose' in projection.weight_init_args and projection.weight_init_args['transpose']==True:
+                                    projection.weight.data = projection.weight.data.t()
+                                if 'sign' in projection.weight_init_args:
+                                    projection.weight.data = projection.weight.data * projection.weight_init_args['sign']
                             else:
                                 try:
                                     getattr(projection.weight.data,
@@ -876,9 +884,9 @@ class Projection(nn.Linear):
             except:
                 raise RuntimeError \
                     ('Projection: learning_rule: %s must be imported and instance of LearningRule' % learning_rule)
-        self.learning_rule  = learning_rule_class(self, **learning_rule_kwargs)
         if learning_rule_class != rules.Backprop:
             self.weight.requires_grad = False
+        self.learning_rule  = learning_rule_class(self, **learning_rule_kwargs)
 
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
 
