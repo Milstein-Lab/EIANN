@@ -40,6 +40,8 @@ bpDale_relu_F:
     #    accuracy: 95.230995
     #    loss: 0.011872606
     # stability: after 50000 steps:
+    #    accuracy: 96.5485
+    #    loss: 0.008650271
     H_E_E_learning_rate: 0.39131108185597463
     Output_E_E_learning_rate: 0.3264900426693538
     E_I_learning_rate: 0.0016114544772369264
@@ -239,11 +241,14 @@ BP_like_1E:
     H_I_size: 50.0
     Output_I_size: 10.0
 BP_like_1I:
+    # needs to be replaced - H.SomaI were not being equilibrated
     # all H.E units are updated and nudged
     # with backward phase network equilibration
     #    accuracy: 90.24339
     #    loss: 0.020880794
     # stability: after 50000 steps:
+    #    accuracy: 87.66449
+    #    loss: 0.026299808
     H1_E_Input_E_init_weight_scale: 0.7157054126945604
     H2_E_H1_E_init_weight_scale: 0.7849859660025725
     H_E_learning_rate: 0.07938148023823215
@@ -272,6 +277,8 @@ BP_like_2E:
     #    accuracy: 83.8361
     #    loss: 0.028327057
     # stability: after 50000 steps:
+    #    accuracy: 79.92149
+    #    loss: 0.033013575
     H1_E_Input_E_init_weight_scale: 0.4486905629486481
     H2_E_H1_E_init_weight_scale: 1.150996182762047
     H_E_E_learning_rate: 0.0009436043382979285
@@ -308,6 +315,8 @@ BP_like_2I:
     #    accuracy: 90.5358
     #    loss: 0.020298075
     # stability: after 50000 steps:
+    #    accuracy: 89.8205
+    #    loss: 0.020865684
     H1_E_Input_E_init_weight_scale: 1.4158987146357473
     H2_E_H1_E_init_weight_scale: 0.736018558473438
     H_E_E_learning_rate: 0.00713409526027372

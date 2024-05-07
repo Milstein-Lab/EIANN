@@ -128,7 +128,6 @@ projection_config:
                         - 0
                         - null
                     direction: R
-                    update_phase: A
                     learning_rule: null
                 DendI:
                     weight_init: half_kaiming
@@ -235,7 +234,6 @@ projection_config:
                         - 0
                         - null
                     direction: R
-                    update_phase: A
                     learning_rule: null
                 DendI:
                     weight_init: half_kaiming
@@ -292,7 +290,6 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
