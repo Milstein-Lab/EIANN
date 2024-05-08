@@ -38,11 +38,12 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_1I
+                    learning_rule: BP_like_1E
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
                         stochastic: False
+                        relu_gate: True
             H1:
                 SomaI:
                     weight_init: half_kaiming
@@ -85,7 +86,6 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
@@ -109,11 +109,12 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_1I
+                    learning_rule: BP_like_1E
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
                         stochastic: False
+                        relu_gate: True
             H2:
                 SomaI:
                     weight_init: half_kaiming
@@ -156,7 +157,6 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
@@ -180,9 +180,10 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_1I
+                    learning_rule: BP_like_1E
                     learning_rule_kwargs:
                         learning_rate: 0.05248973408306354
+                        relu_gate: True
             Output:
                 SomaI:
                     weight_init: half_kaiming
@@ -212,7 +213,6 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:

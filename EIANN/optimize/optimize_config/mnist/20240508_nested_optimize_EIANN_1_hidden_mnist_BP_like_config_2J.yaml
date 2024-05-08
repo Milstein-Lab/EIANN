@@ -2,16 +2,10 @@ bounds:
     H1_E_Input_E_init_weight_scale:
         - 0.01
         - 10.
-    H2_E_H1_E_init_weight_scale:
-        - 0.01
-        - 10.
-    H_E_learning_rate:
+    H1_E_Input_E_learning_rate:
         - 0.0001
         - 0.25
-    H1_E_H2_E_weight_scale:
-        - 0.01
-        - 10.
-    H2_E_Output_E_weight_scale:
+    H1_E_Output_E_weight_scale:
         - 0.01
         - 10.
     H1_E_H1_SomaI_init_weight_scale:
@@ -26,22 +20,28 @@ bounds:
     H1_SomaI_H1_SomaI_init_weight_scale:
         - 0.01
         - 10.
-    H2_E_H2_SomaI_init_weight_scale:
+    H1_E_H1_DendI_init_weight_scale:
         - 0.01
         - 10.
-    H2_SomaI_H2_E_init_weight_scale:
+    H1_E_H1_DendI_learning_rate:
+        - 0.0001
+        - 0.25
+    H1_DendI_H1_E_weight_scale:
         - 0.01
         - 10.
-    H2_SomaI_H1_E_init_weight_scale:
+    H1_DendI_H1_DendI_weight_scale:
         - 0.01
         - 10.
-    H2_SomaI_H2_SomaI_init_weight_scale:
+    DendI_E_learning_rate:
+        - 0.0001
+        - 1.
+    DendI_DendI_learning_rate:
+        - 0.0001
+        - 1.
+    Output_E_H1_E_init_weight_scale:
         - 0.01
         - 10.
-    Output_E_H2_E_init_weight_scale:
-        - 0.01
-        - 10.
-    Output_E_H2_E_learning_rate:
+    Output_E_H1_E_learning_rate:
         - 0.0001
         - 0.25
     Output_E_Output_I_init_weight_scale:
@@ -50,7 +50,7 @@ bounds:
     Output_I_Output_E_init_weight_scale:
         - 0.01
         - 10.
-    Output_I_H2_E_init_weight_scale:
+    Output_I_H1_E_init_weight_scale:
         - 0.01
         - 10.
     Output_I_Output_I_init_weight_scale:
@@ -58,15 +58,15 @@ bounds:
         - 10.
     max_pop_fraction:
         - 0.01
-        - 1.
-    H_I_size:
+        - 1. # 0.1
+    H1_I_size:
         - 1
         - 100
     Output_I_size:
         - 1
         - 10
 default_params:
-    H_I_size: 50
+    H1_I_size: 50
     Output_I_size: 10
     max_pop_fraction: 1.
 rel_bounds:
@@ -80,7 +80,7 @@ kwargs:
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: optimize/network_config/MNIST/20240429_EIANN_2_hidden_mnist_BP_like_config_1I.yaml
+    network_config_file_path: optimize/network_config/MNIST/20240508_EIANN_1_hidden_mnist_BP_like_config_2J.yaml
     val_interval:
         - -2001
         - -1
@@ -89,34 +89,34 @@ kwargs:
     constrain_equilibration_dynamics: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
-      function: update_EIANN_config_2_hidden_BP_like_1E  # 1E works for 1I
+      function: update_EIANN_config_1_hidden_BP_like_2I  # works with 2J
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_mnist_BP_like_1I
+optimization_title: EIANN_1_hidden_mnist_BP_like_2J
 x0:
     H1_E_H1_SomaI_init_weight_scale: 0.01320454234508166
-    H2_E_H2_SomaI_init_weight_scale: 0.01320454234508166
-    H_E_learning_rate: 0.007971513519070807
+    H1_E_H1_DendI_init_weight_scale: 0.15693539946852347
+    H1_E_H1_DendI_learning_rate: 0.17678741629227127
+    H1_E_Input_E_learning_rate: 0.007971513519070807
     H1_E_Input_E_init_weight_scale: 2.6271244086908077
-    H2_E_H1_E_init_weight_scale: 2.6271244086908077
-    H1_E_H2_E_weight_scale: 0.1
-    H2_E_Output_E_weight_scale: 0.1
+    H1_E_Output_E_weight_scale: 1.
     H1_SomaI_H1_E_init_weight_scale: 1.
+    H1_DendI_H1_E_weight_scale: 1.
     H1_SomaI_Input_E_init_weight_scale: 3.056677478413984
     H1_SomaI_H1_SomaI_init_weight_scale: 2.2349494313586358
-    H2_SomaI_H1_E_init_weight_scale: 3.056677478413984
-    H2_SomaI_H2_SomaI_init_weight_scale: 2.2349494313586358
-    H2_SomaI_H2_E_init_weight_scale: 1.
-    Output_E_H2_E_learning_rate: 0.11277464693344395
-    Output_E_H2_E_init_weight_scale: 4.006206567051037
+    H1_DendI_H1_DendI_weight_scale: 2.2349494313586358
+    DendI_E_learning_rate: 0.00048379300778867
+    DendI_DendI_learning_rate: 0.08373746442701452
+    Output_E_H1_E_learning_rate: 0.11277464693344395
+    Output_E_H1_E_init_weight_scale: 4.006206567051037
     Output_E_Output_I_init_weight_scale: 0.3002765663599449
     Output_I_Output_E_init_weight_scale: 1.
-    Output_I_H2_E_init_weight_scale: 0.36606750462367517
+    Output_I_H1_E_init_weight_scale: 0.36606750462367517
     Output_I_Output_I_init_weight_scale: 1.1113407626461944
     max_pop_fraction: 1.
-    H_I_size: 50
+    H1_I_size: 50
     Output_I_size: 10
