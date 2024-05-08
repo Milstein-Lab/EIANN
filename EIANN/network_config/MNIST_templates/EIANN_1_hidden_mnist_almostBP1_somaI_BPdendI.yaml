@@ -11,7 +11,7 @@ layer_config:
       size: 50
       activation: relu
     DendI:
-      size: 10
+      size: 500
       activation: relu
 
   Output:
@@ -41,26 +41,37 @@ projection_config:
     # Backward/dendrite projections  
     H1.DendI:
       weight_init: half_kaiming
+      # weight_init: clone
+      # weight_init_args:
+      #   source: OutputE_H1E
+      #   transpose: true
+      #   sign: -1
       type: inh
-      update_phase: B
       compartment: dendrite
+      update_phase: B
       learning_rule: Backprop_dendI
+      learning_rule_kwargs:
+        learning_rate: 2.
 
   H1.SomaI:
     H1.E:
       weight_init: half_kaiming
       type: exc
       weight_init_args: [1.]
-      direction: R
+      direction: F
       learning_rule: None
 
   H1.DendI:
     H1.E:
       weight_init: half_kaiming
+      # weight_init: clone      
+      # weight_init_args:
+      #   source: OutputE_H1E
       type: exc
       direction: F
       learning_rule: Backprop_dendI
-
+      learning_rule_kwargs:
+        learning_rate: 2.
 
   Output.E:
     H1.E:

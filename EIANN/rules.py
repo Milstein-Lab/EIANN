@@ -6180,7 +6180,6 @@ class Backprop_dendI(LearningRule):
             learning_rate = projection.post.network.learning_rate
 
         projection.weight.requires_grad = True
-        # print(projection.name, projection.weight.requires_grad)
 
         # Create one optimizer for every relevant network.layer and add the projection parameters
         layer = projection.post.layer
