@@ -80,7 +80,7 @@ class Network(nn.Module):
         self.output_pop = None
         self.layers = {}
         for i, (layer_name, pop_config) in enumerate(layer_config.items()):
-            layer = Layer(layer_name)
+            layer = Layer(self, layer_name)
             self.layers[layer_name] = layer
             self.__dict__[layer_name] = layer
             for j, (pop_name, pop_kwargs) in enumerate(pop_config.items()):
@@ -565,8 +565,9 @@ class AttrDict:
 
 
 class Layer(object):
-    def __init__(self, name):
+    def __init__(self, network, name):
         self.name = name
+        self.network = network
         self.populations = {}
 
     def append_population(self, population):
