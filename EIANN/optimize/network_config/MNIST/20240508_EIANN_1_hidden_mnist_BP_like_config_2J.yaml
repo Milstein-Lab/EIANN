@@ -1,5 +1,6 @@
 # H1.E.Output.E cloned from Output.E.H1.E
-# H1.E.H1.DendI learned with DendriticLoss_5
+# DendI <- E and DendI <- DendI learned with Hebb_WeightNorm
+# E <- DendI learned with DendriticLoss_6
 layer_config:
     Input:
         E:
@@ -38,6 +39,7 @@ projection_config:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
                         stochastic: False
+                        relu_gate: True
             H1:
                 SomaI:
                     weight_init: half_kaiming
@@ -58,7 +60,7 @@ projection_config:
                     update_phase: B
                     compartment: dend
                     direction: R
-                    learning_rule: DendriticLoss_5
+                    learning_rule: DendriticLoss_6
                     learning_rule_kwargs:
                         sign: -1
                         learning_rate: 0.015920951416174885
@@ -110,23 +112,32 @@ projection_config:
             H1:
                 E:
                     weight_init: half_kaiming
-                    weight_init_args: !!python/tuple
-                        - 1.
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 7.3406424124335174
                     weight_bounds: !!python/tuple
                         - 0
                         - null
                     direction: R
-                    learning_rule: null
+                    learning_rule: Hebb_WeightNorm
+                    learning_rule_kwargs:
+                        sign: 1
+                        learning_rate: 0.19840532653703197
+                        forward_only: True
                 DendI:
                     weight_init: half_kaiming
-                    weight_init_args: !!python/tuple
-                        - 1.
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 0.25475779357057554
                     weight_bounds: !!python/tuple
                         - null
                         - 0
-                    weight_constraint: no_autapses
                     direction: R
-                    learning_rule: null
+                    learning_rule: Hebb_WeightNorm
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.19840532653703197
+                        forward_only: True
     Output:
         E:
             H1:
@@ -141,6 +152,7 @@ projection_config:
                     learning_rule: BP_like_2E
                     learning_rule_kwargs:
                         learning_rate: 0.05248973408306354
+                        relu_gate: True
             Output:
                 SomaI:
                     weight_init: half_kaiming
