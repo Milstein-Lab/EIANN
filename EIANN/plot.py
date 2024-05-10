@@ -10,6 +10,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
 from skimage import metrics
 import scipy.stats as stats
+import h5py
+import os
 
 from tqdm.autonotebook import tqdm
 from copy import copy
@@ -596,7 +598,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None):
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, ax=None, use_hdf5=False):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -606,6 +608,28 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     :param title: str
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    plot_data_filename = 'data/.plot_data.h5'
+    if use_hdf5 and os.path.exists(plot_data_filename):
+        with h5py.File(plot_data_filename, 'r') as f:
+            if network.name in f:
+                f = f[network.name]
+                if 'percent_correct' in f:
+                    percent_correct = f['percent_correct'][()]
+                    avg_output = f['avg_output'][()]
+                    if ax is None:
+                        fig, axes = plt.subplots()
+                        ax = axes
+                        fig.tight_layout()
+                    im = ax.imshow(avg_output, aspect='auto', interpolation='none')
+                    cbar = plt.colorbar(im, ax=ax)
+                    ax.set_xticks(range(avg_output.shape[1]))
+                    ax.set_yticks(range(avg_output.shape[0]))
+                    ax.set_xlabel('Labels')
+                    ax.set_ylabel('Output unit')
+                    ax.set_title(f'Average activity - {network.output_pop.fullname}\n{title}')
+                    return
+
 
     idx, data, targets = next(iter(test_dataloader))
     data = data.to(network.device)
@@ -629,8 +653,10 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         label_idx = torch.where(labels == label)  # find all instances of given label
         avg_output[:, label] = torch.mean(output[label_idx], dim=0)
 
-    fig, axes = plt.subplots()
-    ax = axes
+    if ax is None:
+        fig, axes = plt.subplots()
+        ax = axes
+        fig.tight_layout()
     im = ax.imshow(avg_output, aspect='auto', interpolation='none')
     cbar = plt.colorbar(im, ax=ax)
     ax.set_xticks(range(num_labels))
@@ -641,8 +667,9 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         ax.set_title(f'Average activity - {network.output_pop.fullname}\n{title}')
     else:
         ax.set_title(f'Average activity - {network.output_pop.fullname}')
-    fig.tight_layout()
-    fig.show()
+    
+    if ax is None:
+        fig.show()
 
     pop_list = []
     if population == 'all':
@@ -676,6 +703,18 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
             ax.set_title(f'Average activity - {population.fullname}')
         fig.tight_layout()
         fig.show()
+
+    if use_hdf5: # Save plot data to HDF5 file for faster loading
+        if os.path.exists(plot_data_filename):
+            mode = 'a'
+        else:
+            mode = 'w'
+        with h5py.File(plot_data_filename, mode) as f:
+            if network.name not in f:
+                f.create_group(network.name)
+                f = f[network.name]
+                f.create_dataset('percent_correct', data=percent_correct)
+                f.create_dataset('avg_output', data=avg_output)
 
 
 def plot_rsm(network, test_dataloader):

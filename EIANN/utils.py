@@ -266,6 +266,7 @@ def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'
         layer_config = convert_layer_config_dict(layer_config)
         network = nt.Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
 
+    network.name = config_path.split("/")[-1]
     return network
 
 
@@ -1770,9 +1771,9 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
     # Load dataset
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                      torchvision.transforms.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=True, download=False,
+    MNIST_train_dataset = torchvision.datasets.MNIST(root='data/datasets/MNIST', train=True, download=True,
                                                      transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=False, download=False,
+    MNIST_test_dataset = torchvision.datasets.MNIST(root='data/datasets/MNIST', train=False, download=True,
                                                     transform=tensor_flatten)
 
     # Add index to train & test data
