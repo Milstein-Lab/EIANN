@@ -1037,18 +1037,31 @@ def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=Tru
 
 def compute_batch_accuracy(network, test_dataloader):
     """
-    Compute total accuracy (% correct) on given dataset
-    :param network:
-    :param test_dataloader:
+    Compute total accuracy (% correct) on given dataset.
+    Args:
+        network: The network to evaluate.
+        test_dataloader: A DataLoader containing the test data.
+    Returns:
+        float: The batch accuracy as a percentage.
     """
-    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+    assert len(test_dataloader) == 1, 'Dataloader must have a single large batch'
 
-    indexes, data, targets = next(iter(test_dataloader))
+    idx, data, targets = next(iter(test_dataloader))
     data = data.to(network.device)
     targets = targets.to(network.device)
     labels = torch.argmax(targets, axis=1)
     output = network.forward(data, no_grad=True)
-    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
+    return compute_batch_accuracy_from_output(output, labels)
+
+def compute_batch_accuracy_from_output(output, labels):
+    """
+    Compute batch accuracy from the output and labels.
+    output: The output of the network.
+    labels: The true labels.
+    Returns:
+        float: The batch accuracy as a percentage.
+    """
+    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / output.shape[0]
     percent_correct = torch.round(percent_correct, decimals=2)
     print(f'Batch accuracy = {percent_correct}%')
     return percent_correct

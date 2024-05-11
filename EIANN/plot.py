@@ -17,6 +17,7 @@ from tqdm.autonotebook import tqdm
 from copy import copy
 
 from . import utils
+import EIANN.utils as ut
 
 
 def update_plot_defaults():
@@ -598,78 +599,137 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, ax=None, use_hdf5=False):
-    """
-    Compute total accuracy (% correct) on given dataset
-    :param network:
-    :param test_dataloader:
-    :param population: :class:'Population' or str 'all'
-    :param sorted_output_idx: tensor of int
-    :param title: str
-    """
-    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
-
-    plot_data_filename = 'data/.plot_data.h5'
-    if use_hdf5 and os.path.exists(plot_data_filename):
-        with h5py.File(plot_data_filename, 'r') as f:
-            if network.name in f:
-                f = f[network.name]
-                if 'percent_correct' in f:
-                    percent_correct = f['percent_correct'][()]
-                    avg_output = f['avg_output'][()]
-                    if ax is None:
-                        fig, axes = plt.subplots()
-                        ax = axes
-                        fig.tight_layout()
-                    im = ax.imshow(avg_output, aspect='auto', interpolation='none')
-                    cbar = plt.colorbar(im, ax=ax)
-                    ax.set_xticks(range(avg_output.shape[1]))
-                    ax.set_yticks(range(avg_output.shape[0]))
-                    ax.set_xlabel('Labels')
-                    ax.set_ylabel('Output unit')
-                    ax.set_title(f'Average activity - {network.output_pop.fullname}\n{title}')
-                    return
 
 
-    idx, data, targets = next(iter(test_dataloader))
-    data = data.to(network.device)
-    targets = targets.to(network.device)
-    labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
-    output = network.forward(data, no_grad=True)
-
-    # if unsupervised: # sort output units by their mean activity
-    if sorted_output_idx is not None:
-        output = output[:, sorted_output_idx]
-    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
-    percent_correct = torch.round(percent_correct, decimals=2)
-    print(f'Batch accuracy = {percent_correct}%')
-
-    # Plot average output for each label class
-    num_units = targets.shape[1]
+def compute_average_output(output, labels, num_units):
     num_labels = num_units
     avg_output = torch.zeros(num_units, num_labels)
-
     for label in range(num_labels):
-        label_idx = torch.where(labels == label)  # find all instances of given label
+        label_idx = torch.where(labels == label)
         avg_output[:, label] = torch.mean(output[label_idx], dim=0)
+    return avg_output
 
+def plot_average_output(avg_output, network, title=None, ax=None):
     if ax is None:
-        fig, axes = plt.subplots()
-        ax = axes
+        fig, ax = plt.subplots()
         fig.tight_layout()
     im = ax.imshow(avg_output, aspect='auto', interpolation='none')
     cbar = plt.colorbar(im, ax=ax)
-    ax.set_xticks(range(num_labels))
-    ax.set_yticks(range(num_units))
+    ax.set_xticks(range(avg_output.shape[1]))
+    ax.set_yticks(range(avg_output.shape[0]))
     ax.set_xlabel('Labels')
     ax.set_ylabel('Output unit')
     if title is not None:
         ax.set_title(f'Average activity - {network.output_pop.fullname}\n{title}')
     else:
         ax.set_title(f'Average activity - {network.output_pop.fullname}')
-    
-    if ax is None:
-        fig.show()
+    return ax
+
+def plot_population_activity(network, population, avg_output, labels, title=None):
+    avg_pop_activity = torch.zeros(population.size, avg_output.shape[1])
+    for label in range(avg_output.shape[1]):
+        label_idx = torch.where(labels == label)
+        avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
+    silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+    active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+    preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+    _, idx = torch.sort(preferred_input)
+    sort_idx = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
+    fig, ax = plt.subplots()
+    im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none', aspect='auto')
+    cbar = plt.colorbar(im, ax=ax)
+    ax.set_xticks(range(avg_output.shape[1]))
+    ax.set_xlabel('Labels')
+    ax.set_ylabel(f'{population.fullname} unit')
+    if title is not None:
+        ax.set_title(f'Average activity - {population.fullname}\n{title}')
+    else:
+        ax.set_title(f'Average activity - {population.fullname}')
+    fig.tight_layout()
+    fig.show()
+
+
+def load_plot_data(filename, group_name=None):
+    """
+    Load data from an HDF5 file.
+
+    Args:
+        filename (str): The path to the HDF5 file.
+        group_name (str, optional): The name of the group to load data from. If None, data will be loaded from the root group.
+
+    Returns:
+        dict: A dictionary containing the loaded data.
+    """
+    if not os.path.exists(filename):
+        return {}
+
+    with h5py.File(filename, 'r') as f:
+        if group_name is not None:
+            if group_name not in f:
+                return {}
+            group = f[group_name]
+        else:
+            group = f
+
+        data = {key: group[key][()] for key in group.keys()}
+    return data
+
+def save_plot_data(data, filename, mode='a', group_name=None):
+    """
+    Save arbitrary data to an HDF5 file.
+
+    Args:
+        data (dict): A dictionary containing the data to be saved.
+        filename (str): The path to the HDF5 file.
+        mode (str, optional): The mode for opening the file ('r', 'r+', 'w', 'w-', 'x'). Default is 'a'.
+        group_name (str, optional): The name of the group to store the data in. If None, the data will be stored in the root group.
+
+    """
+    if os.path.exists(filename):
+        file_mode = mode
+    else:
+        file_mode = 'w'
+
+    with h5py.File(filename, file_mode) as f:
+        if group_name is not None:
+            if group_name not in f:
+                f.create_group(group_name)
+            group = f[group_name]
+        else:
+            group = f
+
+        for key, value in data.items():
+            if key in group:
+                del group[key]
+            group.create_dataset(key, data=value)
+
+
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, ax=None, use_hdf5=False):
+    assert len(test_dataloader) == 1, 'Dataloader must have a single large batch'
+
+    plot_data_filename = 'data/.plot_data.h5'
+    data = load_plot_data(plot_data_filename, network.name)
+    percent_correct, avg_output = data.get('percent_correct'), data.get('avg_output')
+
+    if percent_correct is None or avg_output is None:
+        idx, data, targets = next(iter(test_dataloader))
+        data = data.to(network.device)
+        targets = targets.to(network.device)
+        labels = torch.argmax(targets, axis=1)
+        output = network.forward(data, no_grad=True)
+
+        if sorted_output_idx is not None:
+            output = output[:, sorted_output_idx]
+
+        percent_correct = ut.compute_batch_accuracy_from_output(output, labels)
+        num_units = targets.shape[1]
+        avg_output = compute_average_output(output, labels, num_units)
+
+        if use_hdf5:
+            save_plot_data({'percent_correct': percent_correct, 'avg_output': avg_output}, 
+                      plot_data_filename, group_name=network.name)
+
+    ax = plot_average_output(avg_output, network, title, ax)
 
     pop_list = []
     if population == 'all':
@@ -680,41 +740,131 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     elif population is not None and population is not network.output_pop:
         pop_list.append(population)
 
-    for population in pop_list:
-        avg_pop_activity = torch.zeros(population.size, num_labels)
-        for label in range(num_labels):
-            label_idx = torch.where(labels == label)  # find all instances of given label
-            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
-        silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-        active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-        preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-        _, idx = torch.sort(preferred_input)
-        sort_idx = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
-        fig, axes = plt.subplots()
-        ax = axes
-        im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none', aspect='auto')
-        cbar = plt.colorbar(im, ax=ax)
-        ax.set_xticks(range(num_labels))
-        ax.set_xlabel('Labels')
-        ax.set_ylabel(f'{population.fullname} unit')
-        if title is not None:
-            ax.set_title(f'Average activity - {population.fullname}\n{title}')
-        else:
-            ax.set_title(f'Average activity - {population.fullname}')
-        fig.tight_layout()
-        fig.show()
+    for pop in pop_list:
+        plot_population_activity(network, pop, avg_output, labels, title)
 
-    if use_hdf5: # Save plot data to HDF5 file for faster loading
-        if os.path.exists(plot_data_filename):
-            mode = 'a'
-        else:
-            mode = 'w'
-        with h5py.File(plot_data_filename, mode) as f:
-            if network.name not in f:
-                f.create_group(network.name)
-                f = f[network.name]
-                f.create_dataset('percent_correct', data=percent_correct)
-                f.create_dataset('avg_output', data=avg_output)
+    if ax is None:
+        plt.show()
+
+
+
+# def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, ax=None, use_hdf5=False):
+#     """
+#     Compute total accuracy (% correct) on given dataset
+#     :param network:
+#     :param test_dataloader:
+#     :param population: :class:'Population' or str 'all'
+#     :param sorted_output_idx: tensor of int
+#     :param title: str
+#     """
+#     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+#     plot_data_filename = 'data/.plot_data.h5'
+#     if use_hdf5 and os.path.exists(plot_data_filename):
+#         with h5py.File(plot_data_filename, 'r') as f:
+#             if network.name in f:
+#                 f = f[network.name]
+#                 if 'percent_correct' in f:
+#                     percent_correct = f['percent_correct'][()]
+#                     avg_output = f['avg_output'][()]
+#                     if ax is None:
+#                         fig, axes = plt.subplots()
+#                         ax = axes
+#                         fig.tight_layout()
+#                     im = ax.imshow(avg_output, aspect='auto', interpolation='none')
+#                     cbar = plt.colorbar(im, ax=ax)
+#                     ax.set_xticks(range(avg_output.shape[1]))
+#                     ax.set_yticks(range(avg_output.shape[0]))
+#                     ax.set_xlabel('Labels')
+#                     ax.set_ylabel('Output unit')
+#                     ax.set_title(f'Average activity - {network.output_pop.fullname}\n{title}')
+#                     return
+
+
+#     idx, data, targets = next(iter(test_dataloader))
+#     data = data.to(network.device)
+#     targets = targets.to(network.device)
+#     labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
+#     output = network.forward(data, no_grad=True)
+
+#     # if unsupervised: # sort output units by their mean activity
+#     if sorted_output_idx is not None:
+#         output = output[:, sorted_output_idx]
+#     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
+#     percent_correct = torch.round(percent_correct, decimals=2)
+#     print(f'Batch accuracy = {percent_correct}%')
+
+#     # Plot average output for each label class
+#     num_units = targets.shape[1]
+#     num_labels = num_units
+#     avg_output = torch.zeros(num_units, num_labels)
+
+#     for label in range(num_labels):
+#         label_idx = torch.where(labels == label)  # find all instances of given label
+#         avg_output[:, label] = torch.mean(output[label_idx], dim=0)
+
+#     if ax is None:
+#         fig, axes = plt.subplots()
+#         ax = axes
+#         fig.tight_layout()
+#     im = ax.imshow(avg_output, aspect='auto', interpolation='none')
+#     cbar = plt.colorbar(im, ax=ax)
+#     ax.set_xticks(range(num_labels))
+#     ax.set_yticks(range(num_units))
+#     ax.set_xlabel('Labels')
+#     ax.set_ylabel('Output unit')
+#     if title is not None:
+#         ax.set_title(f'Average activity - {network.output_pop.fullname}\n{title}')
+#     else:
+#         ax.set_title(f'Average activity - {network.output_pop.fullname}')
+    
+#     if ax is None:
+#         fig.show()
+
+#     pop_list = []
+#     if population == 'all':
+#         for layer in network:
+#             for pop in layer:
+#                 if pop is not network.output_pop:
+#                     pop_list.append(pop)
+#     elif population is not None and population is not network.output_pop:
+#         pop_list.append(population)
+
+#     for population in pop_list:
+#         avg_pop_activity = torch.zeros(population.size, num_labels)
+#         for label in range(num_labels):
+#             label_idx = torch.where(labels == label)  # find all instances of given label
+#             avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
+#         silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+#         active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+#         preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+#         _, idx = torch.sort(preferred_input)
+#         sort_idx = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
+#         fig, axes = plt.subplots()
+#         ax = axes
+#         im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none', aspect='auto')
+#         cbar = plt.colorbar(im, ax=ax)
+#         ax.set_xticks(range(num_labels))
+#         ax.set_xlabel('Labels')
+#         ax.set_ylabel(f'{population.fullname} unit')
+#         if title is not None:
+#             ax.set_title(f'Average activity - {population.fullname}\n{title}')
+#         else:
+#             ax.set_title(f'Average activity - {population.fullname}')
+#         fig.tight_layout()
+#         fig.show()
+
+#     if use_hdf5: # Save plot data to HDF5 file for faster loading
+#         if os.path.exists(plot_data_filename):
+#             mode = 'a'
+#         else:
+#             mode = 'w'
+#         with h5py.File(plot_data_filename, mode) as f:
+#             if network.name not in f:
+#                 f.create_group(network.name)
+#                 f = f[network.name]
+#                 f.create_dataset('percent_correct', data=percent_correct)
+#                 f.create_dataset('avg_output', data=avg_output)
 
 
 def plot_rsm(network, test_dataloader):
