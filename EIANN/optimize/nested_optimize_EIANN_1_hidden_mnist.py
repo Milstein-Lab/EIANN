@@ -298,11 +298,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if context.compute_receptive_fields:
         # Compute receptive fields
         population = network.H1.E
-        receptive_fields, _ = utils.compute_maxact_receptive_fields(population, test_dataloader, sigmoid=False)
-        _, activity_preferred_inputs = utils.compute_act_weighted_avg(network.H1.E, test_dataloader)
+        receptive_fields, _ = utils.compute_maxact_receptive_fields(population, test_dataloader)  # , softplus=True)  # sigmoid=False)
+        # _, activity_preferred_inputs = utils.compute_act_weighted_avg(network.H1.E, test_dataloader)
     else:
         receptive_fields = network.H1.E.Input.E.weight.detach()
-        activity_preferred_inputs = None
+    activity_preferred_inputs = None
     if plot:
         plot_receptive_fields(receptive_fields, activity_preferred_inputs, sort=True, num_cols=10, num_rows=10)
 
