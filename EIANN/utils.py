@@ -266,6 +266,7 @@ def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'
         layer_config = convert_layer_config_dict(layer_config)
         network = nt.Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
 
+    network.name = config_path.split("/")[-1]
     return network
 
 
@@ -415,6 +416,33 @@ def hdf5_to_dict_helper(group):
 
     return data_dict
 
+
+def dict_to_hdf5(data_dict, file_path):
+    """
+    Save a nested Python dictionary to an HDF5 file.
+
+    :param data_dict (dict): Nested Python dictionary to save.
+    :param file_path (str): Path to the HDF5 file.
+    """
+    with h5py.File(file_path, 'w') as f:
+        dict_to_hdf5_helper(data_dict, f)
+
+
+def dict_to_hdf5_helper(data_dict, group):
+    """
+    Helper function to recursively save a nested Python dictionary to an HDF5 group.
+
+    :param data_dict (dict): Nested Python dictionary to save.
+    :param group (h5py.Group): The HDF5 group to save the dictionary to.
+    """
+    for key, value in data_dict.items():
+        if isinstance(value, dict):
+            # Recursively save nested dictionaries as groups
+            subgroup = group.create_group(key)
+            dict_to_hdf5_helper(value, subgroup)
+        else:
+            # Save datasets to the HDF5 group
+            group.create_dataset(key, data=value)
 
 
 # *******************************************************************
@@ -1034,23 +1062,50 @@ def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=Tru
                                           label='After Phase 2')
 
 
-def compute_batch_accuracy(network, test_dataloader):
-    """
-    Compute total accuracy (% correct) on given dataset
-    :param network:
-    :param test_dataloader:
-    """
-    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+def compute_average_activity(activity, labels):
+    '''
+    Compute the average activity for each unit, grouped by the class labels
+    '''
+    num_units = activity.shape[1]
+    num_labels = labels.shape[1]
+    avg_activity = torch.zeros(num_units, num_labels)
+    for label in range(num_labels):
+        label_idx = torch.where(labels == label)
+        avg_activity[:, label] = torch.mean(activity[label_idx], dim=0)
+    return avg_activity
 
-    indexes, data, targets = next(iter(test_dataloader))
-    data = data.to(network.device)
-    targets = targets.to(network.device)
-    labels = torch.argmax(targets, axis=1)
-    output = network.forward(data, no_grad=True)
-    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
-    percent_correct = torch.round(percent_correct, decimals=2)
-    print(f'Batch accuracy = {percent_correct}%')
-    return percent_correct
+
+# def compute_batch_accuracy(network, test_dataloader):
+#     """
+#     Compute total accuracy (% correct) on given dataset.
+#     Args:
+#         network: The network to evaluate.
+#         test_dataloader: A DataLoader containing the test data.
+#     Returns:
+#         float: The batch accuracy as a percentage.
+#     """
+#     assert len(test_dataloader) == 1, 'Dataloader must have a single large batch'
+
+#     idx, data, targets = next(iter(test_dataloader))
+#     data = data.to(network.device)
+#     targets = targets.to(network.device)
+#     labels = torch.argmax(targets, axis=1)
+#     output = network.forward(data, no_grad=True)
+#     return compute_batch_accuracy_from_output(output, labels)
+
+
+# def compute_batch_accuracy_from_output(output, labels):
+#     """
+#     Compute batch accuracy from the output and labels.
+#     output: The output of the network.
+#     labels: The true labels.
+#     Returns:
+#         float: The batch accuracy as a percentage.
+#     """
+#     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / output.shape[0]
+#     percent_correct = torch.round(percent_correct, decimals=2)
+#     print(f'Batch accuracy = {percent_correct}%')
+#     return percent_correct
 
 
 def compute_dParam_history(network):
@@ -1776,9 +1831,9 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
     # Load dataset
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                      torchvision.transforms.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=True, download=False,
+    MNIST_train_dataset = torchvision.datasets.MNIST(root='data/datasets/MNIST', train=True, download=True,
                                                      transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=False, download=False,
+    MNIST_test_dataset = torchvision.datasets.MNIST(root='data/datasets/MNIST', train=False, download=True,
                                                     transform=tensor_flatten)
 
     # Add index to train & test data
