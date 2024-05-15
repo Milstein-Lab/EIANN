@@ -164,8 +164,7 @@ class BCM(LearningRule):
         super().__init__(projection, learning_rate)
         self.theta_tau = theta_tau
         self.k = k
-        self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device,
-                                                requires_grad=False) * k
+        self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device) * k
         self.sign = sign
         projection.post.__class__.theta_history = property(lambda self: self.get_attribute_history('theta'))
 
@@ -220,8 +219,7 @@ class Supervised_BCM(LearningRule):
         super().__init__(projection, learning_rate)
         self.theta_tau = theta_tau
         self.k = k
-        self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device,
-                                                requires_grad=False) * k
+        self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device) * k
         self.sign = sign
         projection.post.__class__.theta_history = property(lambda self: self.get_attribute_history('theta'))
         projection.post.__class__.nudge_history = property(lambda self: self.get_attribute_history('nudge'))
@@ -338,8 +336,7 @@ class Supervised_BCM_2(LearningRule):
         super().__init__(projection, learning_rate)
         self.theta_tau = theta_tau
         self.k = k
-        self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device,
-                                                requires_grad=False) * k
+        self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device) * k
         self.sign = sign
         self.max_pop_fraction = max_pop_fraction
         self.pos_loss_th = pos_loss_th
@@ -348,8 +345,6 @@ class Supervised_BCM_2(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -421,8 +416,7 @@ class Supervised_BCM_2(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -445,27 +439,17 @@ class Supervised_BCM_2(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         for t in range(network.forward_steps):
@@ -504,7 +488,7 @@ class Supervised_BCM_2(LearningRule):
                                         neg_avail_indexes = sorted_avail_indexes[neg_indexes][-neg_remaining:]
                                     else:
                                         neg_avail_indexes = []
-                                    # TODO: This should have been assignment to detached and cloned values (affects many configs)
+                                    
                                     pop.plateau[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                     pop.dend_to_soma[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                     pop.plateau[neg_avail_indexes] = pop.dendritic_state[neg_avail_indexes]
@@ -773,8 +757,6 @@ class Supervised_Hebb_WeightNorm(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -833,8 +815,7 @@ class Supervised_Hebb_WeightNorm(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -857,27 +838,17 @@ class Supervised_Hebb_WeightNorm(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         for t in range(network.forward_steps):
@@ -916,7 +887,6 @@ class Supervised_Hebb_WeightNorm(LearningRule):
                                         neg_avail_indexes = sorted_avail_indexes[neg_indexes][-neg_remaining:]
                                     else:
                                         neg_avail_indexes = []
-                                    # TODO: This should have been assignment to detached and cloned values (affects many configs)
                                     pop.plateau[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                     pop.dend_to_soma[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                     pop.plateau[neg_avail_indexes] = pop.dendritic_state[neg_avail_indexes]
@@ -958,8 +928,6 @@ class Supervised_Hebb_WeightNorm_2(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -1020,24 +988,7 @@ class Supervised_Hebb_WeightNorm_2(LearningRule):
             if pop.backward_projections or pop is output_pop:
                 if store_dynamics:
                     pop.backward_steps_activity = []
-            # store the forward_activity before comparing output to target
-            pop.forward_activity = pop.activity.detach().clone()
-        
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
-        
-        # initialize dendritic state variables
-        for projection in output_pop:
-            if projection.learning_rule.__class__ == cls:
-                output_pop.plateau = torch.zeros(output_pop.size, device=network.device)
-                output_pop.dend_to_soma = torch.zeros(output_pop.size, device=network.device)
-                output_pop.forward_dendritic_state = output_pop.dendritic_state.detach().clone()
-                if store_history:
-                    # store the forward_dendritic_state
-                    output_pop.append_attribute_history('forward_dendritic_state',
-                                                        output_pop.dendritic_state.detach().clone())
-                break
-        
+                
         for t in range(network.forward_steps):
             for projection in output_pop:
                 if projection.learning_rule.__class__ == cls:
@@ -1263,8 +1214,6 @@ class BTSP_2(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
 
@@ -1353,22 +1302,7 @@ class BTSP_2(LearningRule):
                 for pop in layer:
                     if pop.backward_projections or pop is output_pop:
                         pop.backward_steps_activity = []
-
-        # store the forward_activity before comparing output to target
-        for layer in network:
-            for pop in layer:
-                pop.forward_activity = pop.activity.detach().clone()
-
-        # compute and store the forward_dendritic_state before comparing output to target
-        for layer in list(network)[:-1]:
-            cls.backward_update_layer_dendritic_state(layer)
-            for pop in layer:
-                if hasattr(pop, 'dendritic_state'):
-                    pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                    if store_history:
-                        pop.append_attribute_history('forward_dendritic_state',
-                                                     pop.forward_dendritic_state.detach().clone())
-
+        
         # compute plateau events and nudge somatic state
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
         output_pop.plateau = torch.zeros(output_pop.size, device=network.device)
@@ -1538,19 +1472,7 @@ class BTSP_3(LearningRule):
         reversed_layers.reverse()
         output_layer = reversed_layers.pop(0)
         output_pop = network.output_pop
-
-        # store the forward_activity before comparing output to target
-        for layer in network:
-            for pop in layer:
-                pop.forward_activity = pop.activity.detach().clone()
-
-        # compute and store the forward_dendritic_state before comparing output to target
-        for layer in list(network)[:-1]:
-            cls.backward_update_layer_dendritic_state(layer)
-            for pop in layer:
-                if hasattr(pop, 'dendritic_state'):
-                    pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-
+        
         if store_dynamics:
             # initialize populations that are updated during the backward phase
             for layer in network:
@@ -1730,19 +1652,7 @@ class BTSP_4(LearningRule):
                 for pop in layer:
                     if pop.backward_projections or pop is output_pop:
                         pop.backward_steps_activity = []
-
-        # store the forward_activity before comparing output to target
-        for layer in network:
-            for pop in layer:
-                pop.forward_activity = pop.activity.detach().clone()
-
-        # compute and store the forward_dendritic_state before comparing output to target
-        for layer in list(network)[:-1]:
-            cls.backward_update_layer_dendritic_state(layer)
-            for pop in layer:
-                if hasattr(pop, 'dendritic_state'):
-                    pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-
+        
         # compute plateau events and nudge somatic state
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
         output_pop.plateau = torch.zeros(output_pop.size, device=network.device)
@@ -1848,8 +1758,6 @@ class BTSP_5(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
 
@@ -1960,25 +1868,7 @@ class BTSP_5(LearningRule):
         reversed_layers.reverse()
         output_layer = reversed_layers.pop(0)
         output_pop = network.output_pop
-
-        # initialize populations that are updated during the backward phase
-        # store the forward_activity before comparing output to target
-        for layer in network:
-            for pop in layer:
-                if pop.backward_projections or pop is output_pop:
-                    if store_dynamics:
-                        pop.backward_steps_activity = []
-                pop.forward_activity = pop.activity.detach().clone()
-
-        # compute and store the forward_dendritic_state before comparing output to target
-        for layer in list(network)[:-1]:
-            cls.backward_update_layer_dendritic_state(layer)
-            for pop in layer:
-                if hasattr(pop, 'dendritic_state'):
-                    pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                    if store_history:
-                        pop.append_attribute_history('forward_dendritic_state', pop.dendritic_state.detach().clone())
-
+        
         # compute plateau events and nudge somatic state
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
         output_pop.plateau = torch.zeros(output_pop.size, device=network.device)
@@ -2071,18 +1961,14 @@ class BTSP_6(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
         projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
         projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
 
     def reinit(self):
-        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
-                                             requires_grad=False)
-        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
-                                              requires_grad=False)
+        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
+        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device)
         self.projection.pre.ET_updated = False
         self.projection.post.IS_updated = False
 
@@ -2154,8 +2040,7 @@ class BTSP_6(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -2178,29 +2063,20 @@ class BTSP_6(LearningRule):
         reversed_layers.reverse()
         output_layer = reversed_layers.pop(0)
         output_pop = network.output_pop
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
-
+        
         # initialize populations that are updated during the backward phase
-        # store the forward_activity before comparing output to target
-        # compute and store the forward_dendritic_state before comparing output to target
         for layer in network:
-            cls.backward_update_layer_dendritic_state(layer)
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
-
+        
         # compute plateau events and nudge somatic state
         output_pop.dendritic_state = torch.clamp(target - output, min=-1, max=1)
         for projection in output_pop:
@@ -2212,7 +2088,7 @@ class BTSP_6(LearningRule):
                 break
         # re-equilibrate soma states and activities
         cls.backward_equilibrate_layer_activity(output_layer, network.forward_steps, store_dynamics=store_dynamics)
-
+        
         for layer in reversed_layers:
             for t in range(network.forward_steps):
                 # equilibrate activities and dendritic state variables
@@ -2302,18 +2178,14 @@ class BTSP_7(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
         projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
         projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
 
     def reinit(self):
-        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
-                                             requires_grad=False)
-        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
-                                              requires_grad=False)
+        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
+        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device)
         self.projection.pre.ET_updated = False
         self.projection.post.IS_updated = False
 
@@ -2375,8 +2247,7 @@ class BTSP_7(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -2398,28 +2269,18 @@ class BTSP_7(LearningRule):
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_pop = network.output_pop
-
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
 
         for t in range(network.forward_steps):
@@ -2511,18 +2372,14 @@ class BTSP_8(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
         projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
         projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
 
     def reinit(self):
-        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
-                                             requires_grad=False)
-        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
-                                              requires_grad=False)
+        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
+        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device)
         self.projection.pre.ET_updated = False
         self.projection.post.IS_updated = False
 
@@ -2541,8 +2398,7 @@ class BTSP_8(LearningRule):
         self.projection.weight.data += delta_weight
 
         # anti-Hebbian depression
-        post_activity = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
-                                    requires_grad=False)
+        post_activity = torch.zeros(self.projection.post.size, device=self.projection.post.network.device)
         meets_criterion = self.projection.post.meets_BTSP_anti_hebb_criterion
         post_activity[meets_criterion] = self.projection.post.activity[meets_criterion]
         delta_weight = -self.learning_rate * torch.outer(post_activity, self.projection.pre.activity)
@@ -2592,8 +2448,7 @@ class BTSP_8(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -2615,28 +2470,18 @@ class BTSP_8(LearningRule):
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_pop = network.output_pop
-
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
 
         for t in range(network.forward_steps):
@@ -2732,18 +2577,14 @@ class BTSP_9(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
         projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
         projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
 
     def reinit(self):
-        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
-                                             requires_grad=False)
-        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
-                                              requires_grad=False)
+        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
+        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device)
         self.projection.pre.ET_updated = False
         self.projection.post.IS_updated = False
 
@@ -2762,8 +2603,7 @@ class BTSP_9(LearningRule):
         self.projection.weight.data += delta_weight
 
         # anti-Hebbian depression
-        post_activity = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
-                                    requires_grad=False)
+        post_activity = torch.zeros(self.projection.post.size, device=self.projection.post.network.device)
         meets_criterion = self.projection.post.meets_BTSP_anti_hebb_criterion
         post_activity[meets_criterion] = self.projection.post.activity[meets_criterion]
         # TODO: Should these activities be clamped?
@@ -2814,8 +2654,7 @@ class BTSP_9(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -2837,28 +2676,18 @@ class BTSP_9(LearningRule):
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_pop = network.output_pop
-
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
 
         for t in range(network.forward_steps):
@@ -2958,18 +2787,14 @@ class BTSP_10(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
         projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
         projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
 
     def reinit(self):
-        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
-                                             requires_grad=False)
-        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
-                                              requires_grad=False)
+        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
+        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device)
         self.projection.pre.ET_updated = False
         self.projection.post.IS_updated = False
 
@@ -2988,8 +2813,7 @@ class BTSP_10(LearningRule):
         self.projection.weight.data += delta_weight
 
         # anti-Hebbian depression
-        post_activity = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
-                                    requires_grad=False)
+        post_activity = torch.zeros(self.projection.post.size, device=self.projection.post.network.device)
         meets_criterion = self.projection.post.meets_BTSP_anti_hebb_criterion
         post_activity[meets_criterion] = self.projection.post.activity[meets_criterion]
         # TODO: Should these activities be clamped?
@@ -3040,8 +2864,7 @@ class BTSP_10(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -3063,30 +2886,20 @@ class BTSP_10(LearningRule):
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_pop = network.output_pop
-
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
-
+        
         for t in range(network.forward_steps):
             for layer in reversed_layers:
                 # update dendritic state variables
@@ -3187,18 +3000,14 @@ class BTSP_11(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
         projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
         projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
 
     def reinit(self):
-        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device,
-                                             requires_grad=False)
-        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
-                                              requires_grad=False)
+        self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
+        self.projection.post.IS = torch.zeros(self.projection.post.size, device=self.projection.post.network.device)
         self.projection.post.plateau_refractory = (
             torch.zeros(self.projection.post.size, device=self.projection.post.network.device))
         self.projection.pre.ET_incremented = False
@@ -3227,8 +3036,7 @@ class BTSP_11(LearningRule):
         self.projection.weight.data += delta_weight
 
         # anti-Hebbian depression
-        post_activity = torch.zeros(self.projection.post.size, device=self.projection.post.network.device,
-                                    requires_grad=False)
+        post_activity = torch.zeros(self.projection.post.size, device=self.projection.post.network.device)
         meets_criterion = self.projection.post.meets_BTSP_anti_hebb_criterion
         post_activity[meets_criterion] = self.projection.post.activity[meets_criterion]
         # TODO: Should these activities be clamped?
@@ -3279,8 +3087,7 @@ class BTSP_11(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -3302,28 +3109,18 @@ class BTSP_11(LearningRule):
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_pop = network.output_pop
-
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
 
         for t in range(network.forward_steps):
@@ -3415,8 +3212,6 @@ class BTSP_12_cont(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
 
@@ -3483,8 +3278,7 @@ class BTSP_12_cont(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -3506,28 +3300,18 @@ class BTSP_12_cont(LearningRule):
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_pop = network.output_pop
-
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
 
         for t in range(network.forward_steps):
@@ -3599,8 +3383,6 @@ class BTSP_13(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -3659,8 +3441,7 @@ class BTSP_13(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -3683,27 +3464,17 @@ class BTSP_13(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         # compute plateau events and nudge somatic state
@@ -3745,7 +3516,6 @@ class BTSP_13(LearningRule):
                                     neg_avail_indexes = sorted_avail_indexes[neg_indexes][-neg_remaining:]
                                 else:
                                     neg_avail_indexes = []
-                            # TODO: This should have been assignment to detached and cloned values (affects many configs)
                             pop.plateau[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                             pop.dend_to_soma[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                             pop.plateau[neg_avail_indexes] = pop.dendritic_state[neg_avail_indexes]
@@ -3803,8 +3573,6 @@ class BTSP_14(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -3870,8 +3638,7 @@ class BTSP_14(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -3894,27 +3661,17 @@ class BTSP_14(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         # compute plateau events and nudge somatic state
@@ -3954,7 +3711,6 @@ class BTSP_14(LearningRule):
                                         neg_avail_indexes = sorted_avail_indexes[neg_indexes][-neg_remaining:]
                                     else:
                                         neg_avail_indexes = []
-                                    # TODO: This should have been assignment to detached and cloned values (affects many configs)
                                     pop.plateau[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                     pop.dend_to_soma[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                     pop.plateau[neg_avail_indexes] = pop.dendritic_state[neg_avail_indexes]
@@ -4015,8 +3771,6 @@ class BTSP_15(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -4086,8 +3840,7 @@ class BTSP_15(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -4110,27 +3863,17 @@ class BTSP_15(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         # compute plateau events and nudge somatic state
@@ -4170,7 +3913,6 @@ class BTSP_15(LearningRule):
                                         neg_avail_indexes = sorted_avail_indexes[neg_indexes][-neg_remaining:]
                                     else:
                                         neg_avail_indexes = []
-                                    # TODO: This should have been assignment to detached and cloned values (affects many configs)
                                     pop.plateau[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                     pop.dend_to_soma[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                     pop.plateau[neg_avail_indexes] = pop.dendritic_state[neg_avail_indexes]
@@ -4234,8 +3976,6 @@ class BTSP_16(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -4291,8 +4031,7 @@ class BTSP_16(LearningRule):
                             if hasattr(post_pop, 'dendritic_state'):
                                 post_pop.dendritic_state[:] = 0.
                             else:
-                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                       requires_grad=False)
+                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -4328,7 +4067,6 @@ class BTSP_16(LearningRule):
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
                         break
         
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
         for layer in reversed_layers:
             # update dendritic state variables
             cls.backward_update_layer_dendritic_state(layer)
@@ -4406,8 +4144,6 @@ class BP_like_1(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -4461,8 +4197,7 @@ class BP_like_1(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -4485,27 +4220,17 @@ class BP_like_1(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         for t in range(network.forward_steps):
@@ -4558,8 +4283,6 @@ class BP_like_1C(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -4614,8 +4337,7 @@ class BP_like_1C(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -4638,27 +4360,17 @@ class BP_like_1C(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         for t in range(network.forward_steps):
@@ -4708,8 +4420,6 @@ class BP_like_2(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -4762,8 +4472,7 @@ class BP_like_2(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -4786,27 +4495,17 @@ class BP_like_2(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         for t in range(network.forward_steps):
@@ -4860,8 +4559,6 @@ class BP_like_3(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -4914,8 +4611,7 @@ class BP_like_3(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -4938,27 +4634,17 @@ class BP_like_3(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         for t in range(network.forward_steps):
@@ -5022,8 +4708,6 @@ class BP_like_4(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -5076,8 +4760,7 @@ class BP_like_4(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -5100,27 +4783,17 @@ class BP_like_4(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         for t in range(network.forward_steps):
@@ -5158,7 +4831,6 @@ class BP_like_4(LearningRule):
                                     neg_avail_indexes = sorted_avail_indexes[neg_indexes][-neg_remaining:]
                                 else:
                                     neg_avail_indexes = []
-                                # TODO: This should have been assignment to detached and cloned values (affects many configs)
                                 pop.plateau[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                 pop.dend_to_soma[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                 pop.plateau[neg_avail_indexes] = pop.dendritic_state[neg_avail_indexes]
@@ -5204,8 +4876,6 @@ class BP_like_5(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -5259,8 +4929,7 @@ class BP_like_5(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                   requires_grad=False)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -5283,27 +4952,17 @@ class BP_like_5(LearningRule):
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
         
         for t in range(network.forward_steps):
@@ -5343,7 +5002,6 @@ class BP_like_5(LearningRule):
                                         neg_avail_indexes = sorted_avail_indexes[neg_indexes][-neg_remaining:]
                                     else:
                                         neg_avail_indexes = []
-                                    # TODO: This should have been assignment to detached and cloned values (affects many configs)
                                     pop.plateau[pos_avail_indexes] = pop.dendritic_state[pos_avail_indexes]
                                     pop.plateau[neg_avail_indexes] = pop.dendritic_state[neg_avail_indexes]
                                     if projection.learning_rule.nudge:
@@ -5395,8 +5053,6 @@ class BP_like_1E(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -5441,8 +5097,7 @@ class BP_like_1E(LearningRule):
                             if hasattr(post_pop, 'dendritic_state'):
                                 post_pop.dendritic_state[:] = 0.
                             else:
-                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                       requires_grad=False)
+                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -5476,7 +5131,6 @@ class BP_like_1E(LearningRule):
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
                         break
         
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
         for layer in reversed_layers:
             # update dendritic state variables
             cls.backward_update_layer_dendritic_state(layer)
@@ -5486,7 +5140,7 @@ class BP_like_1E(LearningRule):
                     if projection.learning_rule.__class__ == cls:
                         if pop is output_pop:
                             local_loss = torch.clamp(target - output_pop.activity, min=-1, max=1)
-                            output_pop.dendritic_state[:] = local_loss.detach().clone()
+                            output_pop.dendritic_state = local_loss.detach().clone()
                             if projection.learning_rule.relu_gate:
                                 local_loss[output_pop.forward_activity == 0.] = 0.
                             output_pop.plateau[:] = local_loss.detach().clone()
@@ -5565,8 +5219,6 @@ class BP_like_1I(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -5626,8 +5278,7 @@ class BP_like_1I(LearningRule):
                             if hasattr(post_pop, 'dendritic_state'):
                                 post_pop.dendritic_state[:] = 0.
                             else:
-                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device,
-                                                                       requires_grad=False)
+                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -5644,35 +5295,23 @@ class BP_like_1I(LearningRule):
         :param store_history: bool
         :param store_dynamics: bool
         """
-        for input_pop in next(iter(network)):
-            input_pop.forward_activity = input_pop.activity
-        
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # compute the forward_dendritic_state before comparing output to target
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
+        # initialize populations that are updated during the backward phase
         for layer in reversed_layers:
-            cls.backward_update_layer_dendritic_state(layer)
-            # initialize populations that are updated during the backward phase
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # store the forward_activity before comparing output to target
-                pop.forward_activity = pop.activity.detach().clone()
                 # initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
-                        pop.forward_dendritic_state = pop.dendritic_state.detach().clone()
-                        if store_history:
-                            # store the forward_dendritic_state
-                            pop.append_attribute_history('forward_dendritic_state',
-                                                         pop.dendritic_state.detach().clone())
                         break
+        
         for t in range(network.forward_steps):
             for layer in reversed_layers:
                 # update dendritic state variables
@@ -5684,7 +5323,7 @@ class BP_like_1I(LearningRule):
                             if projection.learning_rule.__class__ == cls:
                                 if pop is output_pop:
                                     local_loss = torch.clamp(target - output_pop.activity, min=-1, max=1)
-                                    output_pop.dendritic_state[:] = local_loss.detach().clone()
+                                    output_pop.dendritic_state = local_loss.detach().clone()
                                     if projection.learning_rule.relu_gate:
                                         local_loss[output_pop.forward_activity == 0.] = 0.
                                     output_pop.plateau[:] = local_loss.detach().clone()
@@ -5762,8 +5401,6 @@ class BP_like_2E(LearningRule):
         projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
         projection.post.__class__.backward_activity_history = \
             property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.forward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('forward_dendritic_state'))
         projection.post.__class__.backward_dendritic_state_history = \
             property(lambda self: self.get_attribute_history('backward_dendritic_state'))
     
@@ -5844,7 +5481,6 @@ class BP_like_2E(LearningRule):
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
                         break
         
-        output_pop.dendritic_state = torch.zeros(output_pop.size, device=network.device)
         for layer in reversed_layers:
             # update dendritic state variables
             cls.backward_update_layer_dendritic_state(layer)
@@ -5854,7 +5490,7 @@ class BP_like_2E(LearningRule):
                     if projection.learning_rule.__class__ == cls:
                         if pop is output_pop:
                             local_loss = torch.clamp(target - output_pop.activity, min=-1, max=1)
-                            output_pop.dendritic_state[:] = local_loss.detach().clone()
+                            output_pop.dendritic_state = local_loss.detach().clone()
                             if projection.learning_rule.relu_gate:
                                 local_loss[output_pop.forward_activity == 0.] = 0
                             output_pop.plateau[:] = local_loss.detach().clone()

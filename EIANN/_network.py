@@ -306,7 +306,6 @@ class Network(nn.Module):
         """
         Clone forward neuronal activities and initialize forward dendritic states.
         """
-        self.output_pop.forward_dendritic_state = torch.zeros(self.output_pop.size, device=self.device)
         for layer in self:
             for post_pop in layer:
                 post_pop.forward_activity = post_pop.activity.clone()
@@ -319,6 +318,9 @@ class Network(nn.Module):
                         if not init_dend_state:
                             post_pop.forward_dendritic_state = torch.zeros(post_pop.size, device=self.device)
                             init_dend_state = True
+                            if store_history and not hasattr(post_pop, 'forward_dendritic_state_history'):
+                                post_pop.__class__.forward_dendritic_state_history = (
+                                    property(lambda self: self.get_attribute_history('forward_dendritic_state')))
                         if projection.direction in ['forward', 'F']:
                             post_pop.forward_dendritic_state = (post_pop.forward_dendritic_state +
                                                                 projection(pre_pop.activity))
