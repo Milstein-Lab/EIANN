@@ -1,0 +1,234 @@
+layer_config:
+  Input:
+    E:
+      size: 784
+  H1:
+    E:
+      size: 500
+      activation: relu
+    SomaI:
+      size: 50
+      activation: relu
+  H2:
+    E:
+      size: 500
+      activation: relu
+    SomaI:
+      size: 50
+      activation: relu
+  Output:
+    E:
+      size: 10
+      activation: relu
+    SomaI:
+      size: 10
+      activation: relu
+projection_config:
+  H1:
+    E:
+      Input:
+        E:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 1.5363613313499704
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: BP_like_1I
+          learning_rule_kwargs:
+            learning_rate: 0.08821659397671619
+            max_pop_fraction: 1.0
+            stochastic: false
+            relu_gate: true
+      H1:
+        SomaI:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 1.2590020540362772
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          direction: R
+          learning_rule: null
+      H2:
+        E:
+          weight_init: half_kaiming
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          weight_constraint: clone_weight
+          weight_constraint_kwargs:
+            source: H2.E.H1.E
+            transpose: true
+            scale: 0.3213091828547073
+          update_phase: B
+          compartment: dend
+          learning_rule: null
+    SomaI:
+      Input:
+        E:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 1.4248029965095486
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: null
+      H1:
+        E:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 0.24301540226678542
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          update_phase: A
+          direction: R
+          learning_rule: null
+        SomaI:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 1.0724997745727707
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          weight_constraint: no_autapses
+          direction: R
+          learning_rule: null
+  H2:
+    E:
+      H1:
+        E:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 0.23679004428790495
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: BP_like_1I
+          learning_rule_kwargs:
+            learning_rate: 0.08821659397671619
+            max_pop_fraction: 1.0
+            stochastic: false
+            relu_gate: true
+      H2:
+        SomaI:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 0.45095462282792137
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          direction: R
+          learning_rule: null
+      Output:
+        E:
+          weight_init: half_kaiming
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          weight_constraint: clone_weight
+          weight_constraint_kwargs:
+            source: Output.E.H2.E
+            transpose: true
+            scale: 0.22955163410214355
+          update_phase: B
+          compartment: dend
+          learning_rule: null
+    SomaI:
+      H1:
+        E:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 0.3856725378146423
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: null
+      H2:
+        E:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 0.711686128292078
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          update_phase: A
+          direction: R
+          learning_rule: null
+        SomaI:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 1.4332955824502704
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          weight_constraint: no_autapses
+          direction: R
+          learning_rule: null
+  Output:
+    E:
+      H2:
+        E:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 1.6612862896402671
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: BP_like_1I
+          learning_rule_kwargs:
+            learning_rate: 0.0076154458558629085
+            relu_gate: true
+      Output:
+        SomaI:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 0.7088924566141183
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          direction: R
+          learning_rule: null
+    SomaI:
+      H2:
+        E:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 1.2038142240750673
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          direction: F
+          learning_rule: null
+      Output:
+        E:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 1.9148314256947607
+          weight_bounds: !!python/tuple
+          - 0
+          - null
+          update_phase: A
+          direction: R
+          learning_rule: null
+        SomaI:
+          weight_init: half_kaiming
+          weight_init_args: !!python/tuple
+          - 0.6106711246049804
+          weight_bounds: !!python/tuple
+          - null
+          - 0
+          weight_constraint: no_autapses
+          direction: R
+          learning_rule: null
+training_kwargs:
+  tau: 3
+  forward_steps: 15
+  backward_steps: 0
+  learning_rate: 0.9553728

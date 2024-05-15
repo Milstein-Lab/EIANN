@@ -431,10 +431,10 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
         receptive_fields = receptive_fields[sorted_idx]
         if activity_preferred_inputs is not None:
             activity_preferred_inputs = activity_preferred_inputs[sorted_idx]
-
+            
+    # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
+    receptive_fields = receptive_fields / (torch.max(receptive_fields.abs(), dim=1, keepdim=True)[0] + 1e-10)
     if activity_preferred_inputs is not None:
-        # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
-        receptive_fields = receptive_fields / (torch.max(receptive_fields, dim=1, keepdim=True)[0] + 1e-10)
         receptive_fields = receptive_fields * activity_preferred_inputs.unsqueeze(1)
 
     # Create figure

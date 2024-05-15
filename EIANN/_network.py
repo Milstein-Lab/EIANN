@@ -302,6 +302,35 @@ class Network(nn.Module):
 
         return loss.item()
 
+    def update_forward_state(self, store_history=False):
+        """
+        Clone forward neuronal activities and initialize forward dendritic states.
+        """
+        for layer in self:
+            for post_pop in layer:
+                post_pop.forward_activity = post_pop.activity.clone()
+                post_pop.forward_prev_activity = post_pop.prev_activity.clone()
+                
+                init_dend_state = False
+                for projection in post_pop:
+                    pre_pop = projection.pre
+                    if projection.compartment == 'dend':
+                        if not init_dend_state:
+                            post_pop.forward_dendritic_state = torch.zeros(post_pop.size, device=self.device)
+                            init_dend_state = True
+                            if store_history and not hasattr(post_pop, 'forward_dendritic_state_history'):
+                                post_pop.__class__.forward_dendritic_state_history = (
+                                    property(lambda self: self.get_attribute_history('forward_dendritic_state')))
+                        if projection.direction in ['forward', 'F']:
+                            post_pop.forward_dendritic_state = (post_pop.forward_dendritic_state +
+                                                                projection(pre_pop.activity))
+                        elif projection.direction in ['recurrent', 'R']:
+                            post_pop.forward_dendritic_state = (post_pop.forward_dendritic_state +
+                                                                projection(pre_pop.prev_activity))
+                if store_history and hasattr(post_pop, 'forward_dendritic_state'):
+                    post_pop.append_attribute_history('forward_dendritic_state',
+                                                      post_pop.forward_dendritic_state.detach().clone())
+    
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
               store_history=False, store_dynamics=False, store_params=False, store_params_interval=None,
               save_to_file=None, status_bar=False):
@@ -424,6 +453,8 @@ class Network(nn.Module):
                     self.prev_param_history.append(deepcopy(self.state_dict())) # Store parameters for dW comparison
                         
                 # Update state variables required for weight and bias updates
+                self.update_forward_state(store_history=store_history)
+                
                 for backward in self.backward_methods:
                     backward(self, output, sample_target, store_history=store_history, store_dynamics=store_dynamics)
 
@@ -650,7 +681,6 @@ class Population(object):
             include_bias = True
             if bias_learning_rule == 'Backprop':
                 bias_learning_rule_class = rules.BackpropBias
-                self.bias.requires_grad = True
             else:
                 try:
                     if isinstance(bias_learning_rule, str):
@@ -885,8 +915,9 @@ class Projection(nn.Linear):
             except:
                 raise RuntimeError \
                     ('Projection: learning_rule: %s must be imported and instance of LearningRule' % learning_rule)
-        if learning_rule_class != rules.Backprop:
-            self.weight.requires_grad = False
+        
+        # learning rules with parameters that require gradient tracking must set requires_grad to True
+        self.weight.requires_grad = False
         self.learning_rule  = learning_rule_class(self, **learning_rule_kwargs)
 
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))

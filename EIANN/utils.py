@@ -303,6 +303,7 @@ def change_learning_rule_to_backprop(projection_config):
 # Functions to import and export data
 # *******************************************************************
 
+
 def write_to_yaml(file_path, data, convert_scalars=True):
     """
 
@@ -315,7 +316,7 @@ def write_to_yaml(file_path, data, convert_scalars=True):
     with open(file_path, 'w') as outfile:
         if convert_scalars:
             data = nested_convert_scalars(data)
-        yaml.dump(data, outfile, default_flow_style=False, sort_keys=False)
+        yaml.dump(data, outfile, default_flow_style=False, sort_keys=False, indent=4)
 
 
 def read_from_yaml(file_path, Loader=None):
@@ -1677,7 +1678,7 @@ def compute_act_weighted_avg(population, dataloader):
     return weighted_avg_input, activity_preferred_inputs
 
 
-def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigmoid=False):
+def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigmoid=False, softplus=False):
     """
     Use the 'activation maximization' method to compute receptive fields for all units in the population
 
@@ -1686,10 +1687,9 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
     :param num_units:
     :param sigmoid: if True, use sigmoid activation function for the input images;
                     if False, returns unfiltered receptive fields and activities from act_weighted_avg images
+    :param softplus: if True, use softplus activation function for the input images;
     :return:
     """
-
-    idx, data, target = next(iter(dataloader))
     learning_rate = 0.1
     num_steps = 10_000
     network = population.network
@@ -1716,6 +1716,9 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
         if sigmoid:
             im = torch.sigmoid((input_images-0.5)*10)
             network.forward(im)  # compute unit activities in forward pass
+        elif softplus:
+            im = torch.nn.functional.softplus(input_images)
+            network.forward(im)  # compute unit activities in forward pass
         else:
             network.forward(input_images)  # compute unit activities in forward pass
         pop_activity = population.activity[:,0:num_units]
@@ -1728,6 +1731,10 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
     receptive_fields = input_images.detach().clone()
     if sigmoid:
         receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
+        network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
+        activity_preferred_inputs = population.activity[:,0:num_units].detach().clone()
+    elif softplus:
+        receptive_fields = torch.nn.functional.softplus(receptive_fields)
         network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
         activity_preferred_inputs = population.activity[:,0:num_units].detach().clone()
 
