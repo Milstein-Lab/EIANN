@@ -1075,6 +1075,26 @@ def compute_average_activity(activity, labels):
     return avg_activity
 
 
+def compute_test_activity(network, test_dataloader, sorted_output_idx=None, population=None):
+    '''
+    Compute the output activity for a test batch. Optionally return the activity for a given population.    
+    '''
+    assert len(test_dataloader) == 1, 'Dataloader must have a single large batch'
+
+    idx, data, targets = next(iter(test_dataloader))
+    data = data.to(network.device)
+    targets = targets.to(network.device)
+    labels = torch.argmax(targets, axis=1)
+    output = network.forward(data, no_grad=True)
+    if sorted_output_idx is not None:
+        output = output[:, sorted_output_idx]
+
+    if population is not None:
+        return output, labels, population.activity
+    else:
+        return output, labels
+
+
 # def compute_batch_accuracy(network, test_dataloader):
 #     """
 #     Compute total accuracy (% correct) on given dataset.
@@ -1177,10 +1197,10 @@ def spatial_structure_similarity_fft(img1, img2):
     return spatial_structure_similarity
 
 
-def compute_rf_structure(receptive_fields, dimensions=None, method='fft'):
-    structure_sim_ls = []
+def compute_rf_structure(receptive_fields, dimensions=None, method='moran'):
+    structure_ls = []
     for unit_rf in receptive_fields:
-        s = 0
+        similarity_to_noise = 0
 
         if dimensions is None:
             rf_width = rf_height = 28
@@ -1188,20 +1208,85 @@ def compute_rf_structure(receptive_fields, dimensions=None, method='fft'):
             rf_width, rf_height = dimensions
 
         if torch.all(unit_rf == 0): # if receptive field is all zeros
-            structure_sim_ls.append(np.nan)
+            structure_ls.append(np.nan)
+
         else:
-            for i in range(3):  # structural similarity to noise (averaged across 3 random noise images)
-                noise = np.random.uniform(min(unit_rf), max(unit_rf), (rf_width, rf_height))
+            if method == 'moran':
+                    # Calculate Moran's I (spatial autocorrelation)
+                    spatial_autocorrelation = np.abs(compute_morans_I(unit_rf.view(rf_width, rf_height).detach().numpy()))
+                    structure_ls.append(spatial_autocorrelation)
+            else:
+                for i in range(3):  # structural similarity to noise (averaged across 3 random noise images)
+                    # noise = np.random.uniform(min(unit_rf), max(unit_rf), (rf_width, rf_height))
+                    noise = unit_rf.clone()[torch.randperm(rf_width * rf_height)].view(rf_width, rf_height).numpy() # generate "noise" by random permutation of original unit_rf
+                    if method == 'fft':
+                        reference_correlation = spatial_structure_similarity_fft(noise, noise)
+                        similarity_to_noise += spatial_structure_similarity_fft(unit_rf.view(rf_width, rf_height).numpy(), noise) / reference_correlation
+                    elif method == 'ssim':
+                        similarity_to_noise += metrics.structural_similarity(unit_rf.view(rf_width, rf_height).numpy(), noise)
+                structure_ls.append(1 - similarity_to_noise/3)
+    
+    return np.array(structure_ls)
 
-                if method == 'fft':
-                    reference_correlation = spatial_structure_similarity_fft(noise, noise)
-                    s += spatial_structure_similarity_fft(unit_rf.view(rf_width, rf_height).numpy(), noise) / reference_correlation
-                elif method == 'ssim':
-                    s += metrics.structural_similarity(unit_rf.view(rf_width, rf_height).numpy(), noise)
 
-            structure_sim_ls.append(s / 3)
-    structure = 1 - np.array(structure_sim_ls)
-    return structure
+def compute_morans_I(array, kernel_size=1):
+    """
+    Compute the Global Moran's I for a 2D numpy array using a specified kernel size.
+    
+    Parameters:
+    array (numpy.ndarray): A 2D numpy array representing the spatial data.
+    kernel_size (int): The size of the kernel to define the local neighborhood.
+                       Default is 1, which corresponds to the 8 neighboring values.
+    
+    Returns:
+    float: The Global Moran's I value.
+    
+    Moran's I formula:
+    I = (N / W) * (sum_i sum_j w_ij * (x_i - x_bar) * (x_j - x_bar)) / (sum_i (x_i - x_bar)^2)
+    where:
+    - N is the total number of pixels,
+    - W is the sum of all weights,
+    - x_i and x_j are pixel values,
+    - x_bar is the mean of all pixel values,
+    - w_ij is the weight between pixel i and pixel j.
+    """
+    assert kernel_size > 0, 'Kernel size must be greater than 0'
+    assert kernel_size % 1 == 0, 'Kernel size must be an integer'
+    assert array.ndim == 2, 'Input array must be 2D'
+    assert kernel_size < min(array.shape), 'Kernel size must be less than the smallest dimension of the input array'
+    
+    # Total number of pixels
+    N = array.size
+    
+    # Mean of the input array (x̄)
+    mean_val = np.mean(array)
+    
+    # Global sum of squared deviations from the mean (∑(xᵢ - x̄)²)
+    global_deviation = np.sum((array - mean_val) ** 2)
+    
+    # Define the kernel for the weights matrix
+    kernel_shape = (2 * kernel_size + 1, 2 * kernel_size + 1)
+    weights_kernel = np.ones(kernel_shape)
+    weights_kernel[kernel_size, kernel_size] = 0  # Set self-weight to 0 (w_ii = 0)
+    
+    # Compute the sum of all weights (W)
+    W = np.sum(weights_kernel) * N
+    
+    # # Compute the local deviations from the mean
+    deviations = array - mean_val
+    
+    # # Compute the weighted sum of cross-products using convolution
+    weighted_cross_sum = signal.convolve2d(deviations, weights_kernel, mode='same', boundary='fill', fillvalue=0) * deviations
+
+    # Sum all weighted cross-products
+    total_sum = np.sum(weighted_cross_sum)
+    
+    # Compute the Global Moran's I using the provided equation
+    morans_I = (N / W) * (total_sum / global_deviation)
+    
+    return morans_I
+
+
 
 
 def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False):
@@ -1606,7 +1691,7 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
 
     idx, data, target = next(iter(dataloader))
     learning_rate = 0.1
-    num_steps = 10000
+    num_steps = 10_000
     network = population.network
 
     # turn on network gradients
