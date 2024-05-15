@@ -303,6 +303,7 @@ def change_learning_rule_to_backprop(projection_config):
 # Functions to import and export data
 # *******************************************************************
 
+
 def write_to_yaml(file_path, data, convert_scalars=True):
     """
 
@@ -315,7 +316,7 @@ def write_to_yaml(file_path, data, convert_scalars=True):
     with open(file_path, 'w') as outfile:
         if convert_scalars:
             data = nested_convert_scalars(data)
-        yaml.dump(data, outfile, default_flow_style=False, sort_keys=False)
+        yaml.dump(data, outfile, default_flow_style=False, sort_keys=False, indent=4)
 
 
 def read_from_yaml(file_path, Loader=None):
