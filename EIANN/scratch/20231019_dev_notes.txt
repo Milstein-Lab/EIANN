@@ -658,9 +658,9 @@ TODO:
   
  TODO:
   - BP_like_2L (bring back network-wide equilibration to BP_like_2J)
-  - BTSP_3J (like BTSP_1J, but add temporal contrast based on ET and IS)
   
  In queue:
   - BP_like_3J (like BP_like_2J/K, but learn DendI.E and DendI.DendI with BP)
   - BTSP_2J (like BTSP_1J, but learn top-down weights)
+  - BTSP_3J (like BTSP_1J, but add temporal contrast based on ET and IS)
   
