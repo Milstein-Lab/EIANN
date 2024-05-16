@@ -446,6 +446,59 @@ def dict_to_hdf5_helper(data_dict, group):
             group.create_dataset(key, data=value)
 
 
+def load_plot_data(network_name, seed, data_key, file_path='data/.plot_data.h5'):
+    """
+    Load plot data from a hdf5 file
+    :param file_path: str
+    :param network_name: str
+    :param seed: int
+    """
+    seed = str(seed)
+    if os.path.exists(file_path):
+        with h5py.File(file_path, 'r') as hdf5_file:
+            if network_name in hdf5_file:
+                if seed in hdf5_file[network_name]:
+                    if data_key in hdf5_file[network_name][seed]:
+                        data = hdf5_file[network_name][seed][data_key][:]
+                        print(f'Plot data loaded from file: {file_path}')
+                        return torch.tensor(data)
+    return None
+
+
+def save_plot_data(network_name, seed, data_key, data, file_path='data/.plot_data.h5', overwrite=False):
+    """
+    Save plot data to an hdf5 file
+    :param network_name: str
+    :param seed: int
+    :param plot_name: str
+    :param data: array
+    :param file_path: str
+    :param overwrite: bool
+    """
+    seed = str(seed)
+    if os.path.exists(file_path):
+        with h5py.File(file_path, 'a') as hdf5_file:
+            if network_name not in hdf5_file:
+                hdf5_file.create_group(network_name)
+            if seed not in hdf5_file[network_name]:
+                hdf5_file[network_name].create_group(seed)
+            if data_key not in hdf5_file[network_name][seed] or overwrite:
+                hdf5_file[network_name][seed].create_dataset(data_key, data=data)
+                print(f'Plot data saved to file: {file_path}')
+            else:
+                print(f'Plot data already exists in file: {file_path}')
+    else:
+        with h5py.File(file_path, 'w') as hdf5_file:
+            hdf5_file.create_group(network_name)
+            hdf5_file[network_name].create_group(seed)
+            hdf5_file[network_name][seed].create_dataset(data_key, data=data)
+            print(f'Plot data saved to file: {file_path}')
+    
+    
+
+
+
+
 # *******************************************************************
 # Functions to generate and process data
 # *******************************************************************
@@ -1096,6 +1149,30 @@ def compute_test_activity(network, test_dataloader, sorted_output_idx=None, popu
         return output, labels
 
 
+# def compute_batch_accuracy(network, test_dataloader, sorted_output_idx=None):
+#     """
+#     Compute total accuracy (% correct) on given dataset
+#     :param network: EIANN.network
+#     :param test_dataloader: dataloader containing full test set as a single batch
+#     :param sorted_output_idx: tensor of int
+#     """
+#     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+#     idx, data, targets = next(iter(test_dataloader))
+#     data = data.to(network.device)
+#     targets = targets.to(network.device)
+#     labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
+#     output = network.forward(data, no_grad=True)
+
+#     # for unsupervised networks: sort output units by their mean activity
+#     if sorted_output_idx is not None:
+#         output = output[:, sorted_output_idx]
+#     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
+#     percent_correct = torch.round(percent_correct, decimals=2)
+
+#     return percent_correct
+
+
 # def compute_batch_accuracy(network, test_dataloader):
 #     """
 #     Compute total accuracy (% correct) on given dataset.
@@ -1286,8 +1363,6 @@ def compute_morans_I(array, kernel_size=1):
     morans_I = (N / W) * (total_sum / global_deviation)
     
     return morans_I
-
-
 
 
 def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False):
@@ -1690,16 +1765,20 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
     :param softplus: if True, use softplus activation function for the input images;
     :return:
     """
+
+    # Check if receptive fields and activity_preferred_inputs have already been computed and saved in the data hdf5 file
+    receptive_fields = load_plot_data(population.network.name, population.network.seed, data_key='maxact_receptive_fields')
+    activity_preferred_inputs = load_plot_data(population.network.name, population.network.seed, data_key='activity_preferred_inputs')
+    if receptive_fields is not None and activity_preferred_inputs is not None:
+        return receptive_fields, activity_preferred_inputs                               
+
+    # Otherwise, compute receptive fields
     learning_rate = 0.1
     num_steps = 10_000
     network = population.network
 
-    # turn on network gradients
     if network.backward_steps == 0:
-    # if network.forward(data[0]).requires_grad == False:
         network.backward_steps = 3
-        # for param in network.parameters():
-        #     param.requires_grad = True
 
     weighted_avg_input, activity_preferred_inputs = compute_act_weighted_avg(population, dataloader)
 
@@ -1738,6 +1817,10 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
         network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
         activity_preferred_inputs = population.activity[:,0:num_units].detach().clone()
 
+    # Save receptive fields and activity_preferred_inputs to data hdf5 file
+    save_plot_data(population.network.name, population.network.seed, data_key='maxact_receptive_fields', data=receptive_fields)
+    save_plot_data(population.network.name, population.network.seed, data_key='activity_preferred_inputs', data=activity_preferred_inputs)
+    
     return receptive_fields, activity_preferred_inputs
 
 
