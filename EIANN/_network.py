@@ -318,9 +318,6 @@ class Network(nn.Module):
                         if not init_dend_state:
                             post_pop.forward_dendritic_state = torch.zeros(post_pop.size, device=self.device)
                             init_dend_state = True
-                            if store_history and not hasattr(post_pop, 'forward_dendritic_state_history'):
-                                post_pop.__class__.forward_dendritic_state_history = (
-                                    property(lambda self: self.get_attribute_history('forward_dendritic_state')))
                         if projection.direction in ['forward', 'F']:
                             post_pop.forward_dendritic_state = (post_pop.forward_dendritic_state +
                                                                 projection(pre_pop.activity))
@@ -705,7 +702,7 @@ class Population(object):
 
         self.network.parameter_dict[self.fullname+'_bias'] = self.bias
         self.network.optimizer_params_list.append({'params': self.bias,
-                                                   'lr':self.bias_learning_rule.learning_rate})
+                                                   'lr': self.bias_learning_rule.learning_rate})
 
         # Initialize storage containers
         self.projections = {}
@@ -716,9 +713,14 @@ class Population(object):
         self.reinit(network.device)
         self.reset_history()
 
+    def register_attribute_history(self, attr_name):
+        attr_history_name = attr_name + '_history'
+        if not hasattr(self.__class__, attr_history_name):
+            setattr(self.__class__, attr_history_name, property(lambda parent: parent.get_attribute_history(attr_name)))
+    
     def append_attribute_history(self, attr_name, vals):
         self.attribute_history_dict[attr_name]['buffer'].append(vals)
-
+    
     def get_attribute_history(self, attr_name):
         if self.attribute_history_dict[attr_name]['buffer']:
             if isinstance(self.attribute_history_dict[attr_name]['buffer'][0], torch.Tensor):
@@ -893,7 +895,10 @@ class Projection(nn.Linear):
         if compartment is not None and compartment not in ['soma', 'dend', 'dendrite']:
             raise RuntimeError('Projection: compartment (%s) must be None, soma, dend, or dendrite' % compartment)
         self.compartment = compartment
-
+        
+        if self.compartment in ['dend', 'dendrite']:
+            self.post.register_attribute_history('forward_dendritic_state')
+        
         # Set learning rule as callable of the projection
         if learning_rule_kwargs is None:
             learning_rule_kwargs = {}
@@ -918,13 +923,18 @@ class Projection(nn.Linear):
         
         # learning rules with parameters that require gradient tracking must set requires_grad to True
         self.weight.requires_grad = False
-        self.learning_rule  = learning_rule_class(self, **learning_rule_kwargs)
+        self.learning_rule = learning_rule_class(self, **learning_rule_kwargs)
 
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
 
+    def register_attribute_history(self, attr_name):
+        attr_history_name = attr_name + '_history'
+        if not hasattr(self.__class__, attr_history_name):
+            setattr(self.__class__, attr_history_name, property(lambda parent: parent.get_attribute_history(attr_name)))
+    
     def append_attribute_history(self, attr_name, vals):
         self.attribute_history_dict[attr_name]['buffer'].append(vals)
-
+    
     def get_attribute_history(self, attr_name):
         if self.attribute_history_dict[attr_name]['buffer']:
             if isinstance(self.attribute_history_dict[attr_name]['buffer'][0], torch.Tensor):
