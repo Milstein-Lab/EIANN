@@ -631,10 +631,15 @@ Just ran:
  
 20240424:
  - 2_hidden_BP_like_1E performed as expected (~92%)
- - 2_hidden_BP_like_2E performed worse than expected (~83%), suggesting that dimensionality of dendritic inhibition is not aligned to top-down feedback
- - 1_hidden_Supervised_Hebb_WeightNorm_F is comparable to archived Supervised_Gjorgjieva_Hebb_F. Learns all connections, nudges are instantaneous, only Output layer is re-equilibrated.
+ - 2_hidden_BP_like_2E performed worse than expected (~83%), suggesting that dimensionality of dendritic inhibition is not aligned to top-down feedback. Going to try BP_like_2I, which will use Hebb_WeightNorm at DendI.E and DendI.DendI
+ - 1_hidden_Supervised_Hebb_WeightNorm_F is comparable to archived Supervised_Gjorgjieva_Hebb_F. Learns all connections. Difference is now nudges are instantaneous, only Output layer is re-equilibrated.
  
 TODO:
+- 1_hidden_BP_like_1I (like BP_like_1E, but allowing network-wide equilibration)
+- 2_hidden_BP_like_1I (like BP_like_1E, but allowing network-wide equilibration)
+- 1_hidden_BP_like_2I (like BP_like_2E, but DendI.E and DendI.DendI are learned)
+- 2_hidden_BP_like_2I (like BP_like_2E, but DendI.E and DendI.DendI are learned)
+
 - 2_hidden_Hebb_WeightNorm_F
 - 2_hidden_Supervised_Hebb_WeightNorm_F
 - 1_hidden_Hebb_WeightNorm_G (copy from archived Gjorgjieva_Hebb_G)
@@ -642,7 +647,20 @@ TODO:
 - 1_hidden_Supervised_BCM_G2 (switch to instant nudges)
 - 2_hidden_BCM_G
 - 2_hidden_Supervised_BCM_G2
-- 1_hidden_BP_like_1I (like BP_like_1E, but allowing network-wide equilibration)
-- 2_hidden_BP_like_1I (like BP_like_1E, but allowing network-wide equilibration)
-- 1_hidden_BP_like_2E2 (like BP_like_2E, but DendI.E and DendI.DendI are learned)
-- 2_hidden_BP_like_2E2 (like BP_like_2E, but DendI.E and DendI.DendI are learned)
+
+20240514:
+ DONE: 
+  - BP_like_1I (like BP_like_1E, but allowing network-wide equilibration, with relu gating)
+  - BP_like_1J (like BP_like_1E, but with relu gating)
+  - BP_like_2J (like BP_like_2I, but with relu gating)
+  - BP_like_2K (like BP_like_2E, but with relu gating)
+  - BTSP_1J (like BP_like_2J)
+  
+ TODO:
+  - BP_like_2L (bring back network-wide equilibration to BP_like_2J)
+  - BTSP_3J (like BTSP_1J, but add temporal contrast based on ET and IS)
+  
+ In queue:
+  - BP_like_3J (like BP_like_2J/K, but learn DendI.E and DendI.DendI with BP)
+  - BTSP_2J (like BTSP_1J, but learn top-down weights)
+  

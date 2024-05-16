@@ -166,7 +166,7 @@ class BCM(LearningRule):
         self.k = k
         self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device) * k
         self.sign = sign
-        projection.post.__class__.theta_history = property(lambda self: self.get_attribute_history('theta'))
+        projection.post.register_attribute_history('theta')
 
     def reinit(self):
         self.projection.post.BCM_theta_stored = False
@@ -221,10 +221,9 @@ class Supervised_BCM(LearningRule):
         self.k = k
         self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device) * k
         self.sign = sign
-        projection.post.__class__.theta_history = property(lambda self: self.get_attribute_history('theta'))
-        projection.post.__class__.nudge_history = property(lambda self: self.get_attribute_history('nudge'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.register_attribute_history('theta')
+        projection.post.register_attribute_history('nudge')
+        projection.post.register_attribute_history('backward_activity')
 
     def reinit(self):
         self.projection.post.BCM_theta_stored = False
@@ -341,12 +340,10 @@ class Supervised_BCM_2(LearningRule):
         self.max_pop_fraction = max_pop_fraction
         self.pos_loss_th = pos_loss_th
         self.neg_loss_th = neg_loss_th
-        projection.post.__class__.theta_history = property(lambda self: self.get_attribute_history('theta'))
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('theta')
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def reinit(self):
         self.projection.post.BCM_theta_stored = False
@@ -552,9 +549,8 @@ class SupervisedGjorgjievaHebb(LearningRule):
     def __init__(self, projection, sign=1, learning_rate=None):
         super().__init__(projection, learning_rate)
         self.sign = sign
-        projection.post.__class__.nudge_history = property(lambda self: self.get_attribute_history('nudge'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.register_attribute_history('nudge')
+        projection.post.register_attribute_history('backward_activity')
 
     def step(self):
         delta_weight = torch.outer(self.projection.post.activity, self.projection.pre.activity)
@@ -637,9 +633,8 @@ class SupervisedGjorgjievaHebb_2(LearningRule):
     def __init__(self, projection, sign=1, learning_rate=None):
         super().__init__(projection, learning_rate)
         self.sign = sign
-        projection.post.__class__.nudge_history = property(lambda self: self.get_attribute_history('nudge'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.register_attribute_history('nudge')
+        projection.post.register_attribute_history('backward_activity')
 
     def step(self):
         if self.projection.direction in ['forward', 'F']:
@@ -754,11 +749,9 @@ class Supervised_Hebb_WeightNorm(LearningRule):
         self.max_pop_fraction = max_pop_fraction
         self.pos_loss_th = pos_loss_th
         self.neg_loss_th = neg_loss_th
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         if self.projection.direction in ['forward', 'F']:
@@ -925,11 +918,9 @@ class Supervised_Hebb_WeightNorm_2(LearningRule):
         self.max_pop_fraction = max_pop_fraction
         self.pos_loss_th = pos_loss_th
         self.neg_loss_th = neg_loss_th
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         if self.projection.direction in ['forward', 'F']:
@@ -1041,9 +1032,8 @@ class BTSP(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
 
     def step(self):
         plateau = self.projection.post.plateau
@@ -1211,11 +1201,9 @@ class BTSP_2(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
 
     def step(self):
         plateau = self.projection.post.plateau
@@ -1392,9 +1380,8 @@ class BTSP_3(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
 
     def step(self):
         plateau = self.projection.post.plateau
@@ -1565,9 +1552,8 @@ class BTSP_4(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
 
     def step(self):
         plateau = self.projection.post.plateau
@@ -1755,11 +1741,9 @@ class BTSP_5(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
 
     def reinit(self):
         self.projection.pre.past_activity = torch.zeros(self.projection.pre.size,
@@ -1958,13 +1942,11 @@ class BTSP_6(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
-        projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
-        projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
+        projection.post.register_attribute_history('ET')
+        projection.post.register_attribute_history('IS')
 
     def reinit(self):
         self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
@@ -2175,13 +2157,11 @@ class BTSP_7(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
-        projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
-        projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
+        projection.post.register_attribute_history('ET')
+        projection.post.register_attribute_history('IS')
 
     def reinit(self):
         self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
@@ -2369,13 +2349,11 @@ class BTSP_8(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
-        projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
-        projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
+        projection.post.register_attribute_history('ET')
+        projection.post.register_attribute_history('IS')
 
     def reinit(self):
         self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
@@ -2574,13 +2552,11 @@ class BTSP_9(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
-        projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
-        projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
+        projection.post.register_attribute_history('ET')
+        projection.post.register_attribute_history('IS')
 
     def reinit(self):
         self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
@@ -2784,13 +2760,11 @@ class BTSP_10(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
-        projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
-        projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
+        projection.post.register_attribute_history('ET')
+        projection.post.register_attribute_history('IS')
 
     def reinit(self):
         self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
@@ -2997,13 +2971,11 @@ class BTSP_11(LearningRule):
         else:
             self.w_max = self.projection.weight_bounds[1]
         self.refractory = refractory
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
-        projection.post.__class__.ET_history = property(lambda self: self.get_attribute_history('ET'))
-        projection.post.__class__.IS_history = property(lambda self: self.get_attribute_history('IS'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
+        projection.post.register_attribute_history('ET')
+        projection.post.register_attribute_history('IS')
 
     def reinit(self):
         self.projection.pre.ET = torch.zeros(self.projection.pre.size, device=self.projection.pre.network.device)
@@ -3209,11 +3181,9 @@ class BTSP_12_cont(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
 
     def step(self):
         # BTSP
@@ -3380,11 +3350,9 @@ class BTSP_13(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         plateau = self.projection.post.plateau
@@ -3570,11 +3538,9 @@ class BTSP_14(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         # pos error - BTSP weight update
@@ -3768,11 +3734,9 @@ class BTSP_15(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         # pos error - BTSP weight update
@@ -3973,11 +3937,9 @@ class BTSP_16(LearningRule):
             self.w_max = 2.
         else:
             self.w_max = self.projection.weight_bounds[1]
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         # pos error - BTSP weight update
@@ -4141,11 +4103,9 @@ class BP_like_1(LearningRule):
         :param learning_rate: float
         """
         super().__init__(projection, learning_rate)
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         self.projection.weight.data += \
@@ -4280,11 +4240,9 @@ class BP_like_1C(LearningRule):
         :param learning_rate: float
         """
         super().__init__(projection, learning_rate)
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         self.projection.weight.data += \
@@ -4417,11 +4375,9 @@ class BP_like_2(LearningRule):
         :param learning_rate: float
         """
         super().__init__(projection, learning_rate)
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         self.projection.weight.data += \
@@ -4556,11 +4512,9 @@ class BP_like_3(LearningRule):
         """
         super().__init__(projection, learning_rate)
         self.max_pop_fraction = max_pop_fraction
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         self.projection.weight.data += \
@@ -4705,11 +4659,9 @@ class BP_like_4(LearningRule):
         self.max_pop_fraction = max_pop_fraction
         self.pos_loss_th = pos_loss_th
         self.neg_loss_th = neg_loss_th
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         self.projection.weight.data += \
@@ -4873,11 +4825,9 @@ class BP_like_5(LearningRule):
         self.neg_loss_th = neg_loss_th
         self.max_pop_fraction = max_pop_fraction
         self.nudge = nudge
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         self.projection.weight.data += \
@@ -5050,11 +5000,9 @@ class BP_like_1E(LearningRule):
         self.max_pop_fraction = max_pop_fraction
         self.stochastic = stochastic
         self.relu_gate = relu_gate
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         if self.projection.direction in ['forward', 'F']:
@@ -5216,11 +5164,9 @@ class BP_like_1I(LearningRule):
         self.max_pop_fraction = max_pop_fraction
         self.stochastic = stochastic
         self.relu_gate = relu_gate
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         if self.projection.direction in ['forward', 'F']:
@@ -5398,11 +5344,9 @@ class BP_like_2E(LearningRule):
         self.max_pop_fraction = max_pop_fraction
         self.stochastic = stochastic
         self.relu_gate = relu_gate
-        projection.post.__class__.plateau_history = property(lambda self: self.get_attribute_history('plateau'))
-        projection.post.__class__.backward_activity_history = \
-            property(lambda self: self.get_attribute_history('backward_activity'))
-        projection.post.__class__.backward_dendritic_state_history = \
-            property(lambda self: self.get_attribute_history('backward_dendritic_state'))
+        projection.post.register_attribute_history('plateau')
+        projection.post.register_attribute_history('backward_activity')
+        projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         if self.projection.direction in ['forward', 'F']:
