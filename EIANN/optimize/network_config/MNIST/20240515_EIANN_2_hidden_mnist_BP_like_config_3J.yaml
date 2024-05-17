@@ -141,6 +141,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - null
                         - 0
+                    weight_constraint: no_autapses
                     direction: R
                     learning_rule: Backprop_DendriticLoss
                     learning_rule_kwargs:
@@ -253,6 +254,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - null
                         - 0
+                    weight_constraint: no_autapses
                     direction: R
                     learning_rule: Backprop_DendriticLoss
                     learning_rule_kwargs:
