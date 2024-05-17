@@ -454,7 +454,7 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     :param seed: int
     """
     if file_path is None:
-        file_path = './data/.plot_data.h5'
+        file_path = '../data/.plot_data.h5'
 
     print(f'Loading plot data from file: {file_path}')
     seed = str(seed)
@@ -481,7 +481,7 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
     :param overwrite: bool
     """
     if file_path is None:
-        file_path = './data/.plot_data.h5'
+        file_path = '../data/.plot_data.h5'
 
     seed = str(seed)
     if os.path.exists(file_path):
@@ -1824,11 +1824,9 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
     if sigmoid:
         receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
         network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
-        # activity_preferred_inputs = population.activity[:,0:num_units].detach().clone()
     elif softplus:
         receptive_fields = torch.nn.functional.softplus(receptive_fields)
         network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
-        # activity_preferred_inputs = population.activity[:,0:num_units].detach().clone()
 
     if export:
         # Save receptive fields and activity_preferred_inputs to data hdf5 file
@@ -2014,9 +2012,9 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
     # Load dataset
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                      torchvision.transforms.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root='data/datasets/MNIST', train=True, download=True,
+    MNIST_train_dataset = torchvision.datasets.MNIST(root='../data/datasets/', train=True, download=True,
                                                      transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root='data/datasets/MNIST', train=False, download=True,
+    MNIST_test_dataset = torchvision.datasets.MNIST(root='../data/datasets/', train=False, download=True,
                                                     transform=tensor_flatten)
 
     # Add index to train & test data
