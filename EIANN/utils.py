@@ -446,13 +446,17 @@ def dict_to_hdf5_helper(data_dict, group):
             group.create_dataset(key, data=value)
 
 
-def load_plot_data(network_name, seed, data_key, file_path='data/.plot_data.h5'):
+def load_plot_data(network_name, seed, data_key, file_path=None):
     """
     Load plot data from a hdf5 file
     :param file_path: str
     :param network_name: str
     :param seed: int
     """
+    if file_path is None:
+        file_path = './data/.plot_data.h5'
+
+    print(f'Loading plot data from file: {file_path}')
     seed = str(seed)
     if os.path.exists(file_path):
         with h5py.File(file_path, 'r') as hdf5_file:
@@ -462,10 +466,11 @@ def load_plot_data(network_name, seed, data_key, file_path='data/.plot_data.h5')
                         data = hdf5_file[network_name][seed][data_key][:]
                         print(f'Plot data loaded from file: {file_path}')
                         return torch.tensor(data)
+    print(f'Plot data not found in file: {file_path}')
     return None
 
 
-def save_plot_data(network_name, seed, data_key, data, file_path='data/.plot_data.h5', overwrite=False):
+def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite=False):
     """
     Save plot data to an hdf5 file
     :param network_name: str
@@ -475,6 +480,9 @@ def save_plot_data(network_name, seed, data_key, data, file_path='data/.plot_dat
     :param file_path: str
     :param overwrite: bool
     """
+    if file_path is None:
+        file_path = './data/.plot_data.h5'
+
     seed = str(seed)
     if os.path.exists(file_path):
         with h5py.File(file_path, 'a') as hdf5_file:
@@ -482,7 +490,10 @@ def save_plot_data(network_name, seed, data_key, data, file_path='data/.plot_dat
                 hdf5_file.create_group(network_name)
             if seed not in hdf5_file[network_name]:
                 hdf5_file[network_name].create_group(seed)
-            if data_key not in hdf5_file[network_name][seed] or overwrite:
+            if data_key in hdf5_file[network_name][seed] and overwrite:
+                del hdf5_file[network_name][seed][data_key]
+
+            if data_key not in hdf5_file[network_name][seed]:
                 hdf5_file[network_name][seed].create_dataset(data_key, data=data)
                 print(f'Plot data saved to file: {file_path}')
             else:
@@ -1753,7 +1764,7 @@ def compute_act_weighted_avg(population, dataloader):
     return weighted_avg_input, activity_preferred_inputs
 
 
-def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigmoid=False, softplus=False):
+def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigmoid=False, softplus=False, export=False, export_path=None, overwrite=False):
     """
     Use the 'activation maximization' method to compute receptive fields for all units in the population
 
@@ -1766,15 +1777,16 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
     :return:
     """
 
-    # Check if receptive fields and activity_preferred_inputs have already been computed and saved in the data hdf5 file
-    receptive_fields = load_plot_data(population.network.name, population.network.seed, data_key='maxact_receptive_fields')
-    activity_preferred_inputs = load_plot_data(population.network.name, population.network.seed, data_key='activity_preferred_inputs')
-    if receptive_fields is not None and activity_preferred_inputs is not None:
-        return receptive_fields, activity_preferred_inputs                               
+    if export and overwrite is False:
+        # Check if receptive fields and activity_preferred_inputs have already been computed and saved in the data hdf5 file
+        assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
+        receptive_fields = load_plot_data(population.network.name, population.network.seed, data_key=f'maxact_receptive_fields_{population.fullname}', file_path=export_path)
+        if receptive_fields is not None:
+            return receptive_fields                         
 
     # Otherwise, compute receptive fields
-    learning_rate = 0.1
-    num_steps = 10_000
+    learning_rate = 1.
+    num_steps = 1000
     network = population.network
 
     if network.backward_steps == 0:
@@ -1786,6 +1798,7 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
         num_units = population.size
 
     input_images = weighted_avg_input[0:num_units,:]
+
     input_images.requires_grad = True
     optimizer = torch.optim.SGD([input_images], lr=learning_rate)
 
@@ -1811,17 +1824,18 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
     if sigmoid:
         receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
         network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
-        activity_preferred_inputs = population.activity[:,0:num_units].detach().clone()
+        # activity_preferred_inputs = population.activity[:,0:num_units].detach().clone()
     elif softplus:
         receptive_fields = torch.nn.functional.softplus(receptive_fields)
         network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
-        activity_preferred_inputs = population.activity[:,0:num_units].detach().clone()
+        # activity_preferred_inputs = population.activity[:,0:num_units].detach().clone()
 
-    # Save receptive fields and activity_preferred_inputs to data hdf5 file
-    save_plot_data(population.network.name, population.network.seed, data_key='maxact_receptive_fields', data=receptive_fields)
-    save_plot_data(population.network.name, population.network.seed, data_key='activity_preferred_inputs', data=activity_preferred_inputs)
+    if export:
+        # Save receptive fields and activity_preferred_inputs to data hdf5 file
+        assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
+        save_plot_data(population.network.name, population.network.seed, data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields, file_path=export_path, overwrite=overwrite)
     
-    return receptive_fields, activity_preferred_inputs
+    return receptive_fields
 
 
 def set_activation(network, activation, **kwargs):

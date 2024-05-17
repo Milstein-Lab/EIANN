@@ -404,7 +404,7 @@ def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
 
 
-def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort=False, num_cols=None, num_rows=None,
+def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_cols=None, num_rows=None,
                           activity_threshold=1e-10, cmap='custom'):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
@@ -418,24 +418,27 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
     :param num_cols: int
     :param num_rows: int
     """
-    if activity_preferred_inputs is not None:
-        activity_preferred_inputs = activity_preferred_inputs.diagonal()
-        print(f'Min activity: {torch.min(activity_preferred_inputs)}, Max activity: {torch.max(activity_preferred_inputs)}')
-        active_idx = torch.where(activity_preferred_inputs > activity_threshold)
-        activity_preferred_inputs = activity_preferred_inputs[active_idx]
+    if isinstance(scale, torch.Tensor):
+        scale = scale.diagonal()
+        print(f'Min activity: {torch.min(scale)}, Max activity: {torch.max(scale)}')
+        active_idx = torch.where(scale > activity_threshold)
+        scale = scale[active_idx]
         receptive_fields = receptive_fields[active_idx]
 
     if sort: # Sort units by tuning structure of their receptive fields
         structure = ut.compute_rf_structure(receptive_fields)
         sorted_idx = np.argsort(-structure)
         receptive_fields = receptive_fields[sorted_idx]
-        if activity_preferred_inputs is not None:
-            activity_preferred_inputs = activity_preferred_inputs[sorted_idx]
+        if isinstance(scale, torch.Tensor):
+            scale = scale[sorted_idx]
             
     # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
-    receptive_fields = receptive_fields / (torch.max(receptive_fields.abs(), dim=1, keepdim=True)[0] + 1e-10)
-    if activity_preferred_inputs is not None:
-        receptive_fields = receptive_fields * activity_preferred_inputs.unsqueeze(1)
+    if scale is not None:
+        receptive_fields = receptive_fields / (torch.max(receptive_fields.abs(), dim=1, keepdim=True)[0] + 1e-10)
+        if isinstance(scale, torch.Tensor):
+            receptive_fields = receptive_fields * scale.unsqueeze(1)   
+        else:
+            receptive_fields = receptive_fields * scale     
 
     # Create figure
     num_units = receptive_fields.shape[0]
@@ -487,12 +490,6 @@ def plot_receptive_fields(receptive_fields, activity_preferred_inputs=None, sort
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
     fig.show()
 
-    # fig_height = fig.get_size_inches()[1]
-    # wspace = 0.01; hspace = 0.01; left = 0.01; top = 0.99; right = 0.99; bottom = 0.1
-    # # cax = fig.add_axes([left, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
-    # cax = fig.add_subplot(axes[row_idx + 1, :num_cols//2])
-    # cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
-    # plt.subplots_adjust(wspace=wspace, hspace=hspace, left=left, top=top, right=right, bottom=bottom)
 
 
 def plot_unit_receptive_field(population, dataloader, unit):
