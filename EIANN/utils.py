@@ -456,10 +456,9 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     if file_path is None:
         file_path = '../data/.plot_data.h5'
 
-    print(f'Loading plot data from file: {file_path}')
     seed = str(seed)
     if os.path.exists(file_path):
-        with h5py.File(file_path, 'r') as hdf5_file:
+        with h5py.File(file_path, 'r') as hdf5_file:            
             if network_name in hdf5_file:
                 if seed in hdf5_file[network_name]:
                     if data_key in hdf5_file[network_name][seed]:
@@ -506,10 +505,6 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
             print(f'Plot data saved to file: {file_path}')
     
     
-
-
-
-
 # *******************************************************************
 # Functions to generate and process data
 # *******************************************************************
@@ -1140,81 +1135,61 @@ def compute_average_activity(activity, labels):
     return avg_activity
 
 
-def compute_test_activity(network, test_dataloader, sorted_output_idx=None, population=None):
-    '''
-    Compute the output activity for a test batch. Optionally return the activity for a given population.    
-    '''
-    assert len(test_dataloader) == 1, 'Dataloader must have a single large batch'
+def compute_test_activity(network, test_dataloader, populations=None, sorted_output_idx=None):
+    """
+    Compute total accuracy (% correct) on given dataset
+    :param network:
+    :param test_dataloader:
+    :param population: :class:'Population' or str 'all'
+    :param sorted_output_idx: tensor of int
+    :param title: str
+    """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    average_pop_activity_dict = {}
 
     idx, data, targets = next(iter(test_dataloader))
     data = data.to(network.device)
     targets = targets.to(network.device)
-    labels = torch.argmax(targets, axis=1)
+    labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
     output = network.forward(data, no_grad=True)
+    num_labels = targets.shape[1]
+
+    # if unsupervised, sort output units by their mean activity
     if sorted_output_idx is not None:
         output = output[:, sorted_output_idx]
+    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
+    percent_correct = torch.round(percent_correct, decimals=2)
 
-    if population is not None:
-        return output, labels, population.activity
-    else:
-        return output, labels
+    populations_list = []
+    if populations == 'all':
+        reversed_layers = list(network)[::-1]
+        for layer in reversed_layers:
+            populations_list.extend([pop for pop in layer])
+    elif isinstance(populations, list):
+        populations_list.extend(population)
+    elif populations is not None:
+        populations_list.append(population)
 
+    if network.output_pop not in populations_list:
+        # Add the output population by default
+        populations_list.append(network.output_pop)
 
-# def compute_batch_accuracy(network, test_dataloader, sorted_output_idx=None):
-#     """
-#     Compute total accuracy (% correct) on given dataset
-#     :param network: EIANN.network
-#     :param test_dataloader: dataloader containing full test set as a single batch
-#     :param sorted_output_idx: tensor of int
-#     """
-#     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+    for population in populations_list:
+        avg_pop_activity = torch.zeros(population.size, num_labels)
+        for label in range(num_labels):
+            label_idx = torch.where(labels == label)
+            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
 
-#     idx, data, targets = next(iter(test_dataloader))
-#     data = data.to(network.device)
-#     targets = targets.to(network.device)
-#     labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
-#     output = network.forward(data, no_grad=True)
+        silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+        active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+        preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+        _, idx = torch.sort(preferred_input)
+        sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+        avg_pop_activity = avg_pop_activity[sort_idx]
+        average_pop_activity_dict[population.fullname] = avg_pop_activity
 
-#     # for unsupervised networks: sort output units by their mean activity
-#     if sorted_output_idx is not None:
-#         output = output[:, sorted_output_idx]
-#     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
-#     percent_correct = torch.round(percent_correct, decimals=2)
-
-#     return percent_correct
-
-
-# def compute_batch_accuracy(network, test_dataloader):
-#     """
-#     Compute total accuracy (% correct) on given dataset.
-#     Args:
-#         network: The network to evaluate.
-#         test_dataloader: A DataLoader containing the test data.
-#     Returns:
-#         float: The batch accuracy as a percentage.
-#     """
-#     assert len(test_dataloader) == 1, 'Dataloader must have a single large batch'
-
-#     idx, data, targets = next(iter(test_dataloader))
-#     data = data.to(network.device)
-#     targets = targets.to(network.device)
-#     labels = torch.argmax(targets, axis=1)
-#     output = network.forward(data, no_grad=True)
-#     return compute_batch_accuracy_from_output(output, labels)
-
-
-# def compute_batch_accuracy_from_output(output, labels):
-#     """
-#     Compute batch accuracy from the output and labels.
-#     output: The output of the network.
-#     labels: The true labels.
-#     Returns:
-#         float: The batch accuracy as a percentage.
-#     """
-#     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / output.shape[0]
-#     percent_correct = torch.round(percent_correct, decimals=2)
-#     print(f'Batch accuracy = {percent_correct}%')
-#     return percent_correct
+    return percent_correct, average_pop_activity_dict
 
 
 def compute_dParam_history(network):
@@ -1797,7 +1772,7 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
     if num_units is None or num_units>population.size:
         num_units = population.size
 
-    input_images = weighted_avg_input[0:num_units,:]
+    input_images = weighted_avg_input[0:num_units,:] + 0.1*torch.randn(num_units, weighted_avg_input.shape[1]) 
 
     input_images.requires_grad = True
     optimizer = torch.optim.SGD([input_images], lr=learning_rate)
