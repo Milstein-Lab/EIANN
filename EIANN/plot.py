@@ -595,7 +595,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, ax=None):
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, export=False, ax=None):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -605,7 +605,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     :param title: str
     """
 
-    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population, sorted_output_idx)
+    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population, sorted_output_idx, export=export)
     print(f'Batch accuracy = {percent_correct}%')
 
     for population, avg_pop_activity in average_pop_activity_dict.items():

@@ -191,66 +191,66 @@ def rename_population(network, old_name, new_name):
             for projection in population:
                 projection.name = f'{projection.post.layer.name}{projection.post.name}_{projection.pre.layer.name}{projection.pre.name}'
 
-
-def convert_projection_config_dict(simple_format_dict):
-    """
-    Convert a projection config with simplified format (formatted as "layer.population":{}) to the extended format with nested dicts (formatted as "layer": {"population": {}})
-    """
-    extended_format_dict = {}
-    
-    for layer_fullname, subdictionary in simple_format_dict.items():
-        layer_name, population_name = layer_fullname.split('.')
-        
-        if layer_name not in extended_format_dict: # If the first part of the split key isn't in the extended format dictionary, add it
-            extended_format_dict[layer_name] = {}
-
-        if population_name not in extended_format_dict[layer_name]: # If the second part of the split key isn't in the sub-dictionary, add it
-            extended_format_dict[layer_name][population_name] = {}
-        
-        # Iterate over the items in the sub-dictionary
-        for pre_layer_fullname, subsubdictionary in subdictionary.items():
-            pre_layer_name, pre_pop_name = pre_layer_fullname.split('.')
-            
-            if pre_layer_name not in extended_format_dict[layer_name][population_name]: # If the first part of the split key isn't already in the sub-sub-dictionary, add it
-                extended_format_dict[layer_name][population_name][pre_layer_name] = {}
-            
-            # Add the second part of the split key to the sub-sub-dictionary, converting 'None' string values to Python None
-            extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name] = {}
-
-            # Translate projection properties in the subsubdictionary
-            for k, v in subsubdictionary.items():
-                if k == 'type':
-                    if v.lower() in ['e', 'exc', 'excitatory']:
-                        extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name]['weight_bounds'] = [0, None]
-                    elif v.lower() in ['i', 'inh', 'inhibitory']:
-                        extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name]['weight_bounds'] = [None, 0]
-                else:
-                    extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name][k] = None if v == 'None' else v
-    
-    return extended_format_dict
-
-def convert_layer_config_dict(layer_config_dict):
-    """
-    Convert a layer config with simplified format to the extended format
-    """
-    for layer in layer_config_dict:
-        for population in layer_config_dict[layer]:
-            if 'bias' in layer_config_dict[layer][population]: # Allows for syntax like bias: 'uniform(0,1)'
-                bias_distribution = layer_config_dict[layer][population]['bias']
-                bias_init = bias_distribution.split('(')[0] + '_' 
-                init_args = bias_distribution.split('(')[1].split(')')[0].split(',')
-                init_args = [float(arg) for arg in init_args]
-                
-                del layer_config_dict[layer][population]['bias']
-                layer_config_dict[layer][population]['include_bias'] = True
-                layer_config_dict[layer][population]['bias_init'] = bias_init
-                layer_config_dict[layer][population]['bias_init_args'] = init_args
-    return layer_config_dict       
-                
+         
 def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'):
     '''
     Build an EIANN network from a config file
     '''
+    def convert_projection_config_dict(simple_format_dict):
+        """
+        Convert a projection config with simplified format (formatted as "layer.population":{}) to the extended format with nested dicts (formatted as "layer": {"population": {}})
+        """
+        extended_format_dict = {}
+        
+        for layer_fullname, subdictionary in simple_format_dict.items():
+            layer_name, population_name = layer_fullname.split('.')
+            
+            if layer_name not in extended_format_dict: # If the first part of the split key isn't in the extended format dictionary, add it
+                extended_format_dict[layer_name] = {}
+
+            if population_name not in extended_format_dict[layer_name]: # If the second part of the split key isn't in the sub-dictionary, add it
+                extended_format_dict[layer_name][population_name] = {}
+            
+            # Iterate over the items in the sub-dictionary
+            for pre_layer_fullname, subsubdictionary in subdictionary.items():
+                pre_layer_name, pre_pop_name = pre_layer_fullname.split('.')
+                
+                if pre_layer_name not in extended_format_dict[layer_name][population_name]: # If the first part of the split key isn't already in the sub-sub-dictionary, add it
+                    extended_format_dict[layer_name][population_name][pre_layer_name] = {}
+                
+                # Add the second part of the split key to the sub-sub-dictionary, converting 'None' string values to Python None
+                extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name] = {}
+
+                # Translate projection properties in the subsubdictionary
+                for k, v in subsubdictionary.items():
+                    if k == 'type':
+                        if v.lower() in ['e', 'exc', 'excitatory']:
+                            extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name]['weight_bounds'] = [0, None]
+                        elif v.lower() in ['i', 'inh', 'inhibitory']:
+                            extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name]['weight_bounds'] = [None, 0]
+                    else:
+                        extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name][k] = None if v == 'None' else v
+        
+        return extended_format_dict
+    
+    def convert_layer_config_dict(layer_config_dict):
+        """
+        Convert a layer config with simplified format to the extended format
+        """
+        for layer in layer_config_dict:
+            for population in layer_config_dict[layer]:
+                if 'bias' in layer_config_dict[layer][population]: # Allows for syntax like bias: 'uniform(0,1)'
+                    bias_distribution = layer_config_dict[layer][population]['bias']
+                    bias_init = bias_distribution.split('(')[0] + '_' 
+                    init_args = bias_distribution.split('(')[1].split(')')[0].split(',')
+                    init_args = [float(arg) for arg in init_args]
+                    
+                    del layer_config_dict[layer][population]['bias']
+                    layer_config_dict[layer][population]['include_bias'] = True
+                    layer_config_dict[layer][population]['bias_init'] = bias_init
+                    layer_config_dict[layer][population]['bias_init_args'] = init_args
+        return layer_config_dict       
+        
     network_config = read_from_yaml(config_path)
     layer_config = network_config['layer_config']
     projection_config = network_config['projection_config']
@@ -385,20 +385,22 @@ def hdf5_to_dict(file_path):
     :param file_path (str): Path to the HDF5 file.
     :return dict: nested Python dictionary with identical structure as the HDF5 file.
     """
+    # Initial call to convert the top-level group in the HDF5 file
+    # (necessary because the top-level group is not a h5py.Group object)
     with h5py.File(file_path, 'r') as f:
         data_dict = {}
         # Loop over the top-level keys in the HDF5 file
         for key in f.keys():
             if isinstance(f[key], h5py.Group):
                 # Recursively convert the group to a nested dictionary
-                data_dict[key] = hdf5_to_dict_helper(f[key])
+                data_dict[key] = convert_hdf5_group_to_dict(f[key])
             else:
                 # If the key corresponds to a dataset, add it to the dictionary
                 data_dict[key] = f[key][()]
     return data_dict
 
 
-def hdf5_to_dict_helper(group):
+def convert_hdf5_group_to_dict(group):
     """
     Helper function to recursively convert an HDF5 group to a nested Python dictionary.
 
@@ -410,7 +412,7 @@ def hdf5_to_dict_helper(group):
     for key in group.keys():
         if isinstance(group[key], h5py.Group):
             # Recursively convert the group to a nested dictionary
-            data_dict[key] = hdf5_to_dict_helper(group[key])
+            data_dict[key] = convert_hdf5_group_to_dict(group[key])
         else:
             # If the key corresponds to a dataset, add it to the dictionary
             data_dict[key] = group[key][()]
@@ -426,12 +428,13 @@ def dict_to_hdf5(data_dict, file_path):
     :param file_path (str): Path to the HDF5 file.
     """
     with h5py.File(file_path, 'w') as f:
-        dict_to_hdf5_helper(data_dict, f)
+        # Initial call to save the top-level dictionary to the HDF5 file
+        convert_dict_to_hdf5_group(data_dict, f)
 
 
-def dict_to_hdf5_helper(data_dict, group):
+def convert_dict_to_hdf5_group(data_dict, group):
     """
-    Helper function to recursively save a nested Python dictionary to an HDF5 group.
+    Recursive function to save a nested Python dictionary to an HDF5 group.
 
     :param data_dict (dict): Nested Python dictionary to save.
     :param group (h5py.Group): The HDF5 group to save the dictionary to.
@@ -439,11 +442,11 @@ def dict_to_hdf5_helper(data_dict, group):
     for key, value in data_dict.items():
         if isinstance(value, dict):
             # Recursively save nested dictionaries as groups
-            subgroup = group.create_group(key)
-            dict_to_hdf5_helper(value, subgroup)
+            subgroup = group.create_group(key, track_order=True)
+            convert_dict_to_hdf5_group(value, subgroup)
         else:
             # Save datasets to the HDF5 group
-            group.create_dataset(key, data=value)
+            group.create_dataset(key, data=value, track_order=True)
 
 
 def load_plot_data(network_name, seed, data_key, file_path=None):
@@ -462,10 +465,13 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
             if network_name in hdf5_file:
                 if seed in hdf5_file[network_name]:
                     if data_key in hdf5_file[network_name][seed]:
-                        data = hdf5_file[network_name][seed][data_key][:]
-                        print(f'Plot data loaded from file: {file_path}')
-                        return torch.tensor(data)
-    print(f'Plot data not found in file: {file_path}')
+                        if isinstance(hdf5_file[network_name][seed][data_key], h5py.Group):
+                            data = convert_hdf5_group_to_dict(hdf5_file[network_name][seed][data_key])
+                        elif isinstance(hdf5_file[network_name][seed][data_key], h5py.Dataset):
+                            data = hdf5_file[network_name][seed][data_key][()]
+                        print(f'{data_key} loaded from file: {file_path}')
+                        return data
+    print(f'{data_key} not found in file: {file_path}')
     return None
 
 
@@ -486,23 +492,27 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
     if os.path.exists(file_path):
         with h5py.File(file_path, 'a') as hdf5_file:
             if network_name not in hdf5_file:
-                hdf5_file.create_group(network_name)
+                hdf5_file.create_group(network_name, track_order=True)
             if seed not in hdf5_file[network_name]:
-                hdf5_file[network_name].create_group(seed)
+                hdf5_file[network_name].create_group(seed, track_order=True)
             if data_key in hdf5_file[network_name][seed] and overwrite:
                 del hdf5_file[network_name][seed][data_key]
 
             if data_key not in hdf5_file[network_name][seed]:
-                hdf5_file[network_name][seed].create_dataset(data_key, data=data)
-                print(f'Plot data saved to file: {file_path}')
+                if isinstance(data, dict):
+                    hdf5_file[network_name][seed].create_group(data_key, track_order=True)
+                    convert_dict_to_hdf5_group(data, hdf5_file[network_name][seed][data_key])
+                else:
+                    hdf5_file[network_name][seed].create_dataset(data_key, data=data, track_order=True)
+                print(f'{data_key} saved to file: {file_path}')
             else:
-                print(f'Plot data already exists in file: {file_path}')
+                print(f'{data_key} already exists in file: {file_path}')
     else:
         with h5py.File(file_path, 'w') as hdf5_file:
-            hdf5_file.create_group(network_name)
-            hdf5_file[network_name].create_group(seed)
-            hdf5_file[network_name][seed].create_dataset(data_key, data=data)
-            print(f'Plot data saved to file: {file_path}')
+            hdf5_file.create_group(network_name, track_order=True)
+            hdf5_file[network_name].create_group(seed, track_order=True)
+            hdf5_file[network_name][seed].create_dataset(data_key, data=data, track_order=True)
+            print(f'{data_key} saved to file: {file_path}')
     
     
 # *******************************************************************
@@ -1135,7 +1145,7 @@ def compute_average_activity(activity, labels):
     return avg_activity
 
 
-def compute_test_activity(network, test_dataloader, populations=None, sorted_output_idx=None):
+def compute_test_activity(network, test_dataloader, populations=None, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -1145,6 +1155,14 @@ def compute_test_activity(network, test_dataloader, populations=None, sorted_out
     :param title: str
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    if export and overwrite is False:
+        # Check if population activity data already exists in file
+        assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
+        percent_correct = load_plot_data(network.name, network.seed, data_key='percent_correct', file_path=export_path)
+        average_pop_activity_dict = load_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', file_path=export_path)
+        if percent_correct is not None and average_pop_activity_dict is not None:
+            return percent_correct, average_pop_activity_dict    
 
     average_pop_activity_dict = {}
 
@@ -1189,6 +1207,12 @@ def compute_test_activity(network, test_dataloader, populations=None, sorted_out
         avg_pop_activity = avg_pop_activity[sort_idx]
         average_pop_activity_dict[population.fullname] = avg_pop_activity
 
+    if export:
+        # Save data to hdf5 file
+        assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
+        save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=export_path, overwrite=overwrite)
+        save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=export_path, overwrite=overwrite)
+    
     return percent_correct, average_pop_activity_dict
 
 
@@ -1757,7 +1781,7 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
         receptive_fields = load_plot_data(population.network.name, population.network.seed, data_key=f'maxact_receptive_fields_{population.fullname}', file_path=export_path)
         if receptive_fields is not None:
-            return receptive_fields                         
+            return torch.tensor(receptive_fields)
 
     # Otherwise, compute receptive fields
     learning_rate = 1.
