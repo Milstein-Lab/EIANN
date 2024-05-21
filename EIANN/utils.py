@@ -1145,7 +1145,7 @@ def compute_average_activity(activity, labels):
     return avg_activity
 
 
-def compute_test_activity(network, test_dataloader, populations=None, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
+def compute_test_activity(network, test_dataloader, population=None, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -1179,20 +1179,26 @@ def compute_test_activity(network, test_dataloader, populations=None, sorted_out
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
     percent_correct = torch.round(percent_correct, decimals=2)
 
+    # Determine which populations to analyze
     populations_list = []
-    if populations == 'all':
+    if population == 'all':
         reversed_layers = list(network)[::-1]
         for layer in reversed_layers:
             populations_list.extend([pop for pop in layer])
-    elif isinstance(populations, list):
+    elif isinstance(population, list):
         populations_list.extend(population)
-    elif populations is not None:
+    elif population is not None:
         populations_list.append(population)
+
+    if len(populations_list)>0 and isinstance(populations_list[0], str):
+        # Convert population names to Population objects
+        populations_list = [network.populations[pop_name] for pop_name in populations_list]
 
     if network.output_pop not in populations_list:
         # Add the output population by default
         populations_list.append(network.output_pop)
 
+    # Compute average activity for each population
     for population in populations_list:
         avg_pop_activity = torch.zeros(population.size, num_labels)
         for label in range(num_labels):

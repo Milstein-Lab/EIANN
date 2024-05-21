@@ -608,21 +608,41 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population, sorted_output_idx, export=export)
     print(f'Batch accuracy = {percent_correct}%')
 
-    for population, avg_pop_activity in average_pop_activity_dict.items():
-        fig, ax = plt.subplots()
+    if population is None:
+        # Include only first population in the data dict
+        population = list(average_pop_activity_dict.keys())[0]
+        average_pop_activity_dict = {population: average_pop_activity_dict[population]}
+    elif isinstance(population, str):
+        if population != 'all':
+            average_pop_activity_dict = {population: average_pop_activity_dict[population]}
+    elif isinstance(population, list):
+        average_pop_activity_dict = {pop: average_pop_activity_dict[pop] for pop in population}
+    else:
+        assert hasattr(population, 'fullname'), 'Population must be a string, list of strings, or EIANN.Population object'
+        average_pop_activity_dict = {population.fullname: average_pop_activity_dict[population.fullname]}
 
-        im = ax.imshow(avg_pop_activity, aspect='auto', interpolation='none')
-        cbar = plt.colorbar(im, ax=ax)
-        ax.set_xticks(range(avg_pop_activity.shape[1]))
-        ax.set_xlabel('Labels')
-        ax.set_ylabel(f'{population} unit')
-        if title is not None:
-            ax.set_title(f'Average activity - {population}\n{title}')
+    for pop_name, avg_pop_activity in average_pop_activity_dict.items():
+        if ax is None:
+            fig, _ax = plt.subplots()
         else:
-            ax.set_title(f'Average activity - {population}')
+            _ax = ax
 
-        fig.tight_layout()
-        fig.show()
+        im = _ax.imshow(avg_pop_activity, aspect='auto', interpolation='none')
+        cbar = plt.colorbar(im, ax=_ax)
+        _ax.set_xticks(range(avg_pop_activity.shape[1]))
+        _ax.set_xlabel('Labels')
+        _ax.set_ylabel(f'{pop_name} unit')
+        if title is not None:
+            _ax.set_title(f'Average activity - {pop_name}\n{title}')
+        else:
+            _ax.set_title(f'Average activity - {pop_name}')
+
+        if ax is None:
+            fig.show()
+        elif isinstance(population, list) and len(population)>1:
+            raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
+            
+            
 
 
 # def plot_average_population_activity(pop_name, avg_pop_activity, ax):
