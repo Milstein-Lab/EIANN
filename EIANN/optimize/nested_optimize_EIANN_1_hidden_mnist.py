@@ -12,7 +12,7 @@ import gc
 from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
-    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history
+    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, sort_by_class_averaged_val_output
 from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields
 from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
@@ -243,9 +243,16 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         except:
             pass
 
-    # reorder output units if using unsupervised/Hebbian rule
+    # reorder output units if using unsupervised learning rule
     if not context.supervised:
-        min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
+        if context.eval_accuracy == 'final':
+            min_loss_idx = len(network.val_loss_history) - 1
+            sorted_output_idx = sort_by_class_averaged_val_output(network)
+        elif context.eval_accuracy == 'best':
+            min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
+        else:
+            raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
+                            context.eval_accuracy)
         sorted_val_loss_history, sorted_val_accuracy_history = \
             recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True)
     else:
@@ -253,30 +260,33 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         sorted_output_idx = None
         sorted_val_loss_history = network.val_loss_history
         sorted_val_accuracy_history = network.val_accuracy_history
-
+    
     if context.store_history:
         binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
             recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
-
+    
     # Select for stability by computing mean accuracy in a window after the best validation step
     val_stepsize = int(context.val_interval[2])
     val_start_idx = int(context.val_interval[0])
     num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
-    if min_loss_idx + num_val_steps_accuracy_window > len(sorted_val_loss_history): # if best loss too close to the end
-        best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
-        best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
-    else:
-        best_accuracy_window = \
-            torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx+num_val_steps_accuracy_window])
-        best_loss_window = torch.mean(sorted_val_loss_history[min_loss_idx:min_loss_idx+num_val_steps_accuracy_window])
-
-    final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
-    final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
-
+    
     if context.eval_accuracy == 'final':
+        final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
+        final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
+        
         results = {'loss': final_loss,
                    'accuracy': final_argmax_accuracy}
     elif context.eval_accuracy == 'best':
+        if min_loss_idx + num_val_steps_accuracy_window > len(
+                sorted_val_loss_history):  # if best loss too close to the end
+            best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
+            best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
+        else:
+            best_accuracy_window = \
+                torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+            best_loss_window = torch.mean(
+                sorted_val_loss_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+        
         results = {'loss': best_loss_window,
                    'accuracy': best_accuracy_window}
     else:

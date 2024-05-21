@@ -62,11 +62,11 @@ kwargs:
     seed_start: 1
     num_instances: 5
     data_seed_start: 1
-    supervised: False
+    supervised: True
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: optimize/network_config/MNIST/20230815_EIANN_1_hidden_mnist_BCM_config_G.yaml
+    network_config_file_path: optimize/network_config/MNIST/20240521_EIANN_1_hidden_mnist_Supervised_BCM_config_G2.yaml
     val_interval:
         - -2001
         - -1
@@ -82,7 +82,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_1_hidden_mnist_BCM_G
+optimization_title: EIANN_1_hidden_mnist_Supervised_BCM_G2
 x0:
     H1_E_H1_I_init_weight_scale: 1.5860937017840404
     H1_E_Input_E_learning_rate: 0.005647880371398828

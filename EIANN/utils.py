@@ -634,6 +634,32 @@ def sort_by_val_history(network, plot=False):
     return min_loss_idx, min_loss_sorting
 
 
+def sort_by_class_averaged_val_output(network, index=-1):
+    """
+    Find the sorting for the class-averaged output at the given index of the validation history
+
+    :param network:
+    :param index: int
+    :return: sorted_output_idx: array of int
+    """
+    num_units = network.val_target.shape[1]
+    num_labels = num_units
+    
+    output = network.val_output_history[index]
+    
+    # Get average output for each label class
+    avg_output = torch.zeros(num_labels, num_units)
+    targets = torch.argmax(network.val_target, dim=1)  # convert from 1-hot vector to int label
+    for label in range(num_labels):
+        label_idx = torch.where(targets == label)  # find all instances of given label
+        avg_output[label, :] = torch.mean(output[label_idx], dim=0)
+    
+    # Find optimal output unit (column) sorting given average responses
+    sorted_output_idx = get_diag_argmax_row_indexes(avg_output.T)
+    
+    return sorted_output_idx
+
+
 def sort_unsupervised_by_test_batch_autoenc(network, test_dataloader):
     """
     Run a test batch and return the output unit sorting that best matches the output activity to the test labels.
@@ -1204,12 +1230,17 @@ def compute_test_activity(network, test_dataloader, population=None, sorted_outp
         for label in range(num_labels):
             label_idx = torch.where(labels == label)
             avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
-
-        silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-        active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-        preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-        _, idx = torch.sort(preferred_input)
-        sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+        if population is network.output_pop:
+            if sorted_output_idx is None:
+                sort_idx = torch.arange(0, network.output_pop.size)
+            else:
+                sort_idx = sorted_output_idx
+        else:
+            silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+            active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+            preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+            _, idx = torch.sort(preferred_input)
+            sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
         avg_pop_activity = avg_pop_activity[sort_idx]
         average_pop_activity_dict[population.fullname] = avg_pop_activity
 
