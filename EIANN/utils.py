@@ -1764,7 +1764,8 @@ def compute_act_weighted_avg(population, dataloader):
     return weighted_avg_input, activity_preferred_inputs
 
 
-def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigmoid=False, softplus=False, export=False, export_path=None, overwrite=False):
+def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigmoid=False, softplus=False, export=False,
+                                    export_path=None, overwrite=False):
     """
     Use the 'activation maximization' method to compute receptive fields for all units in the population
 
@@ -1780,7 +1781,9 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
     if export and overwrite is False:
         # Check if receptive fields and activity_preferred_inputs have already been computed and saved in the data hdf5 file
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        receptive_fields = load_plot_data(population.network.name, population.network.seed, data_key=f'maxact_receptive_fields_{population.fullname}', file_path=export_path)
+        receptive_fields = load_plot_data(population.network.name, population.network.seed,
+                                          data_key=f'maxact_receptive_fields_{population.fullname}',
+                                          file_path=export_path)
         if receptive_fields is not None:
             return receptive_fields                         
 
@@ -1831,7 +1834,9 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
     if export:
         # Save receptive fields and activity_preferred_inputs to data hdf5 file
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        save_plot_data(population.network.name, population.network.seed, data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields, file_path=export_path, overwrite=overwrite)
+        save_plot_data(population.network.name, population.network.seed,
+                       data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields,
+                       file_path=export_path, overwrite=overwrite)
     
     return receptive_fields
 

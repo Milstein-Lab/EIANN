@@ -182,14 +182,14 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     :return: dict
     """
     update_source_contexts(x, context)
-
+    
     data_generator = context.data_generator
     train_sub_dataloader = context.train_sub_dataloader
     val_dataloader = context.val_dataloader
     test_dataloader = context.test_dataloader
-
+    
     epochs = context.epochs
-
+    
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
     
     if export:
@@ -298,7 +298,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if context.compute_receptive_fields:
         # Compute receptive fields
         population = network.H1.E
-        receptive_fields, _ = utils.compute_maxact_receptive_fields(population, test_dataloader)  # , softplus=True)  # sigmoid=False)
+        receptive_fields = utils.compute_maxact_receptive_fields(population, test_dataloader)  # , softplus=True)  # sigmoid=False)
     else:
         receptive_fields = network.H1.E.Input.E.weight.detach()
     

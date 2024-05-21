@@ -308,8 +308,8 @@ class Network(nn.Module):
         """
         for layer in self:
             for post_pop in layer:
-                post_pop.forward_activity = post_pop.activity.clone()
-                post_pop.forward_prev_activity = post_pop.prev_activity.clone()
+                post_pop.forward_activity = post_pop.activity.detach().clone()
+                post_pop.forward_prev_activity = post_pop.prev_activity.detach().clone()
                 
                 init_dend_state = False
                 for projection in post_pop:
