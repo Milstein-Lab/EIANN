@@ -3990,10 +3990,7 @@ class BTSP_16(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            if hasattr(post_pop, 'dendritic_state'):
-                                post_pop.dendritic_state[:] = 0.
-                            else:
-                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -4222,10 +4219,7 @@ class BTSP_17(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            if hasattr(post_pop, 'dendritic_state'):
-                                post_pop.dendritic_state[:] = 0.
-                            else:
-                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -5273,10 +5267,7 @@ class BP_like_1E(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            if hasattr(post_pop, 'dendritic_state'):
-                                post_pop.dendritic_state[:] = 0.
-                            else:
-                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -5452,10 +5443,7 @@ class BP_like_1I(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            if hasattr(post_pop, 'dendritic_state'):
-                                post_pop.dendritic_state[:] = 0.
-                            else:
-                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
@@ -5580,17 +5568,13 @@ class BP_like_2E(LearningRule):
         projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
-        try:
-            if self.projection.direction in ['forward', 'F']:
-                delta_weight = torch.outer(self.projection.post.plateau,
-                                           torch.clamp(self.projection.pre.forward_activity, min=0, max=1))
-            elif self.projection.direction in ['recurrent', 'R']:
-                delta_weight = torch.outer(self.projection.post.plateau,
-                                           torch.clamp(self.projection.pre.forward_prev_activity, min=0, max=1))
-            self.projection.weight.data += self.learning_rate * delta_weight
-        except Exception as e:
-            print(self.projection.name, self.__class__)
-            raise e
+        if self.projection.direction in ['forward', 'F']:
+            delta_weight = torch.outer(self.projection.post.plateau,
+                                       torch.clamp(self.projection.pre.forward_activity, min=0, max=1))
+        elif self.projection.direction in ['recurrent', 'R']:
+            delta_weight = torch.outer(self.projection.post.plateau,
+                                       torch.clamp(self.projection.pre.forward_prev_activity, min=0, max=1))
+        self.projection.weight.data += self.learning_rate * delta_weight
     
     @classmethod
     def backward_nudge_activity(cls, layer, store_dynamics=False):
@@ -5797,10 +5781,7 @@ class BP_like_2L(LearningRule):
                     pre_pop = projection.pre
                     if projection.compartment == 'dend':
                         if not init_dend_state:
-                            if hasattr(post_pop, 'dendritic_state'):
-                                post_pop.dendritic_state[:] = 0.
-                            else:
-                                post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
+                            post_pop.dendritic_state = torch.zeros(post_pop.size, device=post_pop.network.device)
                             init_dend_state = True
                         if projection.direction in ['forward', 'F']:
                             post_pop.dendritic_state = post_pop.dendritic_state + projection(pre_pop.activity)
