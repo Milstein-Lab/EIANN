@@ -595,8 +595,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None):
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, export=False, ax=None):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -605,99 +604,47 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     :param sorted_output_idx: tensor of int
     :param title: str
     """
-    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
 
-    idx, data, targets = next(iter(test_dataloader))
-    data = data.to(network.device)
-    targets = targets.to(network.device)
-    labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
-    output = network.forward(data, no_grad=True)
-
-    # if unsupervised: # sort output units by their mean activity
-    if sorted_output_idx is not None:
-        output = output[:, sorted_output_idx]
-    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
-    percent_correct = torch.round(percent_correct, decimals=2)
+    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population, sorted_output_idx, export=export)
     print(f'Batch accuracy = {percent_correct}%')
 
-    # Plot average output for each label class
-    num_units = targets.shape[1]
-    num_labels = num_units
-    avg_output = torch.zeros(num_units, num_labels)
+    for population, avg_pop_activity in average_pop_activity_dict.items():
+        fig, ax = plt.subplots()
 
-    for label in range(num_labels):
-        label_idx = torch.where(labels == label)  # find all instances of given label
-        avg_output[:, label] = torch.mean(output[label_idx], dim=0)
-
-    fig, axes = plt.subplots()
-    ax = axes
-    im = ax.imshow(avg_output, aspect='auto', interpolation='none')
-    cbar = plt.colorbar(im, ax=ax)
-    ax.set_xticks(range(num_labels))
-    ax.set_yticks(range(num_units))
-    ax.set_xlabel('Labels')
-    ax.set_ylabel('Output unit')
-    if title is not None:
-        ax.set_title(f'Average activity - {network.output_pop.fullname}\n{title}')
-    else:
-        ax.set_title(f'Average activity - {network.output_pop.fullname}')
-    fig.tight_layout()
-    fig.show()
-
-    pop_list = []
-    if population == 'all':
-        for layer in network:
-            for pop in layer:
-                if pop is not network.output_pop:
-                    pop_list.append(pop)
-    elif population is not None and population is not network.output_pop:
-        pop_list.append(population)
-
-    for population in pop_list:
-        avg_pop_activity = torch.zeros(population.size, num_labels)
-        for label in range(num_labels):
-            label_idx = torch.where(labels == label)  # find all instances of given label
-            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
-        silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-        active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-        preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-        _, idx = torch.sort(preferred_input)
-        sort_idx = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
-        fig, axes = plt.subplots()
-        ax = axes
-        im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none', aspect='auto')
+        im = ax.imshow(avg_pop_activity, aspect='auto', interpolation='none')
         cbar = plt.colorbar(im, ax=ax)
-        ax.set_xticks(range(num_labels))
+        ax.set_xticks(range(avg_pop_activity.shape[1]))
         ax.set_xlabel('Labels')
-        ax.set_ylabel(f'{population.fullname} unit')
+        ax.set_ylabel(f'{population} unit')
         if title is not None:
-            ax.set_title(f'Average activity - {population.fullname}\n{title}')
+            ax.set_title(f'Average activity - {population}\n{title}')
         else:
-            ax.set_title(f'Average activity - {population.fullname}')
+            ax.set_title(f'Average activity - {population}')
+
         fig.tight_layout()
         fig.show()
 
 
-def plot_average_population_activity(pop_name, avg_pop_activity, ax):
-    '''
-    Plot average activity of a population
-    :param pop_name: str
-    :param avg_pop_activity: 2D tensor
-    '''
-    # Sort units by preferred label
-    silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-    active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-    preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-    _, idx = torch.sort(preferred_input)
-    sort_idx = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
+# def plot_average_population_activity(pop_name, avg_pop_activity, ax):
+#     '''
+#     Plot average activity of a population
+#     :param pop_name: str
+#     :param avg_pop_activity: 2D tensor
+#     '''
+#     # Sort units by preferred label
+#     silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+#     active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+#     preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+#     _, idx = torch.sort(preferred_input)
+#     sort_idx = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
 
-    # Generate plot
-    im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none', aspect='auto')
-    cbar = plt.colorbar(im, ax=ax)
-    ax.set_xticks(range(avg_pop_activity.shape[1]))
-    ax.set_xlabel('Labels')
-    ax.set_ylabel(f'{pop_name} unit')
-    ax.set_title(f'Average activity - {pop_name}')
+#     # Generate plot
+#     im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none', aspect='auto')
+#     cbar = plt.colorbar(im, ax=ax)
+#     ax.set_xticks(range(avg_pop_activity.shape[1]))
+#     ax.set_xlabel('Labels')
+#     ax.set_ylabel(f'{pop_name} unit')
+#     ax.set_title(f'Average activity - {pop_name}')
 
 
 
