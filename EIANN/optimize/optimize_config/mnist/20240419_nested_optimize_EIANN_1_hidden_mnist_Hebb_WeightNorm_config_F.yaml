@@ -1,19 +1,19 @@
 bounds:
     H1_E_Input_E_learning_rate:
         - 0.0001
-        - 1.
+        - 0.5
     Output_E_H1_E_learning_rate:
         - 0.0001
-        - 1.
+        - 0.5
     E_I_learning_rate:
         - 0.0001
-        - 1.
+        - 0.5
     I_E_learning_rate:
         - 0.0001
-        - 1.
+        - 0.5
     I_I_learning_rate:
         - 0.0001
-        - 1.
+        - 0.5
     Output_E_H1_E_weight_scale:
         - 0.01
         - 10.

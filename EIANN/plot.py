@@ -605,7 +605,8 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     :param title: str
     """
 
-    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population, sorted_output_idx, export=export)
+    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population,
+                                                                          sorted_output_idx, export=export)
     print(f'Batch accuracy = {percent_correct}%')
 
     for population, avg_pop_activity in average_pop_activity_dict.items():
