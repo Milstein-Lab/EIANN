@@ -457,7 +457,8 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     :param seed: int
     """
     if file_path is None:
-        file_path = '../data/.plot_data.h5'
+        root_dir = get_project_root()
+        file_path = root_dir+'/data/.plot_data.h5'
 
     seed = str(seed)
     if os.path.exists(file_path):
@@ -486,7 +487,8 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
     :param overwrite: bool
     """
     if file_path is None:
-        file_path = '../data/.plot_data.h5'
+        root_dir = get_project_root()
+        file_path = root_dir + '/data/.plot_data.h5'
 
     seed = str(seed)
     if os.path.exists(file_path):
@@ -514,7 +516,20 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
             hdf5_file[network_name][seed].create_dataset(data_key, data=data, track_order=True)
             print(f'{data_key} saved to file: {file_path}')
     
+
+def get_project_root():
+    # Assuming the current script is somewhere within the project directory
+    current_path = os.path.abspath(__file__)
     
+    # Traverse up the directory tree until the project root is found
+    while not os.path.isdir(os.path.join(current_path, 'EIANN')):
+        current_path = os.path.dirname(current_path)
+        if current_path == os.path.dirname(current_path):
+            raise FileNotFoundError("Project root directory 'EIANN' not found")
+    
+    return os.path.join(current_path, 'EIANN')
+
+
 # *******************************************************************
 # Functions to generate and process data
 # *******************************************************************
@@ -2051,11 +2066,12 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
     """
 
     # Load dataset
+    root_dir = get_project_root()
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                      torchvision.transforms.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root='../data/datasets/', train=True, download=True,
+    MNIST_train_dataset = torchvision.datasets.MNIST(root=root_dir+'/data/datasets/', train=True, download=True,
                                                      transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root='../data/datasets/', train=False, download=True,
+    MNIST_test_dataset = torchvision.datasets.MNIST(root=root_dir+'/data/datasets/', train=False, download=True,
                                                     transform=tensor_flatten)
 
     # Add index to train & test data
