@@ -418,11 +418,6 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
     :param num_cols: int
     :param num_rows: int
     """
-    if num_units is not None:
-        receptive_fields = receptive_fields[:num_units]
-        if isinstance(scale, torch.Tensor):
-            scale = scale[:num_units]
-
     if isinstance(scale, torch.Tensor):
         scale = scale.diagonal()
         print(f'Min activity: {torch.min(scale)}, Max activity: {torch.max(scale)}')
@@ -435,8 +430,13 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
         sorted_idx = np.argsort(-structure)
         receptive_fields = receptive_fields[sorted_idx]
         if isinstance(scale, torch.Tensor):
-            scale = scale[sorted_idx]
-            
+            scale = scale[sorted_idx] # Sort the vector of scaling factors (e.g. max activity of each unit)
+
+    if num_units is not None:
+        receptive_fields = receptive_fields[:num_units]
+        if isinstance(scale, torch.Tensor):
+            scale = scale[:num_units]        
+
     # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
     if scale is not None:
         receptive_fields = receptive_fields / (torch.max(receptive_fields.abs(), dim=1, keepdim=True)[0] + 1e-10)
@@ -445,8 +445,12 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
         else:
             receptive_fields = receptive_fields * scale     
 
+    if ax_list is None:
+        num_units = receptive_fields.shape[0]
+    else:
+        num_units = len(ax_list)
+
     # Calculate the number of rows and columns for the plot (to make it approximately square)
-    num_units = receptive_fields.shape[0]
     if num_cols is None:
         if num_units < 25:
             num_cols = 5
@@ -454,7 +458,6 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
             num_cols = int(np.ceil(num_units**0.5))
     if num_rows is None:
         num_rows = int(np.ceil(num_units / num_cols))
-    receptive_fields = receptive_fields[:num_cols * num_rows]
 
     size = num_cols
     num_rows += 1
@@ -484,7 +487,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
         my_cmap = cmap
 
     # Plot receptive fields
-    for i in range(receptive_fields.shape[0]):
+    for i in range(num_units):
         row_idx = i // num_cols
         col_idx = i % num_cols
         
@@ -613,7 +616,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, export=False, ax=None):
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, export=False, overwrite=False, ax=None):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -623,8 +626,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     :param title: str
     """
 
-    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population,
-                                                                          sorted_output_idx, export=export)
+    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population, sorted_output_idx, export=export, overwrite=overwrite)
     print(f'Batch accuracy = {percent_correct}%')
 
     if population is None:
