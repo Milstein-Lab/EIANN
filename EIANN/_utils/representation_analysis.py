@@ -1,0 +1,863 @@
+import numpy as np
+import torch
+import matplotlib.pyplot as plt
+from sklearn.metrics.pairwise import cosine_similarity
+from skimage import metrics
+import scipy.stats as stats
+import copy
+from tqdm import tqdm
+from scipy import signal
+
+
+
+def compute_average_activity(activity, labels):
+    '''
+    Compute the average activity for each unit, grouped by the class labels
+    '''
+    num_units = activity.shape[1]
+    num_labels = labels.shape[1]
+    avg_activity = torch.zeros(num_units, num_labels)
+    for label in range(num_labels):
+        label_idx = torch.where(labels == label)
+        avg_activity[:, label] = torch.mean(activity[label_idx], dim=0)
+    return avg_activity
+
+
+def compute_test_activity(network, test_dataloader, population=None, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
+    """
+    Compute total accuracy (% correct) on given dataset
+    :param network:
+    :param test_dataloader:
+    :param population: :class:'Population' or str 'all'
+    :param sorted_output_idx: tensor of int
+    :param title: str
+    """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    if export and overwrite is False:
+        # Check if population activity data already exists in file
+        assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
+        percent_correct = load_plot_data(network.name, network.seed, data_key='percent_correct', file_path=export_path)
+        average_pop_activity_dict = load_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', file_path=export_path)
+        if percent_correct is not None and average_pop_activity_dict is not None:
+            return percent_correct, average_pop_activity_dict    
+
+    average_pop_activity_dict = {}
+
+    idx, data, targets = next(iter(test_dataloader))
+    data = data.to(network.device)
+    targets = targets.to(network.device)
+    labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
+    output = network.forward(data, no_grad=True)
+    num_labels = targets.shape[1]
+
+    # if unsupervised, sort output units by their mean activity
+    if sorted_output_idx is not None:
+        output = output[:, sorted_output_idx]
+    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
+    percent_correct = torch.round(percent_correct, decimals=2)
+
+    # Determine which populations to analyze
+    populations_list = []
+    if population == 'all':
+        reversed_layers = list(network)[::-1]
+        for layer in reversed_layers:
+            populations_list.extend([pop for pop in layer])
+    elif isinstance(population, list):
+        populations_list.extend(population)
+    elif population is not None:
+        populations_list.append(population)
+
+    if len(populations_list)>0 and isinstance(populations_list[0], str):
+        # Convert population names to Population objects
+        populations_list = [network.populations[pop_name] for pop_name in populations_list]
+
+    if network.output_pop not in populations_list:
+        # Add the output population by default
+        populations_list.append(network.output_pop)
+
+    # Compute average activity for each population
+    for population in populations_list:
+        avg_pop_activity = torch.zeros(population.size, num_labels)
+        for label in range(num_labels):
+            label_idx = torch.where(labels == label)
+            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
+        if population is network.output_pop:
+            if sorted_output_idx is None:
+                sort_idx = torch.arange(0, network.output_pop.size)
+            else:
+                sort_idx = sorted_output_idx
+        else:
+            silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+            active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+            preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+            _, idx = torch.sort(preferred_input)
+            sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+        avg_pop_activity = avg_pop_activity[sort_idx]
+        average_pop_activity_dict[population.fullname] = avg_pop_activity
+
+    if export:
+        # Save data to hdf5 file
+        assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
+        save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=export_path, overwrite=overwrite)
+        save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=export_path, overwrite=overwrite)
+    
+    return percent_correct, average_pop_activity_dict
+
+
+def compute_dParam_history(network):
+    dParam_history = {name: [] for name in network.state_dict()}
+
+    for i in range(len(network.param_history) - 1):
+        state_dict1 = network.param_history[i]
+        state_dict2 = network.param_history[i + 1]
+
+        for param_name, param_val1, param_val2 in zip(state_dict1.keys(), state_dict1.values(), state_dict2.values()):
+            d_param = param_val2 - param_val1
+            dParam_history[param_name].append(d_param)
+
+    for name, value in dParam_history.items():
+        dParam_history[name] = torch.stack(value)
+
+    return dParam_history
+
+
+def compute_sparsity_history(activity_history):
+    """
+    Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
+    TODO: check activity_history dimensions
+    """
+    population_activity = activity_history #dims: 0=history, 1=dynamics, 2=patterns, 3=units
+    n = population_activity.shape[3]
+    activity_fraction = (torch.sum(population_activity,dim=3) / n) ** 2 / (torch.sum((population_activity**2 / n),dim=3)+1e-10)
+    sparsity_history = (1 - activity_fraction) / (1 - 1 / n)
+    return sparsity_history
+
+
+def compute_selectivity_history(activity_history):
+    """
+    Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
+    TODO: check activity_history dimensions
+    """
+    population_activity = activity_history #dims: 0=history, 1=dynamics, 2=patterns, 3=units
+    n = population_activity.shape[2]
+    activity_fraction = (torch.sum(population_activity,dim=2) / n) ** 2 / (torch.sum((population_activity**2 / n),dim=2)+1e-10)
+    selectivity_history = (1 - activity_fraction) / (1 - 1 / n)
+    return selectivity_history
+
+
+def spatial_structure_similarity_fft(img1, img2):
+    '''
+    Compute the structural similarity of two images based on the correlation of their 2D spatial frequency distributions
+    :param img1: 2D numpy array of pixels
+    :param img2: 2D numpy array of pixels
+    :return:
+    '''
+    # Compute the 2D spatial frequency distribution of each image
+    freq1 = np.abs(np.fft.fftshift(np.fft.fft2(img1 - np.mean(img1))))
+    freq2 = np.abs(np.fft.fftshift(np.fft.fft2(img2 - np.mean(img2))))
+
+    # Compute the frequency correlation
+    spatial_structure_similarity =  signal.correlate2d(freq1, freq2, mode='valid')[0][0]
+
+    return spatial_structure_similarity
+
+
+def compute_rf_structure(receptive_fields, dimensions=None, method='moran'):
+    structure_ls = []
+    for unit_rf in receptive_fields:
+        similarity_to_noise = 0
+
+        if dimensions is None:
+            rf_width = rf_height = 28
+        else:
+            rf_width, rf_height = dimensions
+
+        if torch.all(unit_rf == 0): # if receptive field is all zeros
+            structure_ls.append(np.nan)
+
+        else:
+            if method == 'moran':
+                    # Calculate Moran's I (spatial autocorrelation)
+                    spatial_autocorrelation = np.abs(compute_morans_I(unit_rf.view(rf_width, rf_height).detach().numpy()))
+                    structure_ls.append(spatial_autocorrelation)
+            else:
+                for i in range(3):  # structural similarity to noise (averaged across 3 random noise images)
+                    # noise = np.random.uniform(min(unit_rf), max(unit_rf), (rf_width, rf_height))
+                    noise = unit_rf.clone()[torch.randperm(rf_width * rf_height)].view(rf_width, rf_height).numpy() # generate "noise" by random permutation of original unit_rf
+                    if method == 'fft':
+                        reference_correlation = spatial_structure_similarity_fft(noise, noise)
+                        similarity_to_noise += spatial_structure_similarity_fft(unit_rf.view(rf_width, rf_height).numpy(), noise) / reference_correlation
+                    elif method == 'ssim':
+                        similarity_to_noise += metrics.structural_similarity(unit_rf.view(rf_width, rf_height).numpy(), noise)
+                structure_ls.append(1 - similarity_to_noise/3)
+    
+    return np.array(structure_ls)
+
+
+def compute_morans_I(array, kernel_size=1):
+    """
+    Compute the Global Moran's I for a 2D numpy array using a specified kernel size.
+    
+    Parameters:
+    array (numpy.ndarray): A 2D numpy array representing the spatial data.
+    kernel_size (int): The size of the kernel to define the local neighborhood.
+                       Default is 1, which corresponds to the 8 neighboring values.
+    
+    Returns:
+    float: The Global Moran's I value.
+    
+    Moran's I formula:
+    I = (N / W) * (sum_i sum_j w_ij * (x_i - x_bar) * (x_j - x_bar)) / (sum_i (x_i - x_bar)^2)
+    where:
+    - N is the total number of pixels,
+    - W is the sum of all weights,
+    - x_i and x_j are pixel values,
+    - x_bar is the mean of all pixel values,
+    - w_ij is the weight between pixel i and pixel j.
+    """
+    assert kernel_size > 0, 'Kernel size must be greater than 0'
+    assert kernel_size % 1 == 0, 'Kernel size must be an integer'
+    assert array.ndim == 2, 'Input array must be 2D'
+    assert kernel_size < min(array.shape), 'Kernel size must be less than the smallest dimension of the input array'
+    
+    # Total number of pixels
+    N = array.size
+    
+    # Mean of the input array (x̄)
+    mean_val = np.mean(array)
+    
+    # Global sum of squared deviations from the mean (∑(xᵢ - x̄)²)
+    global_deviation = np.sum((array - mean_val) ** 2)
+    
+    # Define the kernel for the weights matrix
+    kernel_shape = (2 * kernel_size + 1, 2 * kernel_size + 1)
+    weights_kernel = np.ones(kernel_shape)
+    weights_kernel[kernel_size, kernel_size] = 0  # Set self-weight to 0 (w_ii = 0)
+    
+    # Compute the sum of all weights (W)
+    W = np.sum(weights_kernel) * N
+    
+    # # Compute the local deviations from the mean
+    deviations = array - mean_val
+    
+    # # Compute the weighted sum of cross-products using convolution
+    weighted_cross_sum = signal.convolve2d(deviations, weights_kernel, mode='same', boundary='fill', fillvalue=0) * deviations
+
+    # Sum all weighted cross-products
+    total_sum = np.sum(weighted_cross_sum)
+    
+    # Compute the Global Moran's I using the provided equation
+    morans_I = (N / W) * (total_sum / global_deviation)
+    
+    return morans_I
+
+
+def compute_diag_fisher(network, train_dataloader_CL1_full):
+    '''
+    Compute the diagonal of the Fisher Information Matrix for the network, for implementation of the EWC continual learning algorithm.
+    '''
+    assert len(train_dataloader_CL1_full) == 1, "The dataloader should only have one batch"
+    idx, data, target = next(iter(train_dataloader_CL1_full))
+
+    params_with_grad = {name:param for name,param in network.named_parameters() if param.requires_grad}
+    output = network(data)
+    label = torch.argmax(target, dim=1)
+    loss = torch.nn.NLLLoss()(output, label)
+    # loss = network.criterion(output, target)
+    loss.backward()
+    
+    diag_fisher = {name: param.grad.data**2 for name, param in params_with_grad.items()} # Diagonal of the Fisher Information Matrix
+    return diag_fisher
+
+
+def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False):
+    """
+    Compute representation metrics for a population of neurons
+    :param population: Population object
+    :param receptive_fields: (optional) receptive fields for each neuron
+    :return: dictionary of metrics
+    """
+
+    network = population.network
+    idx, data, target = next(iter(test_dataloader))
+    data.to(network.device)
+    network.forward(data, no_grad=True)
+    activity = population.activity
+
+    num_patterns = activity.shape[0]
+    num_units = activity.shape[1]
+
+    # Compute population sparsity
+    activity_fraction = (torch.sum(activity, dim=1) / num_units) ** 2 / torch.sum(activity ** 2 / num_units, dim=1)
+    sparsity = (1 - activity_fraction) / (1 - 1 / num_units)
+    sparsity[torch.where(torch.sum(activity, dim=1) == 0.)] = 0.
+        # fraction_nonzero_units = np.count_nonzero(activity, axis=1) / num_units
+        # active_pattern_idx = np.where(fraction_nonzero_units != 0.)[0] #exlcude silent patterns
+        # sparsity = 1 - fraction_nonzero_units[active_pattern_idx]
+
+    total_act = torch.sum(population.activity, dim=0)
+    active_units_idx = torch.where(total_act > 1e-10)[0]
+
+    # Compute unit selectivity
+    activity_fraction = (torch.sum(activity[:,active_units_idx], dim=0) / num_patterns)**2 / \
+                        torch.sum(activity[:,active_units_idx]**2 / num_patterns, dim=0)
+    selectivity = (1 - activity_fraction) / (1 - 1 / num_patterns)
+    selectivity[torch.where(torch.sum(activity[:,active_units_idx], dim=0) == 0.)] = 0.
+        # fraction_nonzero_patterns = np.count_nonzero(activity, axis=0) / num_patterns
+        # active_unit_idx = np.where(fraction_nonzero_patterns != 0.)[0] #exlcude silent units
+        # selectivity = 1 - fraction_nonzero_patterns[active_unit_idx]
+
+    # Compute discriminability
+    silent_pattern_idx = np.where(torch.sum(activity, dim=1) == 0.)[0]
+    similarity_matrix = cosine_similarity(activity)
+    similarity_matrix[silent_pattern_idx,:] = 1
+    similarity_matrix[:,silent_pattern_idx] = 1
+    similarity_matrix_idx = np.tril_indices_from(similarity_matrix, -1) # select values below diagonal
+    similarity = similarity_matrix[similarity_matrix_idx]
+    discriminability = 1 - similarity
+
+    # Compute structure
+    if receptive_fields is not None:
+        receptive_fields = receptive_fields[active_units_idx]
+        structure = compute_rf_structure(receptive_fields)
+    else:
+        structure = None
+
+    if plot:
+        fig, ax = plt.subplots(2,2,figsize=[12,5])
+        ax[0,0].hist(sparsity,50)
+        ax[0,0].set_title('Sparsity distribution')
+        ax[0,0].set_ylabel('num patterns')
+        ax[0,0].set_xlabel('(1 - fraction active units)')
+
+        ax[0,1].hist(selectivity,50)
+        ax[0,1].set_title('Selectivity distribution')
+        ax[0,1].set_ylabel('num units')
+        ax[0,1].set_xlabel('(1 - fraction active patterns)')
+
+        ax[1,0].set_title('Discriminability distribution')
+        ax[1,0].hist(discriminability, 50)
+        ax[1,0].set_ylabel('pattern pairs')
+        ax[1,0].set_xlabel('(1 - cosine similarity)')
+
+        if receptive_fields is not None:
+            ax[1,1].hist(structure, 50)
+            ax[1,1].set_title('Structure')
+            ax[1,1].set_ylabel('num units')
+            ax[1,1].set_xlabel('(1 - similarity to random noise)')
+            plt.tight_layout()
+        else:
+            ax[1,1].axis('off')
+
+    return {'sparsity': sparsity, 'selectivity': selectivity,
+            'discriminability': discriminability, 'structure': structure}
+
+
+def compute_alternate_dParam_history(dataloader, network, network2=None, save_path=None, batch_size=None, constrain_params=None):
+    """
+    Iterate through the parameter history and compute both the actual dParam at each training step 
+    and the alternate dParam predicted from either a backprop/gradient descent step or from an identical 
+    network with a custom learning rule
+
+    :param dataloader:
+    :param network: network with param_history
+    :param network2: (optional) network with a custom learning rule
+    :param save_path: (optional) path to save network clone with new param_history
+    :param batch_size: (optional) batch size to use for alternate dParam computation
+    :param constrain_params: (optional) constrain weights and biases to valid range (e.g. to obey Dale's law)
+    :return: list of angles (in degrees)
+    """
+    assert len(network.param_history)>0, 'Network must have param_history'
+    assert len(dataloader)==1, 'Dataloader must have a single large batch'
+
+    idx, data, target = next(iter(dataloader))
+
+    if batch_size is None:
+        print('Warning: batch_size not specified, default batch_size is full dataset')
+        sample_data = data
+        sample_target = target.squeeze()
+
+    if network2 is None: # Turn on gradient tracking to compute backprop dW
+        test_network = build_clone_network(network, backprop=True)
+    else:
+        test_network = build_clone_network(network2, backprop=False)
+        if "Backprop" in str(test_network.backward_methods):
+            assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
+
+    test_network.batch_size = batch_size
+    test_network.constrain_params = constrain_params
+    # test_network.reset_history()
+
+    # Align param_history and prev_param_history (exclude initial params)
+    if len(network.prev_param_history)==0: # if interval step is 1
+        print('WARNING: network.prev_param_history is empty, using network.param_history instead')
+        prev_param_history = network.param_history[:-1] # exclude final params
+        param_history = network.param_history[1:] # exclude initial params
+        param_history_steps = network.param_history_steps[1:]
+    else:
+        prev_param_history = network.prev_param_history
+        param_history = network.param_history
+        param_history_steps = network.param_history_steps
+
+    actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    actual_dParam_history_all = []
+    actual_dParam_history_dict_stepaveraged = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    actual_dParam_history_stepaveraged_all = []
+    predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    predicted_dParam_history_all = []
+
+    for t in tqdm(range(len(param_history))):  
+        # Load params into network
+        state_dict = prev_param_history[t]
+        if network2 is not None:
+            # Select only params that are in both networks
+            state_dict = {name:param for name,param in state_dict.items() if name in test_network.state_dict()}
+        test_network.load_state_dict(state_dict)
+        test_network.prev_param_history.append(copy.deepcopy(state_dict))
+ 
+        # Compute forward pass
+        if batch_size is not None:
+            sample_idx = network.sample_order[param_history_steps[t]:param_history_steps[t]+batch_size]            
+            sample_data = data[sample_idx]
+            sample_target = target[sample_idx]
+
+        output = test_network.forward(sample_data)
+        loss = test_network.criterion(output, sample_target)   
+
+        # Compute backward pass update
+        if network2 is None:
+            # Regular backprop update
+            test_network.zero_grad()
+            loss.backward() 
+            test_network.optimizer.step()    
+            if constrain_params==True:
+                test_network.constrain_weights_and_biases()
+        else:
+            # Backward update specified by learning rules in network2
+            for backward in test_network.backward_methods:
+                backward(test_network, output, sample_target)
+
+            # Step weights and biases
+            for layer in test_network:
+                for population in layer:
+                    if population.include_bias:
+                        population.bias_learning_rule.step()
+                    for projection in population:
+                        projection.learning_rule.step()
+            if constrain_params is None or constrain_params==True:
+                test_network.constrain_weights_and_biases()
+
+        new_state_dict = test_network.state_dict() 
+        test_network.param_history.append(copy.deepcopy(new_state_dict))
+
+        # Compute the predicted dParam (from the test network)
+        dParam_vec = []
+        for key in predicted_dParam_history_dict:
+            dParam = (new_state_dict[key]-state_dict[key])
+            predicted_dParam_history_dict[key].append(dParam)
+            dParam_vec.append(dParam.flatten())
+
+            # if torch.all(dParam==0) and t>100 and "DendI" not in key:
+            #     print(f'Warning: dParam is all zeros at step {t}, {key}')
+            #     print(torch.all(new_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
+            #     return state_dict, new_state_dict, output, loss, dParam
+
+        predicted_dParam_history_all.append(torch.cat(dParam_vec))
+        
+        # Compute the actual dParam of the first network
+        next_state_dict = param_history[t]
+        dParam_vec = []
+        for key in actual_dParam_history_dict:
+            dParam = (next_state_dict[key]-state_dict[key])
+            actual_dParam_history_dict[key].append(dParam)
+            dParam_vec.append(dParam.flatten())
+
+            # if torch.all(dParam==0) and t>100 and "DendI" not in key:
+            #     print(f'Warning: actual dParam is all zeros at step {t}, {key}')
+            #     print(torch.all(next_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
+            #     return state_dict, new_state_dict, output, loss, dParam
+
+        actual_dParam_history_all.append(torch.cat(dParam_vec))
+
+        # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
+        if t<len(param_history)-1:
+            next_state_dict = prev_param_history[t+1]
+            dParam_vec = []
+            for key in actual_dParam_history_dict_stepaveraged:
+                dParam = (next_state_dict[key]-state_dict[key])
+                actual_dParam_history_dict_stepaveraged[key].append(dParam)
+                dParam_vec.append(dParam.flatten())
+            actual_dParam_history_stepaveraged_all.append(torch.cat(dParam_vec))
+
+    predicted_dParam_history_dict['all_params'] = predicted_dParam_history_all
+    actual_dParam_history_dict['all_params'] = actual_dParam_history_all
+    actual_dParam_history_dict_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
+
+    test_network.predicted_dParam_history = predicted_dParam_history_dict
+    test_network.actual_dParam_history = actual_dParam_history_dict
+    test_network.actual_dParam_history_stepaveraged = actual_dParam_history_dict_stepaveraged
+
+    test_network.params_to_save.append('predicted_dParam_history')
+    test_network.params_to_save.append('actual_dParam_history')
+    test_network.params_to_save.append('actual_dParam_history_stepaveraged')
+    if save_path is not None:
+        test_network.save(save_path)
+
+    return test_network
+
+
+def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=False, binarize=False, only_updated_params=False):
+
+    '''
+    Compute the angle between the actual and predicted parameter updates (dW) for each training step.
+    The angle is computed as the arccosine of the dot product between the two vectors, normalized by the product of their norms (resulting in a value between 0 and 180 degrees).
+
+    :param test_network: network generated from compute_alternate_dParam_history (with actual_dParam_history and predicted_dParam_history)
+    :param plot: bool, plot the angle for each parameter
+    :return: dictionary of angles (in degrees)
+    '''
+
+    if plot:
+        n_params = len(actual_dParam_history)
+        fig, axes = plt.subplots(n_params, 1, figsize=(8,n_params*2))
+        ax_top = axes[0]
+  
+    angles = {}
+
+    for i, param_name in enumerate(actual_dParam_history):
+        angles[param_name] = []
+        
+        for t, (predicted_dParam, actual_dParam) in enumerate(zip(predicted_dParam_history[param_name], actual_dParam_history[param_name])):
+
+            # Compute angle between parameter update (dW) vectors
+            predicted_dParam = predicted_dParam.flatten()
+            actual_dParam = actual_dParam.flatten()
+            if binarize:
+                predicted_dParam = torch.sign(predicted_dParam)
+                actual_dParam = torch.sign(actual_dParam)
+            if only_updated_params:
+                updated_idx = torch.where(actual_dParam != 0)
+                # if len(updated_idx[0]) != len(actual_dParam):
+                #     print(f"Percentage updated = {len(updated_idx[0])/len(actual_dParam)*100:.2f}%")
+                predicted_dParam = predicted_dParam[actual_dParam != 0]
+                actual_dParam = actual_dParam[actual_dParam != 0]
+
+
+                
+            vector_product = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-100)
+            angle_rad = np.arccos(torch.round(vector_product,decimals=5))
+            angle = angle_rad * 180 / np.pi
+            angles[param_name].append(angle)
+            # if torch.isnan(angle):
+            #     print(f'Warning: angle is NaN at step {t}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
+            #     return predicted_dParam, actual_dParam
+
+        if plot:
+            ax = axes[n_params-(i+1)]
+            ax.plot(angles[param_name])
+            ax_top.plot(angles[param_name], color='gray', alpha=0.3)
+            ax.plot([0, len(angles[param_name])], [90, 90], color='gray', linestyle='--', alpha=0.5)
+            ax.set_xlabel('Training step')
+            ax.set_ylabel('Angle between \nlearning rules (degrees)')
+
+            max_angle = max(95, np.nanmax(angles[param_name]))
+            ax.set_ylim(bottom=-5, top=max_angle)
+            ax.set_yticks(np.arange(0, max_angle+1, 30))
+            if i == n_params-1:
+                ax.set_ylim(bottom=-5, top=120)
+                ax.set_yticks(np.arange(0, 121, 30))
+
+            avg_angle = np.nanmean(angles[param_name])
+            ax.text(0.03, 0.12, f'Avg angle = {avg_angle:.2f} degrees', transform=ax.transAxes)
+            if '.' in param_name:
+                param_name = param_name.split('.')[1]
+            ax.set_title(param_name)
+
+            plt.tight_layout()
+            fig.show()
+
+    return angles
+
+
+def recompute_dParam_history_all(network):
+    '''
+    Recompute the 'all_params' key in dParam history (in case any changes are made to the dParam_history dicts)
+    '''
+
+    actual_dParam_history_all = []
+    actual_dParam_history_stepaveraged_all = []
+    predicted_dParam_history_all = []
+
+    for t in range(len(network.param_history)):
+        # Compute the predicted dParam (from the test network)
+        dParam_vec = []
+        for name,dParam_history in network.predicted_dParam_history.items():
+            dParam_vec.append(dParam_history[t].flatten())
+        predicted_dParam_history_all.append(torch.cat(dParam_vec))
+
+        # Compute the actual dParam of the first network
+        dParam_vec = []
+        for name,dParam_history in network.actual_dParam_history.items():
+            dParam_vec.append(dParam_history[t].flatten())
+        actual_dParam_history_all.append(torch.cat(dParam_vec))
+
+        # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
+        if t<len(network.param_history)-1:
+            dParam_vec = []
+            for name,dParam_history in network.actual_dParam_history_stepaveraged.items():
+                dParam_vec.append(dParam_history[t].flatten())
+            actual_dParam_history_stepaveraged_all.append(torch.cat(dParam_vec))
+
+    network.actual_dParam_history['all_params'] = actual_dParam_history_all
+    network.actual_dParam_history_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
+    network.predicted_dParam_history['all_params'] = predicted_dParam_history_all
+
+
+def compute_act_weighted_avg(population, dataloader):
+    """
+    Compute activity-weighted average input for every unit in the population
+
+    :param population:
+    :param dataloader:
+    :return:
+    """
+
+    idx, data, target = next(iter(dataloader))
+    network = population.network
+
+    network.forward(data, no_grad=True)  # compute unit activities in forward pass
+    pop_activity = population.activity
+    weighted_avg_input = (data.T @ pop_activity) / (pop_activity.sum(axis=0) + 0.0001) # + epsilon to avoid div-by-0 error
+    weighted_avg_input = weighted_avg_input.T
+
+    network.forward(weighted_avg_input, no_grad=True)  # compute unit activities in forward pass
+    activity_preferred_inputs = population.activity.detach().clone()
+
+    return weighted_avg_input, activity_preferred_inputs
+
+
+def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigmoid=False, softplus=False, export=False,
+                                    export_path=None, overwrite=False):
+    """
+    Use the 'activation maximization' method to compute receptive fields for all units in the population
+
+    :param population:
+    :param dataloader:
+    :param num_units:
+    :param sigmoid: if True, use sigmoid activation function for the input images;
+                    if False, returns unfiltered receptive fields and activities from act_weighted_avg images
+    :param softplus: if True, use softplus activation function for the input images;
+    :return:
+    """
+
+    if export and overwrite is False:
+        # Check if receptive fields and activity_preferred_inputs have already been computed and saved in the data hdf5 file
+        assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
+        receptive_fields = load_plot_data(population.network.name, population.network.seed,
+                                          data_key=f'maxact_receptive_fields_{population.fullname}',
+                                          file_path=export_path)
+        if receptive_fields is not None:
+            return torch.tensor(receptive_fields)
+
+    # Otherwise, compute receptive fields
+    learning_rate = 1.
+    num_steps = 1000
+    network = population.network
+
+    if network.backward_steps == 0:
+        network.backward_steps = 3
+
+    weighted_avg_input, activity_preferred_inputs = compute_act_weighted_avg(population, dataloader)
+
+    if num_units is None or num_units>population.size:
+        num_units = population.size
+
+    input_images = weighted_avg_input[0:num_units,:] + 0.1*torch.randn(num_units, weighted_avg_input.shape[1]) 
+
+    input_images.requires_grad = True
+    optimizer = torch.optim.SGD([input_images], lr=learning_rate)
+
+    loss_history = []
+    print("Optimizing receptive field images...")
+    for step in tqdm(range(num_steps)):
+        if sigmoid:
+            im = torch.sigmoid((input_images-0.5)*10)
+            network.forward(im)  # compute unit activities in forward pass
+        elif softplus:
+            im = torch.nn.functional.softplus(input_images)
+            network.forward(im)  # compute unit activities in forward pass
+        else:
+            network.forward(input_images)  # compute unit activities in forward pass
+        pop_activity = population.activity[:,0:num_units]
+        loss = torch.sum(-torch.log(torch.diagonal(pop_activity) + 0.001))
+        loss_history.append(loss.item())
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    receptive_fields = input_images.detach().clone()
+    if sigmoid:
+        receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
+        network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
+    elif softplus:
+        receptive_fields = torch.nn.functional.softplus(receptive_fields)
+        network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
+
+    if export:
+        # Save receptive fields and activity_preferred_inputs to data hdf5 file
+        assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
+        save_plot_data(population.network.name, population.network.seed,
+                       data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields,
+                       file_path=export_path, overwrite=overwrite)
+    
+    return receptive_fields
+
+
+def compute_unit_receptive_field(population, dataloader, unit):
+    """
+    Use the 'activation maximization' method to compute receptive fields for all units in the population
+
+    :param population:
+    :param dataloader:
+    :param num_units:
+    :return:
+    """
+
+    idx, data, target = next(iter(dataloader))
+    learning_rate = 0.1
+    num_steps = 10000
+    network = population.network
+
+    # turn on network gradients
+    if network.forward(data[0]).requires_grad == False:
+        network.backward_steps = 1
+        for param in network.parameters():
+            param.requires_grad = True
+
+    weighted_avg_input = compute_act_weighted_avg(population, dataloader)
+
+    input_image = weighted_avg_input[unit]
+    input_image.requires_grad = True
+    optimizer = torch.optim.SGD([input_image], lr=learning_rate)
+
+    print("Optimizing receptive field images...")
+    for step in tqdm(range(num_steps)):
+        network.forward(input_image)  # compute unit activities in forward pass
+        unit_activity = population.activity[unit]
+        loss = -torch.log(unit_activity + 0.001)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    return input_image.detach()
+
+
+def compute_PSD(receptive_field, plot=False):
+    '''
+    Compute the power spectral density of a receptive field image
+    Function based on https://bertvandenbroucke.netlify.app/2019/05/24/computing-a-power-spectrum-in-python/
+
+    :param receptive_field: 2D numpy array of pixels
+    :param plot: bool
+    :return: frequencies, spectral_power, peak_spatial_frequency
+    '''
+
+    # Take Fourier transform of the receptive field
+    fourier_image = np.fft.fftn(receptive_field)
+    fourier_amplitudes = np.abs(fourier_image)**2
+
+    # Get frequencies corresponding to signal PSD
+    # (bin the results of the Fourier analysis by contstructing an array of wave vector norms)
+    npix = receptive_field.shape[0] # this only works for a square image
+    kfreq = np.fft.fftfreq(npix) * npix
+    kfreq2D = np.meshgrid(kfreq, kfreq)
+    knorm = np.sqrt(kfreq2D[0]**2 + kfreq2D[1]**2)
+    knorm = knorm.flatten()
+    fourier_amplitudes = fourier_amplitudes.flatten()
+
+    # Create the frequency power spectrum
+    kbins = np.arange(0.5, npix//2+1, 1.)
+    kvals = 0.5 * (kbins[1:] + kbins[:-1])
+    Abins, _, _ = stats.binned_statistic(knorm, fourier_amplitudes,
+                                         statistic = "mean",
+                                         bins = kbins)
+    Abins *= np.pi * (kbins[1:]**2 - kbins[:-1]**2)
+    peak_spatial_frequency = np.argmax(Abins)
+    spectral_power = Abins
+    frequencies = kvals
+
+    if plot:
+        fig, ax = plt.subplots(1,2)
+        ax[0].imshow(receptive_field)
+        ax[1].loglog(kvals, Abins)
+        ax[1].set_xlabel("Spatial Frequency $k$ [pixels]")
+        ax[1].set_ylabel("Power per Spatial Frequency $P(k)$")
+        plt.show()
+
+    return frequencies, spectral_power, peak_spatial_frequency
+
+
+def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, store_num_steps=None,
+                                 debug=False, disp=False, plot=False):
+    """
+
+    :param network: :class:'Network'
+    :param dataloader: :class:'torch.DataLoader'
+    :param equilibration_activity_tolerance: float in [0, 1]
+    :param store_num_steps: int
+    :param debug: bool
+    :param disp: bool
+    :param: plot: bool
+    :return: bool
+    """
+    idx, data, targets = next(iter(dataloader))
+    network.forward(data, store_dynamics=True, no_grad=True, store_num_steps=store_num_steps)
+    
+    passed = True
+    
+    if plot:
+        max_rows = 1
+        for layer in network:
+            max_rows = max(max_rows, len(layer.populations))
+        cols = len(network.layers) - 1
+        fig, axes = plt.subplots(max_rows, cols, figsize=(3.2 * cols, 3. * max_rows))
+        if max_rows == 1:
+            if cols == 1:
+                axes = [[axes]]
+            else:
+                axes = [axes]
+        elif cols == 1:
+            axes = [[axis] for axis in axes]
+
+    for i, layer in enumerate(network):
+        if i > 0:
+            col = i - 1
+            for row, population in enumerate(layer):
+                if len(population.forward_steps_activity) == 1:
+                    return True
+                # for memory efficiency
+                average_activity = torch.tensor([torch.mean(step) for step in population.forward_steps_activity])
+                population.forward_steps_activity = []
+                if plot:
+                    this_axis = axes[row][col]
+                    this_axis.plot(average_activity)
+                    this_axis.set_xlabel('Equilibration time steps')
+                    this_axis.set_ylabel('Average population activity')
+                    this_axis.set_title('%s.%s' % (layer.name, population.name))
+                    this_axis.set_ylim((0., this_axis.get_ylim()[1]))
+                equil_mean = torch.mean(average_activity[-2:])
+                if equil_mean > 0:
+                    equil_delta = torch.abs(average_activity[-1] - average_activity[-2])
+                    equil_error = equil_delta/equil_mean
+                    if equil_error > equilibration_activity_tolerance:
+                        if disp:
+                            print('population: %s failed check_equilibration_dynamics: %.2f' %
+                                  (population.fullname, equil_error))
+                        if not debug:
+                            passed = False
+    if plot:
+        fig.suptitle('Activity dynamics')
+        fig.tight_layout()
+        fig.show()
+    return passed
