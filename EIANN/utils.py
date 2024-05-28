@@ -1815,13 +1815,12 @@ def compute_act_weighted_avg(population, dataloader):
     return weighted_avg_input, activity_preferred_inputs
 
 
-def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigmoid=False, softplus=False, export=False,
+def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, softplus=False, export=False,
                                     export_path=None, overwrite=False):
     """
     Use the 'activation maximization' method to compute receptive fields for all units in the population
 
     :param population:
-    :param dataloader:
     :param num_units:
     :param sigmoid: if True, use sigmoid activation function for the input images;
                     if False, returns unfiltered receptive fields and activities from act_weighted_avg images
@@ -1839,42 +1838,52 @@ def compute_maxact_receptive_fields(population, dataloader, num_units=None, sigm
             return torch.tensor(receptive_fields)
 
     # Otherwise, compute receptive fields
-    learning_rate = 1.
-    num_steps = 1000
+    learning_rate = 10
+    num_steps = 1
     network = population.network
+
+    seed = network.seed
+    torch.manual_seed(seed)
 
     if network.backward_steps == 0:
         network.backward_steps = 3
 
-    weighted_avg_input, activity_preferred_inputs = compute_act_weighted_avg(population, dataloader)
-
     if num_units is None or num_units>population.size:
         num_units = population.size
 
-    input_images = weighted_avg_input[0:num_units,:] + 0.1*torch.randn(num_units, weighted_avg_input.shape[1]) 
+    input_size = population.network.Input.E.size
+    all_images = []
 
-    input_images.requires_grad = True
-    optimizer = torch.optim.SGD([input_images], lr=learning_rate)
-
-    loss_history = []
     print("Optimizing receptive field images...")
-    for step in tqdm(range(num_steps)):
-        if sigmoid:
-            im = torch.sigmoid((input_images-0.5)*10)
-            network.forward(im)  # compute unit activities in forward pass
-        elif softplus:
-            im = torch.nn.functional.softplus(input_images)
-            network.forward(im)  # compute unit activities in forward pass
-        else:
-            network.forward(input_images)  # compute unit activities in forward pass
-        pop_activity = population.activity[:,0:num_units]
-        loss = torch.sum(-torch.log(torch.diagonal(pop_activity) + 0.001))
-        loss_history.append(loss.item())
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
 
-    receptive_fields = input_images.detach().clone()
+    for i in tqdm(range(1000)):   
+        input_images = torch.randn(num_units, input_size)
+        input_images.requires_grad = True
+        optimizer = torch.optim.SGD([input_images], lr=learning_rate)
+        loss_history = []
+
+        for step in range(num_steps):
+            if sigmoid:
+                im = torch.sigmoid((input_images-0.5)*10)
+                network.forward(im)  # compute unit activities in forward pass
+            elif softplus:
+                im = torch.nn.functional.softplus(input_images)
+                network.forward(im)  # compute unit activities in forward pass
+            else:
+                network.forward(input_images)  # compute unit activities in forward pass
+            pop_activity = population.activity[:,0:num_units]
+            L1_norm = torch.sum(torch.abs(input_images))
+            # L2_norm = torch.sum(input_images**2)
+            loss = torch.sum(-torch.log(torch.diagonal(pop_activity) + 0.001)) + 0.001*L1_norm
+            # loss = torch.sum(-torch.diagonal(pop_activity))
+            loss_history.append(loss.detach().numpy())
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        
+        all_images.append(input_images.detach().clone())
+
+    receptive_fields = torch.mean(torch.stack(all_images), dim=0)
     if sigmoid:
         receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
         network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass

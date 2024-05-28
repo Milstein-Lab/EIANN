@@ -459,7 +459,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
     if num_rows is None:
         num_rows = int(np.ceil(num_units / num_cols))
 
-    size = num_cols
+    size = np.min([12, num_cols])
     num_rows += 1
     if ax_list is None:
         axes = gs.GridSpec(num_rows, num_cols)
@@ -497,19 +497,18 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
             ax = ax_list[i]
         
         im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max,
-                       aspect='equal')
+                       aspect='equal', interpolation='none')
         ax.axis('off')
 
 
     if ax_list is None:
+        fig.tight_layout(pad=0.2)
         fig_width, fig_height = fig.get_size_inches()
-        cax = fig.add_axes([0.04, ax.get_position().y0-0.25/fig_height, 0.5, 0.12/fig_height])
+        cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
         cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
-        fig.tight_layout(pad=1., h_pad=0.6, w_pad=0.2)
         fig.show()
     else:
         return im
-
 
 
 
