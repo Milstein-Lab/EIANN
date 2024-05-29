@@ -120,6 +120,10 @@ def config_worker():
         context.retrain = True
     else:
         context.retrain = str_to_bool(context.retrain)
+    if 'plot_initial' not in context():
+        context.plot_initial = False
+    else:
+        context.plot_initial - str_to_bool(context.plot_initial)
 
     context.train_steps = int(context.train_steps)
     
@@ -207,7 +211,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             network.H1.E.Output.E.initial_weight = network.H1.E.Output.E.weight.data.detach().clone()
         except:
             pass
-        plot_batch_accuracy(network, test_dataloader, population='all', title='Initial')
+        if context.plot_initial:
+            plot_batch_accuracy(network, test_dataloader, population='all', title='Initial')
     
     if 'data_file_path' not in context():
         network_name = context.network_config_file_path.split('/')[-1].split('.')[0]

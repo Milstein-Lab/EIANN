@@ -617,7 +617,8 @@ class Layer(object):
 class Population(object):
     def __init__(self, network, layer, name, size, activation, activation_kwargs=None, tau=None,
                  include_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None,
-                 bias_learning_rule=None, bias_learning_rule_kwargs=None, output_pop=False):
+                 bias_learning_rule=None, bias_learning_rule_kwargs=None, custom_update=None, custom_update_kwargs=None,
+                 output_pop=False):
         """
         Class for population of neurons
         :param network: :class:'Network'
@@ -632,6 +633,8 @@ class Population(object):
         :param bias_bounds: tuple of float
         :param bias_learning_rule: str; name of imported callable
         :param bias_learning_rule_kwargs: dict
+        :param custom_update: str; name of imported callable
+        :param custom_update_kwargs: dict
         :param output_pop: bool; a single population must be designated as the output population to compute network loss
         """
         # Constants
@@ -703,7 +706,20 @@ class Population(object):
         self.network.parameter_dict[self.fullname+'_bias'] = self.bias
         self.network.optimizer_params_list.append({'params': self.bias,
                                                    'lr': self.bias_learning_rule.learning_rate})
-
+        
+        # TODO: implement custom state updates per population
+        # if custom_update is not None:
+        #     if isinstance(custom_update, str):
+        #         if hasattr(rules, custom_update):
+        #             custom_update = getattr(rules, custom_update)
+        #         elif hasattr(external, custom_update):
+        #             weight_constraint = getattr(external, weight_constraint)
+        #     if not callable(weight_constraint):
+        #         raise RuntimeError \
+        #             ('Projection: weight_constraint: %s must be imported and callable' %
+        #              weight_constraint)
+            
+        
         # Initialize storage containers
         self.projections = {}
         self.backward_projections = []

@@ -142,6 +142,51 @@ Supervised_BCM_K:
     neg_loss_th: 0.0
     H1_I_size: 50.0
     Output_I_size: 10.0
+BCM_G:
+    #    accuracy: 48.902996
+    #    loss: 0.07365966
+    # stability: after 50000 steps:
+    H1_E_Input_E_learning_rate: 0.0029010192112696193
+    Output_E_H1_E_learning_rate: 0.03765690123422847
+    H1_E_theta_tau: 11.165393748250356
+    Output_E_theta_tau: 12.954627089348698
+    H1_E_BCM_k: 0.0272784790136169
+    Output_E_BCM_k: 0.06829072869429663
+    Output_E_H1_E_init_weight_scale: 9.2754838071429
+    Output_E_Output_I_init_weight_scale: 0.7679331053226829
+    Output_I_Output_E_init_weight_scale: 0.9451901383825889
+    Output_I_H1_E_init_weight_scale: 0.42242991924349105
+    Output_I_Output_I_init_weight_scale: 0.43856483012053055
+    H1_E_Input_E_init_weight_scale: 0.20319646960202867
+    H1_E_H1_I_init_weight_scale: 0.4219551007479686
+    H1_I_H1_E_init_weight_scale: 2.155418341678628
+    H1_I_Input_E_init_weight_scale: 0.6035831622802905
+    H1_I_H1_I_init_weight_scale: 1.322430337756126
+    H1_I_size: 50.0
+    Output_I_size: 10.0
+Supervised_BCM_G2:
+    # unsupervised BCM in H1
+    #    accuracy: 85.6712
+    #    loss: 0.0533921
+    # stability: after 50000 steps:
+    H1_E_Input_E_learning_rate: 0.01749829169485209
+    Output_E_H1_E_learning_rate: 0.008978809126887609
+    H1_E_theta_tau: 38.80993359999905
+    Output_E_theta_tau: 21.15754620123371
+    H1_E_BCM_k: 0.005169647018978234
+    Output_E_BCM_k: 0.5531098139692678
+    Output_E_H1_E_init_weight_scale: 0.3991915172917257
+    Output_E_Output_I_init_weight_scale: 0.32767494686825394
+    Output_I_Output_E_init_weight_scale: 0.10548680474889044
+    Output_I_H1_E_init_weight_scale: 0.22523292409469503
+    Output_I_Output_I_init_weight_scale: 1.9814889965229623
+    H1_E_Input_E_init_weight_scale: 0.751165829750434
+    H1_E_H1_I_init_weight_scale: 1.1764511660173815
+    H1_I_H1_E_init_weight_scale: 1.2919831985490784
+    H1_I_Input_E_init_weight_scale: 0.6527299620086153
+    H1_I_H1_I_init_weight_scale: 0.7782367693328155
+    H1_I_size: 50.0
+    Output_I_size: 10.0
 BP_like_1C:
     #    accuracy: 91.5287
     #    loss: 0.018659778
@@ -955,24 +1000,25 @@ BTSP_1J:
     H1_I_size: 50.0
     Output_I_size: 10.0
 Hebb_WeightNorm_F:
-    # uses parameters optimized for archived Gjorgjieva_Hebb_F
+    #    accuracy: 49.474598
+    #    loss: 0.08348389
     # stability: after 50000 steps:
-    E_I_learning_rate: 0.062482489852286695
-    H1_E_H1_I_weight_scale: 0.5472386961397587
-    H1_E_Input_E_learning_rate: 0.018075543891854
-    H1_E_Input_E_weight_scale: 0.2275382540334865
-    H1_I_H1_E_weight_scale: 0.9484405010952027
-    H1_I_H1_I_weight_scale: 1.430427637218181
-    H1_I_Input_E_weight_scale: 0.6482401218757428
+    H1_E_Input_E_learning_rate: 0.006399455748403886
+    Output_E_H1_E_learning_rate: 0.005535794687994294
+    E_I_learning_rate: 0.004131080449419023
+    I_E_learning_rate: 0.005816623017155056
+    I_I_learning_rate: 0.0732644724270451
+    Output_E_H1_E_weight_scale: 0.11455126037139288
+    Output_E_Output_I_weight_scale: 1.9676380309120707
+    Output_I_Output_E_weight_scale: 5.693821872410665
+    Output_I_H1_E_weight_scale: 0.012341532354608258
+    Output_I_Output_I_weight_scale: 1.7998645095288308
+    H1_E_Input_E_weight_scale: 0.8089700784163808
+    H1_E_H1_I_weight_scale: 0.8999555842295665
+    H1_I_H1_E_weight_scale: 1.0906560553766842
+    H1_I_Input_E_weight_scale: 1.5715490338677425
+    H1_I_H1_I_weight_scale: 1.3767822334757343
     H1_I_size: 50.0
-    I_E_learning_rate: 0.011681659173533036
-    I_I_learning_rate: 0.03983626274491475
-    Output_E_H1_E_learning_rate: 0.25092996555043057
-    Output_E_H1_E_weight_scale: 0.49648510194039225
-    Output_E_Output_I_weight_scale: 0.21585908585681934
-    Output_I_H1_E_weight_scale: 1.9350741166524332
-    Output_I_Output_E_weight_scale: 1.6069296994337003
-    Output_I_Output_I_weight_scale: 0.9473308956836912
     Output_I_size: 10.0
 Supervised_Hebb_WeightNorm_F_archived:
     # uses parameters optimized for archived Supervised_Gjorgjieva_Hebb_F
