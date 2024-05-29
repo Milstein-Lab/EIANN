@@ -10,6 +10,15 @@ from .activations import (
 )
 
 from .data_utils import (
+    write_to_yaml,
+    read_from_yaml,
+    export_metrics_data,
+    import_metrics_data,
+    hdf5_to_dict,
+    dict_to_hdf5,
+    load_plot_data,
+    save_plot_data,
+    get_MNIST_dataloaders,
     n_choose_k,
     n_hot_patterns,
     get_diag_argmax_row_indexes,
@@ -28,19 +37,7 @@ from .data_utils import (
     test_EIANN_CL_config,
 )
 
-from .initialization import scaled_kaiming_init, half_kaiming_init
-
-from .io_utils import (
-    write_to_yaml,
-    read_from_yaml,
-    export_metrics_data,
-    import_metrics_data,
-    hdf5_to_dict,
-    dict_to_hdf5,
-    load_plot_data,
-    save_plot_data,
-    get_MNIST_dataloaders,
-)
+from .weight_inits import scaled_kaiming_init, half_kaiming_init
 
 from .network_utils import (
     build_EIANN_from_config,

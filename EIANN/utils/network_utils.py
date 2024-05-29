@@ -1,5 +1,5 @@
 import EIANN._network as nt
-import EIANN._utils.io_utils as io
+import EIANN.utils as ut
 
 try:
     from collections import Iterable
@@ -66,7 +66,7 @@ def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'
                     layer_config_dict[layer][population]['bias_init_args'] = init_args
         return layer_config_dict       
         
-    network_config = io.read_from_yaml(config_path)
+    network_config = ut.read_from_yaml(config_path)
     layer_config = network_config['layer_config']
     projection_config = network_config['projection_config']
     if config_format == 'simplified':
