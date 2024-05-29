@@ -171,7 +171,7 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     """
     if file_path is None:
         root_dir = get_project_root()
-        file_path = root_dir+'/data/.plot_data.h5'
+        file_path = root_dir+'EIANN/data/.plot_data.h5'
 
     seed = str(seed)
     if os.path.exists(file_path):
@@ -201,7 +201,7 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
     """
     if file_path is None:
         root_dir = get_project_root()
-        file_path = root_dir + '/data/.plot_data.h5'
+        file_path = root_dir + 'EIANN/data/.plot_data.h5'
 
     seed = str(seed)
     if os.path.exists(file_path):
@@ -240,7 +240,8 @@ def get_project_root():
         if current_path == os.path.dirname(current_path):
             raise FileNotFoundError("Project root directory 'EIANN' not found")
     
-    return os.path.join(current_path, 'EIANN')
+    # return os.path.join(current_path, 'EIANN')
+    return current_path
 
 
 def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
@@ -252,9 +253,9 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
     root_dir = get_project_root()
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                      torchvision.transforms.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root=root_dir+'/data/datasets/', train=True, download=True,
+    MNIST_train_dataset = torchvision.datasets.MNIST(root=root_dir+'EIANN/data/datasets/', train=True, download=True,
                                                      transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root=root_dir+'/data/datasets/', train=False, download=True,
+    MNIST_test_dataset = torchvision.datasets.MNIST(root=root_dir+'EIANN/data/datasets/', train=False, download=True,
                                                     transform=tensor_flatten)
 
     # Add index to train & test data
