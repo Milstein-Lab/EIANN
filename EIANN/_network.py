@@ -2,13 +2,10 @@ import torch
 import torch.nn as nn
 from torch.nn import MSELoss, BCELoss
 from torch.optim import Adam, SGD
-import sys
 import os
-import shutil
 import pickle
 import datetime
 from copy import deepcopy
-import time
 from collections import defaultdict
 from functools import partial
 
@@ -72,9 +69,10 @@ class Network(nn.Module):
 
         self.backward_methods = []
         self.module_dict = nn.ModuleDict()
-        # self.projections = self.module_dict
         self.parameter_dict = nn.ParameterDict()
         self.optimizer_params_list = []
+        self.populations = {}
+        self.projections = {}
 
         # Build network populations
         self.output_pop = None
@@ -89,6 +87,8 @@ class Network(nn.Module):
                 else:
                     pop = Population(self, layer, pop_name, **pop_kwargs)
                 layer.append_population(pop)
+                self.populations[pop.fullname] = pop
+
 
         # if no output_pop is designated, default to the first population specified in the final layer
         if self.output_pop is None:
@@ -109,6 +109,7 @@ class Network(nn.Module):
                         post_pop.append_projection(projection)
                         post_pop.incoming_projections[projection.name] = projection
                         pre_pop.outgoing_projections[projection.name] = projection
+                        self.projections[projection.name] = projection
                         if verbose:
                             print(f'Network: appending a projection from {pre_pop.fullname} -> {post_pop.fullname}')
 

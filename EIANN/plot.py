@@ -404,8 +404,8 @@ def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
 
 
-def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_cols=None, num_rows=None,
-                          activity_threshold=1e-10, cmap='custom'):
+def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None, num_cols=None, num_rows=None,
+                          activity_threshold=1e-10, cmap='custom', ax_list=None):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
     structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
@@ -430,8 +430,13 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_cols=None, 
         sorted_idx = np.argsort(-structure)
         receptive_fields = receptive_fields[sorted_idx]
         if isinstance(scale, torch.Tensor):
-            scale = scale[sorted_idx]
-            
+            scale = scale[sorted_idx] # Sort the vector of scaling factors (e.g. max activity of each unit)
+
+    if num_units is not None:
+        receptive_fields = receptive_fields[:num_units]
+        if isinstance(scale, torch.Tensor):
+            scale = scale[:num_units]        
+
     # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
     if scale is not None:
         receptive_fields = receptive_fields / (torch.max(receptive_fields.abs(), dim=1, keepdim=True)[0] + 1e-10)
@@ -440,8 +445,12 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_cols=None, 
         else:
             receptive_fields = receptive_fields * scale     
 
-    # Create figure
-    num_units = receptive_fields.shape[0]
+    if ax_list is None:
+        num_units = receptive_fields.shape[0]
+    else:
+        num_units = len(ax_list)
+
+    # Calculate the number of rows and columns for the plot (to make it approximately square)
     if num_cols is None:
         if num_units < 25:
             num_cols = 5
@@ -449,14 +458,16 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_cols=None, 
             num_cols = int(np.ceil(num_units**0.5))
     if num_rows is None:
         num_rows = int(np.ceil(num_units / num_cols))
-    receptive_fields = receptive_fields[:num_cols * num_rows]
 
-    size = num_cols
-    # size = 6
+    size = np.min([12, num_cols])
     num_rows += 1
-    axes = gs.GridSpec(num_rows, num_cols)
-    fig = plt.figure(figsize=(size, size * num_rows / num_cols))
+    if ax_list is None:
+        axes = gs.GridSpec(num_rows, num_cols)
+        fig = plt.figure(figsize=(size, size * num_rows / num_cols))
+    else:
+        fig = ax_list[0].get_figure()
 
+    # Set colorscale limits for all receptive field images
     colorscale_max = torch.max(receptive_fields.abs())
     if torch.min(receptive_fields) < 0:
         colorscale_min = -colorscale_max
@@ -475,20 +486,29 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_cols=None, 
     else:
         my_cmap = cmap
 
-    for i in range(receptive_fields.shape[0]):
+    # Plot receptive fields
+    for i in range(num_units):
         row_idx = i // num_cols
         col_idx = i % num_cols
-
-        ax = fig.add_subplot(axes[row_idx, col_idx])
+        
+        if ax_list is None:
+            ax = fig.add_subplot(axes[row_idx, col_idx])
+        else:
+            ax = ax_list[i]
+        
         im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max,
-                       aspect='equal')
+                       aspect='equal', interpolation='none')
         ax.axis('off')
 
-    fig.tight_layout(pad=2., h_pad=0.4, w_pad=0.2)
-    fig_width, fig_height = fig.get_size_inches()
-    cax = fig.add_axes([0.03, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
-    cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
-    fig.show()
+
+    if ax_list is None:
+        fig.tight_layout(pad=0.2)
+        fig_width, fig_height = fig.get_size_inches()
+        cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
+        cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
+        fig.show()
+    else:
+        return im
 
 
 
@@ -595,7 +615,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, export=False, ax=None):
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, export=False, overwrite=False, ax=None):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -605,27 +625,44 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     :param title: str
     """
 
-    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population,
-                                                                          sorted_output_idx, export=export)
+    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population, sorted_output_idx, export=export, overwrite=overwrite)
     print(f'Batch accuracy = {percent_correct}%')
 
-    for population, avg_pop_activity in average_pop_activity_dict.items():
-        fig, ax = plt.subplots()
+    if population is None:
+        # Include only first population in the data dict
+        population = list(average_pop_activity_dict.keys())[0]
+        average_pop_activity_dict = {population: average_pop_activity_dict[population]}
+    elif isinstance(population, str):
+        if population != 'all':
+            average_pop_activity_dict = {population: average_pop_activity_dict[population]}
+    elif isinstance(population, list):
+        average_pop_activity_dict = {pop: average_pop_activity_dict[pop] for pop in population}
+    else:
+        assert hasattr(population, 'fullname'), 'Population must be a string, list of strings, or EIANN.Population object'
+        average_pop_activity_dict = {population.fullname: average_pop_activity_dict[population.fullname]}
 
-        im = ax.imshow(avg_pop_activity, aspect='auto', interpolation='none')
-        cbar = plt.colorbar(im, ax=ax)
-        ax.set_xticks(range(avg_pop_activity.shape[1]))
-        ax.set_xlabel('Labels')
-        ax.set_ylabel(f'{population} unit')
-        if title is not None:
-            ax.set_title(f'Average activity - {population}\n{title}')
+    for pop_name, avg_pop_activity in average_pop_activity_dict.items():
+        if ax is None:
+            fig, _ax = plt.subplots()
         else:
-            ax.set_title(f'Average activity - {population}')
+            _ax = ax
 
-        fig.tight_layout()
-        fig.show()
+        im = _ax.imshow(avg_pop_activity, aspect='auto', interpolation='none')
+        cbar = plt.colorbar(im, ax=_ax)
+        _ax.set_xticks(range(avg_pop_activity.shape[1]))
+        _ax.set_xlabel('Labels')
+        _ax.set_ylabel(f'{pop_name} unit')
+        if title is not None:
+            _ax.set_title(f'Average activity - {pop_name}\n{title}')
+        else:
+            _ax.set_title(f'Average activity - {pop_name}')
 
-
+        if ax is None:
+            fig.show()
+        elif isinstance(population, list) and len(population)>1:
+            raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
+            
+            
 # def plot_average_population_activity(pop_name, avg_pop_activity, ax):
 #     '''
 #     Plot average activity of a population
