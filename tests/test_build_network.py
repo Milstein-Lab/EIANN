@@ -26,7 +26,7 @@ def MNIST_dataloaders():
     assert isinstance(data_generator, torch.Generator)
     return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
 
-def test_train_save_network(network, MNIST_dataloaders):
+def test_train_network(network, MNIST_dataloaders):
     train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator =  MNIST_dataloaders
     network.train(train_sub_dataloader, 
                   test_dataloader, 
@@ -35,7 +35,6 @@ def test_train_save_network(network, MNIST_dataloaders):
                   store_history=True, 
                   store_params=True,
                   status_bar=True)
-    network.save("20231025_EIANN_1_hidden_mnist_van_bp_softplus_SGD_config_66049_257_retrained.pkl")
 
 # def test_load_network():
 #     root_dir = ut.get_project_root()
