@@ -4,10 +4,11 @@ Activation functions.
 
 import torch
 import numpy as np
+import EIANN.external as external
+
 
 
 def set_activation(network, activation, **kwargs):
-
     # Set callable activation function
     if isinstance(activation, str):
         if activation in globals():
