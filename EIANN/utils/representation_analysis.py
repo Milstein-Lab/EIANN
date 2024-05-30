@@ -8,6 +8,7 @@ import copy
 from tqdm import tqdm
 from scipy import signal
 
+from EIANN.utils import data_utils
 
 
 def compute_average_activity(activity, labels):
@@ -37,8 +38,8 @@ def compute_test_activity(network, test_dataloader, population=None, sorted_outp
     if export and overwrite is False:
         # Check if population activity data already exists in file
         assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
-        percent_correct = load_plot_data(network.name, network.seed, data_key='percent_correct', file_path=export_path)
-        average_pop_activity_dict = load_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', file_path=export_path)
+        percent_correct = data_utils.load_plot_data(network.name, network.seed, data_key='percent_correct', file_path=export_path)
+        average_pop_activity_dict = data_utils.load_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', file_path=export_path)
         if percent_correct is not None and average_pop_activity_dict is not None:
             return percent_correct, average_pop_activity_dict    
 
@@ -99,8 +100,8 @@ def compute_test_activity(network, test_dataloader, population=None, sorted_outp
     if export:
         # Save data to hdf5 file
         assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
-        save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=export_path, overwrite=overwrite)
-        save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=export_path, overwrite=overwrite)
+        data_utils.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=export_path, overwrite=overwrite)
+        data_utils.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=export_path, overwrite=overwrite)
     
     return percent_correct, average_pop_activity_dict
 
@@ -653,9 +654,9 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     if export and overwrite is False:
         # Check if receptive fields and activity_preferred_inputs have already been computed and saved in the data hdf5 file
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        receptive_fields = load_plot_data(population.network.name, population.network.seed,
-                                          data_key=f'maxact_receptive_fields_{population.fullname}',
-                                          file_path=export_path)
+        receptive_fields = data_utils.load_plot_data(population.network.name, population.network.seed,
+                                                    data_key=f'maxact_receptive_fields_{population.fullname}',
+                                                    file_path=export_path)
         if receptive_fields is not None:
             return torch.tensor(receptive_fields)
 
@@ -716,9 +717,9 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     if export:
         # Save receptive fields and activity_preferred_inputs to data hdf5 file
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        save_plot_data(population.network.name, population.network.seed,
-                       data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields,
-                       file_path=export_path, overwrite=overwrite)
+        data_utils.save_plot_data(population.network.name, population.network.seed,
+                                data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields,
+                                file_path=export_path, overwrite=overwrite)
     
     return receptive_fields
 
