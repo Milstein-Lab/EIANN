@@ -435,7 +435,13 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
     if num_units is not None:
         receptive_fields = receptive_fields[:num_units]
         if isinstance(scale, torch.Tensor):
-            scale = scale[:num_units]        
+            scale = scale[:num_units]   
+
+    if (num_cols is not None) and (num_rows is not None):
+        num_units = num_cols * num_rows
+        receptive_fields = receptive_fields[:num_units]
+        if isinstance(scale, torch.Tensor):
+            scale = scale[:num_units]
 
     # Normalize each receptive_field so the max=1 (while values at 0 are preserved)
     if scale is not None:
@@ -509,7 +515,6 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
         fig.show()
     else:
         return im
-
 
 
 def plot_unit_receptive_field(population, dataloader, unit):
