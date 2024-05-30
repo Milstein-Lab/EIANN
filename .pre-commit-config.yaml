@@ -6,3 +6,5 @@ repos:
         entry: pytest tests/
         language: system
         pass_filenames: false
+        env:
+          PRE_COMMIT_RUN: 1
