@@ -9,7 +9,7 @@ from copy import deepcopy
 from collections import defaultdict
 from functools import partial
 
-from EIANN.utils import half_kaiming_init, scaled_kaiming_init, linear, srelu
+from EIANN.utils import half_kaiming_init, scaled_kaiming_init
 import EIANN.utils as ut
 import EIANN.rules as rules
 import EIANN.external as external
@@ -658,6 +658,8 @@ class Population(object):
                 activation = getattr(torch.nn.functional, activation) 
             elif hasattr(external, activation):
                 activation = getattr(external, activation)
+            elif hasattr(ut, activation):
+                activation = getattr(ut, activation)
         if not callable(activation):
             raise RuntimeError \
                 ('Population: callable for activation: %s must be imported' % activation)

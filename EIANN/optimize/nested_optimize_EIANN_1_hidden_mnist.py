@@ -313,7 +313,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if context.compute_receptive_fields:
         # Compute receptive fields
         population = network.H1.E
-        receptive_fields = utils.compute_maxact_receptive_fields(population, test_dataloader)  # , softplus=True)  # sigmoid=False)
+        receptive_fields = utils.compute_maxact_receptive_fields(population)
     else:
         receptive_fields = network.H1.E.Input.E.weight.detach()
     
