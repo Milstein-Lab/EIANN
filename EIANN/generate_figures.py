@@ -12,7 +12,7 @@ import EIANN.utils as ut
 import EIANN.plot as pt
 
 
-def generate_Figure1(all_dataloaders, show=True, save=False):
+def generate_model_comparison_figure(all_dataloaders, show=True, save=False):
     '''
     Compare vanilla Backprop to networks with 'cortical' architecures (i.e. with somatic feedback inhibition). 
     All networks have 1 hidden layer with 500 E units and 50 somaI units.
@@ -31,13 +31,6 @@ def generate_Figure1(all_dataloaders, show=True, save=False):
                         'figure.figsize': [10.0, 3.0],
                         'svg.fonttype': 'none',
                         'text.usetex': False})
-
-    mm = 1 / 25.4  # millimeters in inches
-    fig = plt.figure(figsize=(180 * mm, 180 * mm))
-    axes = gs.GridSpec(nrows=4, ncols=4,
-                       left=0.06,right=0.98,
-                       top=0.96, bottom = 0.08,
-                       wspace=0.4, hspace=0.2)
         
     model_dict = {"vanBP":      {"config": "20231120_EIANN_1_hidden_mnist_van_bp_relu_SGD_config_G_optimized.yaml", 
                                  "pickle": "20231120_EIANN_1_hidden_mnist_van_bp_relu_SGD_config_G_66049_257.pkl",
@@ -58,6 +51,13 @@ def generate_Figure1(all_dataloaders, show=True, save=False):
                  }
 
 
+    mm = 1 / 25.4  # millimeters in inches
+    fig = plt.figure(figsize=(180 * mm, 180 * mm))
+    axes = gs.GridSpec(nrows=4, ncols=4,
+                       left=0.06,right=0.98,
+                       top=0.96, bottom = 0.04,
+                       wspace=0.4, hspace=0.2)
+
     config_path_prefix = "network_config/mnist/"
     saved_network_path_prefix = "data/mnist/"
     network_seed = 66049
@@ -72,8 +72,8 @@ def generate_Figure1(all_dataloaders, show=True, save=False):
 
         # Check if network data is already saved in plot_data file
         root_dir = ut.get_project_root()
-        if os.path.exists(root_dir+'/data/.plot_data.h5'):
-            with h5py.File(root_dir+'/data/.plot_data.h5', 'r') as f:
+        if os.path.exists(root_dir+'EIANN/data/.plot_data.h5'):
+            with h5py.File(root_dir+'EIANN/data/.plot_data.h5', 'r') as f:
                 if (network.name not in f) or (overwrite==True):
                     # Load network (and use to rerun analyses)
                     saved_network_path = saved_network_path_prefix + model_dict[model_name]["pickle"]
@@ -84,7 +84,7 @@ def generate_Figure1(all_dataloaders, show=True, save=False):
                         network.load(saved_network_path)
 
 
-        # Plot 1: Average population activity / batch accuracy to the test dataset
+        # Plot 1: Average population activity of OutputE (batch accuracy to the test dataset)
         ax = fig.add_subplot(axes[0, i])
         pt.plot_batch_accuracy(network, test_dataloader, population=network.Output.E, ax=ax, export=True, overwrite=False)
         ax.set_title(model_dict[model_name]["name"], fontsize=10)
@@ -92,24 +92,70 @@ def generate_Figure1(all_dataloaders, show=True, save=False):
             ax.set_ylabel('')
 
 
-        # Plot 2: Example receptive fields
-        population = network.H1.E
-        num_units = 9
-        rf_axes = gs.GridSpecFromSubplotSpec(3, 3, subplot_spec=axes[1, i], wspace=0.1, hspace=-0.3)
+        # Plot 2: Example output receptive fields
+        population = network.Output.E
+        num_units = 10
+        ax = fig.add_subplot(axes[1, i])
+        ax.axis('off')
+
+        pos = ax.get_position()
+        new_left = pos.x0 - 0.03  # Move left boundary to the left
+        new_bottom = pos.y0 + 0.08  # Move bottom boundary up
+        new_width = pos.width + 0.04  # Increase width
+        new_height = pos.height - 0.1  # Decrease height
+        ax.set_position([new_left, new_bottom, new_width, new_height])
+        rf_axes = gs.GridSpecFromSubplotSpec(2, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
 
         ax_list = []
         for j in range(num_units):
             ax = fig.add_subplot(rf_axes[j])
             ax_list.append(ax)
-        receptive_fields = ut.compute_maxact_receptive_fields(population, test_dataloader, export=True, overwrite=False)
-        im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list)
-
+            ax.axis('off')
+        
+        receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, overwrite=False)
+        im = pt.plot_receptive_fields(receptive_fields, sort=False, ax_list=ax_list)
         fig_width, fig_height = fig.get_size_inches()
-        cax = fig.add_axes([0.06, ax.get_position().y0-0.1/fig_height, 0.1, 0.05/fig_height])
-        cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
+        cax = fig.add_axes([0.03, ax.get_position().y0-0.1/fig_height, 0.1, 0.05/fig_height])
+        fig.colorbar(im, cax=cax, orientation='horizontal')
 
-        # Plot 3:
+
+        # Plot 3: Average population activity of H1E
         ax = fig.add_subplot(axes[2, i])
+        pt.plot_batch_accuracy(network, test_dataloader, population=network.H1.E, ax=ax, export=True, overwrite=False)
+        ax.set_title(model_dict[model_name]["name"], fontsize=10)
+        if i>0:
+            ax.set_ylabel('')
+
+
+        # # Plot 4: Example hidden receptive fields
+        population = network.H1.E
+        num_units = 25
+        ax = fig.add_subplot(axes[3, i])
+        ax.axis('off')
+
+        pos = ax.get_position()
+        new_left = pos.x0 - 0.03  # Move left boundary to the left
+        new_bottom = pos.y0 + 0.0  # Move bottom boundary up
+        new_width = pos.width + 0.04  # Increase width
+        new_height = pos.height - 0.01  # Decrease height
+        ax.set_position([new_left, new_bottom, new_width, new_height])
+        rf_axes = gs.GridSpecFromSubplotSpec(5, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
+
+        ax_list = []
+        for j in range(num_units):
+            ax = fig.add_subplot(rf_axes[j])
+            ax_list.append(ax)
+            ax.axis('off')
+        
+        receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, overwrite=False)
+        im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list)
+        fig_width, fig_height = fig.get_size_inches()
+        cax = fig.add_axes([0.03, ax.get_position().y0-0.1/fig_height, 0.1, 0.05/fig_height])
+        fig.colorbar(im, cax=cax, orientation='horizontal')
+
+
+
+
 
         # Plot 4: Learning curves
 
@@ -131,8 +177,8 @@ def generate_Figure1(all_dataloaders, show=True, save=False):
         plt.show()
 
     if save:
-        fig.savefig("figures/Figure1.png", dpi=300)
-        fig.savefig("figures/Figure1.svg", dpi=300)
+        fig.savefig("figures/model_comparison.png", dpi=300)
+        # fig.savefig("figures/model_comparison.svg", dpi=300)
 
 
 
@@ -142,4 +188,4 @@ if __name__=="__main__":
 
     all_dataloaders = ut.get_MNIST_dataloaders(sub_dataloader_size=1000)
 
-    generate_Figure1(all_dataloaders)
+    generate_model_comparison_figure(all_dataloaders)
