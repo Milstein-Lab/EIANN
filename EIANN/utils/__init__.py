@@ -10,6 +10,7 @@ from .activations import (
 )
 
 from .data_utils import (
+    nested_convert_scalars,
     write_to_yaml,
     read_from_yaml,
     export_metrics_data,
@@ -46,7 +47,6 @@ from .network_utils import (
     change_learning_rule_to_backprop,
     rename_population,
     recursive_dict_rename,
-    nested_convert_scalars,
     count_dict_elements,
 )
 

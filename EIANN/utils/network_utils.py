@@ -1,12 +1,7 @@
 import EIANN._network as nt
 import EIANN.utils as ut
 
-try:
-    from collections import Iterable
-except:
-    from collections.abc import Iterable
 
-         
 def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'):
     '''
     Build an EIANN network from a config file
@@ -166,31 +161,6 @@ def recursive_dict_rename(my_dict, old_name, new_name):
         elif isinstance(my_dict[key], dict):
             recursive_dict_rename(my_dict[key], old_name, new_name)
     return 
-
-
-def nested_convert_scalars(data):
-    """
-    Crawls a nested dictionary, and converts any scalar objects from numpy types to python types.
-    :param data: dict
-    :return: dict
-    """
-    if isinstance(data, dict):
-        converted_data = dict()
-        for key in data:
-            converted_key = nested_convert_scalars(key)
-            converted_data[converted_key] = nested_convert_scalars(data[key])
-        data = converted_data
-    elif isinstance(data, Iterable) and not isinstance(data, str):
-        data_as_list = list(data)
-        for i in range(len(data)):
-            data_as_list[i] = nested_convert_scalars(data[i])
-        if isinstance(data, tuple):
-            data = tuple(data_as_list)
-        else:
-            data = data_as_list
-    elif hasattr(data, 'item'):
-        data = data.item()
-    return data
 
 
 def count_dict_elements(dict1, leaf=0):

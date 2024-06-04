@@ -10,11 +10,40 @@ import os
 import yaml
 import torchvision
 
+try:
+    from collections import Iterable
+except:
+    from collections.abc import Iterable
 
 
 # *******************************************************************
 # Functions to import and export data
 # *******************************************************************
+
+
+def nested_convert_scalars(data):
+    """
+    Crawls a nested dictionary, and converts any scalar objects from numpy types to python types.
+    :param data: dict
+    :return: dict
+    """
+    if isinstance(data, dict):
+        converted_data = dict()
+        for key in data:
+            converted_key = nested_convert_scalars(key)
+            converted_data[converted_key] = nested_convert_scalars(data[key])
+        data = converted_data
+    elif isinstance(data, Iterable) and not isinstance(data, str):
+        data_as_list = list(data)
+        for i in range(len(data)):
+            data_as_list[i] = nested_convert_scalars(data[i])
+        if isinstance(data, tuple):
+            data = tuple(data_as_list)
+        else:
+            data = data_as_list
+    elif hasattr(data, 'item'):
+        data = data.item()
+    return data
 
 
 def write_to_yaml(file_path, data, convert_scalars=True):
