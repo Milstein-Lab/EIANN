@@ -51,9 +51,6 @@ def main(config_file_path, data_dir):
     data_generator.manual_seed(data_seed)
     network = get_network(config_file_path, network_seed)
     
-    print(network.device)
-    return
-    
     current_time = time.time()
     network.train(train_dataloader, val_dataloader, samples_per_epoch=2000, val_interval=(-2001, -1, 100),
                   status_bar=True, debug=True)
