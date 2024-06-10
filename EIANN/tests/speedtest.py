@@ -52,7 +52,7 @@ def main(config_file_path, data_dir):
     network = get_network(config_file_path, network_seed)
     
     current_time = time.time()
-    network.train(train_dataloader, val_dataloader, samples_per_epoch=2000, val_interval=(-2001, -1, 100),
+    network.train(train_dataloader, val_dataloader, samples_per_epoch=2000, val_interval=(-1001, -1, 100),
                   status_bar=True, debug=True)
     print(time.time() - current_time)
     
