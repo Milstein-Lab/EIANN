@@ -17,7 +17,7 @@ import EIANN.external as external
 
 class Network(nn.Module):
     def __init__(self, layer_config, projection_config, learning_rate, optimizer=SGD, optimizer_kwargs=None,
-                 criterion=MSELoss, criterion_kwargs=None, seed=None, device=None, tau=1, forward_steps=1,
+                 criterion=MSELoss, criterion_kwargs=None, seed=None, device='cpu', tau=1, forward_steps=1,
                  backward_steps=1, verbose=False):
         """
 
@@ -36,16 +36,13 @@ class Network(nn.Module):
         :param verbose: bool
         """
         super().__init__()
-        if device is None:
-            self.dummy_param = nn.Parameter(torch.empty(0))
-            self.device = self.dummy_param.device
-        else:
-            self.device = torch.device(device)
+        self.device = torch.device(device)
         self.layer_config = layer_config
         self.projection_config = projection_config
-        self.training_kwargs = {'learning_rate': learning_rate, 'optimizer': optimizer, 'optimizer_kwargs': optimizer_kwargs,
-                                'criterion': criterion, 'criterion_kwargs': criterion_kwargs, 'device': device,
-                                'tau': tau, 'forward_steps': forward_steps, 'backward_steps': backward_steps}
+        self.training_kwargs = {'learning_rate': learning_rate, 'optimizer': optimizer,
+                                'optimizer_kwargs': optimizer_kwargs, 'criterion': criterion,
+                                'criterion_kwargs': criterion_kwargs, 'device': device, 'tau': tau,
+                                'forward_steps': forward_steps, 'backward_steps': backward_steps}
 
         # Load loss criterion
         if isinstance(criterion, str):
