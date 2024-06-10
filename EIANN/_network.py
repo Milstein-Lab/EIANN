@@ -88,8 +88,7 @@ class Network(nn.Module):
                     pop = Population(self, layer, pop_name, **pop_kwargs)
                 layer.append_population(pop)
                 self.populations[pop.fullname] = pop
-
-
+        
         # if no output_pop is designated, default to the first population specified in the final layer
         if self.output_pop is None:
             output_layer = list(self)[-1]
@@ -331,7 +330,7 @@ class Network(nn.Module):
     
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
               store_history=False, store_dynamics=False, store_params=False, store_params_interval=None,
-              save_to_file=None, status_bar=False):
+              save_to_file=None, status_bar=False, debug=False):
         """
         Starting at validate_start, probe with the validate_data every validate_interval until >= validate_stop
         :param train_dataloader:
@@ -345,70 +344,66 @@ class Network(nn.Module):
         :param store_params_interval: tuple of int (start_index, stop_index, interval)
         :param save_to_file: None or file_path
         :param status_bar: bool
+        :param debug: bool
         """
+        if debug:
+            import time
+            current_time = time.time()
+        
         self.reset_history()
         if samples_per_epoch is None:
             samples_per_epoch = len(train_dataloader)
-
-        train_step = 0
+        
         # includes initial state before first train step
-        train_step_range = torch.arange(epochs * samples_per_epoch + 1)
-
-        val_data_on_device = False
-
+        train_step_range = torch.arange(epochs * samples_per_epoch)
+        
         # Load validation data & initialize intermediate variables
         if val_dataloader is not None:
             assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
             idx, val_data, val_target = next(iter(val_dataloader))
-            if not val_data_on_device:
-                if val_data.device == self.device:
-                    val_data_on_device = True
-                else:
-                    val_data = val_data.to(self.device)
-                    val_target = val_target.to(self.device)
-            val_output_history = []
-            val_loss_history = []
-            val_accuracy_history = []
+            if not val_data.device == self.device:
+                val_data = val_data.to(self.device)
+                val_target = val_target.to(self.device)
+            self.val_output_history = []
+            self.val_loss_history = []
+            self.val_accuracy_history = []
             self.val_history_train_steps = []
-
-            val_range = torch.arange(train_step_range[val_interval[0]], train_step_range[val_interval[1]] + 1,
-                                     val_interval[2])
-
-            # Compute validation loss
-            if train_step in val_range:
-                output = self.forward(val_data, store_dynamics=False, no_grad=True)
-                val_output_history.append(output.detach().clone())
-                val_loss_history.append(self.criterion(output, val_target).item())
-                accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
-                           output.shape[0]
-                val_accuracy_history.append(accuracy.item())
-                self.val_history_train_steps.append(train_step-1)
-
+            
+            if val_interval[0] < 0 and abs(val_interval[0]) > len(train_step_range):
+                val_start_index = 0
+            else:
+                val_start_index = train_step_range[val_interval[0]]
+            val_end_index = train_step_range[val_interval[1]]
+            val_step_size = val_interval[2]
+            val_range = torch.arange(val_end_index, val_start_index - 1, -val_step_size).flip(0)
+        
         # Store history of weights and biases
         if store_params:
-            self.param_history = []
-            self.param_history_steps = []
-            self.prev_param_history = []
             if store_params_interval is None:
-                store_params_interval = val_interval
+                if val_dataloader is None:
+                    raise Exception('EIANN.network.train missing required store_params_interval')
+                store_params_step_size = val_step_size
                 store_params_range = val_range
             else:
-                store_params_range = torch.arange(train_step_range[store_params_interval[0]],
-                                                   train_step_range[store_params_interval[1]] + 1,
-                                                   store_params_interval[2])
-            if store_params_interval[2] == 1:
+                if store_params_interval[0] < 0 and abs(store_params_interval[0]) > len(train_step_range):
+                    store_params_start_index = 0
+                else:
+                    store_params_start_index = train_step_range[store_params_interval[0]]
+                store_params_end_index = train_step_range[store_params_interval[1]]
+                store_params_step_size = store_params_interval[2]
+                store_params_range = (
+                    torch.arange(store_params_end_index, store_params_start_index - 1, -store_params_step_size).flip(0))
+                
+            if (0 in store_params_range) and store_params_step_size == 1:
                 self.param_history.append(deepcopy(self.state_dict()))
-                self.param_history_steps.append(train_step-1)
+                self.param_history_steps.append(-1)
 
         if status_bar:
             from tqdm.autonotebook import tqdm
-        if status_bar:
             epoch_iter = tqdm(range(epochs), desc='Epochs')
         else:
             epoch_iter = range(epochs)
-
-        self.target_history = []
-
+        
         # initialize learning rule parameters
         for post_layer in self:
             for post_pop in post_layer:
@@ -416,9 +411,12 @@ class Network(nn.Module):
                     post_pop.bias_learning_rule.reinit()
                 for projection in post_pop:
                     projection.learning_rule.reinit()
-
-        train_data_on_device = False
-
+        
+        if debug:
+            print('pretrain processing took %.3f s' % (time.time() - current_time))
+            current_time = time.time()
+        
+        train_step = 0
         # Main training loop
         for epoch in epoch_iter:
             epoch_sample_order = []
@@ -427,35 +425,49 @@ class Network(nn.Module):
                                        leave=epoch == epochs - 1)
             else:
                 dataloader_iter = train_dataloader
-
+            
             for sample_count, (sample_idx, sample_data, sample_target) in enumerate(dataloader_iter):
                 if sample_count >= samples_per_epoch:
                     break
+                
+                if debug and sample_count % val_step_size == 0:
+                    current_time = time.time()
+                
                 sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
-                if not train_data_on_device:
-                    if sample_data.device == self.device:
-                        train_data_on_device = True
-                    else:
-                        sample_data = sample_data.to(self.device)
-                        sample_target = sample_target.to(self.device)
+                if not sample_data.device == self.device:
+                    sample_data = sample_data.to(self.device)
+                    sample_target = sample_target.to(self.device)
+                    
                 epoch_sample_order.append(sample_idx)
-
+                
                 output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics)
-
+                
+                if debug and sample_count % val_step_size == 0:
+                    print('forward pass took %.3f s' % (time.time() - current_time))
+                    current_time = time.time()
+                
                 loss = self.criterion(output, sample_target)
                 self.loss_history.append(loss.item())
                 self.target_history.append(sample_target.clone())
 
-                if store_params and (train_step in store_params_range) and store_params_interval[2] > 1: 
-                    self.prev_param_history.append(deepcopy(self.state_dict())) # Store parameters for dW comparison
-                        
+                if store_params and (train_step in store_params_range) and store_params_step_size > 1:
+                    self.prev_param_history.append(deepcopy(self.state_dict()))  # Store parameters for dW comparison
+                
                 # Update state variables required for weight and bias updates
                 self.update_forward_state(store_history=store_history)
                 
+                if debug and sample_count % val_step_size == 0:
+                    print('updating forward state took %.3f s' % (time.time() - current_time))
+                    current_time = time.time()
+                
                 for backward in self.backward_methods:
                     backward(self, output, sample_target, store_history=store_history, store_dynamics=store_dynamics)
-
+                
+                if debug and sample_count % val_step_size == 0:
+                    print('backward pass took %.3f s' % (time.time() - current_time))
+                    current_time = time.time()
+                
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
                     if i > 0:
@@ -464,7 +476,11 @@ class Network(nn.Module):
                                 post_pop.bias_learning_rule.step()
                             for projection in post_pop:
                                 projection.learning_rule.step()
-
+                
+                if debug and sample_count % val_step_size == 0:
+                    print('weight step took %.3f s' % (time.time() - current_time))
+                    current_time = time.time()
+                
                 self.constrain_weights_and_biases()
 
                 # update learning rule parameters
@@ -484,13 +500,16 @@ class Network(nn.Module):
                 # Compute validation loss
                 if val_dataloader is not None and train_step in val_range:
                     output = self.forward(val_data, store_dynamics=False, no_grad=True)
-                    val_output_history.append(output.detach().clone())
-                    val_loss_history.append(self.criterion(output, val_target).item())
+                    self.val_output_history.append(output.detach().clone())
+                    self.val_loss_history.append(self.criterion(output, val_target).item())
                     accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
                                output.shape[0]
-                    val_accuracy_history.append(accuracy.item())
+                    self.val_accuracy_history.append(accuracy.item())
                     self.val_history_train_steps.append(train_step)
-
+                    if debug:
+                        print('train_step: %i; validation took %.3f s' % (train_step, time.time() - current_time))
+                        current_time = time.time()
+                    
                 train_step += 1
 
             epoch_sample_order = torch.concat(epoch_sample_order)
@@ -499,16 +518,21 @@ class Network(nn.Module):
 
         self.sample_order = torch.stack(self.sample_order)
         self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
-        self.loss_history = torch.tensor(self.loss_history).cpu()
-        self.target_history = torch.stack(self.target_history).cpu()
+        self.loss_history = torch.tensor(self.loss_history)
+        self.target_history = torch.stack(self.target_history)
         if val_dataloader is not None:
-            self.val_output_history = torch.stack(val_output_history).cpu()
-            self.val_loss_history = torch.tensor(val_loss_history).cpu()
-            self.val_accuracy_history = torch.tensor(val_accuracy_history).cpu()
-            self.val_target = val_target.cpu()
-
+            self.val_output_history = torch.stack(self.val_output_history)
+            self.val_loss_history = torch.tensor(self.val_loss_history)
+            self.val_accuracy_history = torch.tensor(self.val_accuracy_history)
+            self.val_history_train_steps = torch.tensor(self.val_history_train_steps)
+        if store_params:
+            self.param_history_steps = torch.tensor(self.param_history_steps)
+        
         if save_to_file is not None:
             self.save(path=save_to_file)
+            
+        if debug:
+            print('end of train bookkeeping took %.3f s' % (time.time() - current_time))
 
     def save(self, path=None, dir='saved_networks', file_name_base=None, disp=True):
         """

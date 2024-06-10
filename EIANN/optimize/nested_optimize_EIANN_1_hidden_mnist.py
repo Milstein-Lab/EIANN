@@ -229,7 +229,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     else:
         data_generator.manual_seed(data_seed)
         network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
-                      val_interval=context.val_interval, # e.g. (-201, -1, 10),
+                      val_interval=context.val_interval,  # e.g. (-201, -1, 10),
                       samples_per_epoch=context.train_steps,
                       store_history=context.store_history, store_dynamics=context.store_dynamics,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
@@ -272,7 +272,6 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     
     # Select for stability by computing mean accuracy in a window after the best validation step
     val_stepsize = int(context.val_interval[2])
-    val_start_idx = int(context.val_interval[0])
     num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
     
     if context.eval_accuracy == 'final':
