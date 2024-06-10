@@ -427,11 +427,12 @@ class Network(nn.Module):
                 dataloader_iter = train_dataloader
             
             for sample_count, (sample_idx, sample_data, sample_target) in enumerate(dataloader_iter):
-                if sample_count >= samples_per_epoch:
-                    break
                 
                 if debug and sample_count % val_step_size == 0:
                     current_time = time.time()
+                
+                if sample_count >= samples_per_epoch:
+                    break
                 
                 sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
@@ -443,10 +444,6 @@ class Network(nn.Module):
                 
                 output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics)
                 
-                if debug and sample_count % val_step_size == 0:
-                    print('forward pass took %.3f s' % (time.time() - current_time))
-                    current_time = time.time()
-                
                 loss = self.criterion(output, sample_target)
                 self.loss_history.append(loss.item())
                 self.target_history.append(sample_target.clone())
@@ -457,16 +454,8 @@ class Network(nn.Module):
                 # Update state variables required for weight and bias updates
                 self.update_forward_state(store_history=store_history)
                 
-                if debug and sample_count % val_step_size == 0:
-                    print('updating forward state took %.3f s' % (time.time() - current_time))
-                    current_time = time.time()
-                
                 for backward in self.backward_methods:
                     backward(self, output, sample_target, store_history=store_history, store_dynamics=store_dynamics)
-                
-                if debug and sample_count % val_step_size == 0:
-                    print('backward pass took %.3f s' % (time.time() - current_time))
-                    current_time = time.time()
                 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
@@ -476,10 +465,6 @@ class Network(nn.Module):
                                 post_pop.bias_learning_rule.step()
                             for projection in post_pop:
                                 projection.learning_rule.step()
-                
-                if debug and sample_count % val_step_size == 0:
-                    print('weight step took %.3f s' % (time.time() - current_time))
-                    current_time = time.time()
                 
                 self.constrain_weights_and_biases()
 
@@ -496,18 +481,30 @@ class Network(nn.Module):
                 if store_params and train_step in store_params_range:
                     self.param_history.append(deepcopy(self.state_dict()))
                     self.param_history_steps.append(train_step)
-
+                
+                if debug and sample_count % val_step_size == 0:
+                    print('train step took %.3f s' % (time.time() - current_time))
+                    current_time = time.time()
+                
                 # Compute validation loss
                 if val_dataloader is not None and train_step in val_range:
                     output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                    
+                    if debug:
+                        print('train_step: %i; validation forward pass took %.3f s' %
+                              (train_step, time.time() - current_time))
+                        current_time = time.time()
+                    
                     self.val_output_history.append(output.detach().clone())
                     self.val_loss_history.append(self.criterion(output, val_target).item())
                     accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
                                output.shape[0]
                     self.val_accuracy_history.append(accuracy.item())
                     self.val_history_train_steps.append(train_step)
+                    
                     if debug:
-                        print('train_step: %i; validation took %.3f s' % (train_step, time.time() - current_time))
+                        print('train_step: %i; validation processing took %.3f s' %
+                              (train_step, time.time() - current_time))
                         current_time = time.time()
                     
                 train_step += 1
