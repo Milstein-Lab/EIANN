@@ -228,12 +228,17 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                   (os.getpid(), context.data_file_path))
     else:
         data_generator.manual_seed(data_seed)
+        if context.debug:
+            import time
+            current_time = time.time()
         network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
                       val_interval=context.val_interval,  # e.g. (-201, -1, 10),
                       samples_per_epoch=context.train_steps,
                       store_history=context.store_history, store_dynamics=context.store_dynamics,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
-                      status_bar=context.status_bar)
+                      status_bar=context.status_bar, debug=context.debug)
+        if context.debug:
+            print('pid: %i, train took %.3f s' % (os.getpid(), time.time() - current_time))
         # final_weights = deepcopy(network.Output.E.H1.E.weight.data)
         if export:
             network.save(path=context.data_file_path, disp=False)
