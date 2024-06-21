@@ -377,6 +377,8 @@ class Network(nn.Module):
             val_end_index = train_step_range[val_interval[1]]
             val_step_size = val_interval[2]
             val_range = torch.arange(val_end_index, val_start_index - 1, -val_step_size).flip(0)
+            if val_start_index == 0 and 0 not in val_range:
+                val_range = torch.cat((torch.tensor([0]), val_range))
         
         # Store history of weights and biases
         if store_params:
@@ -394,6 +396,8 @@ class Network(nn.Module):
                 store_params_step_size = store_params_interval[2]
                 store_params_range = (
                     torch.arange(store_params_end_index, store_params_start_index - 1, -store_params_step_size).flip(0))
+                if store_params_start_index == 0 and 0 not in store_params_range:
+                    store_params_range = torch.cat((torch.tensor([0]), store_params_range))
                 
             if (0 in store_params_range) and store_params_step_size == 1:
                 self.param_history.append(deepcopy(self.state_dict()))
