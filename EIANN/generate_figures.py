@@ -11,6 +11,32 @@ import h5py
 import EIANN.utils as ut
 import EIANN.plot as pt
 
+'''
+Figure 1: Van_BP vs bpDale(learnedI)
+        -> bpDale is more structured/sparse (focus on H1E metrics)
+
+Figure 2: bpDale(learnedI) vs top-sup HebbWN(learnedI) vs unsup-HebbWN(learnedI)
+        (top: Output+H1 E, activity and receptive fields and metrics)
+        (bottom: Output+H1 SomaI, activity and metrics)
+        -> bpDale SomaI is unselective/unstructured, biological learning rule is not (focus on SomaI metrics)
+        -> sup HebbWN performance is mediocre (representational collapse), we need a biological way to pass gradients to hidden layers
+
+(switched to fixed somaI)
+-> bpDale still performs with fixedI, HebbWN does not, but BCM does (focus on H1E metrics)
+(Supp: bpDale(fixedI) vs top-sup HebbWN(fixedI) vs top-sup BCM(fixedI) vs unsup BCM(fixedI))
+
+Passing gradients with apical dendrites:
+
+Figure 3: dendritic_gating(bpLike) vs dendritic_gating w/ HebbWN dendritic learning
+        -> Can compute local loss with top-down nudges and dendI subtraction
+        -> dendritic subtraction is effective even with HebbWN
+
+Figure 4: BTSP(weight transpose + HebbWN dendI) vs sup-HebbWN
+        -> Local loss allows learning with a biological rule
+        -> BTSP does better than Hebbian (Hebb too simple)
+
+Figure 5: BTSP(learned top-down W + HebbWN dendI)
+'''
 
 def generate_model_comparison_figure(all_dataloaders, show=True, save=False):
     '''
@@ -32,31 +58,25 @@ def generate_model_comparison_figure(all_dataloaders, show=True, save=False):
                         'svg.fonttype': 'none',
                         'text.usetex': False})
         
+
+
     model_dict = {"vanBP":      {"config": "20231120_EIANN_1_hidden_mnist_van_bp_relu_SGD_config_G_optimized.yaml", 
                                  "pickle": "20231120_EIANN_1_hidden_mnist_van_bp_relu_SGD_config_G_66049_257.pkl",
                                  "color": "black",
                                  "name": "Vanilla BP"},
-                  "unsup_Hebb": {"config": "20231025_EIANN_1_hidden_mnist_Gjorgjieva_Hebb_config_F_optimized.yaml", 
-                                 "pickle": "20230712_EIANN_1_hidden_mnist_Gjorgjieva_Hebb_config_F_66049_257.pkl",
-                                 "color": "blue",
-                                 "name": "Unsupervised Hebb"},
                   "bpDale":     {"config": "20231018_EIANN_1_hidden_mnist_bpDale_relu_SGD_config_G_optimized.yaml", 
                                  "pickle": "20231018_EIANN_1_hidden_mnist_bpDale_relu_SGD_config_G_66049_257.pkl",
                                  "color": "green",
                                  "name": "Backprop with Dale's Law"},
-                  "sup_Hebb":   {"config": "20231025_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_F_optimized.yaml", 
-                                 "pickle": "20230505_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_F_66049_257.pkl",
-                                 "color": "red",
-                                 "name": "Supervised Hebb"},
+                #   "unsup_Hebb": {"config": "20231025_EIANN_1_hidden_mnist_Gjorgjieva_Hebb_config_F_optimized.yaml", 
+                #                  "pickle": "20230712_EIANN_1_hidden_mnist_Gjorgjieva_Hebb_config_F_66049_257.pkl",
+                #                  "color": "blue",
+                #                  "name": "Unsupervised Hebb"},
+                #   "sup_Hebb":   {"config": "20231025_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_F_optimized.yaml", 
+                #                  "pickle": "20230505_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_F_66049_257.pkl",
+                #                  "color": "red",
+                #                  "name": "Supervised Hebb"},
                  }
-
-
-    mm = 1 / 25.4  # millimeters in inches
-    fig = plt.figure(figsize=(180 * mm, 180 * mm))
-    axes = gs.GridSpec(nrows=4, ncols=4,
-                       left=0.06,right=0.98,
-                       top=0.96, bottom = 0.04,
-                       wspace=0.4, hspace=0.2)
 
     config_path_prefix = "network_config/mnist/"
     saved_network_path_prefix = "data/mnist/"
@@ -65,7 +85,14 @@ def generate_model_comparison_figure(all_dataloaders, show=True, save=False):
 
     train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
 
-    for i, model_name in enumerate(model_dict):
+    for model_name in model_dict:
+        mm = 1 / 25.4  # millimeters in inches
+        fig = plt.figure(figsize=(180 * mm, 180 * mm))
+        axes = gs.GridSpec(nrows=4, ncols=4,
+                        left=0.06,right=0.98,
+                        top=0.96, bottom = 0.04,
+                        wspace=0.4, hspace=0.2)
+
         # Build/load network
         config_path = config_path_prefix + model_dict[model_name]["config"]
         network = ut.build_EIANN_from_config(config_path, network_seed=network_seed)
@@ -85,17 +112,15 @@ def generate_model_comparison_figure(all_dataloaders, show=True, save=False):
 
 
         # Plot 1: Average population activity of OutputE (batch accuracy to the test dataset)
-        ax = fig.add_subplot(axes[0, i])
+        ax = fig.add_subplot(axes[0, 0])
         pt.plot_batch_accuracy(network, test_dataloader, population=network.Output.E, ax=ax, export=True, overwrite=False)
         ax.set_title(model_dict[model_name]["name"], fontsize=10)
-        if i>0:
-            ax.set_ylabel('')
 
 
         # Plot 2: Example output receptive fields
         population = network.Output.E
         num_units = 10
-        ax = fig.add_subplot(axes[1, i])
+        ax = fig.add_subplot(axes[0, 1])
         ax.axis('off')
 
         pos = ax.get_position()
@@ -115,22 +140,22 @@ def generate_model_comparison_figure(all_dataloaders, show=True, save=False):
         receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, overwrite=False)
         im = pt.plot_receptive_fields(receptive_fields, sort=False, ax_list=ax_list)
         fig_width, fig_height = fig.get_size_inches()
-        cax = fig.add_axes([0.03, ax.get_position().y0-0.1/fig_height, 0.1, 0.05/fig_height])
+        # cax = fig.add_axes([0.03, ax.get_position().y0-0.1/fig_height, 0.1, 0.05/fig_height])
+
+        cax = fig.add_axes([ax_list[0].get_position().x0, ax.get_position().y0-0.1/fig_height, 
+                            0.1, 0.05/fig_height])
         fig.colorbar(im, cax=cax, orientation='horizontal')
 
 
         # Plot 3: Average population activity of H1E
-        ax = fig.add_subplot(axes[2, i])
+        ax = fig.add_subplot(axes[1, 0])
         pt.plot_batch_accuracy(network, test_dataloader, population=network.H1.E, ax=ax, export=True, overwrite=False)
         ax.set_title(model_dict[model_name]["name"], fontsize=10)
-        if i>0:
-            ax.set_ylabel('')
-
 
         # # Plot 4: Example hidden receptive fields
         population = network.H1.E
         num_units = 25
-        ax = fig.add_subplot(axes[3, i])
+        ax = fig.add_subplot(axes[1, 1])
         ax.axis('off')
 
         pos = ax.get_position()
@@ -150,10 +175,9 @@ def generate_model_comparison_figure(all_dataloaders, show=True, save=False):
         receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, overwrite=False)
         im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list)
         fig_width, fig_height = fig.get_size_inches()
-        cax = fig.add_axes([0.03, ax.get_position().y0-0.1/fig_height, 0.1, 0.05/fig_height])
+        cax = fig.add_axes([ax_list[0].get_position().x0, ax.get_position().y0-0.1/fig_height, 
+                            0.1, 0.05/fig_height])
         fig.colorbar(im, cax=cax, orientation='horizontal')
-
-
 
 
 
@@ -176,9 +200,9 @@ def generate_model_comparison_figure(all_dataloaders, show=True, save=False):
     if show:
         plt.show()
 
-    if save:
-        fig.savefig("figures/model_comparison.png", dpi=300)
-        # fig.savefig("figures/model_comparison.svg", dpi=300)
+    # if save:
+    #     fig.savefig("figures/model_comparison.png", dpi=300)
+    #     fig.savefig("figures/model_comparison.svg", dpi=300)
 
 
 
