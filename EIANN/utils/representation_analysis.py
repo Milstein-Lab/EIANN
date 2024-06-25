@@ -40,7 +40,7 @@ def compute_test_activity(network, test_dataloader, population=None, sorted_outp
         assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
         percent_correct = data_utils.load_plot_data(network.name, network.seed, data_key='percent_correct', file_path=export_path)
         average_pop_activity_dict = data_utils.load_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', file_path=export_path)
-        if percent_correct is not None and average_pop_activity_dict is not None:
+        if percent_correct is not None and average_pop_activity_dict is not None and set(network.populations)==set(average_pop_activity_dict):
             return percent_correct, average_pop_activity_dict    
 
     average_pop_activity_dict = {}
