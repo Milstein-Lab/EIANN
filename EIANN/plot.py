@@ -267,6 +267,35 @@ def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None,
     fig.show()
 
 
+def plot_representation_metrics(metrics_dict):
+    fig, ax = plt.subplots(2,2,figsize=[12,5])
+    ax[0,0].hist(sparsity,50)
+    ax[0,0].set_title('Sparsity distribution')
+    ax[0,0].set_ylabel('num patterns')
+    ax[0,0].set_xlabel('(1 - fraction active units)')
+
+    ax[0,1].hist(selectivity,50)
+    ax[0,1].set_title('Selectivity distribution')
+    ax[0,1].set_ylabel('num units')
+    ax[0,1].set_xlabel('(1 - fraction active patterns)')
+
+    ax[1,0].set_title('Discriminability distribution')
+    ax[1,0].hist(discriminability, 50)
+    ax[1,0].set_ylabel('pattern pairs')
+    ax[1,0].set_xlabel('(1 - cosine similarity)')
+
+    if receptive_fields is not None:
+        ax[1,1].hist(structure, 50)
+        ax[1,1].set_title('Structure')
+        ax[1,1].set_ylabel('num units')
+        ax[1,1].set_xlabel('(1 - similarity to random noise)')
+        plt.tight_layout()
+    else:
+        ax[1,1].axis('off')
+
+    fig.show()
+
+
 def plot_MNIST_examples(network, dataloader):
     """
     Test network performance on one example image from each MNIST class
@@ -630,7 +659,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     :param title: str
     """
 
-    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, population, sorted_output_idx, export=export, overwrite=overwrite)
+    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sorted_output_idx, export=export, overwrite=overwrite)
     print(f'Batch accuracy = {percent_correct}%')
 
     if population is None:

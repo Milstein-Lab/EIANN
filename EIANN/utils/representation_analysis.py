@@ -24,7 +24,7 @@ def compute_average_activity(activity, labels):
     return avg_activity
 
 
-def compute_test_activity(network, test_dataloader, population=None, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
+def compute_test_activity(network, test_dataloader, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -36,6 +36,8 @@ def compute_test_activity(network, test_dataloader, population=None, sorted_outp
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
 
     if export and overwrite is False:
+        print("Loading existing activity data from file")
+
         # Check if population activity data already exists in file
         assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
         percent_correct = data_utils.load_plot_data(network.name, network.seed, data_key='percent_correct', file_path=export_path)
@@ -58,27 +60,8 @@ def compute_test_activity(network, test_dataloader, population=None, sorted_outp
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
     percent_correct = torch.round(percent_correct, decimals=2)
 
-    # Determine which populations to analyze
-    populations_list = []
-    if population == 'all':
-        reversed_layers = list(network)[::-1]
-        for layer in reversed_layers:
-            populations_list.extend([pop for pop in layer])
-    elif isinstance(population, list):
-        populations_list.extend(population)
-    elif population is not None:
-        populations_list.append(population)
-
-    if len(populations_list)>0 and isinstance(populations_list[0], str):
-        # Convert population names to Population objects
-        populations_list = [network.populations[pop_name] for pop_name in populations_list]
-
-    if network.output_pop not in populations_list:
-        # Add the output population by default
-        populations_list.append(network.output_pop)
-
     # Compute average activity for each population
-    for population in populations_list:
+    for population in network.populations.values():
         avg_pop_activity = torch.zeros(population.size, num_labels)
         for label in range(num_labels):
             label_idx = torch.where(labels == label)
@@ -272,7 +255,7 @@ def compute_diag_fisher(network, train_dataloader_CL1_full):
     return diag_fisher
 
 
-def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False):
+def compute_representation_metrics(population, test_dataloader, receptive_fields=None):
     """
     Compute representation metrics for a population of neurons
     :param population: Population object
@@ -324,32 +307,6 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
         structure = compute_rf_structure(receptive_fields)
     else:
         structure = None
-
-    if plot:
-        fig, ax = plt.subplots(2,2,figsize=[12,5])
-        ax[0,0].hist(sparsity,50)
-        ax[0,0].set_title('Sparsity distribution')
-        ax[0,0].set_ylabel('num patterns')
-        ax[0,0].set_xlabel('(1 - fraction active units)')
-
-        ax[0,1].hist(selectivity,50)
-        ax[0,1].set_title('Selectivity distribution')
-        ax[0,1].set_ylabel('num units')
-        ax[0,1].set_xlabel('(1 - fraction active patterns)')
-
-        ax[1,0].set_title('Discriminability distribution')
-        ax[1,0].hist(discriminability, 50)
-        ax[1,0].set_ylabel('pattern pairs')
-        ax[1,0].set_xlabel('(1 - cosine similarity)')
-
-        if receptive_fields is not None:
-            ax[1,1].hist(structure, 50)
-            ax[1,1].set_title('Structure')
-            ax[1,1].set_ylabel('num units')
-            ax[1,1].set_xlabel('(1 - similarity to random noise)')
-            plt.tight_layout()
-        else:
-            ax[1,1].axis('off')
 
     return {'sparsity': sparsity, 'selectivity': selectivity,
             'discriminability': discriminability, 'structure': structure}
