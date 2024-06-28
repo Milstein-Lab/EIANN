@@ -441,11 +441,14 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
     custom so that negative values are blue and positive values are gray.
 
     :param receptive_fields:
-    :param activity_preferred_inputs:
+    :param scale:
     :param sort:
+    :param num_units:
+    :param num_cols:
+    :param num_rows:
     :param activity_threshold: float
-    :param num_cols: int
-    :param num_rows: int
+    :param cmap:
+    :param ax_list:
     """
     if isinstance(scale, torch.Tensor):
         scale = scale.diagonal()
