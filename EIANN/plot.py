@@ -433,8 +433,8 @@ def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
 
 
-def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None, num_cols=None, num_rows=None,
-                          activity_threshold=1e-10, cmap='custom', ax_list=None):
+def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class=None, num_units=None, 
+                          num_cols=None, num_rows=None, activity_threshold=1e-10, cmap='custom', ax_list=None):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
     structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
@@ -454,13 +454,79 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
         scale = scale[active_idx]
         receptive_fields = receptive_fields[active_idx]
 
-    if sort: # Sort units by tuning structure of their receptive fields
+    # Sort units by tuning structure of their receptive fields
+    if sort: 
         structure = ut.compute_rf_structure(receptive_fields)
         sorted_idx = np.argsort(-structure)
         receptive_fields = receptive_fields[sorted_idx]
         if isinstance(scale, torch.Tensor):
             scale = scale[sorted_idx] # Sort the vector of scaling factors (e.g. max activity of each unit)
 
+    # Filter by class activity preference to sample units across all classes
+    if preferred_class is not None:
+        assert isinstance(preferred_class, torch.Tensor), 'sort_by_activities must be a tensor of maxact class labels'
+        if sort:
+            preferred_class = preferred_class[sorted_idx]
+
+
+        receptive_fields = receptive_fields[preferred_class.argsort()]
+        preferred_class = preferred_class[preferred_class.argsort()]
+        # print(f'Class labels: {preferred_class}')
+
+        # final_indices = []
+        # for i,label in enumerate(preferred_class):
+        #     if label == 0:
+        #         final_indices.append(i)
+        #     else:
+        #         final_indices.append(i+1)
+
+
+        # # Get the number of unique class labels
+        # # num_classes = preferred_class.max().item() + 1
+        # num_classes = len(torch.unique(preferred_class))
+        
+        # # Create a tensor to hold final sorted indices
+        # final_indices = torch.empty_like(preferred_class)
+        
+        # # Create a list of counters for each class
+        # counters = [0]*num_classes
+        
+        # # Loop over the preferred classes
+        # for i, x in enumerate(preferred_class.tolist()):
+        #     # Calculate the position where this class should go
+        #     position = counters[x] * num_classes + x
+        #     # Store the original position in that place in the final_indices tensor
+        #     final_indices[position] = i
+        #     # Increment the counter for this class
+        #     counters[x] += 1
+    
+        # preferred_class = preferred_class[final_indices]
+        # receptive_fields = receptive_fields[final_indices]
+
+
+        # # Re-sort the receptive fields so that the classes are interleaved (e.g. class 1, class 2, class 3, class 1, class 2, class 3,...)
+        # # Sort the tensor
+        # sorted_classes, sorted_idx = torch.sort(preferred_class)
+
+        # # Reshape into blocks of size num_unique_elements
+        # num_unique_elements = torch.unique(preferred_class).shape[0]
+        # num_blocks = len(preferred_class) // num_unique_elements
+        # reshaped_idx = sorted_idx.view(num_blocks, num_unique_elements)
+
+        # # Sort each block of indices to maintain the order [0, 1, 2, 3, 4]
+        # _, resorted_idx = torch.sort(reshaped_idx, dim=1)
+
+        # # Flatten the resorted indices back to a 1D tensor
+        # final_indices = resorted_idx.flatten()
+        # receptive_fields = receptive_fields[final_indices]
+        # preferred_class = preferred_class[final_indices]
+
+
+        # receptive_fields = receptive_fields[torch.cat([preferred_class == i for i in torch.unique(preferred_class)]).reshape(-1)]
+        # preferred_class = preferred_class[torch.cat([preferred_class == i for i in torch.unique(preferred_class)]).reshape(-1)]
+
+        
+    # Filter by number of units
     if num_units is not None:
         receptive_fields = receptive_fields[:num_units]
         if isinstance(scale, torch.Tensor):
@@ -534,6 +600,8 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
         im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max,
                        aspect='equal', interpolation='none')
         ax.axis('off')
+        if preferred_class is not None:
+            ax.text(0, 6, f'{preferred_class[i]}', color='gray', fontsize=8)
 
 
     if ax_list is None:
@@ -659,11 +727,11 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     :param title: str
     """
 
-    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sorted_output_idx, export=export, overwrite=overwrite)
+    percent_correct, average_pop_activity_dict, preferred_input_dict = ut.compute_test_activity(network, test_dataloader, sorted_output_idx, export=export, overwrite=overwrite)
     print(f'Batch accuracy = {percent_correct}%')
 
     if population is None:
-        # Include only first population in the data dict
+        # Include only last population in the data dict
         population = list(average_pop_activity_dict.keys())[0]
         average_pop_activity_dict = {population: average_pop_activity_dict[population]}
     elif isinstance(population, str):
@@ -696,29 +764,6 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         elif isinstance(population, list) and len(population)>1:
             raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
             
-            
-# def plot_average_population_activity(pop_name, avg_pop_activity, ax):
-#     '''
-#     Plot average activity of a population
-#     :param pop_name: str
-#     :param avg_pop_activity: 2D tensor
-#     '''
-#     # Sort units by preferred label
-#     silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-#     active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-#     preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-#     _, idx = torch.sort(preferred_input)
-#     sort_idx = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
-
-#     # Generate plot
-#     im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none', aspect='auto')
-#     cbar = plt.colorbar(im, ax=ax)
-#     ax.set_xticks(range(avg_pop_activity.shape[1]))
-#     ax.set_xlabel('Labels')
-#     ax.set_ylabel(f'{pop_name} unit')
-#     ax.set_title(f'Average activity - {pop_name}')
-
-
 
 def plot_rsm(network, test_dataloader):
 
