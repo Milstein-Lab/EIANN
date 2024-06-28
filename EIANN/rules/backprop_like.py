@@ -1603,9 +1603,10 @@ class almost_backprop1(LearningRule):
             layer.E.backward_activity = layer.E.activity + layer.E.dendritic_state # nudge somatic state
 
             pre_layer = reversed_layers[i+1]
-            forward_weight_transpose = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight.T
-            topdown_excitation = forward_weight_transpose @ layer.E.backward_activity
-            lateral_inhibition = forward_weight_transpose @ layer.E.activity
+            forward_weight_transpose = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight
+
+            topdown_excitation =  layer.E.backward_activity @ forward_weight_transpose
+            lateral_inhibition =  layer.E.activity @ forward_weight_transpose
             pre_layer.E.dendritic_state = topdown_excitation - lateral_inhibition
 
 
@@ -1641,12 +1642,12 @@ class almost_backprop2(LearningRule):
             # Compute the dendritic state of the lower layer
             pre_layer = reversed_layers[i+1]
             if pre_layer != network.Input:
-                forward_weight_transpose = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight.T
-                topdown_excitation = forward_weight_transpose @ layer.E.backward_activity
+                forward_weight_transpose = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight
+                topdown_excitation =  layer.E.backward_activity @ forward_weight_transpose
 
                 pre_layer.DendI.activity = layer.E.activity.clone()
                 dendI_projection = network.module_dict[f"{pre_layer.E.fullname}_{pre_layer.DendI.fullname}"]
-                lateral_inhibition = dendI_projection.weight @ pre_layer.DendI.activity
+                lateral_inhibition =  pre_layer.DendI.activity @ dendI_projection.weight.T
 
                 pre_layer.E.dendritic_state = topdown_excitation + lateral_inhibition
 
@@ -1683,11 +1684,11 @@ class almost_backprop3(LearningRule):
             # Compute the dendritic state of the lower layer
             pre_layer = reversed_layers[i+1]
             if pre_layer != network.Input:
-                forward_weight_transpose = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight.T
-                topdown_excitation = forward_weight_transpose @ layer.E.backward_activity
+                forward_weight_transpose = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight
+                topdown_excitation = layer.E.backward_activity @ forward_weight_transpose
 
                 dendI_projection = network.module_dict[f"{pre_layer.E.fullname}_{pre_layer.DendI.fullname}"]
-                lateral_inhibition = dendI_projection.weight @ pre_layer.DendI.activity
+                lateral_inhibition = pre_layer.DendI.activity @ dendI_projection.weight.T
 
                 pre_layer.E.backward_dendritic_state = topdown_excitation + lateral_inhibition
 
@@ -1728,10 +1729,10 @@ class Backprop_dendI(LearningRule):
             if pre_layer != network.Input:
                 # Compute forward dendritic state
                 forward_weight_transpose = layer.E.incoming_projections[f"{layer.E.fullname}_{pre_layer.E.fullname}"].weight.T
-                topdown_excitation = forward_weight_transpose @ layer.E.activity
+                topdown_excitation = layer.E.activity @ forward_weight_transpose
                 
                 dendI_projection = network.module_dict[f"{pre_layer.E.fullname}_{pre_layer.DendI.fullname}"]
-                lateral_inhibition = dendI_projection.weight @ pre_layer.DendI.activity
+                lateral_inhibition =  pre_layer.DendI.activity @ dendI_projection.weight.T
 
                 pre_layer.E.forward_dendritic_state = topdown_excitation + lateral_inhibition
 
