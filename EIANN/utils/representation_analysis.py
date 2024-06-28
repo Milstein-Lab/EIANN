@@ -655,8 +655,8 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
         # Check if receptive fields and activity_preferred_inputs have already been computed and saved in the data hdf5 file
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
         receptive_fields = data_utils.load_plot_data(population.network.name, population.network.seed,
-                                                    data_key=f'maxact_receptive_fields_{population.fullname}',
-                                                    file_path=export_path)
+                                                     data_key=f'maxact_receptive_fields_{population.fullname}',
+                                                     file_path=export_path)
         if receptive_fields is not None:
             return torch.tensor(receptive_fields)
 
@@ -709,17 +709,17 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     receptive_fields = torch.mean(torch.stack(all_images), dim=0)
     if sigmoid:
         receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
-        network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
+        # network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
     elif softplus:
         receptive_fields = torch.nn.functional.softplus(receptive_fields)
-        network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
+        # network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
 
     if export:
         # Save receptive fields and activity_preferred_inputs to data hdf5 file
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
         data_utils.save_plot_data(population.network.name, population.network.seed,
-                                data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields,
-                                file_path=export_path, overwrite=overwrite)
+                                  data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields,
+                                  file_path=export_path, overwrite=overwrite)
     
     return receptive_fields
 

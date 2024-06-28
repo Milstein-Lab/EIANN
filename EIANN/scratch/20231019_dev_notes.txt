@@ -593,20 +593,14 @@ TODO:
  - Consult the forward_activity for weight updates.
  - Either select units stochastically, or based on sorting.
 
-** There is a potential issue in many configs. plateau and dend2soma must be set to values from dendritic_state after detach() and clone()
- 
-New plan for logical flow of the network modifications:
-1. van_bp_relu_G
 
-2. bpDale_relu_G: introduce separate E and I, only learn E-E
-
-3. BP_like_1: only propagate activity (not error) before and after nudge; weight update depends on change in dendritic state before and after nudge; W_FB is scaled W_FF.T
+BP_like_1: propagate activity (not error) before and after nudge; weight update depends on temporal comparison of dendritic state before and after nudge; W_FB is scaled W_FF.T
  - BP_like_1E: all units are updated
  - BP_like_1F: fixed fraction of (sorted) units are updated
  - BP_like_1G: all units are updated stochastically
  - BP_like_1H: units are updated stochastically, up to a max fraction of units
 
-4. BP_like_2: only propagate activity (not error) before and after nudge; weight update depends on change in dendritic state after nudge; lateral dendritic inhibition learns to cancel dendritic state before nudge; W_FB is scaled W_FF.T
+BP_like_2: only propagate activity (not error) before and after nudge; weight update depends on change in dendritic state after nudge; lateral dendritic inhibition learns to cancel dendritic state before nudge; W_FB is scaled W_FF.T
  - BP_like_2E: all units are updated
  - BP_like_2F: fixed fraction of (sorted) units are updated
  - BP_like_2G: all units are updated stochastically
@@ -622,10 +616,9 @@ Just ran:
  - These configs use rule BP_like_1E, which:
  	- Instantly nudges E activity by dendritic state and sends changes in activity backward, but not forward or laterally.
  	- Consults forward activity for the weight update.
- 	- R
  
  Currently running:
-  - 2_hidden_BP_like_1E, which has hyperparamaters to rescale the weights of each top-down projection.
+  - 2_hidden_BP_like_1E, which has hyperparameters to rescale the weights of each top-down projection.
  	
  But, looking back, the equivalent networks BP_like_9A (all H1E units are nudged and updated, like BP_like_2E) and BP_like_8A (a fraction of H1E units are nudged like BP_like_2F), which failed with 2 hidden layers, haven't been attempted with an appropriate re-scaling of top-down weights.
  
@@ -648,6 +641,32 @@ TODO:
 - 2_hidden_BCM_G
 - 2_hidden_Supervised_BCM_G2
 
+
+Current plan for logical flow of the network modifications:
+1. van_bp_relu_G
+
+2. bpDale_relu_F: introduce separate E and I, learn all connections
+
+3. Hebb_WeightNorm_F: separate E and I, unsupervised learning at all connections
+
+4. Supervised_Hebb_WeightNorm_F: separate E and I, unsupervised learn all connections, nudge Output.E
+
+5. bpDale_relu_G: separate E and I, only learn E-E
+
+6. Supervised_Hebb_WeightNorm_G: separate E and I, unsupervised only learn E-E, nudge Output.E
+
+7. BCM_G: separate E and I, unsupervised only learn E-E
+
+8. Supervised_BCM_G: separate E and I, unsupervised only learn E-E, nudge Output.E
+
+9. BP_like_1J: propagate activity (not error) before and after nudge; weight update depends on temporal comparison of dendritic state before and after nudge; W_FB is scaled W_FF.T
+
+10. BP_like_2K: propagate activity (not error) before and after nudge; weight update depends on dendritic state after nudge and lateral dendritic inhibition; W_FB is scaled W_FF.T; DendI<E/I is not learned.
+
+11. BP_like_3J: propagate activity (not error) before and after nudge; weight update depends on dendritic state after nudge and lateral dendritic inhibition; W_FB is scaled W_FF.T; DendI<E/I is learned by gradient descent on a local auxiliary objective.
+
+12. BP_like_2J: propagate activity (not error) before and after nudge; weight update depends on dendritic state after nudge and lateral dendritic inhibition; W_FB is scaled W_FF.T; DendI<E/I is learned by Hebb_WeightNorm.
+
 20240514:
  DONE: 
   - BP_like_1I (like BP_like_1E, but allowing network-wide equilibration, with relu gating)
@@ -656,11 +675,19 @@ TODO:
   - BP_like_2K (like BP_like_2E, but with relu gating)
   - BTSP_1J (like BP_like_2J)
   
- TODO:
-  - BP_like_2L (bring back network-wide equilibration to BP_like_2J)
+   
+ DONE:
+ 2_hidden:
+  - BP_like_3J (like BP_like_2J/K, but learn DendI.E and DendI.DendI with BP) - 93% - check DendI selectivity
+  - BTSP_2J (like BTSP_1J, but learn top-down weights) - 84% - sets many top-down weights to zero
+  - BP_like_2L (bring back network-wide equilibration to BP_like_2J) - 92%
+  - BTSP_3J (like BTSP_1J, but add temporal contrast based on ET and IS) - 90%, runs very slowly on Frontera
+  - BTSP_4J (like BTSP_2J, but learn DendI.E and DendI.DendI with BP) - 78% - need to diagnose
+
+  1_hidden:
+  - Supervised_BCM_G2
+  - Hebb_WeightNorm_F
   
- In queue:
-  - BP_like_3J (like BP_like_2J/K, but learn DendI.E and DendI.DendI with BP)
-  - BTSP_2J (like BTSP_1J, but learn top-down weights)
-  - BTSP_3J (like BTSP_1J, but add temporal contrast based on ET and IS)
-  
+ Need to try:
+  - BTSP_3L (like BTSP_3J but bring back network-wide equilibration)
+  - BTSP_2M (like BTSP_2J but turn off neg mod events on top-down projections)
