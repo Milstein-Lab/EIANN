@@ -24,7 +24,7 @@ def compute_average_activity(activity, labels):
     return avg_activity
 
 
-def compute_test_activity(network, test_dataloader, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
+def compute_test_activity(network, test_dataloader, sort=True, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -69,20 +69,21 @@ def compute_test_activity(network, test_dataloader, sorted_output_idx=None, expo
             label_idx = torch.where(labels == label)
             avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
             
-        preferred_input_dict[population.fullname] = torch.argmax(avg_pop_activity, dim=1)
-        if population is network.output_pop:
-            if sorted_output_idx is None:
-                sort_idx = torch.arange(0, network.output_pop.size)
+        # Sort units by their preferred input
+        if sort:
+            if population is network.output_pop:
+                if sorted_output_idx is None:
+                    sort_idx = torch.arange(0, network.output_pop.size)
+                else:
+                    sort_idx = sorted_output_idx
             else:
-                sort_idx = sorted_output_idx
-        else:
-            silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-            active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-            preferred_input_active = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-            _, idx = torch.sort(preferred_input_active)
-            sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+                silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+                active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+                preferred_input_active = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+                _, idx = torch.sort(preferred_input_active)
+                sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+            avg_pop_activity = avg_pop_activity[sort_idx]
 
-        avg_pop_activity = avg_pop_activity[sort_idx]
         average_pop_activity_dict[population.fullname] = avg_pop_activity
 
     if export:
@@ -90,9 +91,8 @@ def compute_test_activity(network, test_dataloader, sorted_output_idx=None, expo
         assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
         data_utils.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=export_path, overwrite=overwrite)
         data_utils.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=export_path, overwrite=overwrite)
-        data_utils.save_plot_data(network.name, network.seed, data_key='preferred_input_dict', data=preferred_input_dict, file_path=export_path, overwrite=overwrite)
     
-    return percent_correct, average_pop_activity_dict, preferred_input_dict
+    return percent_correct, average_pop_activity_dict
 
 
 def compute_dParam_history(network):
