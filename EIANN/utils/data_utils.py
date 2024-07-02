@@ -787,6 +787,32 @@ def get_optimal_sorting(network, test_dataloader, plot=False):
     return min_loss_sorting
 
 
+def class_based_sorting_with_cycle(preferred_classes):
+    """
+    Sort units by class in repeating blocks (0,1,2,3,0,1,2,3,...).
+    Returns the index of the sorted units.
+    """
+    class_sorted_idx = []
+    preferred_classes_ls = list(preferred_classes)
+    positions = list(range(len(preferred_classes_ls)))
+    classes = list(np.unique(preferred_classes_ls))
+    class_iter = itertools.cycle(classes)
+    current_class = next(class_iter)
+    while len(preferred_classes_ls) > 0:
+        for i, unit_class in enumerate(preferred_classes_ls):
+            if unit_class == current_class:
+                class_sorted_idx.append(positions[i])
+                preferred_classes_ls.pop(i)
+                positions.pop(i)
+                current_class = next(class_iter)
+                break
+            if i == len(preferred_classes_ls)-1: # if we reach the end of the loop without encountering the class
+                classes.remove(current_class)
+                class_iter = itertools.cycle(classes)
+                current_class = next(class_iter)
+    return class_sorted_idx
+
+
 def recompute_history(network, output_sorting):
     """
     Re-compute activity history, loss history, and weight+bias history
