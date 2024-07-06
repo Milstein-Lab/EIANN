@@ -13,7 +13,8 @@ from EIANN import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
     recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, sort_by_class_averaged_val_output
-from EIANN.plot import plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields
+from EIANN.plot import (plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields,
+                        plot_representation_metrics)
 from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from EIANN.optimize.network_config_updates import *
@@ -124,6 +125,16 @@ def config_worker():
         context.plot_initial = False
     else:
         context.plot_initial - str_to_bool(context.plot_initial)
+    if 'include_dend_loss_objective' not in context():
+        context.include_dend_loss_objective = False
+    else:
+        context.include_dend_loss_objective = str_to_bool(context.include_dend_loss_objective)
+    if context.store_history:
+        context.store_history_interval = None
+    if context.include_dend_loss_objective:
+        if not context.store_history:
+            context.store_history = True
+            context.store_history_interval = (-context.num_training_steps_accuracy_window, -1, 1)
 
     context.train_steps = int(context.train_steps)
     
@@ -162,6 +173,20 @@ def config_worker():
         torch.utils.data.DataLoader(MNIST_train[0:-10000], shuffle=True, generator=context.data_generator)
     context.val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
     context.test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
+
+
+def get_mean_forward_dend_loss(network, num_steps):
+    """
+    
+    :param network:
+    :param num_steps: int
+    :return:
+    """
+    hidden_layers = list(network)[1:-1]
+    mean_forward_dend_loss_list = []
+    for layer in hidden_layers:
+        mean_forward_dend_loss_list.append(torch.mean(layer.E.forward_dendritic_state[-num_steps:]).item())
+    return np.mean(mean_forward_dend_loss_list)
 
 
 def get_random_seeds():
@@ -233,8 +258,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             current_time = time.time()
         network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
                       val_interval=context.val_interval,  # e.g. (-201, -1, 10),
-                      samples_per_epoch=context.train_steps,
-                      store_history=context.store_history, store_dynamics=context.store_dynamics,
+                      samples_per_epoch=context.train_steps, store_history=context.store_history,
+                      store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar, debug=context.debug)
         if context.debug:
@@ -271,7 +296,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         sorted_val_loss_history = network.val_loss_history
         sorted_val_accuracy_history = network.val_accuracy_history
     
-    if context.store_history:
+    if context.store_history and (context.store_history_interval is None):
         binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
             recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
     
@@ -307,6 +332,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             context.update(locals())
         return dict()
     
+    if context.include_dend_loss_objective:
+        mean_forward_dend_loss = get_mean_forward_dend_loss(network, int(context.num_training_steps_accuracy_window))
+        results['mean_forward_dend_loss'] = mean_forward_dend_loss
+    
     if plot:
         # print('Weights match: %s' % torch.all(final_weights == network.Output.E.H1.E.weight.data))
         plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
@@ -325,8 +354,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
 
     if context.full_analysis:
-        metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields,
-                                                            plot=plot)
+        metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
+        plot_representation_metrics(metrics_dict)
         test_loss_history, test_accuracy_history = \
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
                                                    plot=plot, status_bar=context.status_bar)
