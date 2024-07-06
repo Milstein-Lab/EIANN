@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import math
+import itertools
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -437,8 +438,8 @@ def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
 
 
-def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None, num_cols=None, num_rows=None,
-                          activity_threshold=1e-10, cmap='custom', ax_list=None):
+def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_classes=None, num_units=None, 
+                          num_cols=None, num_rows=None, activity_threshold=1e-10, cmap='custom', ax_list=None):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
     structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
@@ -461,13 +462,27 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
         scale = scale[active_idx]
         receptive_fields = receptive_fields[active_idx]
 
-    if sort: # Sort units by tuning structure of their receptive fields
+    # Sort units by tuning structure of their receptive fields
+    if sort: 
         structure = ut.compute_rf_structure(receptive_fields)
         sorted_idx = np.argsort(-structure)
         receptive_fields = receptive_fields[sorted_idx]
         if isinstance(scale, torch.Tensor):
             scale = scale[sorted_idx] # Sort the vector of scaling factors (e.g. max activity of each unit)
+        if preferred_classes is not None:
+            preferred_classes = preferred_classes[sorted_idx]
 
+    # Filter by class activity preference to sample units across all classes
+    if preferred_classes is not None:
+        assert isinstance(preferred_classes, torch.Tensor), 'sort_by_activities must be a tensor of maxact class labels'
+        class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
+        preferred_classes = preferred_classes[class_sorted_idx]
+        receptive_fields = receptive_fields[class_sorted_idx]
+        if isinstance(scale, torch.Tensor):
+            scale = scale[class_sorted_idx]
+
+
+    # Filter by number of units
     if num_units is not None:
         receptive_fields = receptive_fields[:num_units]
         if isinstance(scale, torch.Tensor):
@@ -541,7 +556,8 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, num_units=None,
         im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max,
                        aspect='equal', interpolation='none')
         ax.axis('off')
-
+        if preferred_classes is not None:
+            ax.text(0, 6, f'{preferred_classes[i]}', color='gray', fontsize=8)        
 
     if ax_list is None:
         fig.tight_layout(pad=0.2)
@@ -670,7 +686,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     print(f'Batch accuracy = {percent_correct}%')
 
     if population is None:
-        # Include only first population in the data dict
+        # Include only last population in the data dict
         population = list(average_pop_activity_dict.keys())[0]
         average_pop_activity_dict = {population: average_pop_activity_dict[population]}
     elif isinstance(population, str):
@@ -703,29 +719,6 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         elif isinstance(population, list) and len(population)>1:
             raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
             
-            
-# def plot_average_population_activity(pop_name, avg_pop_activity, ax):
-#     '''
-#     Plot average activity of a population
-#     :param pop_name: str
-#     :param avg_pop_activity: 2D tensor
-#     '''
-#     # Sort units by preferred label
-#     silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-#     active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-#     preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-#     _, idx = torch.sort(preferred_input)
-#     sort_idx = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
-
-#     # Generate plot
-#     im = ax.imshow(avg_pop_activity[sort_idx], interpolation='none', aspect='auto')
-#     cbar = plt.colorbar(im, ax=ax)
-#     ax.set_xticks(range(avg_pop_activity.shape[1]))
-#     ax.set_xlabel('Labels')
-#     ax.set_ylabel(f'{pop_name} unit')
-#     ax.set_title(f'Average activity - {pop_name}')
-
-
 
 def plot_rsm(network, test_dataloader):
 

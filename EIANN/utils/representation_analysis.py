@@ -24,7 +24,7 @@ def compute_average_activity(activity, labels):
     return avg_activity
 
 
-def compute_test_activity(network, test_dataloader, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
+def compute_test_activity(network, test_dataloader, sort=True, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -46,6 +46,7 @@ def compute_test_activity(network, test_dataloader, sorted_output_idx=None, expo
             return percent_correct, average_pop_activity_dict    
 
     average_pop_activity_dict = {}
+    preferred_input_dict = {}
 
     idx, data, targets = next(iter(test_dataloader))
     data = data.to(network.device)
@@ -61,23 +62,28 @@ def compute_test_activity(network, test_dataloader, sorted_output_idx=None, expo
     percent_correct = torch.round(percent_correct, decimals=2)
 
     # Compute average activity for each population
-    for population in network.populations.values():
+    reversed_populations = list(reversed(network.populations.values())) # start with the output population
+    for population in reversed_populations:
         avg_pop_activity = torch.zeros(population.size, num_labels)
         for label in range(num_labels):
             label_idx = torch.where(labels == label)
             avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
-        if population is network.output_pop:
-            if sorted_output_idx is None:
-                sort_idx = torch.arange(0, network.output_pop.size)
+            
+        # Sort units by their preferred input
+        if sort:
+            if population is network.output_pop:
+                if sorted_output_idx is None:
+                    sort_idx = torch.arange(0, network.output_pop.size)
+                else:
+                    sort_idx = sorted_output_idx
             else:
-                sort_idx = sorted_output_idx
-        else:
-            silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-            active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-            preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-            _, idx = torch.sort(preferred_input)
-            sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
-        avg_pop_activity = avg_pop_activity[sort_idx]
+                silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+                active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+                preferred_input_active = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+                _, idx = torch.sort(preferred_input_active)
+                sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+            avg_pop_activity = avg_pop_activity[sort_idx]
+
         average_pop_activity_dict[population.fullname] = avg_pop_activity
 
     if export:
