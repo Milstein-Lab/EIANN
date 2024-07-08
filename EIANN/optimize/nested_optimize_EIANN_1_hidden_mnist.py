@@ -129,7 +129,7 @@ def config_worker():
         context.include_dend_loss_objective = False
     else:
         context.include_dend_loss_objective = str_to_bool(context.include_dend_loss_objective)
-    if context.store_history:
+    if 'store_history_interval' not in context():
         context.store_history_interval = None
     if context.include_dend_loss_objective:
         if not context.store_history:

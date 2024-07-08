@@ -691,3 +691,10 @@ Current plan for logical flow of the network modifications:
  Need to try:
   - BTSP_3L (like BTSP_3J but bring back network-wide equilibration)
   - BTSP_2M (like BTSP_2J but turn off neg mod events on top-down projections)
+  
+  - BP_like_2? (like BP_like_2K, but bring back network-wide equilibration)
+  - BP_like_2N (like BP_like_2J, but simplify DendI <- DendI as equal, global lateral inhibition)
+  - BP_like_3M (like BP_like_3J, but bring back network-wide equilibration)
+  
+RUNNING:
+ - BP_like_2M - like BP_like_2L with auxiliary objective to reduce forward_dendritic_loss (promote DendI feature selectivity)
