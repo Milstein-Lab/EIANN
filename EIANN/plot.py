@@ -269,6 +269,10 @@ def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None,
 
 
 def plot_representation_metrics(metrics_dict):
+    sparsity = metrics_dict['structure']
+    selectivity = metrics_dict['selectivity']
+    discriminability = metrics_dict['discriminability']
+    structure = metrics_dict['structure']
     fig, ax = plt.subplots(2,2,figsize=[12,5])
     ax[0,0].hist(sparsity,50)
     ax[0,0].set_title('Sparsity distribution')
@@ -285,7 +289,7 @@ def plot_representation_metrics(metrics_dict):
     ax[1,0].set_ylabel('pattern pairs')
     ax[1,0].set_xlabel('(1 - cosine similarity)')
 
-    if receptive_fields is not None:
+    if structure is not None:
         ax[1,1].hist(structure, 50)
         ax[1,1].set_title('Structure')
         ax[1,1].set_ylabel('num units')
