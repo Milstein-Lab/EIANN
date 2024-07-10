@@ -269,28 +269,25 @@ def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None,
 
 
 def plot_representation_metrics(metrics_dict):
-    sparsity = metrics_dict['structure']
-    selectivity = metrics_dict['selectivity']
-    discriminability = metrics_dict['discriminability']
-    structure = metrics_dict['structure']
+
     fig, ax = plt.subplots(2,2,figsize=[12,5])
-    ax[0,0].hist(sparsity,50)
+    ax[0,0].hist(metrics_dict['sparsity'],50)
     ax[0,0].set_title('Sparsity distribution')
     ax[0,0].set_ylabel('num patterns')
     ax[0,0].set_xlabel('(1 - fraction active units)')
 
-    ax[0,1].hist(selectivity,50)
+    ax[0,1].hist(metrics_dict['selectivity'],50)
     ax[0,1].set_title('Selectivity distribution')
     ax[0,1].set_ylabel('num units')
     ax[0,1].set_xlabel('(1 - fraction active patterns)')
 
     ax[1,0].set_title('Discriminability distribution')
-    ax[1,0].hist(discriminability, 50)
+    ax[1,0].hist(metrics_dict['discriminability'], 50)
     ax[1,0].set_ylabel('pattern pairs')
     ax[1,0].set_xlabel('(1 - cosine similarity)')
 
-    if structure is not None:
-        ax[1,1].hist(structure, 50)
+    if metrics_dict['structure'] is not None:
+        ax[1,1].hist(metrics_dict['structure'], 50)
         ax[1,1].set_title('Structure')
         ax[1,1].set_ylabel('num units')
         ax[1,1].set_xlabel('(1 - similarity to random noise)')
@@ -298,6 +295,7 @@ def plot_representation_metrics(metrics_dict):
     else:
         ax[1,1].axis('off')
 
+    plt.tight_layout()
     fig.show()
 
 

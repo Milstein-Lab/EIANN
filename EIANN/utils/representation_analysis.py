@@ -9,7 +9,7 @@ from tqdm import tqdm
 from scipy import signal
 
 from EIANN.utils import data_utils
-
+import EIANN.plot as pt
 
 def compute_average_activity(activity, labels):
     '''
@@ -46,7 +46,6 @@ def compute_test_activity(network, test_dataloader, sort=True, sorted_output_idx
             return percent_correct, average_pop_activity_dict    
 
     average_pop_activity_dict = {}
-    preferred_input_dict = {}
 
     idx, data, targets = next(iter(test_dataloader))
     data = data.to(network.device)
@@ -261,7 +260,7 @@ def compute_diag_fisher(network, train_dataloader_CL1_full):
     return diag_fisher
 
 
-def compute_representation_metrics(population, test_dataloader, receptive_fields=None):
+def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False):
     """
     Compute representation metrics for a population of neurons
     :param population: Population object
@@ -314,8 +313,15 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     else:
         structure = None
 
-    return {'sparsity': sparsity, 'selectivity': selectivity,
-            'discriminability': discriminability, 'structure': structure}
+    metrics_dict = {'sparsity': sparsity, 
+                    'selectivity': selectivity,
+                    'discriminability': discriminability, 
+                    'structure': structure}
+
+    if plot:
+        pt.plot_representation_metrics(metrics_dict)
+
+    return metrics_dict
 
 
 def compute_alternate_dParam_history(dataloader, network, network2=None, save_path=None, batch_size=None, constrain_params=None):
