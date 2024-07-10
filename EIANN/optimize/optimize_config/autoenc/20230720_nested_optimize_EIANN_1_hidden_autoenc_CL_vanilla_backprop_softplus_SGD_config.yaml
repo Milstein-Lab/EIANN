@@ -18,7 +18,7 @@ kwargs:
   split: 0.75
   network_config_file_path: optimize/network_config/autoenc/20230720_EIANN_1_hidden_autoenc_vanilla_backprop_softplus_SGD_config.yaml
   val_interval:
-    - -1001
+    - -1000
     - -1
     - 100
   num_training_steps_accuracy_window: 1000

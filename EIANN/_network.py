@@ -559,7 +559,7 @@ class Network(nn.Module):
         self.params_to_save.extend(['param_history', 'param_history_steps', 'prev_param_history', 'sample_order',
                                     'target_history', 'sorted_sample_indexes', 'loss_history', 'val_output_history',
                                     'val_loss_history', 'val_history_train_steps', 'val_accuracy_history',
-                                    'val_target', 'attribute_history_dict'])
+                                    'val_target', 'attribute_history_dict', 'forward_dendritic_state'])
         
         data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
                                  if param_name in self.params_to_save},

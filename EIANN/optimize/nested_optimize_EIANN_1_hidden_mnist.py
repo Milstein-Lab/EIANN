@@ -129,12 +129,11 @@ def config_worker():
         context.include_dend_loss_objective = False
     else:
         context.include_dend_loss_objective = str_to_bool(context.include_dend_loss_objective)
-    if 'store_history_interval' not in context():
+    if context.store_history:
         context.store_history_interval = None
-    if context.include_dend_loss_objective:
-        if not context.store_history:
-            context.store_history = True
-            context.store_history_interval = (-context.num_training_steps_accuracy_window, -1, 1)
+    elif context.include_dend_loss_objective:
+        context.store_history = True
+        context.store_history_interval = context.val_interval
 
     context.train_steps = int(context.train_steps)
     
@@ -185,7 +184,8 @@ def get_mean_forward_dend_loss(network, num_steps):
     hidden_layers = list(network)[1:-1]
     mean_forward_dend_loss_list = []
     for layer in hidden_layers:
-        mean_forward_dend_loss_list.append(torch.mean(layer.E.forward_dendritic_state[-num_steps:]).item())
+        mean_forward_dend_loss_list.append(torch.mean(layer.E.forward_dendritic_state_history[-num_steps:]).item())
+    
     return np.mean(mean_forward_dend_loss_list)
 
 
@@ -333,7 +333,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         return dict()
     
     if context.include_dend_loss_objective:
-        mean_forward_dend_loss = get_mean_forward_dend_loss(network, int(context.num_training_steps_accuracy_window))
+        if context.store_history_interval is None:
+            dend_loss_window = int(context.num_training_steps_accuracy_window)
+        else:
+            dend_loss_window = num_val_steps_accuracy_window
+        mean_forward_dend_loss = get_mean_forward_dend_loss(network, dend_loss_window)
         results['mean_forward_dend_loss'] = mean_forward_dend_loss
     
     if plot:

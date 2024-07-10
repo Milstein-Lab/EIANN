@@ -57,7 +57,7 @@ kwargs:
     status_bar: False
     epochs: 300
     val_interval:
-        - -1001
+        - -1000
         - -1
         - 100
     num_training_steps_accuracy_window: 1000

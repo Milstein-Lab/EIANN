@@ -103,10 +103,10 @@ kwargs:
     epochs: 1
     network_config_file_path: optimize/network_config/MNIST/20240329_EIANN_2_hidden_mnist_BP_like_config_2E.yaml
     val_interval:
-        - -2001
+        - -1000
         - -1
         - 100
-    num_training_steps_accuracy_window: 2000
+    num_training_steps_accuracy_window: 1000
     constrain_equilibration_dynamics: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist

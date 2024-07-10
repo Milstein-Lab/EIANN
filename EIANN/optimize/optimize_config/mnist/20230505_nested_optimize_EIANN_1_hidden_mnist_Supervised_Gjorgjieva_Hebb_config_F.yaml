@@ -65,10 +65,10 @@ kwargs:
     epochs: 1
     network_config_file_path: optimize/network_config/MNIST/20230505_EIANN_1_hidden_mnist_Supervised_Gjorgjieva_Hebb_config_F.yaml
     val_interval:
-        - -2001
+        - -1000
         - -1
         - 100
-    num_training_steps_accuracy_window: 2000
+    num_training_steps_accuracy_window: 1000
     constrain_equilibration_dynamics: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist

@@ -127,7 +127,7 @@ kwargs:
     epochs: 1
     network_config_file_path: optimize/network_config/MNIST/20240612_EIANN_2_hidden_mnist_BTSP_config_4J.yaml
     val_interval:
-        - -1001
+        - -1000
         - -1
         - 100
     num_training_steps_accuracy_window: 1000
