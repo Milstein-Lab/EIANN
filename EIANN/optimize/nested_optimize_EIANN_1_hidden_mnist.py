@@ -129,11 +129,12 @@ def config_worker():
         context.include_dend_loss_objective = False
     else:
         context.include_dend_loss_objective = str_to_bool(context.include_dend_loss_objective)
-    if context.store_history:
-        context.store_history_interval = None
-    elif context.include_dend_loss_objective:
-        context.store_history = True
-        context.store_history_interval = context.val_interval
+    
+    context.store_history_interval = None
+    if context.include_dend_loss_objective:
+        if not context.store_history:
+            context.store_history = True
+            context.store_history_interval = context.val_interval
 
     context.train_steps = int(context.train_steps)
     
@@ -282,14 +283,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if not context.supervised:
         if context.eval_accuracy == 'final':
             min_loss_idx = len(network.val_loss_history) - 1
-            sorted_output_idx = sort_by_class_averaged_val_output(network)
+            sorted_output_idx = sort_by_class_averaged_val_output(network, val_dataloader)
         elif context.eval_accuracy == 'best':
-            min_loss_idx, sorted_output_idx = sort_by_val_history(network, plot=plot)
+            min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_dataloader, plot=plot)
         else:
             raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
                             context.eval_accuracy)
         sorted_val_loss_history, sorted_val_accuracy_history = \
-            recompute_validation_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, store=True)
+            recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx=sorted_output_idx,
+                                                   store=True)
     else:
         min_loss_idx = torch.argmin(network.val_loss_history)
         sorted_output_idx = None

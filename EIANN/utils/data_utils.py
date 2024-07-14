@@ -391,30 +391,32 @@ def get_diag_argmax_row_indexes(data):
     return final_row_indexes
 
 
-def sort_by_val_history(network, plot=False):
+def sort_by_val_history(network, val_dataloader, plot=False):
     """
     Find the sorting giving the best argmax across the full validation history
 
     :param network:
     :param plot:
-    :return: min_loss_idx: index of the point with lowest loss (index relative only to the validation points, not the full training)
-    :return: min_loss_sorting: optimal sorting indices for the point with lowest loss
+    :return: tuple (int, tensor): index of the point with lowest loss (index relative only to the validation points);
+        optimal sorting indices for the point with lowest loss
     """
     output_pop = network.output_pop
 
-    num_units = network.val_target.shape[1]
+    num_units = output_pop.size
     num_labels = num_units
-    num_patterns = network.val_target.shape[0]
-
+    num_patterns = network.val_output_history.shape[1]
+    
     sorting_history = []
     optimal_loss_history = []
     optimal_accuracy_history = []
     sorted_idx_history = []
-
+    
+    _, _, val_target = next(iter(val_dataloader))
+    targets = torch.argmax(val_target, dim=1)  # convert from 1-hot vector to int label
+    
     for output in network.val_output_history:
         # Get average output for each label class
         avg_output = torch.zeros(num_labels, num_units)
-        targets = torch.argmax(network.val_target, dim=1)  # convert from 1-hot vector to int label
         for label in range(num_labels):
             label_idx = torch.where(targets == label)  # find all instances of given label
             avg_output[label, :] = torch.mean(output[label_idx], dim=0)
@@ -422,10 +424,9 @@ def sort_by_val_history(network, plot=False):
         # Find optimal output unit (column) sorting given average responses
         optimal_sorting = get_diag_argmax_row_indexes(avg_output.T)
         sorted_activity = output[:, optimal_sorting]
-        optimal_loss = network.criterion(sorted_activity, network.val_target)
+        optimal_loss = network.criterion(sorted_activity, val_target)
         optimal_loss_history.append(optimal_loss.item())
-        optimal_accuracy = 100 * torch.sum(
-            torch.argmax(sorted_activity, dim=1) == torch.argmax(network.val_target, dim=1)) / num_patterns
+        optimal_accuracy = 100 * torch.sum(torch.argmax(sorted_activity, dim=1) == targets) / num_patterns
         optimal_accuracy_history.append(optimal_accuracy.item())
         sorting_history.append(optimal_sorting)
 
@@ -444,22 +445,24 @@ def sort_by_val_history(network, plot=False):
     return min_loss_idx, min_loss_sorting
 
 
-def sort_by_class_averaged_val_output(network, index=-1):
+def sort_by_class_averaged_val_output(network, val_dataloader, index=-1):
     """
     Find the sorting for the class-averaged output at the given index of the validation history
 
     :param network:
+    :param val_dataloader:
     :param index: int
     :return: sorted_output_idx: array of int
     """
-    num_units = network.val_target.shape[1]
+    num_units = network.output_pop.size
     num_labels = num_units
     
     output = network.val_output_history[index]
     
     # Get average output for each label class
     avg_output = torch.zeros(num_labels, num_units)
-    targets = torch.argmax(network.val_target, dim=1)  # convert from 1-hot vector to int label
+    _, _, val_targets = next(iter(val_dataloader))
+    targets = torch.argmax(val_targets, dim=1)  # convert from 1-hot vector to int label
     for label in range(num_labels):
         label_idx = torch.where(targets == label)  # find all instances of given label
         avg_output[label, :] = torch.mean(output[label_idx], dim=0)
@@ -626,14 +629,14 @@ def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_outp
     return network.test_loss_history, network.test_accuracy_history
 
 
-def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=False):
+def recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx, store=False):
     """
 
     :param network:
+    :param val_dataloader:
     :param sorted_output_idx:
     :param store:
-    :param plot:
-    :return:
+    :return: tuple of tensor
     """
 
     # Sort output history
@@ -643,10 +646,11 @@ def recompute_validation_loss_and_accuracy(network, sorted_output_idx, store=Fal
     sorted_val_loss_history = []
     sorted_val_accuracy_history = []
     num_patterns = val_output_history.shape[1]
+    _, _, val_target = next(iter(val_dataloader))
+    targets = torch.argmax(val_target, dim=1)
     for batch_output in val_output_history:
-        loss = network.criterion(batch_output, network.val_target).item()
-        accuracy = 100 * torch.sum(torch.argmax(batch_output, dim=1) ==
-                                   torch.argmax(network.val_target, dim=1)) / num_patterns
+        loss = network.criterion(batch_output, val_target).item()
+        accuracy = 100 * torch.sum(torch.argmax(batch_output, dim=1) == targets) / num_patterns
 
         sorted_val_loss_history.append(loss)
         sorted_val_accuracy_history.append(accuracy.item())

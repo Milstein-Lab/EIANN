@@ -498,7 +498,7 @@ BP_like_2K:
 BP_like_2L:
     # all H.E units are updated and nudged
     # with network-wide equilibration during backward phase and relu gating
-    # like BP_like_2L with auxiliary objective to reduce forward dendritic state
+    # with auxiliary objective to reduce forward dendritic state
     # DendI.E and DendI.DendI learned with Hebb_WeightNorm
     #    accuracy: 91.91120147705078
     #    loss: 0.020965341478586197
