@@ -264,7 +264,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar, debug=context.debug)
         if context.debug:
-            print('pid: %i, train took %.3f s' % (os.getpid(), time.time() - current_time))
+            train_time = time.time() - current_time
+            print('pid: %i, train took %.3f s' % (os.getpid(), train_time))
+            if train_time > 300.:
+                print(x, seed, torch.mean(network.H1.E.activity.data))
         # final_weights = deepcopy(network.Output.E.H1.E.weight.data)
         if export:
             network.save(path=context.data_file_path, disp=False)

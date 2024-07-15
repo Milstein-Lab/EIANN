@@ -3385,6 +3385,15 @@ class BTSP_18(LearningRule):
                                                          self.temporal_discount)
             self.projection.post.past_IS_updated = True
     
+    def step_alt(self):
+        if self.projection.direction in ['forward', 'F']:
+            delta_weight = torch.outer(self.projection.post.plateau,
+                                       torch.clamp(self.projection.pre.activity, min=0, max=1))
+        elif self.projection.direction in ['recurrent', 'R']:
+            delta_weight = torch.outer(self.projection.post.plateau,
+                                       torch.clamp(self.projection.pre.prev_activity, min=0, max=1))
+        self.projection.weight.data += self.learning_rate * delta_weight
+    
     def step(self):
         # pos error - BTSP weight update
         plateau = self.projection.post.plateau

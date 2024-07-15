@@ -124,7 +124,7 @@ class BCM_4(LearningRule):
                         # only update theta once per population
                         pop.BCM_theta_updated = False
                         if store_history and not pop.BCM_theta_stored:
-                            pop.append_attribute_history('theta', output_pop.theta.detach().clone())
+                            pop.append_attribute_history('theta', pop.theta.detach().clone())
                             pop.BCM_theta_stored = True
                         break
 
