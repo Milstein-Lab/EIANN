@@ -116,7 +116,10 @@ def config_worker():
         context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
     if 'export_network_config_file_path' not in context():
         network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-        context.export_network_config_file_path = f"{context.output_dir}/{network_name}_optimized.yaml"
+        if context.label is None:
+            context.export_network_config_file_path = f"{context.output_dir}/{network_name}_optimized.yaml"
+        else:
+            context.export_network_config_file_path = f"{context.output_dir}/{network_name}_{context.label}_optimized.yaml"
     if 'retrain' not in context():
         context.retrain = True
     else:
@@ -446,6 +449,8 @@ def get_objectives(features, model_id=None, export=False, plot=False):
     for key, val in features.items():
         if 'accuracy' in key:
             objectives[key] = 100. - val
+        elif key == 'mean_forward_dend_loss':
+            objectives[key] = np.abs(val)
         else:
             objectives[key] = val
     return features, objectives
