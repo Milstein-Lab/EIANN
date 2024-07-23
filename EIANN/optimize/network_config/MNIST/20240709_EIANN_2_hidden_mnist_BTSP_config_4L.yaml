@@ -112,6 +112,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
@@ -233,6 +234,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
@@ -320,6 +322,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:

@@ -78,6 +78,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    update_phase: A
                     direction: R
                     learning_rule: Hebb_WeightNorm_4
                     learning_rule_kwargs:
@@ -150,6 +151,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    update_phase: A
                     direction: R
                     learning_rule: Hebb_WeightNorm_4
                     learning_rule_kwargs:

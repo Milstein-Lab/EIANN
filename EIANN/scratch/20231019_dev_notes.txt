@@ -684,6 +684,8 @@ Current plan for logical flow of the network modifications:
   - BTSP_3J (like BTSP_1J, but add temporal contrast based on ET and IS) - 90%, runs very slowly on Frontera
   - BTSP_4J (like BTSP_2J, but learn DendI.E and DendI.DendI with BP) - 78% - need to diagnose
   - BP_like_3M (like BP_like_3J, but bring back network-wide equilibration) - 92%
+  - Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, learn SomaI)
+  - Top_Layer_Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, learn SomaI)
 
 
   1_hidden:
@@ -696,12 +698,10 @@ Current plan for logical flow of the network modifications:
   - BP_like_2N (like BP_like_2J, but simplify DendI <- DendI as equal, global lateral inhibition)
   
   - Supervised_BCM_4 (2 hidden, rectified firing rates for theta and weight updates)
-  - Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, learn I)
-  - Top_Layer_Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, learn I)
-  - Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, fixed I) - this is running extremely slowly on Frontera
+  - BTSP_4L (like BTSP_3L but learn top-down weights and add auxiliary objective to reduce forward_dendritic_loss (promote DendI feature selectivity))
+  - Need to try a variant of BTSP that learns top-down weights but uses dend_temp_contrast to compute local errors  
   
 
-
 RUNNING:
-   - BTSP_3L (like BTSP_3J, but bring back network-wide equilibration, add relu_gate and auxiliary objective to reduce forward_dendritic_state) - 93%
-   - BTSP_4L (like BTSP_3L but learn top-down weights and add auxiliary objective to reduce forward_dendritic_loss (promote DendI feature selectivity))
+   - BTSP_3L (like BTSP_3J, but bring back network-wide equilibration, add relu_gate and auxiliary objective to reduce forward_dendritic_state) [re-running using abs val of forward_dendritic_state for auxiliary objective]
+   - Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, fixed SomaI) [running using abs val of forward_dendritic_state for auxiliary objective]
