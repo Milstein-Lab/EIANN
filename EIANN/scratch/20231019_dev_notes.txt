@@ -680,7 +680,7 @@ Current plan for logical flow of the network modifications:
  2_hidden:
   - BP_like_3J (like BP_like_2J/K, but learn DendI.E and DendI.DendI with BP) - 93% - check DendI selectivity
   - BTSP_2J (like BTSP_1J, but learn top-down weights) - 84% - sets many top-down weights to zero
-  - BP_like_2L (DendI.E and DendI.DendI learned with Hebb_WeightNorm with auxiliary objective to reduce forward_dendritic_state) - 92%
+  - BP_like_2L (like BP_like_2J, but with network-wide backward phase equilibration)  - DendI.E and DendI.DendI learned with Hebb_WeightNorm with auxiliary objective to reduce forward_dendritic_state) - 92%
   - BTSP_3J (like BTSP_1J, but add temporal contrast based on ET and IS) - 90%, runs very slowly on Frontera
   - BTSP_4J (like BTSP_2J, but learn DendI.E and DendI.DendI with BP) - 78% - need to diagnose
   - BP_like_3M (like BP_like_3J, but bring back network-wide equilibration) - 92%
@@ -703,5 +703,32 @@ Current plan for logical flow of the network modifications:
   
 
 RUNNING:
-   - BTSP_3L (like BTSP_3J, but bring back network-wide equilibration, add relu_gate and auxiliary objective to reduce forward_dendritic_state) [re-running using abs val of forward_dendritic_state for auxiliary objective]
-   - Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, fixed SomaI) [running using abs val of forward_dendritic_state for auxiliary objective]
+   
+
+RE-RUNNING:
+ - BTSP_3L (like BTSP_3J, but bring back network-wide equilibration, add relu_gate and auxiliary objective to reduce forward_dendritic_state) [re-running using abs val of forward_dendritic_state for auxiliary objective]
+ - BP_like_2L again - fixed 2 problems: abs(auxiliary objective) and lack of interneuron equilibration. 
+ - Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, fixed SomaI) [running using abs val of forward_dendritic_state for auxiliary objective]
+ - BP_like_3M
+ - Top_Layer_Supervised_Hebb_WeightNorm_4
+ - Hebb_WeightNorm_4
+ 
+NEED TO RE-RUN:
+ 
+ 
+ 
+   
+PROBLEM:
+ - 20240723 - Many configs with network-wide backward phase equilibration were not equilibrating interneurons (missing update_phase: A)
+  - BP_like_2L - fixed, slight decrease in accuracy, already re-running anyway
+  - BP_like_3M - fixed, large decrease in accuracy, need to re-run
+  - BTSP_3L - fixed, slight decrease in accuracy; already re-running anyway
+  - BTSP_4L - fixed, waiting for result of BTSP_3L
+  - Hebb_WeightNorm_4 - fixed, slight increase in accuracy - need to re-run
+  - Top_Layer_Supervised_Hebb_WeightNorm_4 - fixed, need to re-run
+  - Supervised_Hebb_WeightNorm_4 - fixed, need to start over
+  
+ - These configs were correct:
+  - BP_like_1I
+  
+  

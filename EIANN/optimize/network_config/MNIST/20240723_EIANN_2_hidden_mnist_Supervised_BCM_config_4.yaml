@@ -43,15 +43,17 @@ projection_config:
                         - 0.061735095235877606
                     weight_bounds: !!python/tuple
                         - 0
-                        - 3.737942984542882
+                        - null
                     direction: F
-                    learning_rule: BTSP_18
+                    learning_rule: Supervised_BCM_4
                     learning_rule_kwargs:
+                        sign: 1
                         learning_rate: 0.006900684389813614
-                        max_pop_fraction: 1.
+                        theta_tau: 0.29434780488671874
+                        k: 0.1
+                        relu_gate: True
                         stochastic: False
-                        neg_rate_th: 0.
-                        temporal_discount: 0.25
+                        max_pop_fraction: 1.
             H1:
                 SomaI:
                     weight_init: half_kaiming
@@ -65,7 +67,7 @@ projection_config:
                 DendI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 0.061041432117914914
+                        - 1.3308604685151206
                     weight_bounds: !!python/tuple
                         - null
                         - 0
@@ -75,7 +77,7 @@ projection_config:
                     learning_rule: DendriticLoss_6
                     learning_rule_kwargs:
                         sign: -1
-                        learning_rate: 0.015920951416174885
+                        learning_rate: 0.04537932238567541
             H2:
                 E:
                     weight_init: half_kaiming
@@ -158,18 +160,20 @@ projection_config:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 0.15660723756451086
+                        - 0.061735095235877606
                     weight_bounds: !!python/tuple
                         - 0
-                        - 3.1607571174129747
+                        - null
                     direction: F
-                    learning_rule: BTSP_18
+                    learning_rule: Supervised_BCM_4
                     learning_rule_kwargs:
-                        learning_rate: 0.05248973408306354
-                        neg_rate_th: 0.
+                        sign: 1
+                        learning_rate: 0.006900684389813614
+                        theta_tau: 0.29434780488671874
+                        k: 0.1
+                        relu_gate: True
                         stochastic: False
                         max_pop_fraction: 1.
-                        temporal_discount: 0.25
             H2:
                 SomaI:
                     weight_init: half_kaiming
@@ -279,13 +283,17 @@ projection_config:
                         - 0.15660723756451086
                     weight_bounds: !!python/tuple
                         - 0
-                        - 3.1607571174129747
+                        - null
                     direction: F
-                    learning_rule: BTSP_18
+                    learning_rule: Supervised_BCM_4
                     learning_rule_kwargs:
-                        learning_rate: 0.05248973408306354
-                        neg_rate_th: 0.
-                        temporal_discount: 0.25
+                        sign: 1
+                        learning_rate: 0.006900684389813614
+                        theta_tau: 0.29434780488671874
+                        k: 0.1
+                        relu_gate: True
+                        stochastic: False
+                        max_pop_fraction: 1.
             Output:
                 SomaI:
                     weight_init: half_kaiming

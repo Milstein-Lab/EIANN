@@ -1,6 +1,6 @@
 # H2.E.Output.E cloned (and rescaled) from Output.E.H2.E
 # H1.E.H2.E cloned (and rescaled) from H2.E.H1.E
-# DendI.E and DendI.DendI learned with Hebb_WeightNorm
+# DendI.E and DendI.DendI learned with Hebb_WeightNorm_4
 # E.DendI learned with DendriticLoss_6
 layer_config:
     Input:

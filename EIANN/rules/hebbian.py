@@ -89,27 +89,20 @@ class BCM_4(LearningRule):
     
     def update(self):
         if not self.projection.post.BCM_theta_updated:
-            delta_theta = (
-                    (-self.projection.post.theta +
-                     torch.clamp(self.projection.post.activity, min=0, max=1) ** 2.
-                     / self.k) / self.theta_tau).detach.clone()
+            delta_theta = ((-self.projection.post.theta + self.projection.post.activity ** 2. / self.k) /
+                           self.theta_tau).detach.clone()
             self.projection.post.theta += delta_theta
             self.projection.post.BCM_theta_updated = True
             self.projection.post.BCM_theta_stored = False
     
     def step(self):
+        post_activity = torch.clamp(self.projection.post.activity.detach().clone(), min=0, max=1)
         if self.projection.direction in ['forward', 'F']:
-            delta_weight = (
-                    torch.outer(torch.clamp(self.projection.post.activity, min=0, max=1),
-                                torch.clamp(self.projection.pre.activity, min=0, max=1)) *
-                    (torch.clamp(self.projection.post.activity, min=0, max=1) -
-                     self.projection.post.theta).unsqueeze(1)).detach().clone()
+            delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.activity, min=0, max=1)) *
+                            (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
         elif self.projection.direction in ['recurrent', 'R']:
-            delta_weight = (
-                    torch.outer(torch.clamp(self.projection.post.activity, min=0, max=1),
-                                torch.clamp(self.projection.pre.prev_activity, min=0, max=1)) *
-                    (torch.clamp(self.projection.post.activity, min=0, max=1) -
-                     self.projection.post.theta).unsqueeze(1)).detach().clone()
+            delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.prev_activity, min=0, max=1)) *
+                            (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
         if self.sign > 0:
             self.projection.weight.data += self.learning_rate * delta_weight
         else:
@@ -601,27 +594,20 @@ class Top_Layer_Supervised_BCM_4(LearningRule):
     
     def update(self):
         if not self.projection.post.BCM_theta_updated:
-            delta_theta = (
-                    (-self.projection.post.theta +
-                     torch.clamp(self.projection.post.activity, min=0, max=1) ** 2.
-                     / self.k) / self.theta_tau).detach.clone()
+            delta_theta = ((-self.projection.post.theta + self.projection.post.activity ** 2. / self.k) /
+                           self.theta_tau).detach.clone()
             self.projection.post.theta += delta_theta
             self.projection.post.BCM_theta_updated = True
             self.projection.post.BCM_theta_stored = False
     
     def step(self):
+        post_activity = torch.clamp(self.projection.post.activity.detach().clone(), min=0, max=1)
         if self.projection.direction in ['forward', 'F']:
-            delta_weight = (
-                    torch.outer(torch.clamp(self.projection.post.activity, min=0, max=1),
-                                torch.clamp(self.projection.pre.activity, min=0, max=1)) *
-                    (torch.clamp(self.projection.post.activity, min=0, max=1) -
-                     self.projection.post.theta).unsqueeze(1)).detach().clone()
+            delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.activity, min=0, max=1)) *
+                            (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
         elif self.projection.direction in ['recurrent', 'R']:
-            delta_weight = (
-                    torch.outer(torch.clamp(self.projection.post.activity, min=0, max=1),
-                                torch.clamp(self.projection.pre.prev_activity, min=0, max=1)) *
-                    (torch.clamp(self.projection.post.activity, min=0, max=1) -
-                     self.projection.post.theta).unsqueeze(1)).detach().clone()
+            delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.prev_activity, min=0, max=1)) *
+                            (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
         if self.sign > 0:
             self.projection.weight.data += self.learning_rate * delta_weight
         else:
@@ -760,27 +746,20 @@ class Supervised_BCM_4(LearningRule):
     
     def update(self):
         if not self.projection.post.BCM_theta_updated:
-            delta_theta = (
-                    (-self.projection.post.theta +
-                     torch.clamp(self.projection.post.activity, min=0, max=1) ** 2.
-                     / self.k) / self.theta_tau).detach.clone()
+            delta_theta = ((-self.projection.post.theta + self.projection.post.activity ** 2. / self.k) /
+                           self.theta_tau).detach.clone()
             self.projection.post.theta += delta_theta
             self.projection.post.BCM_theta_updated = True
             self.projection.post.BCM_theta_stored = False
     
     def step(self):
+        post_activity = torch.clamp(self.projection.post.activity.detach().clone(), min=0, max=1)
         if self.projection.direction in ['forward', 'F']:
-            delta_weight = (
-                    torch.outer(torch.clamp(self.projection.post.activity, min=0, max=1),
-                                torch.clamp(self.projection.pre.activity, min=0, max=1)) *
-                    (torch.clamp(self.projection.post.activity, min=0, max=1) -
-                     self.projection.post.theta).unsqueeze(1)).detach().clone()
+            delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.activity, min=0, max=1)) *
+                            (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
         elif self.projection.direction in ['recurrent', 'R']:
-            delta_weight = (
-                    torch.outer(torch.clamp(self.projection.post.activity, min=0, max=1),
-                                torch.clamp(self.projection.pre.prev_activity, min=0, max=1)) *
-                    (torch.clamp(self.projection.post.activity, min=0, max=1) -
-                     self.projection.post.theta).unsqueeze(1)).detach().clone()
+            delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.prev_activity, min=0, max=1)) *
+                            (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
         if self.sign > 0:
             self.projection.weight.data += self.learning_rate * delta_weight
         else:
