@@ -90,13 +90,14 @@ class BCM_4(LearningRule):
     def update(self):
         if not self.projection.post.BCM_theta_updated:
             delta_theta = ((-self.projection.post.theta + self.projection.post.activity ** 2. / self.k) /
-                           self.theta_tau).detach.clone()
+                           self.theta_tau).detach().clone()
             self.projection.post.theta += delta_theta
             self.projection.post.BCM_theta_updated = True
             self.projection.post.BCM_theta_stored = False
     
     def step(self):
-        post_activity = torch.clamp(self.projection.post.activity.detach().clone(), min=0, max=1)
+        # post_activity = torch.clamp(self.projection.post.activity.detach().clone(), min=0, max=1)
+        post_activity = self.projection.post.activity.detach().clone()
         if self.projection.direction in ['forward', 'F']:
             delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.activity, min=0, max=1)) *
                             (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
@@ -595,13 +596,14 @@ class Top_Layer_Supervised_BCM_4(LearningRule):
     def update(self):
         if not self.projection.post.BCM_theta_updated:
             delta_theta = ((-self.projection.post.theta + self.projection.post.activity ** 2. / self.k) /
-                           self.theta_tau).detach.clone()
+                           self.theta_tau).detach().clone()
             self.projection.post.theta += delta_theta
             self.projection.post.BCM_theta_updated = True
             self.projection.post.BCM_theta_stored = False
     
     def step(self):
-        post_activity = torch.clamp(self.projection.post.activity.detach().clone(), min=0, max=1)
+        # post_activity = torch.clamp(self.projection.post.activity.detach().clone(), min=0, max=1)
+        post_activity = self.projection.post.activity.detach().clone()
         if self.projection.direction in ['forward', 'F']:
             delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.activity, min=0, max=1)) *
                             (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
@@ -707,7 +709,7 @@ class Top_Layer_Supervised_BCM_4(LearningRule):
 
 
 class Supervised_BCM_4(LearningRule):
-    def __init__(self, projection, theta_tau, k, sign=1, max_pop_fraction=0.025, stochastic=True, learning_rate=None,
+    def __init__(self, projection, theta_tau, k, sign=1, max_pop_fraction=0.025, stochastic=False, learning_rate=None,
                  relu_gate=False):
         """
         Output units are nudged to target. Hidden dendrites locally compute an error as the difference between
@@ -747,13 +749,14 @@ class Supervised_BCM_4(LearningRule):
     def update(self):
         if not self.projection.post.BCM_theta_updated:
             delta_theta = ((-self.projection.post.theta + self.projection.post.activity ** 2. / self.k) /
-                           self.theta_tau).detach.clone()
+                           self.theta_tau).detach().clone()
             self.projection.post.theta += delta_theta
             self.projection.post.BCM_theta_updated = True
             self.projection.post.BCM_theta_stored = False
     
     def step(self):
-        post_activity = torch.clamp(self.projection.post.activity.detach().clone(), min=0, max=1)
+        # post_activity = torch.clamp(self.projection.post.activity.detach().clone(), min=0, max=1)
+        post_activity = self.projection.post.activity.detach().clone()
         if self.projection.direction in ['forward', 'F']:
             delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.activity, min=0, max=1)) *
                             (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
