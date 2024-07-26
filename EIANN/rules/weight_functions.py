@@ -8,10 +8,14 @@ def clone_weight(projection, source=None, sign=1, scale=1, source2=None, transpo
     if source is None:
         raise Exception('clone_weight: missing required weight_constraint_kwarg: source')
     network = projection.post.network
-    source_post_layer, source_post_pop, source_pre_layer, source_pre_pop = source.split('.')
-    source_projection = \
-        network.layers[source_post_layer].populations[source_post_pop].projections[source_pre_layer][source_pre_pop]
+
+    try: 
+        source_post_layer, source_post_pop, source_pre_layer, source_pre_pop = source.split('.')
+        source_projection = network.layers[source_post_layer].populations[source_post_pop].projections[source_pre_layer][source_pre_pop]
+    except:
+        source_projection = network.module_dict[source]
     source_weight_data = source_projection.weight.data.clone() * scale * sign
+
     if source2 is not None:
         source2_post_layer, source2_post_pop, source2_pre_layer, source2_pre_pop = source2.split('.')
         source2_projection = \

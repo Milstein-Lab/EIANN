@@ -139,25 +139,19 @@ class Network(nn.Module):
                         total_fan_in += fan_in
                         if projection.weight_init is not None:
                             if projection.weight_init == 'half_kaiming':
-                                 half_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args,
+                                half_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args,
                                                    bounds=projection.weight_bounds)
                             elif projection.weight_init == 'scaled_kaiming':
                                 scaled_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args)
                             elif projection.weight_init in ['clone', 'clone_weight']:
-                                # Copy the weight matrix from the source population
-                                source = projection.weight_init_args['source']
-                                projection.weight.data = self.module_dict[source].weight.data.clone()
-                                if 'transpose' in projection.weight_init_args and projection.weight_init_args['transpose']==True:
-                                    projection.weight.data = projection.weight.data.t()
-                                if 'sign' in projection.weight_init_args:
-                                    projection.weight.data = projection.weight.data * projection.weight_init_args['sign']
+                                pass
                             else:
                                 try:
                                     getattr(projection.weight.data,
                                             projection.weight_init)(*projection.weight_init_args)
                                 except:
                                     raise RuntimeError('Network.init_weights_and_biases: callable for weight_init: %s '
-                                                       'must be half_kaiming, scaled_kaiming, or a method of Tensor' %
+                                                       'must be half_kaiming, scaled_kaiming, clone, or a method of Tensor' %
                                                        projection.weight_init)
                     if post_pop.include_bias:
                         if post_pop.bias_init is None:
@@ -172,6 +166,10 @@ class Network(nn.Module):
                                                    'must be scaled_kaiming, or a method of Tensor' % post_pop.bias_init)
 
         self.constrain_weights_and_biases()
+
+        for projection in self.projections.values():
+            if projection.weight_init in ['clone', 'clone_weight']:
+                rules.weight_functions.clone_weight(projection, **projection.weight_init_args)
 
     def constrain_weights_and_biases(self):
         for i, post_layer in enumerate(self):
