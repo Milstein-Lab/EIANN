@@ -98,6 +98,9 @@ stages:
       filter_features: filter_features
       get_objectives: get_objectives
 optimization_title: optuna_EIANN_2_hidden_mnist_BP_like_1I
+objective_names:
+    - accuracy
+    - loss
 x0:
     H1_E_H1_SomaI_init_weight_scale: 0.01320454234508166
     H2_E_H2_SomaI_init_weight_scale: 0.01320454234508166

@@ -4937,7 +4937,7 @@ def update_EIANN_config_2_hidden_BP_like_1J_learn_TD_VTC_1(x, context):
     
     context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_SomaI_init_weight_scale,)
     
-    context.projection_config['H1']['E']['H2']['E']['weight_init_args'] = (H2_E_H1_E_init_weight_scale,)
+    # context.projection_config['H1']['E']['H2']['E']['weight_init_args'] = (H2_E_H1_E_init_weight_scale,)
     context.projection_config['H1']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = H_E_learning_rate
     
     context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_SomaI_Input_E_init_weight_scale,)
@@ -4951,8 +4951,7 @@ def update_EIANN_config_2_hidden_BP_like_1J_learn_TD_VTC_1(x, context):
     
     context.projection_config['H2']['E']['H2']['SomaI']['weight_init_args'] = (H2_E_H2_SomaI_init_weight_scale,)
     
-    context.projection_config['H2']['E']['Output']['E']['weight_init_args'] = \
-        (Output_E_H2_E_init_weight_scale,)
+    # context.projection_config['H2']['E']['Output']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
     context.projection_config['H2']['E']['Output']['E']['learning_rule_kwargs']['learning_rate'] = (
         Output_E_H2_E_learning_rate)
     

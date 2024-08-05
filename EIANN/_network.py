@@ -151,8 +151,8 @@ class Network(nn.Module):
                                             projection.weight_init)(*projection.weight_init_args)
                                 except:
                                     raise RuntimeError('Network.init_weights_and_biases: callable for weight_init: %s '
-                                                       'must be half_kaiming, scaled_kaiming, clone, or a method of Tensor' %
-                                                       projection.weight_init)
+                                                       'must be half_kaiming, scaled_kaiming, clone, or a method of '
+                                                       'Tensor' % projection.weight_init)
                     if post_pop.include_bias:
                         if post_pop.bias_init is None:
                             scaled_kaiming_init(post_pop.bias.data, total_fan_in)

@@ -1,4 +1,4 @@
-# Learn TD weights with per-synapse vectorized temporal contrast
+# Learn TD weights with Hebb_WeightNorm
 # No DendI
 layer_config:
     Input:
@@ -55,19 +55,18 @@ projection_config:
                     learning_rule: null
             H2:
                 E:
-                    weight_init: clone
-                    weight_init_args:
-                        source: H2.E.H1.E
-                        transpose: True
-                        # scale: 0.24305016894817305
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                        - 0.061735095235877606
                     weight_bounds: !!python/tuple
                         - 0
                         - null
                     update_phase: B
                     compartment: dend
-                    learning_rule: VTC_1
+                    learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         learning_rate: 0.1
+                        forward_only: True
         SomaI:
             Input:
                 E:
