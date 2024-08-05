@@ -1,7 +1,7 @@
 # H2.E.Output.E cloned (and rescaled) from Output.E.H2.E
 # H1.E.H2.E cloned (and rescaled) from H2.E.H1.E
 # DendI.E and DendI.DendI learned with Hebb_WeightNorm
-# E.DendI learned with DendriticLoss_6
+# E.DendI learned with DendriticLoss_7
 layer_config:
     Input:
         E:
@@ -71,7 +71,7 @@ projection_config:
                     update_phase: B
                     compartment: dend
                     direction: R
-                    learning_rule: DendriticLoss_6
+                    learning_rule: DendriticLoss_7
                     learning_rule_kwargs:
                         sign: -1
                         learning_rate: 0.04537932238567541
@@ -188,7 +188,7 @@ projection_config:
                     update_phase: B
                     compartment: dend
                     direction: R
-                    learning_rule: DendriticLoss_6
+                    learning_rule: DendriticLoss_7
                     learning_rule_kwargs:
                         sign: -1
                         learning_rate: 0.04537932238567541

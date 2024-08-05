@@ -1,0 +1,125 @@
+bounds:
+    H1_E_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H_E_E_learning_rate:
+        - 0.0001
+        - 0.25
+    H_E_theta_tau:
+        - 1.
+        - 100.
+    Output_E_theta_tau:
+        - 1.
+        - 100.
+    H_E_BCM_k:
+        - 0.0001
+        - 1.
+    Output_E_BCM_k:
+        - 0.0001
+        - 1.
+    H1_E_H1_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_H1_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H2_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_SomaI_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_SomaI_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_SomaI_H2_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_H2_E_learning_rate:
+        - 0.0001
+        - 0.25
+    Output_E_Output_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_SomaI_Output_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_SomaI_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_SomaI_Output_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    H_I_size:
+        - 1
+        - 100
+    Output_I_size:
+        - 1
+        - 10
+default_params:
+    H_I_size: 50
+    Output_I_size: 10
+rel_bounds:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: False
+    status_bar: False
+    train_steps: 20000
+    epochs: 1
+    network_config_file_path: optimize/network_config/MNIST/20240724_EIANN_2_hidden_mnist_BCM_config_5.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: True
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+      function: update_EIANN_config_2_hidden_BCM_4  # works with BCM_5
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_mnist_BCM_5
+x0:
+    H1_E_Input_E_init_weight_scale: 1.3808004579508968
+    H2_E_H1_E_init_weight_scale: 0.5523210386895564
+    H_E_E_learning_rate: 0.0009475836875111604
+    H_E_theta_tau: 29.19933336862877
+    Output_E_theta_tau: 34.1070018572697
+    H_E_BCM_k: 0.0986642486901383
+    Output_E_BCM_k: 0.03358944144499179
+    H1_E_H1_SomaI_init_weight_scale: 1.198432733525468
+    H1_SomaI_H1_E_init_weight_scale: 0.7157308630281793
+    H1_SomaI_Input_E_init_weight_scale: 1.3463989479855447
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.0217110548185504
+    H2_E_H2_SomaI_init_weight_scale: 0.3943008104521801
+    H2_SomaI_H2_E_init_weight_scale: 0.9927396855685401
+    H2_SomaI_H1_E_init_weight_scale: 1.096495498010853
+    H2_SomaI_H2_SomaI_init_weight_scale: 2.041448407272564
+    Output_E_H2_E_init_weight_scale: 2.06700240557497
+    Output_E_H2_E_learning_rate: 0.00476674542293949
+    Output_E_Output_SomaI_init_weight_scale: 1.1088741245481224
+    Output_SomaI_Output_E_init_weight_scale: 1.5458104038804077
+    Output_SomaI_H2_E_init_weight_scale: 1.7536327055652634
+    Output_SomaI_Output_SomaI_init_weight_scale: 5.15290867437316
+    H_I_size: 50.0
+    Output_I_size: 10.0

@@ -1,0 +1,121 @@
+bounds:
+    H1_E_Input_E_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H1_E_weight_scale:
+        - 0.01
+        - 10.
+    H_E_E_learning_rate:
+        - 0.0001
+        - 0.25
+    E_I_learning_rate:
+        - 0.0001
+        - 0.25
+    I_E_learning_rate:
+        - 0.0001
+        - 0.25
+    I_I_learning_rate:
+        - 0.0001
+        - 0.25
+    H1_E_H1_SomaI_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_H1_E_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_Input_E_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_H1_SomaI_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H2_SomaI_weight_scale:
+        - 0.01
+        - 10.
+    H2_SomaI_H2_E_weight_scale:
+        - 0.01
+        - 10.
+    H2_SomaI_H1_E_weight_scale:
+        - 0.01
+        - 10.
+    H2_SomaI_H2_SomaI_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_H2_E_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_H2_E_learning_rate:
+        - 0.0001
+        - 0.25
+    Output_E_Output_I_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_E_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_H2_E_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_I_weight_scale:
+        - 0.01
+        - 10.
+    H_I_size:
+        - 1
+        - 100
+    Output_I_size:
+        - 1
+        - 10
+default_params:
+    H_I_size: 50
+    Output_I_size: 10
+rel_bounds:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 20000
+    epochs: 1
+    network_config_file_path: optimize/network_config/MNIST/20240714_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_5.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: True
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+      function: update_EIANN_config_2_hidden_Hebb_WeightNorm_4  # works for Top_Layer_Supervised_Hebb_WeightNorm_5
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_5
+x0:
+    H1_E_Input_E_weight_scale: 0.5493408771430361
+    H2_E_H1_E_weight_scale: 0.36263674040843874
+    H_E_E_learning_rate: 0.015210201900794208
+    E_I_learning_rate: 0.0687969882401297
+    I_E_learning_rate: 0.0012419161480432186
+    I_I_learning_rate: 0.04897805720427627
+    H1_E_H1_SomaI_weight_scale: 1.3599334692681968
+    H1_SomaI_H1_E_weight_scale: 1.4011103196594605
+    H1_SomaI_Input_E_weight_scale: 0.7896826245836979
+    H1_SomaI_H1_SomaI_weight_scale: 1.5905867448843207
+    H2_E_H2_SomaI_weight_scale: 0.520821280733991
+    H2_SomaI_H2_E_weight_scale: 0.7893757920660015
+    H2_SomaI_H1_E_weight_scale: 0.3794142803580636
+    H2_SomaI_H2_SomaI_weight_scale: 0.9338123818835694
+    Output_E_H2_E_weight_scale: 0.4419924684021199
+    Output_E_H2_E_learning_rate: 0.02188512109402812
+    Output_E_Output_I_weight_scale: 0.42477949183510255
+    Output_I_Output_E_weight_scale: 0.026602826072302868
+    Output_I_H2_E_weight_scale: 0.2599698536757227
+    Output_I_Output_I_weight_scale: 0.4484802437118916
+    H_I_size: 50.0
+    Output_I_size: 10.0

@@ -700,24 +700,21 @@ Current plan for logical flow of the network modifications:
   - Supervised_BCM_4 (2 hidden, rectified firing rates for theta and weight updates)
   - BTSP_4L (like BTSP_3L but learn top-down weights and add auxiliary objective to reduce forward_dendritic_loss (promote DendI feature selectivity))
   - Need to try a variant of BTSP that learns top-down weights but uses dend_temp_contrast to compute local errors  
-  
 
-RUNNING:
-   
 
-RE-RUNNING:
- - BTSP_3L (like BTSP_3J, but bring back network-wide equilibration, add relu_gate and auxiliary objective to reduce forward_dendritic_state) [re-running using abs val of forward_dendritic_state for auxiliary objective]
- - BP_like_2L again - fixed 2 problems: abs(auxiliary objective) and lack of interneuron equilibration. 
- - Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, fixed SomaI) [running using abs val of forward_dendritic_state for auxiliary objective]
- - BP_like_3M
- - Top_Layer_Supervised_Hebb_WeightNorm_4
+NEED TO RE-RUN without activity rectification used in Hebb_WeightNorm_4:
+ - BP_like_2L again - fixed 2 problems: abs(auxiliary objective) and lack of interneuron equilibration.
  - Hebb_WeightNorm_4
- 
-NEED TO RE-RUN:
- 
- 
- 
-   
+ - Top_Layer_Supervised_Hebb_WeightNorm_4
+ - BCM_4
+ - Top_Layer_Supervised_BCM_4
+
+Wait for BP_like_2L result and run again:
+ - Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, fixed SomaI) [running using abs val of forward_dendritic_state for auxiliary objective]
+ - Supervised_BCM_4
+ - BTSP_3L (like BTSP_3J, but bring back network-wide equilibration, add relu_gate and auxiliary objective to reduce forward_dendritic_state) [re-running using abs val of forward_dendritic_state for auxiliary objective]
+
+
 PROBLEM:
  - 20240723 - Many configs with network-wide backward phase equilibration were not equilibrating interneurons (missing update_phase: A)
   - BP_like_2L - fixed, slight decrease in accuracy, already re-running anyway
@@ -728,7 +725,6 @@ PROBLEM:
   - Top_Layer_Supervised_Hebb_WeightNorm_4 - fixed, need to re-run
   - Supervised_Hebb_WeightNorm_4 - fixed, need to start over
   
- - These configs were correct:
-  - BP_like_1I
-  
-  
+These configs are DONE and correct:
+  - BP_like_1I - 94%
+  - BP_like_3M - 93%

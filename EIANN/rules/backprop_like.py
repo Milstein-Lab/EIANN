@@ -1565,6 +1565,25 @@ class BP_like_2L(LearningRule):
                             pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
 
 
+class VTC_1(LearningRule):
+    """
+    Vectorized_Temporal_Contrast.
+    This rule is used to learn top-down weights and approximate weight symmetry.
+    del_W_ij ~ A_i_forward @ (A_j_backward - A_j_forward)
+    """
+    
+    def __init__(self, projection, sign=1, learning_rate=None):
+        super().__init__(projection, learning_rate)
+        self.sign = sign
+    
+    def step(self):
+        delta_weight = torch.outer(
+                torch.clamp(self.projection.post.forward_activity, min=0, max=1),
+                torch.clamp((self.projection.pre.activity - self.projection.pre.forward_activity),
+                            min=-1, max=1))
+        
+        self.projection.weight.data += self.sign * self.learning_rate * delta_weight
+
 
 
 
