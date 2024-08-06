@@ -97,7 +97,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: optuna_EIANN_2_hidden_mnist_BP_like_1I
+optimization_title: optuna_TPE_EIANN_2_hidden_mnist_BP_like_1I
 objective_names:
     - accuracy
     - loss
