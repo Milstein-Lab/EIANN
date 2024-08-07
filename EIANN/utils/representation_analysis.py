@@ -778,22 +778,21 @@ def compute_PSD(receptive_field, plot=False):
 
 
 def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, store_num_steps=None,
-                                 debug=False, disp=False, plot=False):
+                                 disp=False, plot=False):
     """
 
     :param network: :class:'Network'
     :param dataloader: :class:'torch.DataLoader'
     :param equilibration_activity_tolerance: float in [0, 1]
     :param store_num_steps: int
-    :param debug: bool
     :param disp: bool
     :param: plot: bool
-    :return: bool
+    :return: float
     """
     idx, data, targets = next(iter(dataloader))
     network.forward(data, store_dynamics=True, no_grad=True, store_num_steps=store_num_steps)
     
-    passed = True
+    residuals = 0
     
     if plot:
         max_rows = 1
@@ -833,10 +832,9 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
                         if disp:
                             print('population: %s failed check_equilibration_dynamics: %.2f' %
                                   (population.fullname, equil_error))
-                        if not debug:
-                            passed = False
+                        residuals += equil_error
     if plot:
         fig.suptitle('Activity dynamics')
         fig.tight_layout()
         fig.show()
-    return passed
+    return residuals

@@ -373,13 +373,14 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                                                    plot=plot, status_bar=context.status_bar)
     
     if context.constrain_equilibration_dynamics or context.debug:
-        if not check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                            store_num_steps=context.store_num_steps, debug=context.debug,
-                                            disp=context.disp, plot=plot):
-            if not context.debug:
-                if context.interactive:
-                    context.update(locals())
-                return dict()
+        residuals = check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
+                                            store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
+        if context.include_equilibration_dynamics_objective:
+            results['dynamics_residuals'] = residuals
+        elif not context.debug:
+            if context.interactive:
+                context.update(locals())
+            return dict()
     
     # if export:
     #     if context.temp_output_path is not None:
