@@ -1,6 +1,6 @@
 import EIANN._network as nt
 import EIANN.utils as ut
-
+import os
 
 def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'):
     '''
@@ -75,8 +75,8 @@ def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'
         projection_config = convert_projection_config_dict(projection_config)
         layer_config = convert_layer_config_dict(layer_config)
         network = nt.Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
-
-    network.name = config_path.split("/")[-1]
+    
+    network.name = os.path.splitext(os.path.basename(config_path))[0]
     return network
 
 
