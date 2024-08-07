@@ -132,6 +132,10 @@ def config_worker():
         context.include_dend_loss_objective = False
     else:
         context.include_dend_loss_objective = str_to_bool(context.include_dend_loss_objective)
+    if 'include_equilibration_dynamics_objective' not in context():
+        context.include_equilibration_dynamics_objective = False
+    else:
+        context.include_equilibration_dynamics_objective = str_to_bool(context.include_equilibration_dynamics_objective)
     
     context.store_history_interval = None
     if context.include_dend_loss_objective:
