@@ -299,6 +299,36 @@ def plot_representation_metrics(metrics_dict):
     fig.show()
 
 
+def plot_cumulative_distribution(distribution_all_seeds, ax=None, label=None):
+    """
+    Plot cumulative population distribution across all input patterns
+    """
+    cumulative_distribution = []
+    n_bins = 100
+    cdf_prob_bins = np.arange(1., n_bins + 1.) / n_bins
+
+    for distribution in distribution_all_seeds:
+        distribution = np.sort(distribution[:])
+        quantiles = [np.quantile(distribution, pi) for pi in cdf_prob_bins]
+        cumulative_distribution.append(quantiles)
+    
+    cumulative_distribution = np.array(cumulative_distribution)
+    mean_distribution = np.mean(cumulative_distribution, axis=0)
+    SD = np.std(cumulative_distribution, axis=0)
+    SEM = SD / np.sqrt(cumulative_distribution.shape[0])
+
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        
+    ax.plot(mean_distribution, cdf_prob_bins,  label=label)
+    error_min = mean_distribution - SD
+    error_max = mean_distribution + SD
+    ax.fill_betweenx(cdf_prob_bins, error_min, error_max, alpha=0.5)
+    ax.set_ylabel('Cumulative distribution')
+    ax.set_xlabel(label)
+
+
 def plot_MNIST_examples(network, dataloader):
     """
     Test network performance on one example image from each MNIST class
@@ -554,6 +584,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max,
                        aspect='equal', interpolation='none')
         ax.axis('off')
+
         if preferred_classes is not None:
             ax.text(0, 6, f'{preferred_classes[i]}', color='gray', fontsize=8)        
 
@@ -670,20 +701,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, export=False, overwrite=False, ax=None):
-    """
-    Compute total accuracy (% correct) on given dataset
-    :param network:
-    :param test_dataloader:
-    :param population: :class:'Population' or str 'all'
-    :param sorted_output_idx: tensor of int
-    :param title: str
-    """
-
-    percent_correct, average_pop_activity_dict = (
-        ut.compute_test_activity(network, test_dataloader, sorted_output_idx=sorted_output_idx, export=export,
-                                 overwrite=overwrite))
-    print(f'Batch accuracy = {percent_correct}%')
+def plot_batch_accuracy_from_data(average_pop_activity_dict, population=None, ax=None):
 
     if population is None:
         # Include only last population in the data dict
@@ -709,15 +727,63 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
         _ax.set_xticks(range(avg_pop_activity.shape[1]))
         _ax.set_xlabel('Labels')
         _ax.set_ylabel(f'{pop_name} unit')
-        if title is not None:
-            _ax.set_title(f'Average activity - {pop_name}\n{title}')
-        else:
-            _ax.set_title(f'Average activity - {pop_name}')
 
         if ax is None:
             fig.show()
         elif isinstance(population, list) and len(population)>1:
             raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
+            
+
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, export=False, overwrite=False, ax=None):
+    """
+    Compute total accuracy (% correct) on given dataset
+    :param network:
+    :param test_dataloader:
+    :param population: :class:'Population' or str 'all'
+    :param sorted_output_idx: tensor of int
+    :param title: str
+    """
+
+    percent_correct, average_pop_activity_dict = (
+        ut.compute_test_activity(network, test_dataloader, sorted_output_idx=sorted_output_idx, export=export,
+                                 overwrite=overwrite))
+    print(f'Batch accuracy = {percent_correct}%')
+
+    plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax)
+
+    # if population is None:
+    #     # Include only last population in the data dict
+    #     population = list(average_pop_activity_dict.keys())[0]
+    #     average_pop_activity_dict = {population: average_pop_activity_dict[population]}
+    # elif isinstance(population, str):
+    #     if population != 'all':
+    #         average_pop_activity_dict = {population: average_pop_activity_dict[population]}
+    # elif isinstance(population, list):
+    #     average_pop_activity_dict = {pop: average_pop_activity_dict[pop] for pop in population}
+    # else:
+    #     assert hasattr(population, 'fullname'), 'Population must be a string, list of strings, or EIANN.Population object'
+    #     average_pop_activity_dict = {population.fullname: average_pop_activity_dict[population.fullname]}
+
+    # for pop_name, avg_pop_activity in average_pop_activity_dict.items():
+    #     if ax is None:
+    #         fig, _ax = plt.subplots()
+    #     else:
+    #         _ax = ax
+
+    #     im = _ax.imshow(avg_pop_activity, aspect='auto', interpolation='none')
+    #     cbar = plt.colorbar(im, ax=_ax)
+    #     _ax.set_xticks(range(avg_pop_activity.shape[1]))
+    #     _ax.set_xlabel('Labels')
+    #     _ax.set_ylabel(f'{pop_name} unit')
+    #     if title is not None:
+    #         _ax.set_title(f'Average activity - {pop_name}\n{title}')
+    #     else:
+    #         _ax.set_title(f'Average activity - {pop_name}')
+
+    #     if ax is None:
+    #         fig.show()
+    #     elif isinstance(population, list) and len(population)>1:
+    #         raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
             
 
 def plot_rsm(network, test_dataloader):
