@@ -702,12 +702,11 @@ Current plan for logical flow of the network modifications:
   - Need to try a variant of BTSP that learns top-down weights but uses dend_temp_contrast to compute local errors  
 
 
-NEED TO RE-RUN without activity rectification used in Hebb_WeightNorm_4:
- - BP_like_2L again - fixed 2 problems: abs(auxiliary objective) and lack of interneuron equilibration.
- - Hebb_WeightNorm_4
- - Top_Layer_Supervised_Hebb_WeightNorm_4
- - BCM_4
- - Top_Layer_Supervised_BCM_4
+NEED TO RE-RUN without activity rectification (Hebb_WeightNorm instead of Hebb_WeightNorm_4):
+ - Hebb_WeightNorm_4 [Hebb_WeightNorm_5]
+ - Top_Layer_Supervised_Hebb_WeightNorm_4 [Hebb_WeightNorm_5]
+ - BCM_4 [BCM_5]
+ - Top_Layer_Supervised_BCM_4 [Top_Layer_Supervised_BCM_5]
 
 Wait for BP_like_2L result and run again:
  - Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, fixed SomaI) [running using abs val of forward_dendritic_state for auxiliary objective]
@@ -728,3 +727,7 @@ PROBLEM:
 These configs are DONE and correct:
   - BP_like_1I - 94%
   - BP_like_3M - 93%
+  - BP_like_2L
+
+Trying variant of BP_like_2L:
+ - BP_like_2O - Use Hebb_WeightNorm (no activity rectification) on DendI<-E and DendI<-DendI; use DendriticLoss_7 (without presyn activity rectification) on E<-DendI
