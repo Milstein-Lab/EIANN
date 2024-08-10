@@ -200,7 +200,7 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     """
     if file_path is None:
         root_dir = get_project_root()
-        file_path = root_dir+'/EIANN/data/.plot_data.h5'
+        file_path = root_dir+'/EIANN/data/plot_data.h5'
 
     seed = str(seed)
     if os.path.exists(file_path):
@@ -230,7 +230,7 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
     """
     if file_path is None:
         root_dir = get_project_root()
-        file_path = root_dir + '/EIANN/data/.plot_data.h5'
+        file_path = root_dir + '/EIANN/data/plot_data.h5'
 
     seed = str(seed)
     if os.path.exists(file_path):
@@ -257,7 +257,28 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
             hdf5_file[network_name].create_group(seed, track_order=True)
             hdf5_file[network_name][seed].create_dataset(data_key, data=data, track_order=True)
             print(f'{data_key} saved to file: {file_path}')
-    
+
+
+def delete_plot_data(network_name, seed, file_path=None):
+    """
+    Delete all data for a given network and seed from the hdf5 file
+    :param network_name: str
+    :param seed: int
+    :param data_key: str
+    :param file_path: str
+    """
+    if file_path is None:
+        root_dir = get_project_root()
+        file_path = root_dir + '/EIANN/data/plot_data.h5'
+
+    seed = str(seed)
+    if os.path.exists(file_path):
+        with h5py.File(file_path, 'a') as hdf5_file:
+            if network_name in hdf5_file:
+                if seed in hdf5_file[network_name]:
+                    del hdf5_file[network_name][seed]
+                    print(f'Deleted data for network {network_name} and seed {seed} from file: {file_path}')
+
 
 def get_project_root():
     # Assuming the current script is somewhere within the project directory

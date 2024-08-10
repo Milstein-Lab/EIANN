@@ -260,13 +260,21 @@ def compute_diag_fisher(network, train_dataloader_CL1_full):
     return diag_fisher
 
 
-def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False):
+def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False, 
+                                   export=False, export_path=None, overwrite=False):
     """
     Compute representation metrics for a population of neurons
     :param population: Population object
     :param receptive_fields: (optional) receptive fields for each neuron
     :return: dictionary of metrics
     """
+
+    if export and overwrite is False:
+        assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
+        metrics_dict = data_utils.load_plot_data(population.network.name, population.network.seed,
+                                                data_key=f'metrics_dict_{population.fullname}', file_path=export_path)
+        if metrics_dict is not None:
+            return metrics_dict
 
     network = population.network
     idx, data, target = next(iter(test_dataloader))
@@ -320,6 +328,12 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
 
     if plot:
         pt.plot_representation_metrics(metrics_dict)
+
+    if export:
+        assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
+        data_utils.save_plot_data(population.network.name, population.network.seed,
+                                  data_key=f'metrics_dict_{population.fullname}', data=metrics_dict,
+                                  file_path=export_path, overwrite=overwrite)
 
     return metrics_dict
 
@@ -630,8 +644,7 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
             return torch.tensor(receptive_fields)
 
     # Otherwise, compute receptive fields
-    learning_rate = 10
-    num_steps = 1
+    num_random_initializations = 1000
     network = population.network
 
     seed = network.seed
@@ -648,32 +661,32 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
 
     print("Optimizing receptive field images...")
 
-    for i in tqdm(range(1000)):   
-        input_images = torch.randn(num_units, input_size)
+    for i in tqdm(range(num_random_initializations)):   
+        # input_images = torch.empty(num_units, input_size).uniform_(-1,1)
+        input_images = torch.empty(num_units, input_size).normal_(mean=0,std=10)
         input_images.requires_grad = True
-        optimizer = torch.optim.SGD([input_images], lr=learning_rate)
+        optimizer = torch.optim.SGD([input_images], lr=1)
         loss_history = []
 
-        for step in range(num_steps):
-            if sigmoid:
-                im = torch.sigmoid((input_images-0.5)*10)
-                network.forward(im)  # compute unit activities in forward pass
-            elif softplus:
-                im = torch.nn.functional.softplus(input_images)
-                network.forward(im)  # compute unit activities in forward pass
-            else:
-                network.forward(input_images)  # compute unit activities in forward pass
-            pop_activity = population.activity[:,0:num_units]
-            L1_norm = torch.sum(torch.abs(input_images))
-            # L2_norm = torch.sum(input_images**2)
-            loss = torch.sum(-torch.log(torch.diagonal(pop_activity) + 0.001)) + 0.001*L1_norm
-            # loss = torch.sum(-torch.diagonal(pop_activity))
-            loss_history.append(loss.detach().numpy())
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        if sigmoid:
+            im = torch.sigmoid((input_images-0.5)*10)
+            network.forward(im)  # compute unit activities in forward pass
+        elif softplus:
+            im = torch.nn.functional.softplus(input_images)
+            network.forward(im)  # compute unit activities in forward pass
+        else:
+            network.forward(input_images)  # compute unit activities in forward pass
+        pop_activity = population.activity[:,0:num_units]
+        # L1_norm = torch.sum(torch.abs(input_images))
+        # L2_norm = torch.sum(input_images**2)
+        # loss = torch.sum(-torch.log(torch.diagonal(pop_activity) + 0.001)) + 0.001*L1_norm
+        loss = torch.sum(-torch.diagonal(pop_activity))
+        loss_history.append(loss.detach().numpy())
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
         
-        all_images.append(input_images.detach().clone())
+        all_images.append(-input_images.grad.detach().clone())
 
     receptive_fields = torch.mean(torch.stack(all_images), dim=0)
     if sigmoid:
