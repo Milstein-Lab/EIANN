@@ -1,5 +1,6 @@
 # TD weights learned with Hebb_WeightNorm
-# No DendI
+# DendI.E and DendI.DendI learned with Hebb_WeightNorm
+# E.DendI learned with DendriticLoss_6
 layer_config:
     Input:
         E:
@@ -11,11 +12,17 @@ layer_config:
         SomaI:
             size: 50
             activation: relu
+        DendI:
+            size: 50
+            activation: relu
     H2:
         E:
             size: 500
             activation: relu
         SomaI:
+            size: 50
+            activation: relu
+        DendI:
             size: 50
             activation: relu
     Output:
@@ -37,7 +44,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_1E
+                    learning_rule: BP_like_2L
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
@@ -53,6 +60,20 @@ projection_config:
                         - 0
                     direction: R
                     learning_rule: null
+                DendI:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                        - 1.3308604685151206
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
+                    update_phase: B
+                    compartment: dend
+                    direction: R
+                    learning_rule: DendriticLoss_6
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.04537932238567541
             H2:
                 E:
                     weight_init: half_kaiming
@@ -100,6 +121,36 @@ projection_config:
                     weight_constraint: no_autapses
                     direction: R
                     learning_rule: null
+        DendI:
+            H1:
+                E:
+                    weight_init: half_kaiming
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 7.3406424124335174
+                    weight_bounds: !!python/tuple
+                        - 0
+                        - null
+                    direction: R
+                    learning_rule: Hebb_WeightNorm
+                    learning_rule_kwargs:
+                        sign: 1
+                        learning_rate: 0.19840532653703197
+                        forward_only: True
+                DendI:
+                    weight_init: half_kaiming
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 0.25475779357057554
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
+                    direction: R
+                    learning_rule: Hebb_WeightNorm
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.19840532653703197
+                        forward_only: True
     H2:
         E:
             H1:
@@ -111,7 +162,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_1E
+                    learning_rule: BP_like_2L
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
@@ -127,6 +178,20 @@ projection_config:
                         - 0
                     direction: R
                     learning_rule: null
+                DendI:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                        - 1.3308604685151206
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
+                    update_phase: B
+                    compartment: dend
+                    direction: R
+                    learning_rule: DendriticLoss_6
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.04537932238567541
             Output:
                 E:
                     weight_init: half_kaiming
@@ -174,6 +239,36 @@ projection_config:
                     weight_constraint: no_autapses
                     direction: R
                     learning_rule: null
+        DendI:
+            H2:
+                E:
+                    weight_init: half_kaiming
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 7.3406424124335174
+                    weight_bounds: !!python/tuple
+                        - 0
+                        - null
+                    direction: R
+                    learning_rule: Hebb_WeightNorm
+                    learning_rule_kwargs:
+                        sign: 1
+                        learning_rate: 0.19840532653703197
+                        forward_only: True
+                DendI:
+                    weight_init: half_kaiming
+                    weight_constraint: normalize_weight
+                    weight_constraint_kwargs:
+                        scale: 0.25475779357057554
+                    weight_bounds: !!python/tuple
+                        - null
+                        - 0
+                    direction: R
+                    learning_rule: Hebb_WeightNorm
+                    learning_rule_kwargs:
+                        sign: -1
+                        learning_rate: 0.19840532653703197
+                        forward_only: True
     Output:
         E:
             H2:
@@ -185,9 +280,11 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_1E
+                    learning_rule: BP_like_2L
                     learning_rule_kwargs:
                         learning_rate: 0.05248973408306354
+                        max_pop_fraction: 1.
+                        stochastic: False
                         relu_gate: True
             Output:
                 SomaI:

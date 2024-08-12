@@ -352,6 +352,33 @@ BP_like_1J_learn_TD_VTC_1_test:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
+BP_like_1J_learn_HWN_test:
+    #    accuracy: 93.17020416259766
+    #    dynamics_residuals: 0.0
+    #    loss: 0.01774928905069828
+    H1_E_Input_E_init_weight_scale: 2.2059059429115324
+    H2_E_H1_E_init_weight_scale: 1.092650768062264
+    H1_E_H2_E_weight_scale: 0.05210831876624279
+    H2_E_Output_E_weight_scale: 1.167621978636009
+    H_E_learning_rate: 0.02673669324961091
+    H_E_TD_learning_rate: 0.000854075117763313
+    H1_E_H1_SomaI_init_weight_scale: 0.818811429825407
+    H1_SomaI_H1_E_init_weight_scale: 0.5031597455773394
+    H1_SomaI_Input_E_init_weight_scale: 2.487937436342942
+    H1_SomaI_H1_SomaI_init_weight_scale: 0.7639209603970603
+    H2_E_H2_SomaI_init_weight_scale: 0.5376603973472044
+    H2_SomaI_H2_E_init_weight_scale: 0.8720828782896586
+    H2_SomaI_H1_E_init_weight_scale: 2.473153522098752
+    H2_SomaI_H2_SomaI_init_weight_scale: 4.621712640395055
+    Output_E_H2_E_init_weight_scale: 0.687715365798911
+    Output_E_H2_E_learning_rate: 0.0014177562322994367
+    Output_E_Output_I_init_weight_scale: 1.4255296436419749
+    Output_I_Output_E_init_weight_scale: 1.007025794655636
+    Output_I_H2_E_init_weight_scale: 0.22981357003041603
+    Output_I_Output_I_init_weight_scale: 1.162020405920468
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
 BP_like_2E:
     # all H.E units are updated and nudged
     # no lateral equilibration
@@ -1080,7 +1107,8 @@ Hebb_WeightNorm_5:
     H_I_size: 50.0
     Output_I_size: 10.0
 
-Top_Layer_Supervised_Hebb_WeightNorm_4:
+Top_Layer_Supervised_Hebb_WeightNorm_4_wrong:
+    # SomaI was not equilibrated during backward phase
     #    accuracy: 66.6802
     #    loss: 0.056774717
     H1_E_Input_E_weight_scale: 0.5493408771430361
@@ -1105,7 +1133,8 @@ Top_Layer_Supervised_Hebb_WeightNorm_4:
     Output_I_Output_I_weight_scale: 0.4484802437118916
     H_I_size: 50.0
     Output_I_size: 10.0
-Top_Layer_Supervised_Hebb_WeightNorm_4_alt:
+Top_Layer_Supervised_Hebb_WeightNorm_4:
+    # SomaI equilibration fixed
     #    accuracy: 62.8726
     #    loss: 0.058339644
     H1_E_Input_E_weight_scale: 0.5724529756358654
