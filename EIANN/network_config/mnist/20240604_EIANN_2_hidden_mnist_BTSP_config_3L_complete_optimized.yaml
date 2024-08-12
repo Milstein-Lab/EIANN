@@ -1,7 +1,3 @@
-# H2.E.Output.E cloned (and rescaled) from Output.E.H2.E
-# H1.E.H2.E cloned (and rescaled) from H2.E.H1.E
-# DendI.E and DendI.DendI learned with Hebb_WeightNorm_4
-# E.DendI learned with DendriticLoss_6
 layer_config:
     Input:
         E:
@@ -40,53 +36,53 @@ projection_config:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 0.061735095235877606
+                    - 3.438521810471154
                     weight_bounds: !!python/tuple
-                        - 0
-                        - 3.737942984542882
+                    - 0
+                    - 0.2781646128002362
                     direction: F
                     learning_rule: BTSP_18
                     learning_rule_kwargs:
-                        learning_rate: 0.006900684389813614
-                        max_pop_fraction: 1.
-                        stochastic: False
-                        neg_rate_th: 0.
-                        temporal_discount: 0.25
+                        learning_rate: 0.00938294618946663
+                        max_pop_fraction: 1.0
+                        stochastic: false
+                        neg_rate_th: 0.0
+                        temporal_discount: 0.03536559104213365
             H1:
                 SomaI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 1.8465890474026487
                     weight_bounds: !!python/tuple
-                        - null
-                        - 0
+                    - null
+                    - 0
                     direction: R
                     learning_rule: null
                 DendI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 0.061041432117914914
+                    - 1.7371394099251893
                     weight_bounds: !!python/tuple
-                        - null
-                        - 0
+                    - null
+                    - 0
                     update_phase: B
                     compartment: dend
                     direction: R
                     learning_rule: DendriticLoss_6
                     learning_rule_kwargs:
                         sign: -1
-                        learning_rate: 0.015920951416174885
+                        learning_rate: 0.03888840729184042
             H2:
                 E:
                     weight_init: half_kaiming
                     weight_bounds: !!python/tuple
-                        - 0
-                        - null
+                    - 0
+                    - null
                     weight_constraint: clone_weight
                     weight_constraint_kwargs:
                         source: H2.E.H1.E
-                        transpose: True
-                        scale: 0.4473952435945524
+                        transpose: true
+                        scale: 0.16914695597382515
                     update_phase: B
                     compartment: dend
                     learning_rule: null
@@ -95,30 +91,30 @@ projection_config:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 2.343115372006121
                     weight_bounds: !!python/tuple
-                        - 0
-                        - null
+                    - 0
+                    - null
                     direction: F
                     learning_rule: null
             H1:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 0.7559077315353061
                     weight_bounds: !!python/tuple
-                        - 0
-                        - null
+                    - 0
+                    - null
                     update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 1.0868198240743892
                     weight_bounds: !!python/tuple
-                        - null
-                        - 0
+                    - null
+                    - 0
                     weight_constraint: no_autapses
                     direction: R
                     learning_rule: null
@@ -128,83 +124,83 @@ projection_config:
                     weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
-                        scale: 7.3406424124335174
+                        scale: 20.32831261488078
                     weight_bounds: !!python/tuple
-                        - 0
-                        - null
+                    - 0
+                    - null
                     direction: R
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         sign: 1
-                        learning_rate: 0.19840532653703197
-                        forward_only: True
+                        learning_rate: 0.13292864353596703
+                        forward_only: true
                 DendI:
                     weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
-                        scale: 0.25475779357057554
+                        scale: 1.7928618766312825
                     weight_bounds: !!python/tuple
-                        - null
-                        - 0
+                    - null
+                    - 0
                     direction: R
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         sign: -1
-                        learning_rate: 0.19840532653703197
-                        forward_only: True
+                        learning_rate: 0.06085700670526915
+                        forward_only: true
     H2:
         E:
             H1:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 0.15660723756451086
+                    - 0.8667411848160819
                     weight_bounds: !!python/tuple
-                        - 0
-                        - 3.1607571174129747
+                    - 0
+                    - 0.3483171905674923
                     direction: F
                     learning_rule: BTSP_18
                     learning_rule_kwargs:
-                        learning_rate: 0.05248973408306354
-                        neg_rate_th: 0.
-                        stochastic: False
-                        max_pop_fraction: 1.
-                        temporal_discount: 0.25
+                        learning_rate: 0.00938294618946663
+                        neg_rate_th: 0.0
+                        stochastic: false
+                        max_pop_fraction: 1.0
+                        temporal_discount: 0.03536559104213365
             H2:
                 SomaI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 0.307379610388407
                     weight_bounds: !!python/tuple
-                        - null
-                        - 0
+                    - null
+                    - 0
                     direction: R
                     learning_rule: null
                 DendI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.3308604685151206
+                    - 6.018251161556481
                     weight_bounds: !!python/tuple
-                        - null
-                        - 0
+                    - null
+                    - 0
                     update_phase: B
                     compartment: dend
                     direction: R
                     learning_rule: DendriticLoss_6
                     learning_rule_kwargs:
                         sign: -1
-                        learning_rate: 0.04537932238567541
+                        learning_rate: 0.03888840729184042
             Output:
                 E:
                     weight_init: half_kaiming
                     weight_bounds: !!python/tuple
-                        - 0
-                        - null
+                    - 0
+                    - null
                     weight_constraint: clone_weight
                     weight_constraint_kwargs:
                         source: Output.E.H2.E
-                        transpose: True
-                        scale: 0.4473952435945524
+                        transpose: true
+                        scale: 6.7544703643822945
                     update_phase: B
                     compartment: dend
                     learning_rule: null
@@ -213,30 +209,30 @@ projection_config:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 1.9665123573403203
                     weight_bounds: !!python/tuple
-                        - 0
-                        - null
+                    - 0
+                    - null
                     direction: F
                     learning_rule: null
             H2:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 0.3016102106647725
                     weight_bounds: !!python/tuple
-                        - 0
-                        - null
+                    - 0
+                    - null
                     update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 0.9120145277865381
                     weight_bounds: !!python/tuple
-                        - null
-                        - 0
+                    - null
+                    - 0
                     weight_constraint: no_autapses
                     direction: R
                     learning_rule: null
@@ -246,54 +242,54 @@ projection_config:
                     weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
-                        scale: 7.3406424124335174
+                        scale: 51.32519235899543
                     weight_bounds: !!python/tuple
-                        - 0
-                        - null
+                    - 0
+                    - null
                     direction: R
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         sign: 1
-                        learning_rate: 0.19840532653703197
-                        forward_only: True
+                        learning_rate: 0.13292864353596703
+                        forward_only: true
                 DendI:
                     weight_init: half_kaiming
                     weight_constraint: normalize_weight
                     weight_constraint_kwargs:
-                        scale: 0.25475779357057554
+                        scale: 3.122887406947669
                     weight_bounds: !!python/tuple
-                        - null
-                        - 0
+                    - null
+                    - 0
                     direction: R
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         sign: -1
-                        learning_rate: 0.19840532653703197
-                        forward_only: True
+                        learning_rate: 0.06085700670526915
+                        forward_only: true
     Output:
         E:
             H2:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 0.15660723756451086
+                    - 9.217133674241781
                     weight_bounds: !!python/tuple
-                        - 0
-                        - 3.1607571174129747
+                    - 0
+                    - 0.44079581522489397
                     direction: F
                     learning_rule: BTSP_18
                     learning_rule_kwargs:
-                        learning_rate: 0.05248973408306354
-                        neg_rate_th: 0.
-                        temporal_discount: 0.25
+                        learning_rate: 0.019856826836325604
+                        neg_rate_th: 0.0
+                        temporal_discount: 0.03536559104213365
             Output:
                 SomaI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 0.30960437593267404
                     weight_bounds: !!python/tuple
-                        - null
-                        - 0
+                    - null
+                    - 0
                     direction: R
                     learning_rule: null
         SomaI:
@@ -301,30 +297,30 @@ projection_config:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 0.8093417138412852
                     weight_bounds: !!python/tuple
-                        - 0
-                        - null
+                    - 0
+                    - null
                     direction: F
                     learning_rule: null
             Output:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 0.21986736823621184
                     weight_bounds: !!python/tuple
-                        - 0
-                        - null
+                    - 0
+                    - null
                     update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.
+                    - 1.5466764661394883
                     weight_bounds: !!python/tuple
-                        - null
-                        - 0
+                    - null
+                    - 0
                     weight_constraint: no_autapses
                     direction: R
                     learning_rule: null

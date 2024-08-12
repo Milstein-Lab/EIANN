@@ -736,7 +736,8 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, population=None, ax
             raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
             
 
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None, export=False, overwrite=False, ax=None):
+def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None,
+                        export=False, overwrite=False, ax=None):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
