@@ -537,7 +537,7 @@ BP_like_2J_manual:
     Output_I_size: 10.0
 BP_like_2K:
     # all H.E units are updated and nudged
-    # no lateral equilibration
+    # with lateral equilibration
     # like BP_like_2E, but with relu gating of gradient
     #    accuracy: 82.2401
     #    loss: 0.03169533
