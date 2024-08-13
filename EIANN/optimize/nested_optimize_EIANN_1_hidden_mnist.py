@@ -378,10 +378,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     
     if context.constrain_equilibration_dynamics or context.debug:
         residuals = check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                            store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
+                                                 store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
         if context.include_equilibration_dynamics_objective:
             results['dynamics_residuals'] = residuals
-        elif not context.debug:
+        elif residuals > 0. and not context.debug:
             if context.interactive:
                 context.update(locals())
             return dict()
