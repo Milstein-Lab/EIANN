@@ -593,7 +593,8 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         fig_width, fig_height = fig.get_size_inches()
         cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
         cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
-        fig.show()
+        # fig.show()
+        plt.show()
     else:
         return im
 
@@ -701,7 +702,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy_from_data(average_pop_activity_dict, population=None, ax=None):
+def plot_batch_accuracy_from_data(average_pop_activity_dict, population=None, ax=None, cbar=True):
 
     if population is None:
         # Include only last population in the data dict
@@ -723,7 +724,8 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, population=None, ax
             _ax = ax
 
         im = _ax.imshow(avg_pop_activity, aspect='auto', interpolation='none')
-        cbar = plt.colorbar(im, ax=_ax)
+        if cbar:
+            cbar = plt.colorbar(im, ax=_ax)
         _ax.set_xticks(range(avg_pop_activity.shape[1]))
         _ax.set_xlabel('Labels')
         _ax.set_ylabel(f'{pop_name} unit')
