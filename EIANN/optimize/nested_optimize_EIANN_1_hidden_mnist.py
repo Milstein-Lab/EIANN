@@ -339,7 +339,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
 
-    if torch.isnan(results['loss']):
+    if torch.isnan(results['loss']) or torch.isinf(results['loss']):
         if context.debug and context.interactive:
             context.update(locals())
         return dict()
