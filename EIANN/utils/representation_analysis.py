@@ -331,7 +331,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
 
     if export:
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        data_utils.save_plot_data(population.network.name, population.network.seed,
+        data_utils.save_plot_data(population.network.name, network.seed,
                                   data_key=f'metrics_dict_{population.fullname}', data=metrics_dict,
                                   file_path=export_path, overwrite=overwrite)
 
@@ -657,7 +657,7 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
         num_units = population.size
 
     input_size = population.network.Input.E.size
-    all_images = []
+    all_images = [torch.empty(num_units, input_size).uniform_(-0.01,0.01)]
 
     print("Optimizing receptive field images...")
 
@@ -665,7 +665,6 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
         # input_images = torch.empty(num_units, input_size).uniform_(-1,1)
         input_images = torch.empty(num_units, input_size).normal_(mean=0,std=10)
         input_images.requires_grad = True
-        optimizer = torch.optim.SGD([input_images], lr=1)
         loss_history = []
 
         if sigmoid:
@@ -677,24 +676,16 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
         else:
             network.forward(input_images)  # compute unit activities in forward pass
         pop_activity = population.activity[:,0:num_units]
-        # L1_norm = torch.sum(torch.abs(input_images))
-        # L2_norm = torch.sum(input_images**2)
-        # loss = torch.sum(-torch.log(torch.diagonal(pop_activity) + 0.001)) + 0.001*L1_norm
         loss = torch.sum(-torch.diagonal(pop_activity))
         loss_history.append(loss.detach().numpy())
-        optimizer.zero_grad()
         loss.backward()
-        optimizer.step()
-        
         all_images.append(-input_images.grad.detach().clone())
 
     receptive_fields = torch.mean(torch.stack(all_images), dim=0)
     if sigmoid:
         receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
-        # network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
     elif softplus:
         receptive_fields = torch.nn.functional.softplus(receptive_fields)
-        # network.forward(receptive_fields, no_grad=True)  # compute unit activities in forward pass
 
     if export:
         # Save receptive fields and activity_preferred_inputs to data hdf5 file
