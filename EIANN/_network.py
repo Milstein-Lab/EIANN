@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn import MSELoss, BCELoss
 from torch.optim import Adam, SGD
 import os
-import pickle
+import dill
 import datetime
 from copy import deepcopy
 from collections import defaultdict
@@ -529,76 +529,28 @@ class Network(nn.Module):
             self.save(path=save_to_file)
     
     def save(self, path=None, dir='saved_networks', file_name_base=None, disp=True):
-        """
-
-        :param path: str (path to file)
-        :param dir: str (path to dir)
-        :param file_name_base: str
-        :param disp: str
-        """
         if path is None:
             if file_name_base is None:
                 file_name_base = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             path = '%s/%s.pkl' % (dir, file_name_base)
             if not os.path.exists(dir):
                 os.makedirs(dir)
-                
+
         elif os.path.exists(path):
             print(f"WARNING: File '{path}' already exists. Overwriting...")
 
-        # if os.path.exists(path):
-        #     overwrite = input('File already exists. Overwrite? (y/n)')
-        #     if overwrite == 'y':
-        #         os.remove(path)
-        #     else:
-        #         print('Model not saved')
-        #         return
-
-        self.params_to_save.extend(['param_history', 'param_history_steps', 'prev_param_history', 'sample_order',
-                                    'target_history', 'sorted_sample_indexes', 'loss_history', 'val_output_history',
-                                    'val_loss_history', 'val_history_train_steps', 'val_accuracy_history',
-                                    'val_target', 'attribute_history_dict', 'forward_dendritic_state'])
-        
-        data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
-                                 if param_name in self.params_to_save},
-                     'layers': {},
-                     'populations': {},
-                     'final_state_dict': self.state_dict()}
-
-        for layer in self:
-            layer_data = {param_name: value for param_name, value in layer.__dict__.items()
-                          if param_name in self.params_to_save}
-            data_dict['layers'][layer.name] = layer_data
-
-            for population in layer:
-                population_data = {param_name: value for param_name, value in population.__dict__.items()
-                                   if param_name in self.params_to_save}
-                data_dict['populations'][population.fullname] = population_data
-
-        with open(path, 'wb') as file:
-            pickle.dump(data_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(path, 'wb') as f:
+            dill.dump(self, f)
         if disp:
-            print(f'Model saved to {path}')
+            print(f"Saved network to '{path}'")
+
 
     def load(self, filepath):
-        print(f"Loading model data from '{filepath}'...")
-        with open(filepath, 'rb') as file:
-            data_dict = pickle.load(file)
-
-        print('Loading parameters into the network...')
-        self.__dict__.update(data_dict['network'])
-
-        for layer in self:
-            layer_data = data_dict['layers'][layer.name]
-            layer.__dict__.update(layer_data)
-
-            for population in layer:
-                population_data = data_dict['populations'][population.fullname]
-                population.__dict__.update(population_data)
-
-        self.load_state_dict(data_dict['final_state_dict'])
-
-        print(f"Model successfully loaded from '{filepath}'")
+        print(f"Loading network from '{filepath}'")
+        with open(filepath, 'rb') as f:
+            self = dill.load(f)
+        print(f"Network successfully loaded from '{filepath}'")
+        
 
     def __iter__(self):
         for layer in self.layers.values():
