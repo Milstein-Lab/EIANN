@@ -817,7 +817,7 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
             col = i - 1
             for row, population in enumerate(layer):
                 if len(population.forward_steps_activity) == 1:
-                    return True
+                    return 0
                 # for memory efficiency
                 average_activity = torch.tensor([torch.mean(step) for step in population.forward_steps_activity])
                 population.forward_steps_activity = []

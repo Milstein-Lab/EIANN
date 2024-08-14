@@ -44,7 +44,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_2E
+                    learning_rule: BP_like_2L
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
@@ -107,6 +107,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
@@ -151,7 +152,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_2E
+                    learning_rule: BP_like_2L
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
@@ -214,6 +215,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
@@ -258,9 +260,11 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_2E
+                    learning_rule: BP_like_2L
                     learning_rule_kwargs:
                         learning_rate: 0.05248973408306354
+                        max_pop_fraction: 1.
+                        stochastic: False
                         relu_gate: True
             Output:
                 SomaI:
@@ -291,6 +295,7 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
+                    update_phase: A
                     direction: R
                     learning_rule: null
                 SomaI:
