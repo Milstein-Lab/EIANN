@@ -757,7 +757,11 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx=None, bin_size=
         plt.xlabel('Train steps')
         plt.ylim((0, max(100, plt.ylim()[1])))
         fig.show()
-
+    
+    network.binned_train_loss_steps = binned_train_loss_steps
+    network.binned_sorted_train_loss_history = sorted_loss_history
+    network.binned_sorted_train_accuracy_history = sorted_accuracy_history
+    
     return binned_train_loss_steps, sorted_loss_history, sorted_accuracy_history
 
 
