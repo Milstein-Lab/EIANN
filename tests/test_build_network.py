@@ -56,9 +56,9 @@ def test_train_network(network, MNIST_dataloaders):
                   status_bar=True)
     
 
-@pytest.mark.skipif(os.environ.get("CI") == "true", reason="Pickle file not saved in GitHub Actions")
-def test_load_network(network, root_dir):
-    saved_network_dir = root_dir + "/EIANN/data/mnist/"
-    saved_network = "20231120_EIANN_1_hidden_mnist_van_bp_relu_SGD_config_G_66049_257.pkl"
-    saved_network_path = saved_network_dir + saved_network
-    network.load(saved_network_path)
+# @pytest.mark.skipif(os.environ.get("CI") == "true", reason="Pickle file not saved in GitHub Actions")
+# def test_load_network(network, root_dir):
+#     saved_network_dir = root_dir + "/EIANN/data/mnist/"
+#     saved_network = "20231120_EIANN_1_hidden_mnist_van_bp_relu_SGD_config_G_66049_257.pkl"
+#     saved_network_path = saved_network_dir + saved_network
+#     network.load(saved_network_path)

@@ -2,14 +2,10 @@ import torch
 import torch.nn as nn
 from torch.nn import MSELoss, BCELoss
 from torch.optim import Adam, SGD
-import os
-import pickle
-import datetime
 from copy import deepcopy
 from collections import defaultdict
 from functools import partial
 
-from EIANN.utils import half_kaiming_init, scaled_kaiming_init
 import EIANN.utils as ut
 import EIANN.rules as rules
 import EIANN.external as external
@@ -139,10 +135,10 @@ class Network(nn.Module):
                         total_fan_in += fan_in
                         if projection.weight_init is not None:
                             if projection.weight_init == 'half_kaiming':
-                                half_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args,
+                                ut.half_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args,
                                                    bounds=projection.weight_bounds)
                             elif projection.weight_init == 'scaled_kaiming':
-                                scaled_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args)
+                                ut.scaled_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args)
                             elif projection.weight_init in ['clone', 'clone_weight']:
                                 pass
                             else:
@@ -155,9 +151,9 @@ class Network(nn.Module):
                                                        'Tensor' % projection.weight_init)
                     if post_pop.include_bias:
                         if post_pop.bias_init is None:
-                            scaled_kaiming_init(post_pop.bias.data, total_fan_in)
+                            ut.scaled_kaiming_init(post_pop.bias.data, total_fan_in)
                         elif post_pop.bias_init == 'scaled_kaiming':
-                            scaled_kaiming_init(post_pop.bias.data, total_fan_in, *post_pop.bias_init_args)
+                            ut.scaled_kaiming_init(post_pop.bias.data, total_fan_in, *post_pop.bias_init_args)
                         else:
                             try:
                                 getattr(post_pop.bias.data, post_pop.bias_init)(*post_pop.bias_init_args)
@@ -527,68 +523,6 @@ class Network(nn.Module):
         
         if save_to_file is not None:
             self.save(path=save_to_file)
-    
-    def save(self, path=None, dir='saved_networks', file_name_base=None, disp=True):
-        """
-
-        :param path: str (path to file)
-        :param dir: str (path to dir)
-        :param file_name_base: str
-        :param disp: str
-        """
-        if path is None:
-            if file_name_base is None:
-                file_name_base = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-            path = '%s/%s.pkl' % (dir, file_name_base)
-            if not os.path.exists(dir):
-                os.makedirs(dir)
-                
-        elif os.path.exists(path):
-            print(f"WARNING: File '{path}' already exists. Overwriting...")
-        
-        self.params_to_save.extend(['param_history', 'param_history_steps', 'prev_param_history', 'sample_order',
-                                    'target_history', 'sorted_sample_indexes', 'loss_history', 'val_output_history',
-                                    'val_loss_history', 'val_history_train_steps', 'val_accuracy_history',
-                                    'val_target', 'attribute_history_dict', 'forward_dendritic_state',
-                                    ])
-        
-        data_dict = {'network': {param_name: value for param_name, value in self.__dict__.items()
-                                 if param_name in self.params_to_save},
-                     'layers': {},
-                     'populations': {},
-                     'final_state_dict': self.state_dict()}
-
-        for layer in self:
-            layer_data = {param_name: value for param_name, value in layer.__dict__.items()
-                          if param_name in self.params_to_save}
-            data_dict['layers'][layer.name] = layer_data
-
-            for population in layer:
-                population_data = {param_name: value for param_name, value in population.__dict__.items()
-                                   if param_name in self.params_to_save}
-                data_dict['populations'][population.fullname] = population_data
-
-        with open(path, 'wb') as file:
-            pickle.dump(data_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
-        if disp:
-            print(f'Model saved to {path}')
-
-    def load(self, filepath):
-        print(f"Loading model data from '{filepath}'...")
-        with open(filepath, 'rb') as file:
-            data_dict = pickle.load(file)
-
-        print('Loading parameters into the network...')
-        self.__dict__.update(data_dict['network'])
-
-        for layer in self:
-            layer_data = data_dict['layers'][layer.name]
-            layer.__dict__.update(layer_data)
-
-            for population in layer:
-                population_data = data_dict['populations'][population.fullname]
-                population.__dict__.update(population_data)
-        
 
     def __iter__(self):
         for layer in self.layers.values():
