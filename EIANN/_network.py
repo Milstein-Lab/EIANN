@@ -2,14 +2,10 @@ import torch
 import torch.nn as nn
 from torch.nn import MSELoss, BCELoss
 from torch.optim import Adam, SGD
-import os
-import dill
-import datetime
 from copy import deepcopy
 from collections import defaultdict
 from functools import partial
 
-from EIANN.utils import half_kaiming_init, scaled_kaiming_init
 import EIANN.utils as ut
 import EIANN.rules as rules
 import EIANN.external as external
@@ -139,10 +135,10 @@ class Network(nn.Module):
                         total_fan_in += fan_in
                         if projection.weight_init is not None:
                             if projection.weight_init == 'half_kaiming':
-                                half_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args,
+                                ut.half_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args,
                                                    bounds=projection.weight_bounds)
                             elif projection.weight_init == 'scaled_kaiming':
-                                scaled_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args)
+                                ut.scaled_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args)
                             elif projection.weight_init in ['clone', 'clone_weight']:
                                 pass
                             else:
@@ -155,9 +151,9 @@ class Network(nn.Module):
                                                        'Tensor' % projection.weight_init)
                     if post_pop.include_bias:
                         if post_pop.bias_init is None:
-                            scaled_kaiming_init(post_pop.bias.data, total_fan_in)
+                            ut.scaled_kaiming_init(post_pop.bias.data, total_fan_in)
                         elif post_pop.bias_init == 'scaled_kaiming':
-                            scaled_kaiming_init(post_pop.bias.data, total_fan_in, *post_pop.bias_init_args)
+                            ut.scaled_kaiming_init(post_pop.bias.data, total_fan_in, *post_pop.bias_init_args)
                         else:
                             try:
                                 getattr(post_pop.bias.data, post_pop.bias_init)(*post_pop.bias_init_args)
@@ -527,30 +523,6 @@ class Network(nn.Module):
         
         if save_to_file is not None:
             self.save(path=save_to_file)
-    
-    def save(self, path=None, dir='saved_networks', file_name_base=None, disp=True):
-        if path is None:
-            if file_name_base is None:
-                file_name_base = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-            path = '%s/%s.pkl' % (dir, file_name_base)
-            if not os.path.exists(dir):
-                os.makedirs(dir)
-
-        elif os.path.exists(path):
-            print(f"WARNING: File '{path}' already exists. Overwriting...")
-
-        with open(path, 'wb') as f:
-            dill.dump(self, f)
-        if disp:
-            print(f"Saved network to '{path}'")
-
-
-    def load(self, filepath):
-        print(f"Loading network from '{filepath}'")
-        with open(filepath, 'rb') as f:
-            self = dill.load(f)
-        print(f"Network successfully loaded from '{filepath}'")
-        
 
     def __iter__(self):
         for layer in self.layers.values():

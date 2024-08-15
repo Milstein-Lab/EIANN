@@ -1,6 +1,9 @@
 import EIANN._network as nt
 import EIANN.utils as ut
 import os
+import pickle
+import dill
+import datetime
 
 def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'):
     '''
@@ -78,6 +81,94 @@ def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'
     
     network.name = os.path.splitext(os.path.basename(config_path))[0]
     return network
+
+
+def save_network(network, path=None, dir='saved_networks', file_name_base=None, disp=True):
+    if path is None:
+        if file_name_base is None:
+            file_name_base = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        path = '%s/%s.pkl' % (dir, file_name_base)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+    elif os.path.exists(path):
+        print(f"WARNING: File '{path}' already exists. Overwriting...")
+
+    with open(path, 'wb') as f:
+        dill.dump(network, f)
+    if disp:
+        print(f"Saved network to '{path}'")
+
+
+def load_network(filepath):
+    print(f"Loading network from '{filepath}'")
+    with open(filepath, 'rb') as f:
+        network = dill.load(f)
+    print(f"Network successfully loaded from '{filepath}'")
+    return network
+    
+
+def save_network_dict(network, path=None, dir='saved_networks', file_name_base=None, disp=True):
+    """
+
+    :param path: str (path to file)
+    :param dir: str (path to dir)
+    :param file_name_base: str
+    :param disp: str
+    """
+    if path is None:
+        if file_name_base is None:
+            file_name_base = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        path = '%s/%s.pkl' % (dir, file_name_base)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+            
+    elif os.path.exists(path):
+        print(f"WARNING: File '{path}' already exists. Overwriting...")
+
+    network.params_to_save.extend(['param_history', 'param_history_steps', 'prev_param_history', 'sample_order',
+                                'target_history', 'sorted_sample_indexes', 'loss_history', 'val_output_history',
+                                'val_loss_history', 'val_history_train_steps', 'val_accuracy_history',
+                                'val_target', 'attribute_history_dict', 'forward_dendritic_state'])
+    
+    data_dict = {'network': {param_name: value for param_name, value in network.__dict__.items()
+                                if param_name in network.params_to_save},
+                    'layers': {},
+                    'populations': {},
+                    'final_state_dict': network.state_dict()}
+
+    for layer in network:
+        layer_data = {param_name: value for param_name, value in layer.__dict__.items()
+                        if param_name in network.params_to_save}
+        data_dict['layers'][layer.name] = layer_data
+
+        for population in layer:
+            population_data = {param_name: value for param_name, value in population.__dict__.items()
+                                if param_name in network.params_to_save}
+            data_dict['populations'][population.fullname] = population_data
+
+    with open(path, 'wb') as file:
+        pickle.dump(data_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
+    if disp:
+        print(f'Model saved to {path}')
+
+
+def load_network_dict(network, filepath):
+    print(f"Loading model data from '{filepath}'...")
+    with open(filepath, 'rb') as file:
+        data_dict = pickle.load(file)
+
+    print('Loading parameters into the network...')
+    network.__dict__.update(data_dict['network'])
+
+    for layer in network:
+        layer_data = data_dict['layers'][layer.name]
+        layer.__dict__.update(layer_data)
+        for population in layer:
+            population_data = data_dict['populations'][population.fullname]
+            population.__dict__.update(population_data)
+
+    network.load_state_dict(data_dict['final_state_dict'])
+    print(f"Model successfully loaded from '{filepath}'")
 
 
 def build_clone_network(network, backprop=True):
