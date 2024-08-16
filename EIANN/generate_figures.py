@@ -72,21 +72,29 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     network = ut.build_EIANN_from_config(config_path, network_seed=network_seed)    
     seed = f"{network_seed}_{data_seed}"
 
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'val_loss_history', 'val_accuracy_history', 'val_history_train_steps']
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 
+                         'val_loss_history', 'val_accuracy_history', 'val_history_train_steps',
+                         'test_loss_history', 'test_accuracy_history', 'angle_vs_bp', 
+                         'binned_mean_forward_dendritic_state', 'binned_mean_forward_dendritic_state_steps']
     variables_to_save.extend([f"metrics_dict_{population.fullname}" for population in network.populations.values()])
-    variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values()])
-    
-    # Open hdf5 and check if the relevant network data already exists                   
+    variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values() if population.name=='E' and population.fullname!='InputE'])
+                                  
+    # Open hdf5 and check if the relevant network data already exists         
     if os.path.exists(data_file_path):
         with h5py.File(data_file_path, 'r') as file:
             if network_name in file.keys():
                 if seed in file[network_name].keys():
                     if overwrite:
                         print(f"Overwriting {network_name} {seed} in {data_file_path}")
+                        variables_to_recompute = variables_to_save
                     elif set(variables_to_save).issubset(file[network_name][seed].keys()):
                         return
+                    else:
+                        variables_to_recompute = [var for var in variables_to_save if var not in file[network_name][seed].keys()]
 
     print("-----------------------------------------------------------------------------")
+
+    print(variables_to_recompute)
 
     # Load the saved network pickle
     network = ut.load_network(saved_network_path)
@@ -100,31 +108,42 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     all_dataloaders = ut.get_MNIST_dataloaders(sub_dataloader_size=1000)
     train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
 
-    # Generate plot data
-
+    ## Generate plot data
     # 1. Class-averaged activity
-    percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, export=True, export_path=data_file_path, overwrite=overwrite)
+    if 'percent_correct' in variables_to_recompute:
+        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, export=True, export_path=data_file_path, overwrite=overwrite)
 
     # 2. Receptive fields and metrics
     for population in network.populations.values():
-        receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=data_file_path, overwrite=overwrite)
+        receptive_fields = None
+        if population.name == "E" and population.fullname != "InputE":
+            receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=data_file_path, overwrite=overwrite)
         metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=data_file_path, overwrite=overwrite)
 
     # Angle vs backprop
-    stored_history_step_size = torch.diff(network.param_history_steps)[-1]
-    bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False, 
-                                                       save_path = saved_network_path.split('.')[0]+'_bpClone.pkl')
+    if 'angle_vs_bp' in variables_to_recompute:
+        stored_history_step_size = torch.diff(network.param_history_steps)[-1]
+        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False, 
+                                                        save_path = saved_network_path.split('.')[0]+'_bpClone.pkl')
+        angles = ut.compute_dW_angles(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
+        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
 
-    # Stepaveraged stochastic backprop vs backprop with batch_size=100
-    angles = ut.compute_dW_angles(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
-    ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
+    # 3. Binned dendritic state (local loss)
+    if 'binned_mean_forward_dendritic_state' in variables_to_recompute:
+        steps, binned_attr_history_dict = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
+        if binned_attr_history_dict is not None:
+            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state', data=binned_attr_history_dict, file_path=data_file_path, overwrite=overwrite)
+            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state_steps', data=steps, file_path=data_file_path, overwrite=overwrite)
 
     # 3. Loss and accuracy
-    ut.save_plot_data(network.name, network.seed, data_key='val_loss_history', data=network.val_loss_history, file_path=data_file_path, overwrite=overwrite)
-    ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history', data=network.val_accuracy_history, file_path=data_file_path, overwrite=overwrite)
-    ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps', data=network.val_history_train_steps, file_path=data_file_path, overwrite=overwrite)
-    ut.save_plot_data(network.name, network.seed, data_key='test_loss_history', data=network.test_loss_history, file_path=data_file_path, overwrite=overwrite)
-    ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history', data=network.test_accuracy_history, file_path=data_file_path, overwrite=overwrite)
+    if any([var in variables_to_recompute for var in ['val_loss_history', 'val_accuracy_history', 'val_history_train_steps']]):
+        ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=data_file_path, overwrite=overwrite)
+    
+    if any([var in variables_to_recompute for var in ['test_loss_history', 'test_accuracy_history']]):
+        ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=data_file_path, overwrite=overwrite)
 
 
 def load_data(model_dict, config_path_prefix, saved_network_path_prefix, overwrite):
@@ -501,17 +520,18 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
                        top=0.7, bottom = 0.25,
                        wspace=0.15, hspace=0.5)
     
-    metrics_axes = gs.GridSpec(nrows=4, ncols=2,                        
-                       left=0.42,right=0.9,
+    metrics_axes = gs.GridSpec(nrows=4, ncols=3,                        
+                       left=0.049,right=0.8,
                        top=0.7, bottom = 0.25,
-                       wspace=0.5, hspace=0.5)
-    ax_accuracy    = fig.add_subplot(metrics_axes[0, 0])  
+                       wspace=0.3, hspace=0.6)
     ax_sparsity    = fig.add_subplot(metrics_axes[1, 0])
-    ax_selectivity = fig.add_subplot(metrics_axes[2, 0])
-    ax_dendstate = fig.add_subplot(metrics_axes[0, 1])
-    ax_angle     = fig.add_subplot(metrics_axes[1, 1])
+    ax_selectivity = fig.add_subplot(metrics_axes[1, 1])
 
-    fig.suptitle('Dendritic target propagation', fontsize=8, y=0.6, x=0.18)
+    ax_accuracy    = fig.add_subplot(metrics_axes[1, 2])  
+    ax_dendstate   = fig.add_subplot(metrics_axes[2, 2])
+    ax_angle       = fig.add_subplot(metrics_axes[3, 2])
+
+    # fig.suptitle('Dendritic target propagation', fontsize=8, y=0.48, x=0.28)
 
     for col, model_dict in enumerate(model_dict_all.values()):
         data_dict = load_data(model_dict, config_path_prefix, saved_network_path_prefix, overwrite)
@@ -523,7 +543,7 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
 
         for row,population in enumerate(populations_to_plot):
             ## Activity plots: batch accuracy of each population to the test dataset
-            ax = fig.add_subplot(axes[row+1, col])
+            ax = fig.add_subplot(axes[row+2, col])
             average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
             pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
             ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
@@ -534,20 +554,24 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
             if col>0:
                 ax.set_ylabel('')
                 ax.set_yticklabels([])
+            if row>0:
+                ax.set_xlabel('')
+                ax.set_xticklabels([])
 
-        ## Learning curves / metrics
-        accuracy_all_seeds = [data_dict[seed]['val_accuracy_history'] for seed in data_dict]
+        # Learning curves / metrics]
+        accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in model_dict['seeds']]
         avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
         error = np.std(accuracy_all_seeds, axis=0)
-        ax_accuracy.plot(data_dict[seed]['val_history_train_steps'], avg_accuracy, label=model_dict["name"], color=model_dict["color"])
-        ax_accuracy.fill_between(data_dict[seed]['val_history_train_steps'], avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
+        train_steps = data_dict[seed]['val_history_train_steps']
+        ax_accuracy.plot(train_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
+        ax_accuracy.fill_between(train_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
         ax_accuracy.set_xlabel('Training step')
         ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
         ax_accuracy.set_ylim([0,100])
-        ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=1, bbox_to_anchor=(1., 1.), loc='upper left', fontsize=6)
+        ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-1., 1.3), loc='upper left', fontsize=6)
 
         sparsity_all_seeds = []
-        for seed in data_dict:
+        for seed in model_dict['seeds']:
             sparsity_one_seed = []
             for population in populations_to_plot:
                 sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
@@ -557,7 +581,7 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
         ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
 
         selectivity_all_seeds = []
-        for seed in data_dict:
+        for seed in model_dict['seeds']:
             selectivity_one_seed = []
             for population in populations_to_plot:
                 selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
@@ -565,6 +589,29 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
         pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
         ax_selectivity.set_ylabel('Fraction of units')
         ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
+
+        dendstate_all_seeds = []
+        for seed in model_dict['seeds']:
+            dendstate_one_seed = data_dict[seed]['binned_mean_forward_dendritic_state']['all']
+            dendstate_all_seeds.append(dendstate_one_seed)
+        avg_dendstate = np.mean(dendstate_all_seeds, axis=0)
+        error = np.std(dendstate_all_seeds, axis=0)
+        ax_dendstate.plot(data_dict[seed]['binned_mean_forward_dendritic_state_steps'], avg_dendstate, label=model_dict["name"], color=model_dict["color"])
+        ax_dendstate.fill_between(data_dict[seed]['binned_mean_forward_dendritic_state_steps'], avg_dendstate-error, avg_dendstate+error, alpha=0.2, color=model_dict["color"])
+        ax_dendstate.set_xlabel('Training step')
+        ax_dendstate.set_ylabel('Dendritic state')
+        ax_dendstate.set_ylim([-0.01,0.4])
+
+        angle_all_seeds = []
+        for seed in model_dict['seeds']:
+            angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
+        avg_angle = np.mean(angle_all_seeds, axis=0)
+        error = np.std(angle_all_seeds, axis=0)
+        ax_angle.plot(data_dict[seed]['binned_mean_forward_dendritic_state_steps'], avg_angle, label=model_dict["name"], color=model_dict["color"])
+        ax_angle.fill_between(data_dict[seed]['binned_mean_forward_dendritic_state_steps'], avg_angle-error, avg_angle+error, alpha=0.2, color=model_dict["color"])
+        ax_angle.set_xlabel('Training step')
+        ax_angle.set_ylabel('Angle vs BP')
+
 
     if save:
         fig.savefig("figures/Fig3_DendI.png", dpi=600)
@@ -613,7 +660,7 @@ def main(figure, overwrite, save, single_model):
                                         "name":   "Local LossFunc"}, # BP-local weight update rule with dendritic target propagation
 
                     "bpLike_fixedDend": {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
-                                        "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
+                                        "seeds": ["66049_257","66050_258", "66051_259"],#  , "66052_260", "66053_261"],
                                         "color":  "gray",
                                         "name":   "Fixed DendI"}, # BP-local weight update rule with dendritic target propagation
 
@@ -640,7 +687,7 @@ def main(figure, overwrite, save, single_model):
         generate_Fig2(model_subdict, save=save, overwrite=overwrite)
     elif figure in ["all", "fig3"]:
         model_list = ["bpLike_fixedDend", "bpLike_hebb", "bpLike_localBP"]
-        # model_list = ["bpLike_hebb", "bpLike_localBP"]
+        # model_list = ["bpLike_localBP"]
         model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
         generate_Fig3(model_subdict, save=save, overwrite=overwrite)
 

@@ -8,7 +8,7 @@ import copy
 from tqdm import tqdm
 from scipy import signal
 
-from EIANN.utils import data_utils
+from EIANN.utils import data_utils, network_utils
 import EIANN.plot as pt
 
 def compute_average_activity(activity, labels):
@@ -109,6 +109,268 @@ def compute_dParam_history(network):
         dParam_history[name] = torch.stack(value)
 
     return dParam_history
+
+
+def compute_alternate_dParam_history(dataloader, network, network2=None, save_path=None, batch_size=None, constrain_params=None):
+    """
+    Iterate through the parameter history and compute both the actual dParam at each training step 
+    and the alternate dParam predicted from either a backprop/gradient descent step or from an identical 
+    network with a custom learning rule
+
+    :param dataloader:
+    :param network: network with param_history
+    :param network2: (optional) network with a custom learning rule
+    :param save_path: (optional) path to save network clone with new param_history
+    :param batch_size: (optional) batch size to use for alternate dParam computation
+    :param constrain_params: (optional) constrain weights and biases to valid range (e.g. to obey Dale's law)
+    :return: list of angles (in degrees)
+    """
+    assert len(network.param_history)>0, 'Network must have param_history'
+    assert len(dataloader)==1, 'Dataloader must have a single large batch'
+
+    idx, data, target = next(iter(dataloader))
+
+    if batch_size is None:
+        print('Warning: batch_size not specified, default batch_size is full dataset')
+        sample_data = data
+        sample_target = target.squeeze()
+
+    if network2 is None: # Turn on gradient tracking to compute backprop dW
+        test_network = network_utils.build_clone_network(network, backprop=True)
+    else:
+        test_network = network_utils.build_clone_network(network2, backprop=False)
+        if "Backprop" in str(test_network.backward_methods):
+            assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
+
+    test_network.batch_size = batch_size
+    test_network.constrain_params = constrain_params
+    # test_network.reset_history()
+
+    # Align param_history and prev_param_history (exclude initial params)
+    if len(network.prev_param_history)==0: # if interval step is 1
+        print('WARNING: network.prev_param_history is empty, using network.param_history instead')
+        prev_param_history = network.param_history[:-1] # exclude final params
+        param_history = network.param_history[1:] # exclude initial params
+        param_history_steps = network.param_history_steps[1:]
+    else:
+        prev_param_history = network.prev_param_history
+        param_history = network.param_history
+        param_history_steps = network.param_history_steps
+
+    actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    actual_dParam_history_all = []
+    actual_dParam_history_dict_stepaveraged = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    actual_dParam_history_stepaveraged_all = []
+    predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    predicted_dParam_history_all = []
+
+    for t in tqdm(range(len(param_history))):  
+        # Load params into network
+        state_dict = prev_param_history[t]
+        if network2 is not None:
+            # Select only params that are in both networks
+            state_dict = {name:param for name,param in state_dict.items() if name in test_network.state_dict()}
+        test_network.load_state_dict(state_dict)
+        test_network.prev_param_history.append(copy.deepcopy(state_dict))
+ 
+        # Compute forward pass
+        if batch_size is not None:
+            sample_idx = network.sample_order[param_history_steps[t]:param_history_steps[t]+batch_size]            
+            sample_data = data[sample_idx]
+            sample_target = target[sample_idx]
+
+        output = test_network.forward(sample_data)
+        loss = test_network.criterion(output, sample_target)   
+
+        # Compute backward pass update
+        if network2 is None:
+            # Regular backprop update
+            test_network.zero_grad()
+            loss.backward() 
+            test_network.optimizer.step()    
+            if constrain_params==True:
+                test_network.constrain_weights_and_biases()
+        else:
+            # Backward update specified by learning rules in network2
+            for backward in test_network.backward_methods:
+                backward(test_network, output, sample_target)
+
+            # Step weights and biases
+            for layer in test_network:
+                for population in layer:
+                    if population.include_bias:
+                        population.bias_learning_rule.step()
+                    for projection in population:
+                        projection.learning_rule.step()
+            if constrain_params is None or constrain_params==True:
+                test_network.constrain_weights_and_biases()
+
+        new_state_dict = test_network.state_dict() 
+        test_network.param_history.append(copy.deepcopy(new_state_dict))
+
+        # Compute the predicted dParam (from the test network)
+        dParam_vec = []
+        for key in predicted_dParam_history_dict:
+            dParam = (new_state_dict[key]-state_dict[key])
+            predicted_dParam_history_dict[key].append(dParam)
+            dParam_vec.append(dParam.flatten())
+
+            # if torch.all(dParam==0) and t>100 and "DendI" not in key:
+            #     print(f'Warning: dParam is all zeros at step {t}, {key}')
+            #     print(torch.all(new_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
+            #     return state_dict, new_state_dict, output, loss, dParam
+
+        predicted_dParam_history_all.append(torch.cat(dParam_vec))
+        
+        # Compute the actual dParam of the first network
+        next_state_dict = param_history[t]
+        dParam_vec = []
+        for key in actual_dParam_history_dict:
+            dParam = (next_state_dict[key]-state_dict[key])
+            actual_dParam_history_dict[key].append(dParam)
+            dParam_vec.append(dParam.flatten())
+
+            # if torch.all(dParam==0) and t>100 and "DendI" not in key:
+            #     print(f'Warning: actual dParam is all zeros at step {t}, {key}')
+            #     print(torch.all(next_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
+            #     return state_dict, new_state_dict, output, loss, dParam
+
+        actual_dParam_history_all.append(torch.cat(dParam_vec))
+
+        # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
+        if t<len(param_history)-1:
+            next_state_dict = prev_param_history[t+1]
+            dParam_vec = []
+            for key in actual_dParam_history_dict_stepaveraged:
+                dParam = (next_state_dict[key]-state_dict[key])
+                actual_dParam_history_dict_stepaveraged[key].append(dParam)
+                dParam_vec.append(dParam.flatten())
+            actual_dParam_history_stepaveraged_all.append(torch.cat(dParam_vec))
+
+    predicted_dParam_history_dict['all_params'] = predicted_dParam_history_all
+    actual_dParam_history_dict['all_params'] = actual_dParam_history_all
+    actual_dParam_history_dict_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
+
+    test_network.predicted_dParam_history = predicted_dParam_history_dict
+    test_network.actual_dParam_history = actual_dParam_history_dict
+    test_network.actual_dParam_history_stepaveraged = actual_dParam_history_dict_stepaveraged
+
+    # test_network.params_to_save.append('predicted_dParam_history')
+    # test_network.params_to_save.append('actual_dParam_history')
+    # test_network.params_to_save.append('actual_dParam_history_stepaveraged')
+    # if save_path is not None:
+    #     test_network.save(save_path)
+    network_utils.save_network(test_network, save_path)
+
+    return test_network
+
+
+def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=False, binarize=False, only_updated_params=False):
+
+    '''
+    Compute the angle between the actual and predicted parameter updates (dW) for each training step.
+    The angle is computed as the arccosine of the dot product between the two vectors, normalized by the product of their norms (resulting in a value between 0 and 180 degrees).
+
+    :param test_network: network generated from compute_alternate_dParam_history (with actual_dParam_history and predicted_dParam_history)
+    :param plot: bool, plot the angle for each parameter
+    :return: dictionary of angles (in degrees)
+    '''
+    print('Computing angles between actual and predicted parameter updates...')
+    
+    if plot:
+        n_params = len(actual_dParam_history)
+        fig, axes = plt.subplots(n_params, 1, figsize=(8,n_params*2))
+        ax_top = axes[0]
+  
+    angles = {}
+
+    for i, param_name in enumerate(actual_dParam_history):
+        angles[param_name] = []
+        
+        for t, (predicted_dParam, actual_dParam) in enumerate(zip(predicted_dParam_history[param_name], actual_dParam_history[param_name])):
+
+            # Compute angle between parameter update (dW) vectors
+            predicted_dParam = predicted_dParam.flatten()
+            actual_dParam = actual_dParam.flatten()
+            if binarize:
+                predicted_dParam = torch.sign(predicted_dParam)
+                actual_dParam = torch.sign(actual_dParam)
+            if only_updated_params:
+                updated_idx = torch.where(actual_dParam != 0)
+                # if len(updated_idx[0]) != len(actual_dParam):
+                #     print(f"Percentage updated = {len(updated_idx[0])/len(actual_dParam)*100:.2f}%")
+                predicted_dParam = predicted_dParam[actual_dParam != 0]
+                actual_dParam = actual_dParam[actual_dParam != 0]
+
+
+                
+            vector_product = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-100)
+            angle_rad = np.arccos(torch.round(vector_product,decimals=5))
+            angle = angle_rad * 180 / np.pi
+            angles[param_name].append(angle)
+            # if torch.isnan(angle):
+            #     print(f'Warning: angle is NaN at step {t}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
+            #     return predicted_dParam, actual_dParam
+
+        if plot:
+            ax = axes[n_params-(i+1)]
+            ax.plot(angles[param_name])
+            ax_top.plot(angles[param_name], color='gray', alpha=0.3)
+            ax.plot([0, len(angles[param_name])], [90, 90], color='gray', linestyle='--', alpha=0.5)
+            ax.set_xlabel('Training step')
+            ax.set_ylabel('Angle between \nlearning rules (degrees)')
+
+            max_angle = max(95, np.nanmax(angles[param_name]))
+            ax.set_ylim(bottom=-5, top=max_angle)
+            ax.set_yticks(np.arange(0, max_angle+1, 30))
+            if i == n_params-1:
+                ax.set_ylim(bottom=-5, top=120)
+                ax.set_yticks(np.arange(0, 121, 30))
+
+            avg_angle = np.nanmean(angles[param_name])
+            ax.text(0.03, 0.12, f'Avg angle = {avg_angle:.2f} degrees', transform=ax.transAxes)
+            if '.' in param_name:
+                param_name = param_name.split('.')[1]
+            ax.set_title(param_name)
+
+            plt.tight_layout()
+            fig.show()
+
+    return angles
+
+
+def recompute_dParam_history_all(network):
+    '''
+    Recompute the 'all_params' key in dParam history (in case any changes are made to the dParam_history dicts)
+    '''
+
+    actual_dParam_history_all = []
+    actual_dParam_history_stepaveraged_all = []
+    predicted_dParam_history_all = []
+
+    for t in range(len(network.param_history)):
+        # Compute the predicted dParam (from the test network)
+        dParam_vec = []
+        for name,dParam_history in network.predicted_dParam_history.items():
+            dParam_vec.append(dParam_history[t].flatten())
+        predicted_dParam_history_all.append(torch.cat(dParam_vec))
+
+        # Compute the actual dParam of the first network
+        dParam_vec = []
+        for name,dParam_history in network.actual_dParam_history.items():
+            dParam_vec.append(dParam_history[t].flatten())
+        actual_dParam_history_all.append(torch.cat(dParam_vec))
+
+        # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
+        if t<len(network.param_history)-1:
+            dParam_vec = []
+            for name,dParam_history in network.actual_dParam_history_stepaveraged.items():
+                dParam_vec.append(dParam_history[t].flatten())
+            actual_dParam_history_stepaveraged_all.append(torch.cat(dParam_vec))
+
+    network.actual_dParam_history['all_params'] = actual_dParam_history_all
+    network.actual_dParam_history_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
+    network.predicted_dParam_history['all_params'] = predicted_dParam_history_all
 
 
 def compute_sparsity_history(activity_history):
@@ -319,7 +581,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
         receptive_fields = receptive_fields[active_units_idx]
         structure = compute_rf_structure(receptive_fields)
     else:
-        structure = None
+        structure = []
 
     metrics_dict = {'sparsity': sparsity, 
                     'selectivity': selectivity,
@@ -336,266 +598,6 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
                                   file_path=export_path, overwrite=overwrite)
 
     return metrics_dict
-
-
-def compute_alternate_dParam_history(dataloader, network, network2=None, save_path=None, batch_size=None, constrain_params=None):
-    """
-    Iterate through the parameter history and compute both the actual dParam at each training step 
-    and the alternate dParam predicted from either a backprop/gradient descent step or from an identical 
-    network with a custom learning rule
-
-    :param dataloader:
-    :param network: network with param_history
-    :param network2: (optional) network with a custom learning rule
-    :param save_path: (optional) path to save network clone with new param_history
-    :param batch_size: (optional) batch size to use for alternate dParam computation
-    :param constrain_params: (optional) constrain weights and biases to valid range (e.g. to obey Dale's law)
-    :return: list of angles (in degrees)
-    """
-    assert len(network.param_history)>0, 'Network must have param_history'
-    assert len(dataloader)==1, 'Dataloader must have a single large batch'
-
-    idx, data, target = next(iter(dataloader))
-
-    if batch_size is None:
-        print('Warning: batch_size not specified, default batch_size is full dataset')
-        sample_data = data
-        sample_target = target.squeeze()
-
-    if network2 is None: # Turn on gradient tracking to compute backprop dW
-        test_network = build_clone_network(network, backprop=True)
-    else:
-        test_network = build_clone_network(network2, backprop=False)
-        if "Backprop" in str(test_network.backward_methods):
-            assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
-
-    test_network.batch_size = batch_size
-    test_network.constrain_params = constrain_params
-    # test_network.reset_history()
-
-    # Align param_history and prev_param_history (exclude initial params)
-    if len(network.prev_param_history)==0: # if interval step is 1
-        print('WARNING: network.prev_param_history is empty, using network.param_history instead')
-        prev_param_history = network.param_history[:-1] # exclude final params
-        param_history = network.param_history[1:] # exclude initial params
-        param_history_steps = network.param_history_steps[1:]
-    else:
-        prev_param_history = network.prev_param_history
-        param_history = network.param_history
-        param_history_steps = network.param_history_steps
-
-    actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
-    actual_dParam_history_all = []
-    actual_dParam_history_dict_stepaveraged = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
-    actual_dParam_history_stepaveraged_all = []
-    predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
-    predicted_dParam_history_all = []
-
-    for t in tqdm(range(len(param_history))):  
-        # Load params into network
-        state_dict = prev_param_history[t]
-        if network2 is not None:
-            # Select only params that are in both networks
-            state_dict = {name:param for name,param in state_dict.items() if name in test_network.state_dict()}
-        test_network.load_state_dict(state_dict)
-        test_network.prev_param_history.append(copy.deepcopy(state_dict))
- 
-        # Compute forward pass
-        if batch_size is not None:
-            sample_idx = network.sample_order[param_history_steps[t]:param_history_steps[t]+batch_size]            
-            sample_data = data[sample_idx]
-            sample_target = target[sample_idx]
-
-        output = test_network.forward(sample_data)
-        loss = test_network.criterion(output, sample_target)   
-
-        # Compute backward pass update
-        if network2 is None:
-            # Regular backprop update
-            test_network.zero_grad()
-            loss.backward() 
-            test_network.optimizer.step()    
-            if constrain_params==True:
-                test_network.constrain_weights_and_biases()
-        else:
-            # Backward update specified by learning rules in network2
-            for backward in test_network.backward_methods:
-                backward(test_network, output, sample_target)
-
-            # Step weights and biases
-            for layer in test_network:
-                for population in layer:
-                    if population.include_bias:
-                        population.bias_learning_rule.step()
-                    for projection in population:
-                        projection.learning_rule.step()
-            if constrain_params is None or constrain_params==True:
-                test_network.constrain_weights_and_biases()
-
-        new_state_dict = test_network.state_dict() 
-        test_network.param_history.append(copy.deepcopy(new_state_dict))
-
-        # Compute the predicted dParam (from the test network)
-        dParam_vec = []
-        for key in predicted_dParam_history_dict:
-            dParam = (new_state_dict[key]-state_dict[key])
-            predicted_dParam_history_dict[key].append(dParam)
-            dParam_vec.append(dParam.flatten())
-
-            # if torch.all(dParam==0) and t>100 and "DendI" not in key:
-            #     print(f'Warning: dParam is all zeros at step {t}, {key}')
-            #     print(torch.all(new_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
-            #     return state_dict, new_state_dict, output, loss, dParam
-
-        predicted_dParam_history_all.append(torch.cat(dParam_vec))
-        
-        # Compute the actual dParam of the first network
-        next_state_dict = param_history[t]
-        dParam_vec = []
-        for key in actual_dParam_history_dict:
-            dParam = (next_state_dict[key]-state_dict[key])
-            actual_dParam_history_dict[key].append(dParam)
-            dParam_vec.append(dParam.flatten())
-
-            # if torch.all(dParam==0) and t>100 and "DendI" not in key:
-            #     print(f'Warning: actual dParam is all zeros at step {t}, {key}')
-            #     print(torch.all(next_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
-            #     return state_dict, new_state_dict, output, loss, dParam
-
-        actual_dParam_history_all.append(torch.cat(dParam_vec))
-
-        # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
-        if t<len(param_history)-1:
-            next_state_dict = prev_param_history[t+1]
-            dParam_vec = []
-            for key in actual_dParam_history_dict_stepaveraged:
-                dParam = (next_state_dict[key]-state_dict[key])
-                actual_dParam_history_dict_stepaveraged[key].append(dParam)
-                dParam_vec.append(dParam.flatten())
-            actual_dParam_history_stepaveraged_all.append(torch.cat(dParam_vec))
-
-    predicted_dParam_history_dict['all_params'] = predicted_dParam_history_all
-    actual_dParam_history_dict['all_params'] = actual_dParam_history_all
-    actual_dParam_history_dict_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
-
-    test_network.predicted_dParam_history = predicted_dParam_history_dict
-    test_network.actual_dParam_history = actual_dParam_history_dict
-    test_network.actual_dParam_history_stepaveraged = actual_dParam_history_dict_stepaveraged
-
-    test_network.params_to_save.append('predicted_dParam_history')
-    test_network.params_to_save.append('actual_dParam_history')
-    test_network.params_to_save.append('actual_dParam_history_stepaveraged')
-    if save_path is not None:
-        test_network.save(save_path)
-
-    return test_network
-
-
-def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=False, binarize=False, only_updated_params=False):
-
-    '''
-    Compute the angle between the actual and predicted parameter updates (dW) for each training step.
-    The angle is computed as the arccosine of the dot product between the two vectors, normalized by the product of their norms (resulting in a value between 0 and 180 degrees).
-
-    :param test_network: network generated from compute_alternate_dParam_history (with actual_dParam_history and predicted_dParam_history)
-    :param plot: bool, plot the angle for each parameter
-    :return: dictionary of angles (in degrees)
-    '''
-
-    if plot:
-        n_params = len(actual_dParam_history)
-        fig, axes = plt.subplots(n_params, 1, figsize=(8,n_params*2))
-        ax_top = axes[0]
-  
-    angles = {}
-
-    for i, param_name in enumerate(actual_dParam_history):
-        angles[param_name] = []
-        
-        for t, (predicted_dParam, actual_dParam) in enumerate(zip(predicted_dParam_history[param_name], actual_dParam_history[param_name])):
-
-            # Compute angle between parameter update (dW) vectors
-            predicted_dParam = predicted_dParam.flatten()
-            actual_dParam = actual_dParam.flatten()
-            if binarize:
-                predicted_dParam = torch.sign(predicted_dParam)
-                actual_dParam = torch.sign(actual_dParam)
-            if only_updated_params:
-                updated_idx = torch.where(actual_dParam != 0)
-                # if len(updated_idx[0]) != len(actual_dParam):
-                #     print(f"Percentage updated = {len(updated_idx[0])/len(actual_dParam)*100:.2f}%")
-                predicted_dParam = predicted_dParam[actual_dParam != 0]
-                actual_dParam = actual_dParam[actual_dParam != 0]
-
-
-                
-            vector_product = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-100)
-            angle_rad = np.arccos(torch.round(vector_product,decimals=5))
-            angle = angle_rad * 180 / np.pi
-            angles[param_name].append(angle)
-            # if torch.isnan(angle):
-            #     print(f'Warning: angle is NaN at step {t}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
-            #     return predicted_dParam, actual_dParam
-
-        if plot:
-            ax = axes[n_params-(i+1)]
-            ax.plot(angles[param_name])
-            ax_top.plot(angles[param_name], color='gray', alpha=0.3)
-            ax.plot([0, len(angles[param_name])], [90, 90], color='gray', linestyle='--', alpha=0.5)
-            ax.set_xlabel('Training step')
-            ax.set_ylabel('Angle between \nlearning rules (degrees)')
-
-            max_angle = max(95, np.nanmax(angles[param_name]))
-            ax.set_ylim(bottom=-5, top=max_angle)
-            ax.set_yticks(np.arange(0, max_angle+1, 30))
-            if i == n_params-1:
-                ax.set_ylim(bottom=-5, top=120)
-                ax.set_yticks(np.arange(0, 121, 30))
-
-            avg_angle = np.nanmean(angles[param_name])
-            ax.text(0.03, 0.12, f'Avg angle = {avg_angle:.2f} degrees', transform=ax.transAxes)
-            if '.' in param_name:
-                param_name = param_name.split('.')[1]
-            ax.set_title(param_name)
-
-            plt.tight_layout()
-            fig.show()
-
-    return angles
-
-
-def recompute_dParam_history_all(network):
-    '''
-    Recompute the 'all_params' key in dParam history (in case any changes are made to the dParam_history dicts)
-    '''
-
-    actual_dParam_history_all = []
-    actual_dParam_history_stepaveraged_all = []
-    predicted_dParam_history_all = []
-
-    for t in range(len(network.param_history)):
-        # Compute the predicted dParam (from the test network)
-        dParam_vec = []
-        for name,dParam_history in network.predicted_dParam_history.items():
-            dParam_vec.append(dParam_history[t].flatten())
-        predicted_dParam_history_all.append(torch.cat(dParam_vec))
-
-        # Compute the actual dParam of the first network
-        dParam_vec = []
-        for name,dParam_history in network.actual_dParam_history.items():
-            dParam_vec.append(dParam_history[t].flatten())
-        actual_dParam_history_all.append(torch.cat(dParam_vec))
-
-        # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
-        if t<len(network.param_history)-1:
-            dParam_vec = []
-            for name,dParam_history in network.actual_dParam_history_stepaveraged.items():
-                dParam_vec.append(dParam_history[t].flatten())
-            actual_dParam_history_stepaveraged_all.append(torch.cat(dParam_vec))
-
-    network.actual_dParam_history['all_params'] = actual_dParam_history_all
-    network.actual_dParam_history_stepaveraged['all_params'] = actual_dParam_history_stepaveraged_all
-    network.predicted_dParam_history['all_params'] = predicted_dParam_history_all
 
 
 def compute_act_weighted_avg(population, dataloader):

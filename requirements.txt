@@ -11,3 +11,4 @@ torch==2.0.1
 torchvision==0.15.2
 tqdm==4.66.1
 dill==0.3.8
+click==8.1.7

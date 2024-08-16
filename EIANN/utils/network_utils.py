@@ -200,6 +200,8 @@ def change_learning_rule_to_backprop(projection_config):
     Recursively update the learning rule to 'Backprop' for all projections that have a learning rule specified.
     '''
     for key, value in projection_config.items():
+        if key == 'learning_rule_kwargs':
+            projection_config['learning_rule_kwargs'] = {'learning_rate': projection_config['learning_rule_kwargs']['learning_rate']}
         if isinstance(value, dict):
             change_learning_rule_to_backprop(value)
         elif key == 'learning_rule':
