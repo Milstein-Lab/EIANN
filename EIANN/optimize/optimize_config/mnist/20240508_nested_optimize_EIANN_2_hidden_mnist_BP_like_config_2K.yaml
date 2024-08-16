@@ -109,6 +109,7 @@ kwargs:
     num_training_steps_accuracy_window: 1000
     constrain_equilibration_dynamics: True
     include_equilibration_dynamics_objective: True
+    include_dend_loss_objective: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       function: update_EIANN_config_2_hidden_BP_like_2E  # works with 2K

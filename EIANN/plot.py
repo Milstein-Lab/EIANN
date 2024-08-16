@@ -508,8 +508,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         receptive_fields = receptive_fields[class_sorted_idx]
         if isinstance(scale, torch.Tensor):
             scale = scale[class_sorted_idx]
-
-
+    
     # Filter by number of units
     if num_units is not None:
         receptive_fields = receptive_fields[:num_units]
@@ -593,8 +592,8 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         fig_width, fig_height = fig.get_size_inches()
         cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
         cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
-        # fig.show()
-        plt.show()
+        fig.show()
+        # plt.show()
     else:
         return im
 
