@@ -104,6 +104,13 @@ def load_network(filepath):
     print(f"Loading network from '{filepath}'")
     with open(filepath, 'rb') as f:
         network = dill.load(f)
+    for layer in network:
+        for population in layer:
+            for attr_name in population.attribute_history_dict:
+                population.register_attribute_history(attr_name)
+            for projection in population:
+                for attr_name in projection.attribute_history_dict:
+                    projection.register_attribute_history(attr_name)
     print(f"Network successfully loaded from '{filepath}'")
     return network
     
