@@ -192,7 +192,8 @@ def get_mean_forward_dend_loss(network, num_steps):
     hidden_layers = list(network)[1:-1]
     mean_forward_dend_loss_list = []
     for layer in hidden_layers:
-        mean_forward_dend_loss_list.append(torch.mean(layer.E.forward_dendritic_state_history[-num_steps:]).item())
+        # mean_forward_dend_loss_list.append(torch.mean(layer.E.forward_dendritic_state_history[-num_steps:]).item())
+        mean_forward_dend_loss_list.append(torch.mean(torch.abs(layer.E.forward_dendritic_state_history[-num_steps:])).item())
     
     return np.mean(mean_forward_dend_loss_list)
 

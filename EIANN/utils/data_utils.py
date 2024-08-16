@@ -9,6 +9,7 @@ import h5py
 import os
 import yaml
 import torchvision
+import EIANN.plot as plot
 
 try:
     from collections import Iterable
@@ -711,7 +712,7 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx=None, bin_size=
     if excess > 0:
         output_history = output_history[:-excess]
         target_history = target_history[:-excess]
-
+    
     binned_output_history = output_history.reshape(num_bins, bin_size, num_units)
     binned_target_history = target_history.reshape(num_bins, bin_size, num_units)
     binned_train_loss_steps = torch.arange(bin_size, bin_size * (num_bins + 1), bin_size)
@@ -1017,3 +1018,31 @@ def test_EIANN_CL_config(network, dataloader, epochs, split=0.75, supervised=Tru
         sorted_output_idx = None
     plot.plot_simple_EIANN_config_summary(network, num_samples=num_samples, sorted_output_idx=sorted_output_idx,
                                           label='After Phase 2')
+
+
+def get_binned_mean_population_attribute_history_dict(network, attr_name, bin_size=100, abs=False):
+    all_pop_attr_history_list = []
+    binned_attr_history_dict = {}
+    num_patterns = network.output_pop.activity_history.shape[0]
+    num_bins = num_patterns // bin_size
+    excess = num_patterns % bin_size
+    steps = torch.arange(bin_size, bin_size * (num_bins + 1), bin_size)
+    
+    for pop_name, pop in network.populations.items():
+        attr_history = pop.get_attribute_history(attr_name)
+        if attr_history is None:
+            continue
+        attr_history = attr_history.detach().clone()
+        if excess > 0:
+            attr_history = attr_history[:-excess]
+        num_units = pop.size
+        binned_attr_history = attr_history.reshape(num_bins, bin_size, num_units)
+        if abs:
+            binned_attr_history = torch.abs(binned_attr_history)
+        binned_attr_history = torch.mean(binned_attr_history, dim=1)
+        all_pop_attr_history_list.append(binned_attr_history)
+        binned_attr_history_dict[pop_name] = torch.mean(binned_attr_history, dim=1)
+    
+    binned_attr_history_tensor = torch.concatenate(all_pop_attr_history_list, dim=1)
+    binned_attr_history_dict['all'] = torch.mean(binned_attr_history_tensor, dim=1)
+    return steps, binned_attr_history_dict
