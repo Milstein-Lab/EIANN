@@ -255,7 +255,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             context.data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}_{context.label}.pkl"
     
     if os.path.exists(context.data_file_path) and not context.retrain:
-        network.load(context.data_file_path)
+        network = utils.load_network(context.data_file_path)
         if context.disp:
             print('nested_optimize_EIANN_1_hidden_mnist: pid: %i loaded network history from %s' %
                   (os.getpid(), context.data_file_path))
@@ -270,12 +270,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar, debug=context.debug)
-        if context.debug:
-            train_time = time.time() - current_time
-            print('pid: %i, train took %.3f s' % (os.getpid(), train_time))
-            if train_time > 300.:
-                print(x, seed, torch.mean(network.H1.E.activity.data))
-
+    
     if plot:
         try:
             from EIANN.plot import plot_FB_weight_alignment
@@ -381,7 +376,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             return dict()
     
     if export:
-        network.save(path=context.data_file_path, disp=False)
+        utils.save_network(network, path=context.data_file_path, disp=False)
         if context.disp:
             print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network history to %s' %
                   (os.getpid(), context.data_file_path))

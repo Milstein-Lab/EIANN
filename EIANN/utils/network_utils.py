@@ -5,6 +5,7 @@ import pickle
 import dill
 import datetime
 
+
 def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'):
     '''
     Build an EIANN network from a config file

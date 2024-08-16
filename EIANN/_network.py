@@ -58,7 +58,6 @@ class Network(nn.Module):
         self.tau = tau
         self.forward_steps = forward_steps
         self.backward_steps = backward_steps
-        self.params_to_save = []
 
         self.seed = seed
         if self.seed is not None:
@@ -522,7 +521,7 @@ class Network(nn.Module):
             self.param_history_steps = torch.tensor(self.param_history_steps)
         
         if save_to_file is not None:
-            self.save(path=save_to_file)
+            ut.save_network(self, path=save_to_file)
 
     def __iter__(self):
         for layer in self.layers.values():

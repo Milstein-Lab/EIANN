@@ -50,6 +50,8 @@ from .network_utils import (
     rename_population,
     recursive_dict_rename,
     count_dict_elements,
+    save_network,
+    load_network
 )
 
 from .representation_analysis import (

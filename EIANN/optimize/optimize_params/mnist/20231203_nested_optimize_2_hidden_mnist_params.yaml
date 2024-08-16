@@ -614,6 +614,43 @@ BP_like_2L:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
+BP_like_2L_learn_TD_HWN_1:
+    #    accuracy: 90.00660705566406
+    #    dynamics_residuals: 0.0
+    #    loss: 0.022805307060480118
+    #    mean_forward_dend_loss: -0.002702040213625878
+    H1_E_Input_E_init_weight_scale: 0.9422851546159373
+    H2_E_H1_E_init_weight_scale: 0.3214447451540045
+    H_E_learning_rate: 0.004714448382871701
+    H_E_TD_learning_rate: 0.00014376500987881133
+    H1_E_H2_E_weight_scale: 0.30586908708033417
+    H2_E_Output_E_weight_scale: 0.87096799330803
+    H1_E_H1_SomaI_init_weight_scale: 0.6387399221621585
+    H1_SomaI_H1_E_init_weight_scale: 0.5939930079016297
+    H1_SomaI_Input_E_init_weight_scale: 1.3704220035909715
+    H1_SomaI_H1_SomaI_init_weight_scale: 0.7656515744775256
+    H_E_DendI_learning_rate: 0.04780860948255976
+    H1_E_H1_DendI_init_weight_scale: 0.06144680003477983
+    H1_DendI_H1_E_weight_scale: 2.0716120519978345
+    H1_DendI_H1_DendI_weight_scale: 0.2019367224994273
+    H2_E_H2_SomaI_init_weight_scale: 0.5366802228685927
+    H2_SomaI_H2_E_init_weight_scale: 0.12534396212592497
+    H2_SomaI_H1_E_init_weight_scale: 0.6110169781026602
+    H2_SomaI_H2_SomaI_init_weight_scale: 1.221679142670207
+    H2_E_H2_DendI_init_weight_scale: 1.0059536401389413
+    H2_DendI_H2_E_weight_scale: 5.077758172430033
+    H2_DendI_H2_DendI_weight_scale: 1.2402358178503523
+    Output_E_H2_E_init_weight_scale: 1.9340037995732602
+    DendI_E_learning_rate: 0.1653242386294571
+    DendI_DendI_learning_rate: 0.07832811701457937
+    Output_E_H2_E_learning_rate: 0.018264402365889023
+    Output_E_Output_I_init_weight_scale: 0.4968851520698649
+    Output_I_Output_E_init_weight_scale: 0.7499727175488812
+    Output_I_H2_E_init_weight_scale: 0.42250798428195585
+    Output_I_Output_I_init_weight_scale: 0.4266829690620757
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
 BP_like_2O:
     # all H.E units are updated and nudged
     # with network-wide equilibration during backward phase and relu gating
