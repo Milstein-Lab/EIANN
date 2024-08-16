@@ -50,9 +50,7 @@ from .network_utils import (
     change_learning_rule_to_backprop,
     rename_population,
     recursive_dict_rename,
-    count_dict_elements,
-    save_network,
-    load_network
+    count_dict_elements
 )
 
 from .representation_analysis import (
