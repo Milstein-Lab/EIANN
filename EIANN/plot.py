@@ -299,7 +299,7 @@ def plot_representation_metrics(metrics_dict):
     fig.show()
 
 
-def plot_cumulative_distribution(distribution_all_seeds, ax=None, label=None):
+def plot_cumulative_distribution(distribution_all_seeds, ax=None, label=None, color=None):
     """
     Plot cumulative population distribution across all input patterns
     """
@@ -315,16 +315,16 @@ def plot_cumulative_distribution(distribution_all_seeds, ax=None, label=None):
     cumulative_distribution = np.array(cumulative_distribution)
     mean_distribution = np.mean(cumulative_distribution, axis=0)
     SD = np.std(cumulative_distribution, axis=0)
-    SEM = SD / np.sqrt(cumulative_distribution.shape[0])
+    # SEM = SD / np.sqrt(cumulative_distribution.shape[0])
 
     if ax is None:
         fig = plt.figure()
         ax = fig.add_subplot(111)
         
-    ax.plot(mean_distribution, cdf_prob_bins,  label=label)
+    ax.plot(mean_distribution, cdf_prob_bins,  label=label, color=color)
     error_min = mean_distribution - SD
     error_max = mean_distribution + SD
-    ax.fill_betweenx(cdf_prob_bins, error_min, error_max, alpha=0.5)
+    ax.fill_betweenx(cdf_prob_bins, error_min, error_max, alpha=0.5, color=color)
     ax.set_ylabel('Cumulative distribution')
     ax.set_xlabel(label)
 
@@ -501,7 +501,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
             preferred_classes = preferred_classes[sorted_idx]
 
     # Filter by class activity preference to sample units across all classes
-    if preferred_classes is not None:
+    if sort==True and preferred_classes is not None:
         assert isinstance(preferred_classes, torch.Tensor), 'sort_by_activities must be a tensor of maxact class labels'
         class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
         preferred_classes = preferred_classes[class_sorted_idx]
@@ -586,7 +586,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         ax.axis('off')
 
         if preferred_classes is not None:
-            ax.text(0, 6, f'{preferred_classes[i]}', color='gray', fontsize=8)        
+            ax.text(0, 8, f'{preferred_classes[i]}', color='k', fontsize=4)        
 
     if ax_list is None:
         fig.tight_layout(pad=0.2)
