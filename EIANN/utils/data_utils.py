@@ -259,7 +259,7 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
             print(f'{data_key} saved to file: {file_path}')
 
 
-def delete_plot_data(network_name, seed, file_path=None):
+def delete_plot_data(network_name, seed, file_path):
     """
     Delete all data for a given network and seed from the hdf5 file
     :param network_name: str
@@ -267,10 +267,6 @@ def delete_plot_data(network_name, seed, file_path=None):
     :param data_key: str
     :param file_path: str
     """
-    if file_path is None:
-        root_dir = get_project_root()
-        file_path = root_dir + '/EIANN/data/plot_data.h5'
-
     seed = str(seed)
     if os.path.exists(file_path):
         with h5py.File(file_path, 'a') as hdf5_file:
