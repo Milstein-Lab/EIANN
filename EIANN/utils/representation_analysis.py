@@ -260,7 +260,8 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     # test_network.params_to_save.append('actual_dParam_history_stepaveraged')
     # if save_path is not None:
     #     test_network.save(save_path)
-    network_utils.save_network(test_network, save_path)
+    if save_path is not None:
+        network_utils.save_network(test_network, save_path)
 
     return test_network
 
@@ -288,7 +289,6 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
         angles[param_name] = []
         
         for t, (predicted_dParam, actual_dParam) in enumerate(zip(predicted_dParam_history[param_name], actual_dParam_history[param_name])):
-
             # Compute angle between parameter update (dW) vectors
             predicted_dParam = predicted_dParam.flatten()
             actual_dParam = actual_dParam.flatten()
@@ -301,16 +301,14 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
                 #     print(f"Percentage updated = {len(updated_idx[0])/len(actual_dParam)*100:.2f}%")
                 predicted_dParam = predicted_dParam[actual_dParam != 0]
                 actual_dParam = actual_dParam[actual_dParam != 0]
-
-
                 
             vector_product = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-100)
             angle_rad = np.arccos(torch.round(vector_product,decimals=5))
             angle = angle_rad * 180 / np.pi
             angles[param_name].append(angle)
-            # if torch.isnan(angle):
-            #     print(f'Warning: angle is NaN at step {t}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
-            #     return predicted_dParam, actual_dParam
+            if torch.isnan(angle):
+                print(f'Warning: angle is NaN at step {t}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
+                return predicted_dParam, actual_dParam
 
         if plot:
             ax = axes[n_params-(i+1)]

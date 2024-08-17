@@ -79,7 +79,8 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     variables_to_save.extend([f"metrics_dict_{population.fullname}" for population in network.populations.values()])
     variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values() if population.name=='E' and population.fullname!='InputE'])
                                   
-    # Open hdf5 and check if the relevant network data already exists         
+    # Open hdf5 and check if the relevant network data already exists       
+    variables_to_recompute = []  
     if os.path.exists(data_file_path):
         with h5py.File(data_file_path, 'r') as file:
             if network_name in file.keys():
@@ -99,6 +100,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     # Load the saved network pickle
     network = ut.load_network(saved_network_path)
     if type(network) != nt.Network:
+        print("WARNING: Network pickle is not a Network object!")
         network = ut.build_EIANN_from_config(config_path, network_seed=network_seed)    
         ut.load_network_dict(network, saved_network_path)
     network.seed = seed
@@ -108,6 +110,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     all_dataloaders = ut.get_MNIST_dataloaders(sub_dataloader_size=1000)
     train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
 
+    ##################################################################
     ## Generate plot data
     # 1. Class-averaged activity
     if 'percent_correct' in variables_to_recompute:
@@ -122,8 +125,10 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
 
     # Angle vs backprop
     if 'angle_vs_bp' in variables_to_recompute:
+        config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
+        network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
         stored_history_step_size = torch.diff(network.param_history_steps)[-1]
-        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False, 
+        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False, 
                                                         save_path = saved_network_path.split('.')[0]+'_bpClone.pkl')
         angles = ut.compute_dW_angles(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
@@ -611,6 +616,7 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
         ax_angle.fill_between(data_dict[seed]['binned_mean_forward_dendritic_state_steps'], avg_angle-error, avg_angle+error, alpha=0.2, color=model_dict["color"])
         ax_angle.set_xlabel('Training step')
         ax_angle.set_ylabel('Angle vs BP')
+        ax_angle.set_ylim([40,100])
 
 
     if save:
@@ -660,7 +666,7 @@ def main(figure, overwrite, save, single_model):
                                         "name":   "Local LossFunc"}, # BP-local weight update rule with dendritic target propagation
 
                     "bpLike_fixedDend": {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
-                                        "seeds": ["66049_257","66050_258", "66051_259"],#  , "66052_260", "66053_261"],
+                                        "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
                                         "color":  "gray",
                                         "name":   "Fixed DendI"}, # BP-local weight update rule with dendritic target propagation
 
