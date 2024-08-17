@@ -324,7 +324,7 @@ def plot_cumulative_distribution(distribution_all_seeds, ax=None, label=None, co
     ax.plot(mean_distribution, cdf_prob_bins,  label=label, color=color)
     error_min = mean_distribution - SD
     error_max = mean_distribution + SD
-    ax.fill_betweenx(cdf_prob_bins, error_min, error_max, alpha=0.5, color=color)
+    ax.fill_betweenx(cdf_prob_bins, error_min, error_max, alpha=0.5, color=color, linewidth=0)
     ax.set_ylabel('Cumulative distribution')
     ax.set_xlabel(label)
 

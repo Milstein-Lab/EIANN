@@ -611,7 +611,7 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
             error = np.std(dendstate_all_seeds, axis=0)
             binned_mean_forward_dendritic_state_steps = data_dict[seed]['binned_mean_forward_dendritic_state_steps'][:]
             ax_dendstate.plot(binned_mean_forward_dendritic_state_steps, avg_dendstate, label=model_dict["name"], color=model_dict["color"])
-            ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.2, color=model_dict["color"])
+            ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.2, color=model_dict["color"], linewidth=0)
             ax_dendstate.set_xlabel('Training step')
             ax_dendstate.set_ylabel('Dendritic state')
             ax_dendstate.set_ylim([-0.01,0.4])
@@ -622,7 +622,7 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
             avg_angle = np.mean(angle_all_seeds, axis=0)
             error = np.std(angle_all_seeds, axis=0)
             ax_angle.plot(train_steps[1:], avg_angle, label=model_dict["name"], color=model_dict["color"])
-            ax_angle.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.2, color=model_dict["color"])
+            ax_angle.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.2, color=model_dict["color"], linewidth=0)
             ax_angle.set_xlabel('Training step')
             ax_angle.set_ylabel('Angle vs BP')
             ax_angle.set_ylim([40,100])
