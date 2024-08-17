@@ -8,6 +8,7 @@ import matplotlib.gridspec as gs
 import os
 import h5py
 import click
+import copy
 
 import EIANN.utils as ut
 import EIANN.plot as pt
@@ -536,87 +537,95 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
     ax_dendstate   = fig.add_subplot(metrics_axes[2, 2])
     ax_angle       = fig.add_subplot(metrics_axes[3, 2])
 
-    # fig.suptitle('Dendritic target propagation', fontsize=8, y=0.48, x=0.28)
-
     for col, model_dict in enumerate(model_dict_all.values()):
-        data_dict = load_data(model_dict, config_path_prefix, saved_network_path_prefix, overwrite)
-
-        # Metrics plots
-        print(f"Generating plots for {model_dict['name']}")
-        seed = model_dict['seeds'][0] # example seed to plot
-        populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
-
-        for row,population in enumerate(populations_to_plot):
-            ## Activity plots: batch accuracy of each population to the test dataset
-            ax = fig.add_subplot(axes[row+2, col])
-            average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-            pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
-            ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
-            ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
-            ax.set_ylabel(f'{population} unit', labelpad=-8)
-            if row==0:
-                ax.set_title(model_dict["name"])
-            if col>0:
-                ax.set_ylabel('')
-                ax.set_yticklabels([])
-            if row>0:
-                ax.set_xlabel('')
-                ax.set_xticklabels([])
-
-        # Learning curves / metrics]
-        accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in model_dict['seeds']]
-        avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
-        error = np.std(accuracy_all_seeds, axis=0)
-        train_steps = data_dict[seed]['val_history_train_steps']
-        ax_accuracy.plot(train_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
-        ax_accuracy.fill_between(train_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
-        ax_accuracy.set_xlabel('Training step')
-        ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
-        ax_accuracy.set_ylim([0,100])
-        ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-1., 1.3), loc='upper left', fontsize=6)
-
-        sparsity_all_seeds = []
+        config_path = config_path_prefix + model_dict['config']
+        pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
+        network_name = model_dict['config'].split('.')[0]
+        data_file_path = f"data/plot_data_{network_name}.h5"
         for seed in model_dict['seeds']:
-            sparsity_one_seed = []
-            for population in populations_to_plot:
-                sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
-            sparsity_all_seeds.append(sparsity_one_seed)
-        pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=model_dict["name"], color=model_dict["color"])
-        ax_sparsity.set_ylabel('Fraction of patterns')
-        ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
+            saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
+            generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
+        
+        with h5py.File(data_file_path, 'r') as f:
+            data_dict = f[network_name]
 
-        selectivity_all_seeds = []
-        for seed in model_dict['seeds']:
-            selectivity_one_seed = []
-            for population in populations_to_plot:
-                selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
-            selectivity_all_seeds.append(selectivity_one_seed)
-        pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
-        ax_selectivity.set_ylabel('Fraction of units')
-        ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
+            # Metrics plots
+            print(f"Generating plots for {model_dict['name']}")
+            seed = model_dict['seeds'][0] # example seed to plot
+            populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
 
-        dendstate_all_seeds = []
-        for seed in model_dict['seeds']:
-            dendstate_one_seed = data_dict[seed]['binned_mean_forward_dendritic_state']['all']
-            dendstate_all_seeds.append(dendstate_one_seed)
-        avg_dendstate = np.mean(dendstate_all_seeds, axis=0)
-        error = np.std(dendstate_all_seeds, axis=0)
-        ax_dendstate.plot(data_dict[seed]['binned_mean_forward_dendritic_state_steps'], avg_dendstate, label=model_dict["name"], color=model_dict["color"])
-        ax_dendstate.fill_between(data_dict[seed]['binned_mean_forward_dendritic_state_steps'], avg_dendstate-error, avg_dendstate+error, alpha=0.2, color=model_dict["color"])
-        ax_dendstate.set_xlabel('Training step')
-        ax_dendstate.set_ylabel('Dendritic state')
-        ax_dendstate.set_ylim([-0.01,0.4])
+            for row,population in enumerate(populations_to_plot):
+                ## Activity plots: batch accuracy of each population to the test dataset
+                ax = fig.add_subplot(axes[row+2, col])
+                average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
+                pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
+                ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
+                ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
+                ax.set_ylabel(f'{population} unit', labelpad=-8)
+                if row==0:
+                    ax.set_title(model_dict["name"])
+                if col>0:
+                    ax.set_ylabel('')
+                    ax.set_yticklabels([])
+                if row>0:
+                    ax.set_xlabel('')
+                    ax.set_xticklabels([])
 
-        angle_all_seeds = []
-        for seed in model_dict['seeds']:
-            angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
-        avg_angle = np.mean(angle_all_seeds, axis=0)
-        error = np.std(angle_all_seeds, axis=0)
-        ax_angle.plot(data_dict[seed]['binned_mean_forward_dendritic_state_steps'], avg_angle, label=model_dict["name"], color=model_dict["color"])
-        ax_angle.fill_between(data_dict[seed]['binned_mean_forward_dendritic_state_steps'], avg_angle-error, avg_angle+error, alpha=0.2, color=model_dict["color"])
-        ax_angle.set_xlabel('Training step')
-        ax_angle.set_ylabel('Angle vs BP')
-        ax_angle.set_ylim([40,100])
+            # Learning curves / metrics]
+            accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in model_dict['seeds']]
+            avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
+            error = np.std(accuracy_all_seeds, axis=0)
+            train_steps = data_dict[seed]['val_history_train_steps'][:]
+
+            ax_accuracy.plot(train_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
+            ax_accuracy.fill_between(train_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
+            ax_accuracy.set_xlabel('Training step')
+            ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
+            ax_accuracy.set_ylim([0,100])
+            ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-1., 1.3), loc='upper left', fontsize=6)
+            sparsity_all_seeds = []
+            for seed in model_dict['seeds']:
+                sparsity_one_seed = []
+                for population in populations_to_plot:
+                    sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
+                sparsity_all_seeds.append(sparsity_one_seed)
+            pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=model_dict["name"], color=model_dict["color"])
+            ax_sparsity.set_ylabel('Fraction of patterns')
+            ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
+
+            selectivity_all_seeds = []
+            for seed in model_dict['seeds']:
+                selectivity_one_seed = []
+                for population in populations_to_plot:
+                    selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
+                selectivity_all_seeds.append(selectivity_one_seed)
+            pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
+            ax_selectivity.set_ylabel('Fraction of units')
+            ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
+            
+            dendstate_all_seeds = []
+            for seed in model_dict['seeds']:
+                dendstate_one_seed = data_dict[seed]['binned_mean_forward_dendritic_state']['all']
+                dendstate_all_seeds.append(dendstate_one_seed)
+            avg_dendstate = np.mean(dendstate_all_seeds, axis=0)
+            error = np.std(dendstate_all_seeds, axis=0)
+            binned_mean_forward_dendritic_state_steps = data_dict[seed]['binned_mean_forward_dendritic_state_steps'][:]
+            ax_dendstate.plot(binned_mean_forward_dendritic_state_steps, avg_dendstate, label=model_dict["name"], color=model_dict["color"])
+            ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.2, color=model_dict["color"])
+            ax_dendstate.set_xlabel('Training step')
+            ax_dendstate.set_ylabel('Dendritic state')
+            ax_dendstate.set_ylim([-0.01,0.4])
+
+            angle_all_seeds = []
+            for seed in model_dict['seeds']:
+                angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
+            avg_angle = np.mean(angle_all_seeds, axis=0)
+            error = np.std(angle_all_seeds, axis=0)
+            ax_angle.plot(train_steps[1:], avg_angle, label=model_dict["name"], color=model_dict["color"])
+            ax_angle.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.2, color=model_dict["color"])
+            ax_angle.set_xlabel('Training step')
+            ax_angle.set_ylabel('Angle vs BP')
+            ax_angle.set_ylim([40,100])
 
 
     if save:
