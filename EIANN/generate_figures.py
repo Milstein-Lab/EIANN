@@ -127,10 +127,10 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
 
     # Angle vs backprop
     if 'angle_vs_bp' in variables_to_recompute:
+        stored_history_step_size = torch.diff(network.param_history_steps)[-1]
         if 'H1SomaI' in network.populations:
             config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
             network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
-            stored_history_step_size = torch.diff(network.param_history_steps)[-1]
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
         else:
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
@@ -301,7 +301,7 @@ def generate_single_model_figure(model_dict, config_path_prefix="network_config/
 
 """Figure 1: Van_BP vs bpDale(learnedI)
     -> bpDale is more structured/sparse (focus on H1E metrics)"""
-def generate_Fig1(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
+def generate_Fig1(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
     '''
     Figure 1: Van_BP vs bpDale(learnedI)
         -> bpDale is more structured/sparse (focus on H1E metrics)
@@ -324,7 +324,8 @@ def generate_Fig1(model_dict_all, config_path_prefix="network_config/mnist/", sa
     ax_sparsity    = fig.add_subplot(metrics_axes[3, 2])
     ax_selectivity = fig.add_subplot(metrics_axes[3, 3])
 
-    for col, model_dict in enumerate(model_dict_all.values()):
+    col = 0
+    for (model_key, model_dict) in model_dict_all.items():
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
@@ -338,62 +339,68 @@ def generate_Fig1(model_dict_all, config_path_prefix="network_config/mnist/", sa
                 
             ## Metrics plots
             print(f"Generating plots for {model_dict['name']}")
-            seed = model_dict['seeds'][0] # example seed to plot
-            populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'E' in population and population!='InputE']
+            if model_key in model_list:
+                print(model_key, model_list)
 
-            for row,population in enumerate(populations_to_plot):
-                # Activity plots: batch accuracy of each population to the test dataset
-                ax = fig.add_subplot(axes[row, col*2])
-                average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
-                ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
-                ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
-                ax.set_ylabel(f'{population} unit', labelpad=-8)
-                if row==0:
-                    ax.set_title(model_dict["name"])
-                if col>0:
-                    ax.set_ylabel('')
-                    ax.set_yticklabels([])
+                seed = model_dict['seeds'][0] # example seed to plot
+                populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'E' in population and population!='InputE']
 
-                # Receptive field plots
-                receptive_fields = torch.tensor(data_dict[seed][f"maxact_receptive_fields_{population}"])
-                ax = fig.add_subplot(axes[row, col*2+1])
-                ax.axis('off')
-                pos = ax.get_position()
+                for row,population in enumerate(populations_to_plot):
+                    print(row, col*2)
+                    # Activity plots: batch accuracy of each population to the test dataset
+                    ax = fig.add_subplot(axes[row, col*2])
+                    average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
+                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
+                    ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
+                    ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
+                    ax.set_ylabel(f'{population} unit', labelpad=-8)
+                    if row==0:
+                        ax.set_title(model_dict["name"])
+                    if col>0:
+                        ax.set_ylabel('')
+                        ax.set_yticklabels([])
 
-                if receptive_fields.shape[0] > 20:
-                    num_units = 20
-                    new_left = pos.x0 - 0.01  # Move left boundary to the left
-                    new_bottom = pos.y0 + 0.005
-                    new_height = pos.height - 0.005
-                    ax.set_position([new_left, new_bottom, pos.width, new_height])
-                    rf_axes = gs.GridSpecFromSubplotSpec(4, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
-                    ax_list = []
-                    for j in range(num_units):
-                        ax = fig.add_subplot(rf_axes[j])
-                        ax_list.append(ax)
-                        # box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
-                        # ax.add_patch(box)
-                    preferred_classes = torch.argmax(torch.tensor(data_dict[seed]['average_pop_activity_dict'][population]), dim=1)
-                    im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
-                else:
-                    num_units = 10
-                    new_left = pos.x0 - 0.01  # Move left boundary to the left
-                    new_bottom = pos.y0 + 0.028 # Move bottom boundary up
-                    new_height = pos.height - 0.045  # Decrease height
-                    ax.set_position([new_left, new_bottom, pos.width, new_height])
-                    rf_axes = gs.GridSpecFromSubplotSpec(2, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
-                    ax_list = []
-                    for j in range(num_units):
-                        ax = fig.add_subplot(rf_axes[j])
-                        ax_list.append(ax)
-                        # box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
-                        # ax.add_patch(box)
-                    preferred_classes = torch.argmax(torch.tensor(data_dict[seed]['average_pop_activity_dict'][population]), dim=1)
-                    im = pt.plot_receptive_fields(receptive_fields, sort=False, ax_list=ax_list, preferred_classes=preferred_classes)
-                fig_width, fig_height = fig.get_size_inches()
-                cax = fig.add_axes([ax_list[0].get_position().x0+0.09, ax.get_position().y0-0.06/fig_height, 0.05, 0.03/fig_height])
-                fig.colorbar(im, cax=cax, orientation='horizontal')
+                    # Receptive field plots
+                    receptive_fields = torch.tensor(data_dict[seed][f"maxact_receptive_fields_{population}"])
+                    ax = fig.add_subplot(axes[row, col*2+1])
+                    ax.axis('off')
+                    pos = ax.get_position()
+
+                    if receptive_fields.shape[0] > 20:
+                        num_units = 20
+                        new_left = pos.x0 - 0.01  # Move left boundary to the left
+                        new_bottom = pos.y0 + 0.005
+                        new_height = pos.height - 0.005
+                        ax.set_position([new_left, new_bottom, pos.width, new_height])
+                        rf_axes = gs.GridSpecFromSubplotSpec(4, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
+                        ax_list = []
+                        for j in range(num_units):
+                            ax = fig.add_subplot(rf_axes[j])
+                            ax_list.append(ax)
+                            # box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
+                            # ax.add_patch(box)
+                        preferred_classes = torch.argmax(torch.tensor(data_dict[seed]['average_pop_activity_dict'][population]), dim=1)
+                        im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
+                    else:
+                        num_units = 10
+                        new_left = pos.x0 - 0.01  # Move left boundary to the left
+                        new_bottom = pos.y0 + 0.028 # Move bottom boundary up
+                        new_height = pos.height - 0.045  # Decrease height
+                        ax.set_position([new_left, new_bottom, pos.width, new_height])
+                        rf_axes = gs.GridSpecFromSubplotSpec(2, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
+                        ax_list = []
+                        for j in range(num_units):
+                            ax = fig.add_subplot(rf_axes[j])
+                            ax_list.append(ax)
+                            # box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
+                            # ax.add_patch(box)
+                        preferred_classes = torch.argmax(torch.tensor(data_dict[seed]['average_pop_activity_dict'][population]), dim=1)
+                        im = pt.plot_receptive_fields(receptive_fields, sort=False, ax_list=ax_list, preferred_classes=preferred_classes)
+                    fig_width, fig_height = fig.get_size_inches()
+                    cax = fig.add_axes([ax_list[0].get_position().x0+0.09, ax.get_position().y0-0.06/fig_height, 0.05, 0.03/fig_height])
+                    fig.colorbar(im, cax=cax, orientation='horizontal')
+
+                col += 1
 
 
             # Learning curves / metrics
@@ -406,7 +413,7 @@ def generate_Fig1(model_dict_all, config_path_prefix="network_config/mnist/", sa
             ax_accuracy.set_xlabel('Training step')
             ax_accuracy.set_ylabel('Test accuracy (%)', labelpad=-2)
             ax_accuracy.set_ylim([0,100])
-            ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-0.1, 1.5), loc='upper left', fontsize=6)
+            ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
 
             sparsity_all_seeds = []
             for seed in data_dict:
@@ -428,6 +435,7 @@ def generate_Fig1(model_dict_all, config_path_prefix="network_config/mnist/", sa
             ax_selectivity.set_ylabel('Fraction of units')
             ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
 
+            receptive_fields = data_dict[seed][f"maxact_receptive_fields_{population}"]
             if receptive_fields is not None:
                 structure_all_seeds = []
                 for seed in data_dict:
@@ -634,7 +642,7 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
             error = np.std(dendstate_all_seeds, axis=0)
             binned_mean_forward_dendritic_state_steps = data_dict[seed]['binned_mean_forward_dendritic_state_steps'][:]
             ax_dendstate.plot(binned_mean_forward_dendritic_state_steps, avg_dendstate, label=model_dict["name"], color=model_dict["color"])
-            ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.2, color=model_dict["color"], linewidth=0)
+            ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.5, color=model_dict["color"], linewidth=0)
             ax_dendstate.set_xlabel('Training step')
             ax_dendstate.set_ylabel('Dendritic state')
             ax_dendstate.set_ylim([-0.01,0.4])
@@ -647,7 +655,7 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
             ax_angle.plot(avg_angle, label=model_dict["name"], color=model_dict["color"])
 
             ax_angle.plot(train_steps[1:], avg_angle, label=model_dict["name"], color=model_dict["color"])
-            ax_angle.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.2, color=model_dict["color"], linewidth=0)
+            ax_angle.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
             ax_angle.set_xlabel('Training step')
             ax_angle.set_ylabel('Angle vs BP')
             ax_angle.set_ylim([40,100])
@@ -717,12 +725,14 @@ def main(figure, overwrite, save, single_model):
 
     if figure in ["all", "fig1"]:
         model_list = ["vanBP", "bpDale_learned", "hebb"]
-        model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
-        generate_Fig1(model_subdict, save=save, overwrite=overwrite)
+        # model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
+        generate_Fig1(model_dict, model_list, save=save, overwrite=overwrite)
+
     elif figure in ["all", "fig2"]:
         model_list = ["bpDale_learned", "bpDale_fixed", "hebb"]
         model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
         generate_Fig2(model_subdict, save=save, overwrite=overwrite)
+
     elif figure in ["all", "fig3"]:
         # model_list = ["bpLike_fixedDend", "bpLike_hebb", "bpLike_localBP"]
         model_list = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
