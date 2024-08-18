@@ -301,7 +301,7 @@ def generate_single_model_figure(model_dict, config_path_prefix="network_config/
 
 """Figure 1: Van_BP vs bpDale(learnedI)
     -> bpDale is more structured/sparse (focus on H1E metrics)"""
-def generate_Fig1(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
+def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
     '''
     Figure 1: Van_BP vs bpDale(learnedI)
         -> bpDale is more structured/sparse (focus on H1E metrics)
@@ -323,8 +323,8 @@ def generate_Fig1(model_dict_all, model_list, config_path_prefix="network_config
     ax_structure   = fig.add_subplot(metrics_axes[3, 1])
     ax_sparsity    = fig.add_subplot(metrics_axes[3, 2])
     ax_selectivity = fig.add_subplot(metrics_axes[3, 3])
-
     col = 0
+
     for (model_key, model_dict) in model_dict_all.items():
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
@@ -339,14 +339,11 @@ def generate_Fig1(model_dict_all, model_list, config_path_prefix="network_config
                 
             ## Metrics plots
             print(f"Generating plots for {model_dict['name']}")
-            if model_key in model_list:
-                print(model_key, model_list)
-
+            if model_key in model_list_heatmaps:
                 seed = model_dict['seeds'][0] # example seed to plot
                 populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'E' in population and population!='InputE']
 
                 for row,population in enumerate(populations_to_plot):
-                    print(row, col*2)
                     # Activity plots: batch accuracy of each population to the test dataset
                     ax = fig.add_subplot(axes[row, col*2])
                     average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
@@ -403,51 +400,52 @@ def generate_Fig1(model_dict_all, model_list, config_path_prefix="network_config
                 col += 1
 
 
-            # Learning curves / metrics
-            accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in data_dict]
-            avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
-            error = np.std(accuracy_all_seeds, axis=0)
-            val_steps = data_dict[seed]['val_history_train_steps'][:]
-            ax_accuracy.plot(val_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
-            ax_accuracy.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
-            ax_accuracy.set_xlabel('Training step')
-            ax_accuracy.set_ylabel('Test accuracy (%)', labelpad=-2)
-            ax_accuracy.set_ylim([0,100])
-            ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
+            if model_key in model_list_metrics:
+                # Learning curves / metrics
+                accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in data_dict]
+                avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
+                error = np.std(accuracy_all_seeds, axis=0)
+                val_steps = data_dict[seed]['val_history_train_steps'][:]
+                ax_accuracy.plot(val_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
+                ax_accuracy.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
+                ax_accuracy.set_xlabel('Training step')
+                ax_accuracy.set_ylabel('Test accuracy (%)', labelpad=-2)
+                ax_accuracy.set_ylim([0,100])
+                ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
 
-            sparsity_all_seeds = []
-            for seed in data_dict:
-                sparsity_one_seed = []
-                for population in ['H1E', 'H2E']:
-                    sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
-                sparsity_all_seeds.append(sparsity_one_seed)
-            pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=model_dict["name"], color=model_dict["color"])
-            ax_sparsity.set_ylabel('Fraction of patterns')
-            ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
-
-            selectivity_all_seeds = []
-            for seed in data_dict:
-                selectivity_one_seed = []
-                for population in ['H1E', 'H2E']:
-                    selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
-                selectivity_all_seeds.append(selectivity_one_seed)
-            pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
-            ax_selectivity.set_ylabel('Fraction of units')
-            ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
-
-            receptive_fields = data_dict[seed][f"maxact_receptive_fields_{population}"]
-            if receptive_fields is not None:
-                structure_all_seeds = []
+                sparsity_all_seeds = []
                 for seed in data_dict:
-                    structure_one_seed = []
+                    sparsity_one_seed = []
                     for population in ['H1E', 'H2E']:
-                        structure_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['structure'])
-                    structure_all_seeds.append(structure_one_seed)
-                pt.plot_cumulative_distribution(structure_all_seeds, ax=ax_structure, label=model_dict["name"], color=model_dict["color"])
-                ax_structure.set_ylabel('Fraction of units')
-                ax_structure.set_xlabel("Structure") # \n(Moran's I spatial autocorrelation)")
-            else:
-                ax_structure.axis('off')
+                        sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
+                    sparsity_all_seeds.append(sparsity_one_seed)
+                pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=model_dict["name"], color=model_dict["color"])
+                ax_sparsity.set_ylabel('Fraction of patterns')
+                ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
+
+                selectivity_all_seeds = []
+                for seed in data_dict:
+                    selectivity_one_seed = []
+                    for population in ['H1E', 'H2E']:
+                        selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
+                    selectivity_all_seeds.append(selectivity_one_seed)
+                pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
+                ax_selectivity.set_ylabel('Fraction of units')
+                ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
+
+                receptive_fields = data_dict[seed][f"maxact_receptive_fields_{population}"]
+                if receptive_fields is not None:
+                    structure_all_seeds = []
+                    for seed in data_dict:
+                        structure_one_seed = []
+                        for population in ['H1E', 'H2E']:
+                            structure_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['structure'])
+                        structure_all_seeds.append(structure_one_seed)
+                    pt.plot_cumulative_distribution(structure_all_seeds, ax=ax_structure, label=model_dict["name"], color=model_dict["color"])
+                    ax_structure.set_ylabel('Fraction of units')
+                    ax_structure.set_xlabel("Structure") # \n(Moran's I spatial autocorrelation)")
+                else:
+                    ax_structure.axis('off')
 
 
     if save:
@@ -463,7 +461,7 @@ Figure 2: bpDale(learnedI) vs top-sup HebbWN(learnedI) vs unsup-HebbWN(learnedI)
     -> bpDale SomaI is unselective/unstructured, biological learning rule is not (focus on SomaI metrics)
     -> sup HebbWN performance is mediocre (representational collapse), we need a biological way to pass gradients to hidden layers
 """
-def generate_Fig2(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
+def generate_Fig2(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
 
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=6,                        
@@ -478,8 +476,9 @@ def generate_Fig2(model_dict_all, config_path_prefix="network_config/mnist/", sa
     ax_accuracy    = fig.add_subplot(metrics_axes[0, 0])  
     ax_sparsity    = fig.add_subplot(metrics_axes[1, 0])
     ax_selectivity = fig.add_subplot(metrics_axes[2, 0])
+    col = 0
 
-    for col, model_dict in enumerate(model_dict_all.values()):
+    for (model_key, model_dict) in model_dict_all.items():
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
@@ -491,56 +490,58 @@ def generate_Fig2(model_dict_all, config_path_prefix="network_config/mnist/", sa
         with h5py.File(data_file_path, 'r') as f:
             data_dict = f[network_name]
                 
-            # Metrics plots
             print(f"Generating plots for {model_dict['name']}")
             seed = model_dict['seeds'][0] # example seed to plot
             populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'SomaI' in population]
 
-            for row,population in enumerate(populations_to_plot):
-                ## Activity plots: batch accuracy of each population to the test dataset
-                ax = fig.add_subplot(axes[row, col])
-                average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
-                ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
-                ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
-                ax.set_ylabel(f'{population} unit', labelpad=-8)
-                if row==0:
-                    ax.set_title(model_dict["name"])
-                if col>0:
-                    ax.set_ylabel('')
-                    ax.set_yticklabels([])
+            if model_key in model_list_heatmaps:
+                for row,population in enumerate(populations_to_plot):
+                    ## Activity plots: batch accuracy of each population to the test dataset
+                    ax = fig.add_subplot(axes[row, col])
+                    average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
+                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
+                    ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
+                    ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
+                    ax.set_ylabel(f'{population} unit', labelpad=-8)
+                    if row==0:
+                        ax.set_title(model_dict["name"])
+                    if col>0:
+                        ax.set_ylabel('')
+                        ax.set_yticklabels([])     
+                col += 1            
 
-            ## Learning curves / metrics
-            accuracy_all_seeds = [data_dict[seed]['val_accuracy_history'] for seed in data_dict]
-            avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
-            error = np.std(accuracy_all_seeds, axis=0)
-            val_steps = data_dict[seed]['val_history_train_steps'][:]
-            ax_accuracy.plot(val_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
-            ax_accuracy.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
-            ax_accuracy.set_xlabel('Training step')
-            ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
-            ax_accuracy.set_ylim([0,100])
-            ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=1, bbox_to_anchor=(1., 1.), loc='upper left', fontsize=6)
+            if model_key in model_list_metrics:
+                ## Learning curves / metrics
+                accuracy_all_seeds = [data_dict[seed]['val_accuracy_history'] for seed in data_dict]
+                avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
+                error = np.std(accuracy_all_seeds, axis=0)
+                val_steps = data_dict[seed]['val_history_train_steps'][:]
+                ax_accuracy.plot(val_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
+                ax_accuracy.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
+                ax_accuracy.set_xlabel('Training step')
+                ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
+                ax_accuracy.set_ylim([0,100])
+                ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=1, bbox_to_anchor=(1., 1.), loc='upper left', fontsize=6)
 
-            sparsity_all_seeds = []
-            for seed in data_dict:
-                sparsity_one_seed = []
-                for population in populations_to_plot:
-                    sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
-                sparsity_all_seeds.append(sparsity_one_seed)
-            pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=model_dict["name"], color=model_dict["color"])
-            ax_sparsity.set_ylabel('Fraction of patterns')
-            ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
+                sparsity_all_seeds = []
+                for seed in data_dict:
+                    sparsity_one_seed = []
+                    for population in populations_to_plot:
+                        sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
+                    sparsity_all_seeds.append(sparsity_one_seed)
+                pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=model_dict["name"], color=model_dict["color"])
+                ax_sparsity.set_ylabel('Fraction of patterns')
+                ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
 
-            selectivity_all_seeds = []
-            for seed in data_dict:
-                selectivity_one_seed = []
-                for population in populations_to_plot:
-                    selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
-                selectivity_all_seeds.append(selectivity_one_seed)
-            pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
-            ax_selectivity.set_ylabel('Fraction of units')
-            ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
+                selectivity_all_seeds = []
+                for seed in data_dict:
+                    selectivity_one_seed = []
+                    for population in populations_to_plot:
+                        selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
+                    selectivity_all_seeds.append(selectivity_one_seed)
+                pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
+                ax_selectivity.set_ylabel('Fraction of units')
+                ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
 
 
     if save:
@@ -549,7 +550,7 @@ def generate_Fig2(model_dict_all, config_path_prefix="network_config/mnist/", sa
 
 
 
-def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
+def generate_Fig3(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
 
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=6,                        
@@ -567,8 +568,9 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
     ax_accuracy    = fig.add_subplot(metrics_axes[1, 2])  
     ax_dendstate   = fig.add_subplot(metrics_axes[2, 2])
     ax_angle       = fig.add_subplot(metrics_axes[3, 2])
+    col = 0
 
-    for col, model_dict in enumerate(model_dict_all.values()):
+    for (model_key, model_dict) in model_dict_all.items():
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
@@ -581,84 +583,86 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
         with h5py.File(data_file_path, 'r') as f:
             data_dict = f[network_name]
 
-            # Metrics plots
             print(f"Generating plots for {model_dict['name']}")
             seed = model_dict['seeds'][0] # example seed to plot
             populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
 
-            for row,population in enumerate(populations_to_plot):
-                ## Activity plots: batch accuracy of each population to the test dataset
-                ax = fig.add_subplot(axes[row+2, col])
-                average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
-                ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
-                ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
-                ax.set_ylabel(f'{population} unit', labelpad=-8)
-                if row==0:
-                    ax.set_title(model_dict["name"])
-                if col>0:
-                    ax.set_ylabel('')
-                    ax.set_yticklabels([])
-                if row>0:
-                    ax.set_xlabel('')
-                    ax.set_xticklabels([])
+            if model_key in model_list_heatmaps:
+                for row,population in enumerate(populations_to_plot):
+                    ## Activity plots: batch accuracy of each population to the test dataset
+                    ax = fig.add_subplot(axes[row+2, col])
+                    average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
+                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
+                    ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
+                    ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
+                    ax.set_ylabel(f'{population} unit', labelpad=-8)
+                    if row==0:
+                        ax.set_title(model_dict["name"])
+                    if col>0:
+                        ax.set_ylabel('')
+                        ax.set_yticklabels([])
+                    if row>0:
+                        ax.set_xlabel('')
+                        ax.set_xticklabels([])
+                col += 1
 
-            # Learning curves / metrics]
-            accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in model_dict['seeds']]
-            avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
-            error = np.std(accuracy_all_seeds, axis=0)
-            train_steps = data_dict[seed]['val_history_train_steps'][:]
-            ax_accuracy.plot(train_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
-            ax_accuracy.fill_between(train_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
-            ax_accuracy.set_xlabel('Training step')
-            ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
-            ax_accuracy.set_ylim([0,100])
-            ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-1., 1.3), loc='upper left', fontsize=6)
-            sparsity_all_seeds = []
-            for seed in model_dict['seeds']:
-                sparsity_one_seed = []
-                for population in populations_to_plot:
-                    sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
-                sparsity_all_seeds.append(sparsity_one_seed)
-            pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=model_dict["name"], color=model_dict["color"])
-            ax_sparsity.set_ylabel('Fraction of patterns')
-            ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
+            if model_key in model_list_metrics:
+                # Learning curves / metrics]
+                accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in model_dict['seeds']]
+                avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
+                error = np.std(accuracy_all_seeds, axis=0)
+                train_steps = data_dict[seed]['val_history_train_steps'][:]
+                ax_accuracy.plot(train_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
+                ax_accuracy.fill_between(train_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
+                ax_accuracy.set_xlabel('Training step')
+                ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
+                ax_accuracy.set_ylim([0,100])
+                ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-1., 1.3), loc='upper left', fontsize=6)
+                sparsity_all_seeds = []
+                for seed in model_dict['seeds']:
+                    sparsity_one_seed = []
+                    for population in populations_to_plot:
+                        sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
+                    sparsity_all_seeds.append(sparsity_one_seed)
+                pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=model_dict["name"], color=model_dict["color"])
+                ax_sparsity.set_ylabel('Fraction of patterns')
+                ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
 
-            selectivity_all_seeds = []
-            for seed in model_dict['seeds']:
-                selectivity_one_seed = []
-                for population in populations_to_plot:
-                    selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
-                selectivity_all_seeds.append(selectivity_one_seed)
-            pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
-            ax_selectivity.set_ylabel('Fraction of units')
-            ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
-            
-            dendstate_all_seeds = []
-            for seed in model_dict['seeds']:
-                dendstate_one_seed = data_dict[seed]['binned_mean_forward_dendritic_state']['all']
-                dendstate_all_seeds.append(dendstate_one_seed)
-            avg_dendstate = np.mean(dendstate_all_seeds, axis=0)
-            error = np.std(dendstate_all_seeds, axis=0)
-            binned_mean_forward_dendritic_state_steps = data_dict[seed]['binned_mean_forward_dendritic_state_steps'][:]
-            ax_dendstate.plot(binned_mean_forward_dendritic_state_steps, avg_dendstate, label=model_dict["name"], color=model_dict["color"])
-            ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.5, color=model_dict["color"], linewidth=0)
-            ax_dendstate.set_xlabel('Training step')
-            ax_dendstate.set_ylabel('Dendritic state')
-            ax_dendstate.set_ylim([-0.01,0.4])
+                selectivity_all_seeds = []
+                for seed in model_dict['seeds']:
+                    selectivity_one_seed = []
+                    for population in populations_to_plot:
+                        selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
+                    selectivity_all_seeds.append(selectivity_one_seed)
+                pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
+                ax_selectivity.set_ylabel('Fraction of units')
+                ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
+                
+                dendstate_all_seeds = []
+                for seed in model_dict['seeds']:
+                    dendstate_one_seed = data_dict[seed]['binned_mean_forward_dendritic_state']['all']
+                    dendstate_all_seeds.append(dendstate_one_seed)
+                avg_dendstate = np.mean(dendstate_all_seeds, axis=0)
+                error = np.std(dendstate_all_seeds, axis=0)
+                binned_mean_forward_dendritic_state_steps = data_dict[seed]['binned_mean_forward_dendritic_state_steps'][:]
+                ax_dendstate.plot(binned_mean_forward_dendritic_state_steps, avg_dendstate, label=model_dict["name"], color=model_dict["color"])
+                ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.5, color=model_dict["color"], linewidth=0)
+                ax_dendstate.set_xlabel('Training step')
+                ax_dendstate.set_ylabel('Dendritic state')
+                ax_dendstate.set_ylim([-0.01,0.4])
 
-            angle_all_seeds = []
-            for seed in model_dict['seeds']:
-                angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
-            avg_angle = np.mean(angle_all_seeds, axis=0)
-            error = np.std(angle_all_seeds, axis=0)
-            ax_angle.plot(avg_angle, label=model_dict["name"], color=model_dict["color"])
+                angle_all_seeds = []
+                for seed in model_dict['seeds']:
+                    angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
+                avg_angle = np.mean(angle_all_seeds, axis=0)
+                error = np.std(angle_all_seeds, axis=0)
+                ax_angle.plot(avg_angle, label=model_dict["name"], color=model_dict["color"])
 
-            ax_angle.plot(train_steps[1:], avg_angle, label=model_dict["name"], color=model_dict["color"])
-            ax_angle.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
-            ax_angle.set_xlabel('Training step')
-            ax_angle.set_ylabel('Angle vs BP')
-            ax_angle.set_ylim([40,100])
+                ax_angle.plot(train_steps[1:], avg_angle, label=model_dict["name"], color=model_dict["color"])
+                ax_angle.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
+                ax_angle.set_xlabel('Training step')
+                ax_angle.set_ylabel('Angle vs BP')
+                ax_angle.set_ylim([40,100])
 
 
     if save:
@@ -724,20 +728,27 @@ def main(figure, overwrite, save, single_model):
             generate_single_model_figure(model_dict=model_dict[single_model], save=save, overwrite=overwrite)
 
     if figure in ["all", "fig1"]:
-        model_list = ["vanBP", "bpDale_learned", "hebb"]
+        model_list_heatmaps = ["vanBP", "bpDale_learned", "hebb"]
+        model_list_metrics = ["vanBP", "bpDale_learned", "hebb"]
         # model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
-        generate_Fig1(model_dict, model_list, save=save, overwrite=overwrite)
+        generate_Fig1(model_dict, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
 
     elif figure in ["all", "fig2"]:
-        model_list = ["bpDale_learned", "bpDale_fixed", "hebb"]
-        model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
-        generate_Fig2(model_subdict, save=save, overwrite=overwrite)
+        # model_list = ["bpDale_learned", "bpDale_fixed", "hebb"]
+        # model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
+        # generate_Fig2(model_subdict, save=save, overwrite=overwrite)
+        model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "hebb"]
+        model_list_metrics = ["bpDale_learned", "bpDale_fixed", "hebb"]
+        generate_Fig2(model_dict, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
 
     elif figure in ["all", "fig3"]:
         # model_list = ["bpLike_fixedDend", "bpLike_hebb", "bpLike_localBP"]
-        model_list = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
-        model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
-        generate_Fig3(model_subdict, save=save, overwrite=overwrite)
+        # model_list = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
+        # model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
+        # generate_Fig3(model_subdict, save=save, overwrite=overwrite)
+        model_list_heatmaps = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
+        model_list_metrics = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
+        generate_Fig3(model_dict, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
 
 
 if __name__=="__main__":
