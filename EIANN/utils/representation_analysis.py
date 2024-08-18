@@ -302,7 +302,7 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
                 predicted_dParam = predicted_dParam[actual_dParam != 0]
                 actual_dParam = actual_dParam[actual_dParam != 0]
                 
-            vector_product = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-100)
+            vector_product = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-10)
             angle_rad = np.arccos(torch.round(vector_product,decimals=5))
             angle = angle_rad * 180 / np.pi
             angles[param_name].append(angle)
