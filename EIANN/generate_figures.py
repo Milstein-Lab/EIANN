@@ -127,22 +127,16 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
 
     # Angle vs backprop
     if 'angle_vs_bp' in variables_to_recompute:
-        print("TEST!!!")
         if 'H1SomaI' in network.populations:
             config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
             network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
             stored_history_step_size = torch.diff(network.param_history_steps)[-1]
-            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False, 
-                                                            save_path = saved_network_path.split('.')[0]+'_bpClone.pkl')
+            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
         else:
-            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False, 
-                                                            save_path = saved_network_path.split('.')[0]+'_bpClone.pkl')
-        print("TEST!!!")
+            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
         angles = ut.compute_dW_angles(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
-        print("TEST!!!")
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
-        print("TEST!!!")
-        
+
     # 3. Binned dendritic state (local loss)
     if 'binned_mean_forward_dendritic_state' in variables_to_recompute:
         steps, binned_attr_history_dict = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
@@ -571,6 +565,7 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
         data_file_path = f"data/plot_data_{network_name}.h5"
+
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
             generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
@@ -605,7 +600,6 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
             avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
             error = np.std(accuracy_all_seeds, axis=0)
             train_steps = data_dict[seed]['val_history_train_steps'][:]
-
             ax_accuracy.plot(train_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
             ax_accuracy.fill_between(train_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
             ax_accuracy.set_xlabel('Training step')
@@ -650,6 +644,8 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
                 angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
             avg_angle = np.mean(angle_all_seeds, axis=0)
             error = np.std(angle_all_seeds, axis=0)
+            ax_angle.plot(avg_angle, label=model_dict["name"], color=model_dict["color"])
+
             ax_angle.plot(train_steps[1:], avg_angle, label=model_dict["name"], color=model_dict["color"])
             ax_angle.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.2, color=model_dict["color"], linewidth=0)
             ax_angle.set_xlabel('Training step')
@@ -671,8 +667,6 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
 
 def main(figure, overwrite, save, single_model):
     # pt.update_plot_defaults()
-    # ut.delete_plot_data('20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_optimized.yaml', 66049, data_file_path)    
-
     model_dict =    {"vanBP":           {"config": "20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml", 
                                         "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
                                         "color":  "black",
@@ -730,8 +724,8 @@ def main(figure, overwrite, save, single_model):
         model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
         generate_Fig2(model_subdict, save=save, overwrite=overwrite)
     elif figure in ["all", "fig3"]:
-        model_list = ["bpLike_fixedDend", "bpLike_hebb", "bpLike_localBP"]
-        # model_list = ["bpLike_localBP"]
+        # model_list = ["bpLike_fixedDend", "bpLike_hebb", "bpLike_localBP"]
+        model_list = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
         model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
         generate_Fig3(model_subdict, save=save, overwrite=overwrite)
 
