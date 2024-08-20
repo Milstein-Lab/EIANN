@@ -8,7 +8,7 @@ import matplotlib.gridspec as gs
 import os
 import h5py
 import click
-import copy
+import gc
 
 import EIANN.utils as ut
 import EIANN.plot as pt
@@ -116,43 +116,43 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     ## Generate plot data
     # 1. Class-averaged activity
     if 'percent_correct' in variables_to_recompute:
-        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, export=True, export_path=data_file_path, overwrite=overwrite)
+        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sort=False, export=True, export_path=data_file_path, overwrite=overwrite)
 
-    # 2. Receptive fields and metrics
-    for population in network.populations.values():
-        receptive_fields = None
-        if population.name == "E" and population.fullname != "InputE":
-            receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=data_file_path, overwrite=overwrite)
-        metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=data_file_path, overwrite=overwrite)
+    # # 2. Receptive fields and metrics
+    # for population in network.populations.values():
+    #     receptive_fields = None
+    #     if population.name == "E" and population.fullname != "InputE":
+    #         receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=data_file_path, overwrite=overwrite)
+    #     metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=data_file_path, overwrite=overwrite)
 
-    # Angle vs backprop
-    if 'angle_vs_bp' in variables_to_recompute:
-        stored_history_step_size = torch.diff(network.param_history_steps)[-1]
-        if 'H1SomaI' in network.populations:
-            config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
-            network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
-            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
-        else:
-            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
-        angles = ut.compute_dW_angles(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
-        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
+    # # Angle vs backprop
+    # if 'angle_vs_bp' in variables_to_recompute:
+    #     stored_history_step_size = torch.diff(network.param_history_steps)[-1]
+    #     if 'H1SomaI' in network.populations:
+    #         config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
+    #         network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
+    #         bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
+    #     else:
+    #         bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
+    #     angles = ut.compute_dW_angles(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
+    #     ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
 
-    # 3. Binned dendritic state (local loss)
-    if 'binned_mean_forward_dendritic_state' in variables_to_recompute:
-        steps, binned_attr_history_dict = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
-        if binned_attr_history_dict is not None:
-            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state', data=binned_attr_history_dict, file_path=data_file_path, overwrite=overwrite)
-            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state_steps', data=steps, file_path=data_file_path, overwrite=overwrite)
+    # # 3. Binned dendritic state (local loss)
+    # if 'binned_mean_forward_dendritic_state' in variables_to_recompute:
+    #     steps, binned_attr_history_dict = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
+    #     if binned_attr_history_dict is not None:
+    #         ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state', data=binned_attr_history_dict, file_path=data_file_path, overwrite=overwrite)
+    #         ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state_steps', data=steps, file_path=data_file_path, overwrite=overwrite)
 
-    # 3. Loss and accuracy
-    if any([var in variables_to_recompute for var in ['val_loss_history', 'val_accuracy_history', 'val_history_train_steps']]):
-        ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=data_file_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=data_file_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=data_file_path, overwrite=overwrite)
+    # # 3. Loss and accuracy
+    # if any([var in variables_to_recompute for var in ['val_loss_history', 'val_accuracy_history', 'val_history_train_steps']]):
+    #     ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=data_file_path, overwrite=overwrite)
+    #     ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=data_file_path, overwrite=overwrite)
+    #     ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=data_file_path, overwrite=overwrite)
     
-    if any([var in variables_to_recompute for var in ['test_loss_history', 'test_accuracy_history']]):
-        ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=data_file_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=data_file_path, overwrite=overwrite)
+    # if any([var in variables_to_recompute for var in ['test_loss_history', 'test_accuracy_history']]):
+    #     ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=data_file_path, overwrite=overwrite)
+    #     ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=data_file_path, overwrite=overwrite)
 
 
 def load_data(model_dict, config_path_prefix, saved_network_path_prefix, overwrite):
@@ -180,9 +180,6 @@ def generate_single_model_figure(model_dict, config_path_prefix="network_config/
         generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
     
     seed = model_dict['seeds'][0]
-    print(f"Loading plot data for {network_name} {seed}")
-    data_dict = ut.hdf5_to_dict(data_file_path)[network_name]
-    print(f"Successfully loaded plot data into dict")
 
     # Plot figure
     fig = plt.figure(figsize=(5.5, 9))
@@ -204,91 +201,97 @@ def generate_single_model_figure(model_dict, config_path_prefix="network_config/
     ax_structure = fig.add_subplot(axes_metrics[4, 2])
     ax_discriminability = fig.add_subplot(axes_metrics[5, 2])
 
-    ax_loss.plot(data_dict[seed]['val_history_train_steps'], data_dict[seed]['val_loss_history'])
-    ax_loss.set_xlabel('Training step')
-    ax_loss.set_ylabel('Loss')
+    with h5py.File(data_file_path, 'r') as file:
+        data_dict = file[network_name]
+    
+        val_steps = data_dict[seed]['val_history_train_steps'][:]
+        test_loss = data_dict[seed]['test_loss_history'][:]
+        ax_loss.plot(val_steps, test_loss)
+        ax_loss.set_xlabel('Training step')
+        ax_loss.set_ylabel('Loss')
 
-    ax_accuracy.plot(data_dict[seed]['val_history_train_steps'], data_dict[seed]['val_accuracy_history'])
-    ax_accuracy.set_xlabel('Training step')
-    ax_accuracy.set_ylabel('Accuracy')
+        test_accuracy = data_dict[seed]['test_accuracy_history'][:]
+        ax_accuracy.plot(val_steps, test_accuracy)
+        ax_accuracy.set_xlabel('Training step')
+        ax_accuracy.set_ylabel('Accuracy')
 
-    populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if population!='InputE']
+        populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if population!='InputE']
 
-    for i,population in enumerate(populations_to_plot):
-        print(f"Plotting {population}")
+        for i,population in enumerate(populations_to_plot):
+            print(f"Plotting {population}")
 
-        # Column 1: Average population activity (batch accuracy to the test dataset)
-        ax = fig.add_subplot(axes[i, 0])
-        pt.plot_batch_accuracy_from_data(data_dict[seed]['average_pop_activity_dict'], population=population, ax=ax)
-        if i == 0:
-            ax.set_title('Class-averaged unit activities')
+            # Column 1: Average population activity (batch accuracy to the test dataset)
+            ax = fig.add_subplot(axes[i, 0])
+            pt.plot_batch_accuracy_from_data(data_dict[seed]['average_pop_activity_dict'], population=population, ax=ax)
+            if i == 0:
+                ax.set_title('Class-averaged unit activities')
 
-        # Column 2: Example output receptive fields
-        receptive_fields = torch.tensor(data_dict[seed][f"maxact_receptive_fields_{population}"])
-        ax = fig.add_subplot(axes[i, 1])
-        ax.axis('off')
-        pos = ax.get_position()
+            # Column 2: Example output receptive fields
+            receptive_fields = torch.tensor(data_dict[seed][f"maxact_receptive_fields_{population}"])
+            ax = fig.add_subplot(axes[i, 1])
+            ax.axis('off')
+            pos = ax.get_position()
 
-        if receptive_fields.shape[0] > 20:
-            num_units = 20
-            new_left = pos.x0 - 0.02  # Move left boundary to the left
-            new_bottom = pos.y0
-            new_height = pos.height
-            ax.set_position([new_left, new_bottom, pos.width, new_height])
-            rf_axes = gs.GridSpecFromSubplotSpec(4, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
-            ax_list = []
-            for j in range(num_units):
-                ax = fig.add_subplot(rf_axes[j])
-                ax_list.append(ax)
-                box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
-                ax.add_patch(box)
-            # preferred_classes = torch.argmax(torch.tensor(data_dict[seed]['average_pop_activity_dict'][population]), dim=1)
-            im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=None)
-        else:
-            num_units = 10
-            new_left = pos.x0 - 0.02  # Move left boundary to the left
-            new_bottom = pos.y0 + 0.04 # Move bottom boundary up
-            new_height = pos.height - 0.06  # Decrease height
-            ax.set_position([new_left, new_bottom, pos.width, new_height])
-            rf_axes = gs.GridSpecFromSubplotSpec(2, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
-            ax_list = []
-            for j in range(num_units):
-                ax = fig.add_subplot(rf_axes[j])
-                ax_list.append(ax)
-                box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
-                ax.add_patch(box)
-            im = pt.plot_receptive_fields(receptive_fields, sort=False, ax_list=ax_list)
-        if i == 0:
-            ax.set_title('Receptive fields')
-            fig_width, fig_height = fig.get_size_inches()
-            cax = fig.add_axes([ax_list[0].get_position().x0, ax.get_position().y0-0.1/fig_height, 
-                                0.1, 0.05/fig_height])
-            fig.colorbar(im, cax=cax, orientation='horizontal')
+            if receptive_fields.shape[0] > 20:
+                num_units = 20
+                new_left = pos.x0 - 0.02  # Move left boundary to the left
+                new_bottom = pos.y0
+                new_height = pos.height
+                ax.set_position([new_left, new_bottom, pos.width, new_height])
+                rf_axes = gs.GridSpecFromSubplotSpec(4, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
+                ax_list = []
+                for j in range(num_units):
+                    ax = fig.add_subplot(rf_axes[j])
+                    ax_list.append(ax)
+                    box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
+                    ax.add_patch(box)
+                # preferred_classes = torch.argmax(torch.tensor(data_dict[seed]['average_pop_activity_dict'][population]), dim=1)
+                im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=None)
+            else:
+                num_units = 10
+                new_left = pos.x0 - 0.02  # Move left boundary to the left
+                new_bottom = pos.y0 + 0.04 # Move bottom boundary up
+                new_height = pos.height - 0.06  # Decrease height
+                ax.set_position([new_left, new_bottom, pos.width, new_height])
+                rf_axes = gs.GridSpecFromSubplotSpec(2, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
+                ax_list = []
+                for j in range(num_units):
+                    ax = fig.add_subplot(rf_axes[j])
+                    ax_list.append(ax)
+                    box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
+                    ax.add_patch(box)
+                im = pt.plot_receptive_fields(receptive_fields, sort=False, ax_list=ax_list)
+            if i == 0:
+                ax.set_title('Receptive fields')
+                fig_width, fig_height = fig.get_size_inches()
+                cax = fig.add_axes([ax_list[0].get_position().x0, ax.get_position().y0-0.1/fig_height, 
+                                    0.1, 0.05/fig_height])
+                fig.colorbar(im, cax=cax, orientation='horizontal')
 
-        # Column 3: Learning curves / metrics
-        sparsity_all_seeds = [data_dict[seed][f"metrics_dict_{population}"]['sparsity'] for seed in data_dict]
-        pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=population)
-        ax_sparsity.set_ylabel('Fraction of patterns')
-        ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
-        ax_sparsity.legend()
+            # Column 3: Learning curves / metrics
+            sparsity_all_seeds = [data_dict[seed][f"metrics_dict_{population}"]['sparsity'] for seed in data_dict]
+            pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=population)
+            ax_sparsity.set_ylabel('Fraction of patterns')
+            ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
+            ax_sparsity.legend()
 
-        selectivity_all_seeds = [data_dict[seed][f"metrics_dict_{population}"]['selectivity'] for seed in data_dict]
-        pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=population)
-        ax_selectivity.set_ylabel('Fraction of units')
-        ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
+            selectivity_all_seeds = [data_dict[seed][f"metrics_dict_{population}"]['selectivity'] for seed in data_dict]
+            pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=population)
+            ax_selectivity.set_ylabel('Fraction of units')
+            ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
 
-        if receptive_fields is not None:
-            structure_all_seeds = [data_dict[seed][f"metrics_dict_{population}"]['structure'] for seed in data_dict]
-            pt.plot_cumulative_distribution(structure_all_seeds, ax=ax_structure, label=population)
-            ax_structure.set_ylabel('Fraction of units')
-            ax_structure.set_xlabel("Structure") # \n(Moran's I spatial autocorrelation)")
-        else:
-            ax_structure.axis('off')
+            if receptive_fields is not None:
+                structure_all_seeds = [data_dict[seed][f"metrics_dict_{population}"]['structure'] for seed in data_dict]
+                pt.plot_cumulative_distribution(structure_all_seeds, ax=ax_structure, label=population)
+                ax_structure.set_ylabel('Fraction of units')
+                ax_structure.set_xlabel("Structure") # \n(Moran's I spatial autocorrelation)")
+            else:
+                ax_structure.axis('off')
 
-        discriminability_all_seeds = [data_dict[seed][f"metrics_dict_{population}"]['discriminability'] for seed in data_dict]
-        pt.plot_cumulative_distribution(discriminability_all_seeds, ax=ax_discriminability, label=population)
-        ax_discriminability.set_ylabel('Fraction of pattern pairs')
-        ax_discriminability.set_xlabel('Discriminability') # \n(1 - cosine similarity)')
+            discriminability_all_seeds = [data_dict[seed][f"metrics_dict_{population}"]['discriminability'] for seed in data_dict]
+            pt.plot_cumulative_distribution(discriminability_all_seeds, ax=ax_discriminability, label=population)
+            ax_discriminability.set_ylabel('Fraction of pattern pairs')
+            ax_discriminability.set_xlabel('Discriminability') # \n(1 - cosine similarity)')
 
     print(f"Saving figure png/svg files")
     if save:
@@ -325,7 +328,10 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     ax_selectivity = fig.add_subplot(metrics_axes[3, 3])
     col = 0
 
-    for (model_key, model_dict) in model_dict_all.items():
+    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))    
+
+    for model_key in all_models:
+        model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
@@ -333,7 +339,15 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
             generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
-        
+            gc.collect()
+
+    for model_key in all_models:
+        model_dict = model_dict_all[model_key]
+        config_path = config_path_prefix + model_dict['config']
+        pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
+        network_name = model_dict['config'].split('.')[0]
+        data_file_path = f"data/plot_data_{network_name}.h5"
+
         with h5py.File(data_file_path, 'r') as f:
             data_dict = f[network_name]
                 
@@ -347,7 +361,9 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                     # Activity plots: batch accuracy of each population to the test dataset
                     ax = fig.add_subplot(axes[row, col*2])
                     average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
+
+
+                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=False)            
                     ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
                     ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
                     ax.set_ylabel(f'{population} unit', labelpad=-8)
@@ -478,7 +494,10 @@ def generate_Fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     ax_selectivity = fig.add_subplot(metrics_axes[2, 0])
     col = 0
 
-    for (model_key, model_dict) in model_dict_all.items():
+    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))    
+
+    for model_key in all_models:
+        model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
@@ -486,7 +505,15 @@ def generate_Fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
             generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
-        
+            gc.collect()
+
+    for model_key in all_models:
+        model_dict = model_dict_all[model_key]
+        config_path = config_path_prefix + model_dict['config']
+        pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
+        network_name = model_dict['config'].split('.')[0]
+        data_file_path = f"data/plot_data_{network_name}.h5"
+
         with h5py.File(data_file_path, 'r') as f:
             data_dict = f[network_name]
                 
@@ -499,7 +526,7 @@ def generate_Fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                     ## Activity plots: batch accuracy of each population to the test dataset
                     ax = fig.add_subplot(axes[row, col])
                     average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
+                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=False)   
                     ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
                     ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
                     ax.set_ylabel(f'{population} unit', labelpad=-8)
@@ -570,16 +597,26 @@ def generate_Fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     ax_angle       = fig.add_subplot(metrics_axes[3, 2])
     col = 0
 
-    for (model_key, model_dict) in model_dict_all.items():
+    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))    
+
+    for model_key in all_models:
+        model_dict = model_dict_all[model_key]
+        config_path = config_path_prefix + model_dict['config']
+        pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
+        network_name = model_dict['config'].split('.')[0]
+        data_file_path = f"data/plot_data_{network_name}.h5"
+        for seed in model_dict['seeds']:
+            saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
+            generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
+            gc.collect()
+        
+    for model_key in all_models:
+        model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
         data_file_path = f"data/plot_data_{network_name}.h5"
 
-        for seed in model_dict['seeds']:
-            saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
-            generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
-        
         with h5py.File(data_file_path, 'r') as f:
             data_dict = f[network_name]
 
@@ -592,12 +629,12 @@ def generate_Fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                     ## Activity plots: batch accuracy of each population to the test dataset
                     ax = fig.add_subplot(axes[row+2, col])
                     average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)            
+                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=False)            
                     ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
                     ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
                     ax.set_ylabel(f'{population} unit', labelpad=-8)
                     if row==0:
-                        ax.set_title(model_dict["name"])
+                        ax.set_title(model_dict["name"], pad=3)
                     if col>0:
                         ax.set_ylabel('')
                         ax.set_yticklabels([])

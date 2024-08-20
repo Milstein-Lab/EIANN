@@ -24,7 +24,7 @@ def compute_average_activity(activity, labels):
     return avg_activity
 
 
-def compute_test_activity(network, test_dataloader, sort=True, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
+def compute_test_activity(network, test_dataloader, sort, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -647,8 +647,8 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     num_random_initializations = 1000
     network = population.network
 
-    seed = network.seed
-    torch.manual_seed(seed)
+    # seed = network.seed
+    # torch.manual_seed(seed)
 
     if network.backward_steps == 0:
         network.backward_steps = 3
@@ -659,11 +659,17 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     input_size = population.network.Input.E.size
     all_images = [torch.empty(num_units, input_size).uniform_(-0.01,0.01)]
 
+    train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = data_utils.get_MNIST_dataloaders(sub_dataloader_size=20_000)
+    idx, data, target = next(iter(test_dataloader))
+
     print("Optimizing receptive field images...")
 
     for i in tqdm(range(num_random_initializations)):   
-        # input_images = torch.empty(num_units, input_size).uniform_(-1,1)
-        input_images = torch.empty(num_units, input_size).normal_(mean=0,std=10)
+        # input_images = torch.empty(num_units, input_size).uniform_(0,1)
+        # input_images = torch.empty(num_units, input_size).normal_(mean=0,std=10)
+        random_sample = data[np.random.choice(len(data))]
+        input_images = random_sample.expand(num_units, -1)
+
         input_images.requires_grad = True
         loss_history = []
 
