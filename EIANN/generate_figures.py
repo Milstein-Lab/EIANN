@@ -118,53 +118,41 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     if 'percent_correct' in variables_to_recompute:
         percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sort=False, export=True, export_path=data_file_path, overwrite=overwrite)
 
-    # # 2. Receptive fields and metrics
-    # for population in network.populations.values():
-    #     receptive_fields = None
-    #     if population.name == "E" and population.fullname != "InputE":
-    #         receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=data_file_path, overwrite=overwrite)
-    #     metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=data_file_path, overwrite=overwrite)
+    # 2. Receptive fields and metrics
+    for population in network.populations.values():
+        receptive_fields = None
+        if population.name == "E" and population.fullname != "InputE":
+            receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=data_file_path, overwrite=overwrite)
+        metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=data_file_path, overwrite=overwrite)
 
-    # # Angle vs backprop
-    # if 'angle_vs_bp' in variables_to_recompute:
-    #     stored_history_step_size = torch.diff(network.param_history_steps)[-1]
-    #     if 'H1SomaI' in network.populations:
-    #         config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
-    #         network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
-    #         bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
-    #     else:
-    #         bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
-    #     angles = ut.compute_dW_angles(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
-    #     ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
+    # Angle vs backprop
+    if 'angle_vs_bp' in variables_to_recompute:
+        stored_history_step_size = torch.diff(network.param_history_steps)[-1]
+        if 'H1SomaI' in network.populations:
+            config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
+            network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
+            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
+        else:
+            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
+        angles = ut.compute_dW_angles(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
+        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
 
-    # # 3. Binned dendritic state (local loss)
-    # if 'binned_mean_forward_dendritic_state' in variables_to_recompute:
-    #     steps, binned_attr_history_dict = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
-    #     if binned_attr_history_dict is not None:
-    #         ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state', data=binned_attr_history_dict, file_path=data_file_path, overwrite=overwrite)
-    #         ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state_steps', data=steps, file_path=data_file_path, overwrite=overwrite)
+    # 3. Binned dendritic state (local loss)
+    if 'binned_mean_forward_dendritic_state' in variables_to_recompute:
+        steps, binned_attr_history_dict = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
+        if binned_attr_history_dict is not None:
+            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state', data=binned_attr_history_dict, file_path=data_file_path, overwrite=overwrite)
+            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state_steps', data=steps, file_path=data_file_path, overwrite=overwrite)
 
-    # # 3. Loss and accuracy
-    # if any([var in variables_to_recompute for var in ['val_loss_history', 'val_accuracy_history', 'val_history_train_steps']]):
-    #     ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=data_file_path, overwrite=overwrite)
-    #     ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=data_file_path, overwrite=overwrite)
-    #     ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=data_file_path, overwrite=overwrite)
+    # 3. Loss and accuracy
+    if any([var in variables_to_recompute for var in ['val_loss_history', 'val_accuracy_history', 'val_history_train_steps']]):
+        ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=data_file_path, overwrite=overwrite)
     
-    # if any([var in variables_to_recompute for var in ['test_loss_history', 'test_accuracy_history']]):
-    #     ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=data_file_path, overwrite=overwrite)
-    #     ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=data_file_path, overwrite=overwrite)
-
-
-def load_data(model_dict, config_path_prefix, saved_network_path_prefix, overwrite):
-    config_path = config_path_prefix + model_dict['config']
-    pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
-    network_name = model_dict['config'].split('.')[0]
-    data_file_path = f"data/plot_data_{network_name}.h5"
-    for seed in model_dict['seeds']:
-        saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
-        generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
-    data_dict = ut.hdf5_to_dict(data_file_path)[network_name]
-    return data_dict
+    if any([var in variables_to_recompute for var in ['test_loss_history', 'test_accuracy_history']]):
+        ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=data_file_path, overwrite=overwrite)
 
 
 def generate_single_model_figure(model_dict, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
@@ -329,7 +317,7 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     col = 0
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))    
-
+    
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
@@ -716,46 +704,42 @@ def generate_Fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
 
 def main(figure, overwrite, save, single_model):
     # pt.update_plot_defaults()
+    seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
+
     model_dict =    {"vanBP":           {"config": "20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml", 
-                                        "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
                                         "color":  "black",
                                         "name":   "Vanilla Backprop"},
 
                     "bpDale_learned":   {"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml", 
-                                        "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
                                         "color":  "darkgray",
                                         "name":   "Backprop with \nDale's Law (learned I)"},
 
                     "bpDale_fixed":     {"config": "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml", 
-                                        "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
                                         "color":  "lightgray",
                                         "name":   "Backprop with Dale's Law\n(fixed I)"},
 
                     "hebb":            {"config": "20240714_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
-                                        "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
                                         "color":  "cyan",
                                         "name":   "Supervised Hebb \n(w/ weight norm.)"},
 
                     "bpLike_hebb":     {"config": "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml",
-                                        "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
                                         "color":  "darkblue",
                                         "name":   "Hebb+WeightNorm"}, # BP-local weight update rule with dendritic target propagation
 
                     "bpLike_localBP":  {"config": "20240628_EIANN_2_hidden_mnist_BP_like_config_3M_complete_optimized.yaml",
-                                        "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
                                         "color":  "black",
                                         "name":   "Local LossFunc"}, # BP-local weight update rule with dendritic target propagation
 
                     "bpLike_fixedDend": {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
-                                        "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
                                         "color":  "gray",
                                         "name":   "Fixed DendI"}, # BP-local weight update rule with dendritic target propagation
 
                     "BTSP":            {"config":"20240604_EIANN_2_hidden_mnist_BTSP_config_3L_complete_optimized.yaml",
-                                        "seeds": ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"],
                                         "color": "red",
                                         "name": "BTSP"},
                  }
+    for model_key in model_dict:
+        model_dict[model_key]["seeds"] = seeds
 
     if single_model is not None:
         if single_model=='all':
@@ -767,22 +751,15 @@ def main(figure, overwrite, save, single_model):
     if figure in ["all", "fig1"]:
         model_list_heatmaps = ["vanBP", "bpDale_learned", "hebb"]
         model_list_metrics = ["vanBP", "bpDale_learned", "hebb"]
-        # model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
         generate_Fig1(model_dict, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
 
     elif figure in ["all", "fig2"]:
-        # model_list = ["bpDale_learned", "bpDale_fixed", "hebb"]
-        # model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
-        # generate_Fig2(model_subdict, save=save, overwrite=overwrite)
         model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "hebb"]
         model_list_metrics = ["bpDale_learned", "bpDale_fixed", "hebb"]
         generate_Fig2(model_dict, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
 
     elif figure in ["all", "fig3"]:
         # model_list = ["bpLike_fixedDend", "bpLike_hebb", "bpLike_localBP"]
-        # model_list = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
-        # model_subdict = {model_key: model_dict[model_key] for model_key in model_list}
-        # generate_Fig3(model_subdict, save=save, overwrite=overwrite)
         model_list_heatmaps = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
         model_list_metrics = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
         generate_Fig3(model_dict, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
