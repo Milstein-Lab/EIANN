@@ -1366,11 +1366,6 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         flat_param_history = torch.cat([flat_param_history, flat_param_history2])
         assert param_metadata == param_metadata2, "Network architecture must match"
 
-    # Center the data (mean=0, std=1)
-    p_mean = torch.mean(flat_param_history, axis=0)
-    p_std = torch.std(flat_param_history, axis=0)
-    flat_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
-
     # Get weights in gridplane defined by PC dimensions
     pca = PCA(n_components=2)
     pca.fit(flat_param_history)
@@ -1393,14 +1388,15 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
     meshgrid_points = np.concatenate([flat_PC1_vals, flat_PC2_vals]).T
 
     gridpoints_paramspace = pca.inverse_transform(meshgrid_points)
-    gridpoints_paramspace = torch.tensor(gridpoints_paramspace) * p_std + p_mean
+    gridpoints_paramspace = torch.tensor(gridpoints_paramspace)
 
     # Compute loss for points in grid
     test_network = copy(network1)  # create copy to avoid modifying original networks
-    losses = torch.zeros(num_points ** 2)
+    losses = []
     for i, gridpoint_flat in enumerate(tqdm(gridpoints_paramspace)):
         state_dict = unflatten_params(gridpoint_flat, param_metadata)
-        losses[i] = compute_loss(test_network, state_dict, test_dataloader)
+        losses.append(compute_loss(test_network, state_dict, test_dataloader))
+    losses = torch.tensor(losses)
     loss_grid = losses.reshape([PC1_range.size, PC2_range.size])
 
     # plot_3D_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
@@ -1445,6 +1441,8 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
                         extent=[np.min(PC1_range), np.max(PC1_range),
                                 np.max(PC2_range), np.min(PC2_range)])
         plt.colorbar(im)
+        # contour = plt.contour(PC1_mesh, PC2_mesh, loss_grid, levels=10, cmap='viridis')
+        # plt.colorbar(contour) 
         plt.scatter(PC1, PC2, s=0.1, color='k')
 
         if network2 is None:
