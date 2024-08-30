@@ -686,15 +686,11 @@ Current plan for logical flow of the network modifications:
   - BP_like_3M (like BP_like_3J, but bring back network-wide equilibration) - 92%
   - Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, learn SomaI)
   - Top_Layer_Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, learn SomaI)
+  - BP_like_2O - Use Hebb_WeightNorm (no activity rectification) on DendI<-E and DendI<-DendI; use DendriticLoss_7 (without presyn activity rectification) on E<-DendI
 
 
-  1_hidden:
-  - Supervised_BCM_G2
-  - Hebb_WeightNorm_F
-  
  Need to try:
   - BTSP_2M (like BTSP_2J but turn off neg mod events on top-down projections)
-  - BP_like_2? (like BP_like_2K, but bring back network-wide equilibration)
   - BP_like_2N (like BP_like_2J, but simplify DendI <- DendI as equal, global lateral inhibition)
   
   - Supervised_BCM_4 (2 hidden, rectified firing rates for theta and weight updates)
@@ -702,16 +698,19 @@ Current plan for logical flow of the network modifications:
   - Need to try a variant of BTSP that learns top-down weights but uses dend_temp_contrast to compute local errors  
 
 
-NEED TO RE-RUN without activity rectification (Hebb_WeightNorm instead of Hebb_WeightNorm_4):
+DONE: RE-RAN without activity rectification (Hebb_WeightNorm instead of Hebb_WeightNorm_4):
  - Hebb_WeightNorm_4 [Hebb_WeightNorm_5]
  - Top_Layer_Supervised_Hebb_WeightNorm_4 [Hebb_WeightNorm_5]
  - BCM_4 [BCM_5]
  - Top_Layer_Supervised_BCM_4 [Top_Layer_Supervised_BCM_5]
 
-Wait for BP_like_2L result and run again:
- - Supervised_Hebb_WeightNorm_4 (2 hidden, rectified firing rates for weight updates, fixed SomaI) [running using abs val of forward_dendritic_state for auxiliary objective]
- - Supervised_BCM_4
- - BTSP_3L (like BTSP_3J, but bring back network-wide equilibration, add relu_gate and auxiliary objective to reduce forward_dendritic_state) [re-running using abs val of forward_dendritic_state for auxiliary objective]
+ CONCLUSIONS:
+ - Including activity rectification worked better for:
+  - Hebb_WeightNorm_4
+  - Top_Layer_Supervised_Hebb_WeightNorm_4
+  - BCM_4
+  - Top_Layer_Supervised_BCM_4
+  
 
 
 PROBLEM:
@@ -727,7 +726,43 @@ PROBLEM:
 These configs are DONE and correct:
   - BP_like_1I - 94%
   - BP_like_3M - 93%
-  - BP_like_2L
+  - BP_like_2L - 92%
+  - BP_like_2O - 92%
+  - Hebb_WeightNorm_4 - 34%
+  - Top_Layer_Supervised_Hebb_WeightNorm_4 - 62%
+  - BCM_4 - 40%
+  - Top_Layer_Supervised_BCM_4 - 62%
+  
+  
 
-Trying variant of BP_like_2L:
- - BP_like_2O - Use Hebb_WeightNorm (no activity rectification) on DendI<-E and DendI<-DendI; use DendriticLoss_7 (without presyn activity rectification) on E<-DendI
+20240826 DONE:
+ - Using Hebb_WeightNorm_4/BCM_4 with activity rectification for learning E <- E
+ - Using Hebb_WeightNorm without activity rectification for learning DendI
+ - Including activity equilibration objective
+ - Including auxiliary objective for reducing abs value of forward_dendritic_state
+ - SomaI equilibration is fixed
+ 
+ - Supervised_Hebb_WeightNorm_4 - ~44%
+ - Supervised_BCM_4 - ~82%
+ - BTSP_3L - ~93%
+ - BTSP_4L - ~73%
+ 
+ - BP_like_2L_learn_TD_HWN_1
+ 
+ - BP_like_2L with optuna NSGAIII sampler, population_size: 200, max_iter: 150
+ - BP_like_2K (like BP_like_2L, but with fixed DendI<-E and DendI<-DendI weights)
+ 
+ PROBLEMS:
+ - Using Hebb_WeightNorm_4/BCM_4 with activity rectification for learning E <- E
+ - Using Hebb_WeightNorm without activity rectification for learning DendI
+ - Including activity equilibration objective
+ - Including auxiliary objective for reducing abs value of forward_dendritic_state
+ - SomaI equilibration is fixed
+ 
+ - BP_like_2L with optuna NSGAIII sampler, population_size: 200, max_iter: 150
+  - looks like hot_start was pointed to the wrong file, caused corruption of history
+ - BP_like_2K (like BP_like_2L, but with fixed DendI<-E and DendI<-DendI weights) - was not run with dend_loss objective on
+ 
+ - Need to re-optimize many models with dend_loss_v2 objective, which will penalize the absolute value of every unit's forward_dendritic_state
+ - Need to try BTSP_4M, like BTSP_3L but with Hebb_WeightNorm as the top-down rule
+ 

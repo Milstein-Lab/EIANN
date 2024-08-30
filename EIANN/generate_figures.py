@@ -408,7 +408,8 @@ def generate_Fig1(model_dict_all, config_path_prefix="network_config/mnist/", sa
             error = np.std(accuracy_all_seeds, axis=0)
             val_steps = data_dict[seed]['val_history_train_steps'][:]
             ax_accuracy.plot(val_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
-            ax_accuracy.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
+            ax_accuracy.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2,
+                                     color=model_dict["color"], linewidth=0)
             ax_accuracy.set_xlabel('Training step')
             ax_accuracy.set_ylabel('Test accuracy (%)', labelpad=-2)
             ax_accuracy.set_ylim([0,100])
@@ -514,7 +515,8 @@ def generate_Fig2(model_dict_all, config_path_prefix="network_config/mnist/", sa
             error = np.std(accuracy_all_seeds, axis=0)
             val_steps = data_dict[seed]['val_history_train_steps'][:]
             ax_accuracy.plot(val_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
-            ax_accuracy.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
+            ax_accuracy.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2,
+                                     color=model_dict["color"], linewidth=0)
             ax_accuracy.set_xlabel('Training step')
             ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
             ax_accuracy.set_ylim([0,100])
@@ -546,8 +548,8 @@ def generate_Fig2(model_dict_all, config_path_prefix="network_config/mnist/", sa
         fig.savefig("figures/Fig2_somaI.svg", dpi=600)
 
 
-
-def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
+def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/",
+                  save=True, overwrite=False):
 
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=6,                        
@@ -555,14 +557,14 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
                        top=0.7, bottom = 0.25,
                        wspace=0.15, hspace=0.5)
     
-    metrics_axes = gs.GridSpec(nrows=4, ncols=3,                        
+    metrics_axes = gs.GridSpec(nrows=4, ncols=3,
                        left=0.049,right=0.8,
                        top=0.7, bottom = 0.25,
                        wspace=0.3, hspace=0.6)
     ax_sparsity    = fig.add_subplot(metrics_axes[1, 0])
     ax_selectivity = fig.add_subplot(metrics_axes[1, 1])
 
-    ax_accuracy    = fig.add_subplot(metrics_axes[1, 2])  
+    ax_accuracy    = fig.add_subplot(metrics_axes[1, 2])
     ax_dendstate   = fig.add_subplot(metrics_axes[2, 2])
     ax_angle       = fig.add_subplot(metrics_axes[3, 2])
 
@@ -583,7 +585,7 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
             seed = model_dict['seeds'][0] # example seed to plot
             populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
 
-            for row,population in enumerate(populations_to_plot):
+            for row, population in enumerate(populations_to_plot):
                 ## Activity plots: batch accuracy of each population to the test dataset
                 ax = fig.add_subplot(axes[row+2, col])
                 average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
@@ -592,13 +594,13 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
                 ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
                 ax.set_ylabel(f'{population} unit', labelpad=-8)
                 if row==0:
-                    ax.set_title(model_dict["name"])
+                    ax.set_title(model_dict["name"], fontsize=6)
                 if col>0:
                     ax.set_ylabel('')
                     ax.set_yticklabels([])
-                if row>0:
-                    ax.set_xlabel('')
-                    ax.set_xticklabels([])
+                # if row>0:
+                #     ax.set_xlabel('')
+                #     ax.set_xticklabels([])
 
             # Learning curves / metrics]
             accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in model_dict['seeds']]
@@ -607,7 +609,8 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
             train_steps = data_dict[seed]['val_history_train_steps'][:]
 
             ax_accuracy.plot(train_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
-            ax_accuracy.fill_between(train_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"])
+            ax_accuracy.fill_between(train_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2,
+                                     color=model_dict["color"], linewidth=0)
             ax_accuracy.set_xlabel('Training step')
             ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
             ax_accuracy.set_ylim([0,100])
@@ -640,7 +643,8 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
             error = np.std(dendstate_all_seeds, axis=0)
             binned_mean_forward_dendritic_state_steps = data_dict[seed]['binned_mean_forward_dendritic_state_steps'][:]
             ax_dendstate.plot(binned_mean_forward_dendritic_state_steps, avg_dendstate, label=model_dict["name"], color=model_dict["color"])
-            ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.2, color=model_dict["color"], linewidth=0)
+            ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error,
+                                      avg_dendstate+error, alpha=0.2, color=model_dict["color"], linewidth=0)
             ax_dendstate.set_xlabel('Training step')
             ax_dendstate.set_ylabel('Dendritic state')
             ax_dendstate.set_ylim([-0.01,0.4])
@@ -651,7 +655,8 @@ def generate_Fig3(model_dict_all, config_path_prefix="network_config/mnist/", sa
             avg_angle = np.mean(angle_all_seeds, axis=0)
             error = np.std(angle_all_seeds, axis=0)
             ax_angle.plot(train_steps[1:], avg_angle, label=model_dict["name"], color=model_dict["color"])
-            ax_angle.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.2, color=model_dict["color"], linewidth=0)
+            ax_angle.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.2,
+                                  color=model_dict["color"], linewidth=0)
             ax_angle.set_xlabel('Training step')
             ax_angle.set_ylabel('Angle vs BP')
             ax_angle.set_ylim([40,100])
