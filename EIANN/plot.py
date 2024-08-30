@@ -466,8 +466,8 @@ def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
     cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
 
 
-def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_classes=None, num_units=None, 
-                          num_cols=None, num_rows=None, activity_threshold=1e-10, cmap='custom', ax_list=None):
+def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_classes=None, average_pop_activity=None, 
+                          num_units=None, num_cols=None, num_rows=None, activity_threshold=1e-10, cmap='custom', ax_list=None):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
     structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
@@ -499,6 +499,9 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
             scale = scale[sorted_idx] # Sort the vector of scaling factors (e.g. max activity of each unit)
         if preferred_classes is not None:
             preferred_classes = preferred_classes[sorted_idx]
+        if average_pop_activity is not None:
+            average_pop_activity = average_pop_activity[sorted_idx]
+            preferred_classes = torch.argmax(torch.tensor(average_pop_activity), dim=1)
 
     # Filter by class activity preference to sample units across all classes
     if sort==True and preferred_classes is not None:
@@ -506,9 +509,11 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
         preferred_classes = preferred_classes[class_sorted_idx]
         receptive_fields = receptive_fields[class_sorted_idx]
+        if average_pop_activity is not None:
+            average_pop_activity = average_pop_activity[class_sorted_idx]
         if isinstance(scale, torch.Tensor):
             scale = scale[class_sorted_idx]
-    
+
     # Filter by number of units
     if num_units is not None:
         receptive_fields = receptive_fields[:num_units]
@@ -571,6 +576,28 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         my_cmap = cmap
 
     # Plot receptive fields
+    if average_pop_activity is not None:
+        # example_units = np.random.randint(0, receptive_fields.shape[0], 10)
+        example_units = np.arange(10)
+        # print(f"Example units: {example_units}")
+
+        fig = plt.figure(figsize=(10, 8))
+        axes_heatmap = gs.GridSpec(1,1,left=0.2)
+        ax = fig.add_subplot(axes_heatmap[0, 0])
+        im = ax.imshow(average_pop_activity[example_units], aspect='auto', interpolation='none')
+        ax.set_xlabel('Labels')
+        ax.set_ylabel('Units')        
+        cbar = fig.colorbar(im, ax=ax)
+
+        axes_heatmap = gs.GridSpec(10,1, right=0.2, hspace=0.01)
+        for i,rf_idx in enumerate(example_units):
+            ax = fig.add_subplot(axes_heatmap[i, 0])
+            ax.imshow(receptive_fields[rf_idx].view(28,28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max, aspect='equal', interpolation='none')
+            ax.axis('off')
+            if preferred_classes is not None:
+                ax.text(0, 8, f'{preferred_classes[rf_idx]}', color='k', fontsize=4)     
+        return 
+    
     for i in range(num_units):
         row_idx = i // num_cols
         col_idx = i % num_cols
@@ -701,7 +728,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy_from_data(average_pop_activity_dict, population=None, ax=None, cbar=True):
+def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, population=None, ax=None, cbar=True):
 
     if population is None:
         # Include only last population in the data dict
@@ -717,6 +744,18 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, population=None, ax
         average_pop_activity_dict = {population.fullname: average_pop_activity_dict[population.fullname]}
 
     for pop_name, avg_pop_activity in average_pop_activity_dict.items():
+        avg_pop_activity = torch.tensor(avg_pop_activity)
+        if sort: # Sort units by their preferred input
+            if pop_name == 'OutputE':
+                sort_idx = torch.arange(0, avg_pop_activity.shape[0])
+            else:
+                silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
+                active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
+                preferred_input_active = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+                _, idx = torch.sort(preferred_input_active)
+                sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+            avg_pop_activity = avg_pop_activity[sort_idx]
+
         if ax is None:
             fig, _ax = plt.subplots()
         else:
@@ -747,7 +786,7 @@ def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output
     """
 
     percent_correct, average_pop_activity_dict = (
-        ut.compute_test_activity(network, test_dataloader, sorted_output_idx=sorted_output_idx, export=export,
+        ut.compute_test_activity(network, test_dataloader, sort=True, sorted_output_idx=sorted_output_idx, export=export,
                                  overwrite=overwrite))
     print(f'Batch accuracy = {percent_correct}%')
 
@@ -1327,11 +1366,6 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         flat_param_history = torch.cat([flat_param_history, flat_param_history2])
         assert param_metadata == param_metadata2, "Network architecture must match"
 
-    # Center the data (mean=0, std=1)
-    p_mean = torch.mean(flat_param_history, axis=0)
-    p_std = torch.std(flat_param_history, axis=0)
-    flat_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
-
     # Get weights in gridplane defined by PC dimensions
     pca = PCA(n_components=2)
     pca.fit(flat_param_history)
@@ -1354,14 +1388,15 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
     meshgrid_points = np.concatenate([flat_PC1_vals, flat_PC2_vals]).T
 
     gridpoints_paramspace = pca.inverse_transform(meshgrid_points)
-    gridpoints_paramspace = torch.tensor(gridpoints_paramspace) * p_std + p_mean
+    gridpoints_paramspace = torch.tensor(gridpoints_paramspace)
 
     # Compute loss for points in grid
     test_network = copy(network1)  # create copy to avoid modifying original networks
-    losses = torch.zeros(num_points ** 2)
+    losses = []
     for i, gridpoint_flat in enumerate(tqdm(gridpoints_paramspace)):
         state_dict = unflatten_params(gridpoint_flat, param_metadata)
-        losses[i] = compute_loss(test_network, state_dict, test_dataloader)
+        losses.append(compute_loss(test_network, state_dict, test_dataloader))
+    losses = torch.tensor(losses)
     loss_grid = losses.reshape([PC1_range.size, PC2_range.size])
 
     # plot_3D_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
@@ -1406,6 +1441,8 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
                         extent=[np.min(PC1_range), np.max(PC1_range),
                                 np.max(PC2_range), np.min(PC2_range)])
         plt.colorbar(im)
+        # contour = plt.contour(PC1_mesh, PC2_mesh, loss_grid, levels=10, cmap='viridis')
+        # plt.colorbar(contour) 
         plt.scatter(PC1, PC2, s=0.1, color='k')
 
         if network2 is None:
