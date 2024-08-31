@@ -613,6 +613,38 @@ BP_like_2L:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
+BP_like_2L_fixed_TD_test:
+    H1_E_Input_E_init_weight_scale: 0.9259958664051763
+    H2_E_H1_E_init_weight_scale: 0.389366738164756
+    H_E_learning_rate: 0.005588954110479113
+    H1_E_H2_E_init_weight_scale: 0.31525053552571003
+    H2_E_Output_E_init_weight_scale: 0.9105167417028939
+    H1_E_H1_SomaI_init_weight_scale: 0.6487154690389882
+    H1_SomaI_H1_E_init_weight_scale: 0.581471488024201
+    H1_SomaI_Input_E_init_weight_scale: 1.4174392913097957
+    H1_SomaI_H1_SomaI_init_weight_scale: 0.8561013903319875
+    H_E_DendI_learning_rate: 0.047527656597942544
+    H1_E_H1_DendI_init_weight_scale: 0.07091802239960966
+    H1_DendI_H1_E_weight_scale: 2.058955178197628
+    H1_DendI_H1_DendI_weight_scale: 0.2073129542342594
+    H2_E_H2_SomaI_init_weight_scale: 0.6645597962669809
+    H2_SomaI_H2_E_init_weight_scale: 0.10684318061388832
+    H2_SomaI_H1_E_init_weight_scale: 0.5704556305312488
+    H2_SomaI_H2_SomaI_init_weight_scale: 1.2613297885410015
+    H2_E_H2_DendI_init_weight_scale: 0.8659985264493727
+    H2_DendI_H2_E_weight_scale: 5.072891604005093
+    H2_DendI_H2_DendI_weight_scale: 1.1018866581829858
+    Output_E_H2_E_init_weight_scale: 1.9703331312939472
+    DendI_E_learning_rate: 0.16499307474054356
+    DendI_DendI_learning_rate: 0.08763094613568252
+    Output_E_H2_E_learning_rate: 0.019029731023904903
+    Output_E_Output_I_init_weight_scale: 0.5231738111388907
+    Output_I_Output_E_init_weight_scale: 0.6931488035741374
+    Output_I_H2_E_init_weight_scale: 0.4926500333980969
+    Output_I_Output_I_init_weight_scale: 0.5419887402723856
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
 BP_like_2L_learn_TD_HWN_1:
     #    accuracy: 90.06300354003906
     #    dynamics_residuals: 0.0
@@ -621,6 +653,7 @@ BP_like_2L_learn_TD_HWN_1:
     H1_E_Input_E_init_weight_scale: 0.9259958664051763
     H2_E_H1_E_init_weight_scale: 0.389366738164756
     H_E_learning_rate: 0.005588954110479113
+    H2_E_Output_E_learning_rate: 0.0002150135790512954
     H_E_TD_learning_rate: 0.0002150135790512954
     H1_E_H2_E_weight_scale: 0.31525053552571003
     H2_E_Output_E_weight_scale: 0.9105167417028939

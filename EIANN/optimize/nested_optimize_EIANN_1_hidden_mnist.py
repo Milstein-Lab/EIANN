@@ -10,9 +10,10 @@ import h5py
 import gc
 
 from EIANN import Network
-from EIANN.utils import read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
+from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
-    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, sort_by_class_averaged_val_output
+    recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, sort_by_class_averaged_val_output,
+                         get_binned_mean_population_attribute_history_dict)
 from EIANN.plot import (plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields,
                         plot_representation_metrics)
 from nested.utils import Context, str_to_bool
@@ -182,20 +183,30 @@ def config_worker():
     context.test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
 
 
-def get_mean_forward_dend_loss(network, num_steps):
+def get_mean_forward_dend_loss(network, num_steps, abs=True):
     """
     
     :param network:
     :param num_steps: int
-    :return:
+    :param: abs: bool
+    :return: tensor
     """
-    hidden_layers = list(network)[1:-1]
-    mean_forward_dend_loss_list = []
-    for layer in hidden_layers:
-        # mean_forward_dend_loss_list.append(torch.mean(layer.E.forward_dendritic_state_history[-num_steps:]).item())
-        mean_forward_dend_loss_list.append(torch.mean(torch.abs(layer.E.forward_dendritic_state_history[-num_steps:])).item())
+    attr_name = 'forward_dendritic_state'
+    all_pop_attr_history_list = []
     
-    return np.mean(mean_forward_dend_loss_list)
+    for pop_name, pop in network.populations.items():
+        attr_history = pop.get_attribute_history(attr_name)
+        if attr_history is None:
+            continue
+        attr_history = attr_history.detach().clone()
+        if abs:
+            attr_history = torch.abs(attr_history)
+        all_pop_attr_history_list.append(attr_history)
+    
+    all_pop_attr_history_tensor = torch.concatenate(all_pop_attr_history_list, dim=1)
+    mean_attr_history = torch.mean(all_pop_attr_history_tensor, dim=1)
+    
+    return torch.mean(mean_attr_history[-num_steps:]).item()
 
 
 def get_random_seeds():

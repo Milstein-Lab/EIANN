@@ -113,7 +113,7 @@ kwargs:
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: optimize/network_config/MNIST/20240812_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_1.yaml
+    network_config_file_path: optimize/network_config/MNIST/20240830_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_4.yaml
     val_interval:
         - -1000
         - -1
@@ -124,14 +124,14 @@ kwargs:
     include_equilibration_dynamics_objective: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
-      function: update_EIANN_config_2_hidden_BP_like_2L_learn_TD_HWN_1
+      function: update_EIANN_config_2_hidden_BP_like_2L_learn_TD_HWN_1  # works with BP_like_2L_learn_TD_HWN_4
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_mnist_BP_like_2L_learn_TD_HWN_1
+optimization_title: EIANN_2_hidden_mnist_BP_like_2L_learn_TD_HWN_4
 x0:
     H1_E_Input_E_init_weight_scale: 2.881149747735122
     H2_E_H1_E_init_weight_scale: 0.274426813251805

@@ -736,6 +736,7 @@ These configs are DONE and correct:
   
 
 20240826 DONE:
+ Shared config info:
  - Using Hebb_WeightNorm_4/BCM_4 with activity rectification for learning E <- E
  - Using Hebb_WeightNorm without activity rectification for learning DendI
  - Including activity equilibration objective
@@ -747,18 +748,12 @@ These configs are DONE and correct:
  - BTSP_3L - ~93%
  - BTSP_4L - ~73%
  
- - BP_like_2L_learn_TD_HWN_1
+ - BP_like_2L_learn_TD_HWN_1 (TD_HWN based on forward_activity)
  
  - BP_like_2L with optuna NSGAIII sampler, population_size: 200, max_iter: 150
  - BP_like_2K (like BP_like_2L, but with fixed DendI<-E and DendI<-DendI weights)
  
  PROBLEMS:
- - Using Hebb_WeightNorm_4/BCM_4 with activity rectification for learning E <- E
- - Using Hebb_WeightNorm without activity rectification for learning DendI
- - Including activity equilibration objective
- - Including auxiliary objective for reducing abs value of forward_dendritic_state
- - SomaI equilibration is fixed
- 
  - BP_like_2L with optuna NSGAIII sampler, population_size: 200, max_iter: 150
   - looks like hot_start was pointed to the wrong file, caused corruption of history
  - BP_like_2K (like BP_like_2L, but with fixed DendI<-E and DendI<-DendI weights) - was not run with dend_loss objective on
@@ -766,3 +761,14 @@ These configs are DONE and correct:
  - Need to re-optimize many models with dend_loss_v2 objective, which will penalize the absolute value of every unit's forward_dendritic_state
  - Need to try BTSP_4M, like BTSP_3L but with Hebb_WeightNorm as the top-down rule
  
+ 
+ NEXT UP:
+  - BP_like_2L with updated forward_dend_loss objective
+  - BP_like_3M with updated forward_dend_loss objective
+  - BTSP_3L with updated forward_dend_loss objective
+  - BP_like_2L_learn_TD_HWN_1 (TD_HWN based on forward_activity, initialized random) with updated forward_dend_loss objective
+  - BP_like_2L_learn_TD_HWN_2 (TD_HWN based on forward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
+  - BP_like_2L_learn_TD_HWN_3 (TD_HWN based on backward_activity, initialized random) with updated forward_dend_loss objective
+  - BP_like_2L_learn_TD_HWN_4 (TD_HWN based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
+  - BP_like_2L_learn_TD_DendLoss_1 (TD_DendLoss based on backward_activity, initialized random) with updated forward_dend_loss objective
+  - BP_like_2L_learn_TD_DendLoss_2 (TD_DendLoss based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
