@@ -340,7 +340,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
 
-    if torch.isnan(results['loss']) or torch.isinf(results['loss']):
+    if np.isnan(results['loss']) or np.isinf(results['loss']):
         if context.debug and context.interactive:
             context.update(locals())
         return dict()
@@ -407,6 +407,8 @@ def filter_features(primitives, current_features, model_id=None, export=False, p
     features = {}
     for instance_features in primitives:
         for key, val in instance_features.items():
+            if np.isnan(val) or np.isinf(val):
+                return dict()
             if key not in features:
                 features[key] = []
             features[key].append(val)

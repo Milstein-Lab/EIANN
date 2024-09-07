@@ -762,20 +762,20 @@ These configs are DONE and correct:
  
  
 HOT_STARTING:
-  - BP_like_3M with updated forward_dend_loss objective (137 gens completed)
+   (137 gens completed)
   - BTSP_3L with updated forward_dend_loss objective (98 gens completed)
    (143 gens completed)
-  - BP_like_2L_learn_TD_DendLoss_2 (TD_DendLoss based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective (140 gens completed)
   
 DONE 20240905:
+ - BP_like_3M with updated forward_dend_loss objective (strangely, reducing this new objective compromised the accuracy and loss objectives)
  - BP_like_2L with updated forward_dend_loss objective
  - BP_like_2L_fixed_TD (initialized random) with updated forward_dend_loss objective
  - BP_like_2L_learn_TD_HWN_1 (TD_HWN based on forward_activity, initialized random) with updated forward_dend_loss objective
  - BP_like_2L_learn_TD_HWN_2 (TD_HWN based on forward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
  - BP_like_2L_learn_TD_HWN_3 (TD_HWN based on backward_activity, initialized random) with updated forward_dend_loss objective
  - BP_like_2L_learn_TD_HWN_4 (TD_HWN based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
-
  - BP_like_2L_learn_TD_DendLoss_1 (TD_DendLoss based on backward_activity, initialized random) with updated forward_dend_loss objective
+ - BP_like_2L_learn_TD_DendLoss_2 (TD_DendLoss based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
  
 RUNNING 20240905:
 Shared config info:
@@ -784,7 +784,5 @@ Shared config info:
  - BP_like_2K (like BP_like_2L, but with fixed DendI<-E and DendI<-DendI weights)
  - Supervised_Hebb_WeightNorm_4
  - Supervised_BCM_4
- 
-NEED TO RUN 20240905:
  - BTSP_3L_learn_TD_HWN_2
  - BTSP_3L_learn_TD_HWN_3
