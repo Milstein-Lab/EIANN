@@ -1366,6 +1366,11 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         flat_param_history = torch.cat([flat_param_history, flat_param_history2])
         assert param_metadata == param_metadata2, "Network architecture must match"
 
+    # Center the data (mean=0, std=1)
+    p_mean = torch.mean(flat_param_history, axis=0)
+    p_std = torch.std(flat_param_history, axis=0)
+    flat_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
+
     # Get weights in gridplane defined by PC dimensions
     pca = PCA(n_components=2)
     pca.fit(flat_param_history)
@@ -1388,7 +1393,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
     meshgrid_points = np.concatenate([flat_PC1_vals, flat_PC2_vals]).T
 
     gridpoints_paramspace = pca.inverse_transform(meshgrid_points)
-    gridpoints_paramspace = torch.tensor(gridpoints_paramspace)
+    gridpoints_paramspace = torch.tensor(gridpoints_paramspace) * p_std + p_mean
 
     # Compute loss for points in grid
     test_network = copy(network1)  # create copy to avoid modifying original networks
@@ -1466,7 +1471,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         plt.xlabel(f'PC1 \n({percent_exp_var[0]}% var. explained)')
         plt.ylabel(f'PC2 \n({percent_exp_var[1]}% var. explained)')
 
-    return fig
+    return
 
 
 def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataloader, num_points=20, extension=0.2):
