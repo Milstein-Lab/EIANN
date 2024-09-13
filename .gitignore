@@ -16,3 +16,5 @@ EIANN/optimize/figures
 EIANN/data/
 EIANN/figures/
 
+*.pkl
+saved_networks/
