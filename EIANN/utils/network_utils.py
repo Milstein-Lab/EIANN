@@ -84,21 +84,6 @@ def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'
     return network
 
 
-# def save_network(network, path=None, dir='saved_networks', file_name_base=None, disp=True):
-#     if path is None:
-#         if file_name_base is None:
-#             file_name_base = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-#         path = '%s/%s.pkl' % (dir, file_name_base)
-#         if not os.path.exists(dir):
-#             os.makedirs(dir)
-#     elif os.path.exists(path):
-#         print(f"WARNING: File '{path}' already exists. Overwriting...")
-
-#     with open(path, 'wb') as f:
-#         dill.dump(network, f)
-#     if disp:
-#         print(f"Saved network to '{path}'")
-
 def save_network(network, path=None, dir='saved_networks', file_name_base=None, disp=True):
     if path is None:
         if file_name_base is None:
