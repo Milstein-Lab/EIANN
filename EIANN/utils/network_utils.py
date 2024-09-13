@@ -93,6 +93,8 @@ def save_network(network, path=None, dir='saved_networks', file_name_base=None, 
             os.makedirs(dir)
     elif os.path.exists(path):
         print(f"WARNING: File '{path}' already exists. Overwriting...")
+    else:
+        os.makedirs(path.rsplit('/')[0], exist_ok=True)
 
     with open(path, 'wb') as f:
         dill.dump(network, f)

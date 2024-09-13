@@ -8,6 +8,6 @@ scikit-image==0.23.2
 setuptools==74.1.2
 torch==2.0.1
 torchvision==0.15.2
-tqdm==4.66.1
+tqdm==4.66.5
 dill==0.3.8
 click==8.1.7
