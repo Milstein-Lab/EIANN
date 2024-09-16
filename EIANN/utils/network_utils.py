@@ -88,10 +88,13 @@ def save_network(network, path=None, dir='saved_networks', file_name_base=None, 
     if path is None:
         if file_name_base is None:
             file_name_base = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        path = '%s/%s.pkl' % (dir, file_name_base)
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-    elif os.path.exists(path):
+        path = os.path.join(dir, f'{file_name_base}.pkl')
+    else:
+        path = os.path.join(dir, path)
+    
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    if os.path.exists(path):
         print(f"WARNING: File '{path}' already exists. Overwriting...")
 
     with open(path, 'wb') as f:

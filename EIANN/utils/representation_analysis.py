@@ -123,7 +123,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     :param save_path: (optional) path to save network clone with new param_history
     :param batch_size: (optional) batch size to use for alternate dParam computation
     :param constrain_params: (optional) constrain weights and biases to valid range (e.g. to obey Dale's law)
-    :return: list of angles (in degrees)
+    :return: network object with dParam_history, alternate_dParam_history
     """
     assert len(network.param_history)>0, 'Network must have param_history'
     assert len(dataloader)==1, 'Dataloader must have a single large batch'
@@ -266,7 +266,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     return test_network
 
 
-def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=False, binarize=False, only_updated_params=False):
+def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plot=False, binarize=False, only_updated_params=False):
 
     '''
     Compute the angle between the actual and predicted parameter updates (dW) for each training step.
@@ -302,8 +302,9 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
                 predicted_dParam = predicted_dParam[actual_dParam != 0]
                 actual_dParam = actual_dParam[actual_dParam != 0]
                 
-            vector_product = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-10)
-            angle_rad = np.arccos(torch.round(vector_product,decimals=5))
+            cos_angle = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-10)
+            cos_angle = torch.clamp(cos_angle, -1.0, 1.0) # clamp to avoid floating point rounding errors
+            angle_rad = np.arccos(cos_angle)
             angle = angle_rad * 180 / np.pi
             angles[param_name].append(angle)
             if torch.isnan(angle):
@@ -334,6 +335,39 @@ def compute_dW_angles(predicted_dParam_history, actual_dParam_history, plot=Fals
             plt.tight_layout()
             fig.show()
 
+    return angles
+
+
+def compute_feedback_weight_angle_history(network, plot=False):
+    angles = {}
+    layers = list(network.layers)
+    for i, layer in enumerate(layers[1:-1], start=1):
+        next_layer = layers[i+1]
+        angles[f"{layer}E_{next_layer}E"] = []
+
+        for params in network.param_history:
+            forward_weights = params[f"module_dict.{next_layer}E_{layer}E.weight"].flatten()
+            backward_weights = params[f"module_dict.{layer}E_{next_layer}E.weight"].T.flatten()
+
+            # Compute angle between forward and backward weights
+            cos_angle = torch.dot(forward_weights, backward_weights) / (torch.norm(forward_weights)*torch.norm(backward_weights)+1e-10)
+            cos_angle = torch.clamp(cos_angle, -1.0, 1.0) # clamp to avoid floating point rounding errors
+            angle_rad = np.arccos(cos_angle)
+            angle = angle_rad * 180 / np.pi
+            angle = angle_rad            
+            angles[f"{layer}E_{next_layer}E"].append(angle.item())
+        angles[f"{layer}E_{next_layer}E"] = np.array(angles[f"{layer}E_{next_layer}E"])
+
+    if plot:
+        fig, ax = plt.subplots(1, 1, figsize=(5,3))
+        steps = network.val_history_train_steps
+        for i,projection_pair in enumerate(angles):
+            ax.plot(steps,angles[projection_pair], label=projection_pair)
+        ax.legend()
+        ax.set_xlabel('Training step')
+        ax.set_ylabel('Angle \n(forward vs backward weights)')
+        ax.set_ylim(bottom=-2, top=90)
+        ax.set_yticks(np.arange(0, 91, 30))
     return angles
 
 
@@ -371,28 +405,55 @@ def recompute_dParam_history_all(network):
     network.predicted_dParam_history['all_params'] = predicted_dParam_history_all
 
 
-def compute_sparsity_history(activity_history):
-    """
-    Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
-    TODO: check activity_history dimensions
-    """
-    population_activity = activity_history #dims: 0=history, 1=dynamics, 2=patterns, 3=units
-    n = population_activity.shape[3]
-    activity_fraction = (torch.sum(population_activity,dim=3) / n) ** 2 / (torch.sum((population_activity**2 / n),dim=3)+1e-10)
-    sparsity_history = (1 - activity_fraction) / (1 - 1 / n)
-    return sparsity_history
+def compute_sparsity_selectivity_history(network, test_dataloader):
+    sparsity_history_dict = {population: [] for population in network.populations}
+    selectivity_history_dict = {population: [] for population in network.populations}
+    idx, data, target = next(iter(test_dataloader))
+    for params in tqdm(network.param_history):
+        network.load_state_dict(params)
+        network.forward(data, no_grad=True)
+        for pop_name in network.populations:
+            if "Input" in pop_name:
+                continue
+            activity = network.populations[pop_name].activity
+            avg_sparsity = torch.mean(compute_sparsity(activity))
+            avg_selectivity = torch.mean(compute_selectivity(activity))
+            sparsity_history_dict[pop_name].append(avg_sparsity.item())
+            selectivity_history_dict[pop_name].append(avg_selectivity.item())
+    return sparsity_history_dict, selectivity_history_dict
 
 
-def compute_selectivity_history(activity_history):
+def compute_sparsity(population_activity):
     """
     Sparsity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
-    TODO: check activity_history dimensions
     """
-    population_activity = activity_history #dims: 0=history, 1=dynamics, 2=patterns, 3=units
-    n = population_activity.shape[2]
-    activity_fraction = (torch.sum(population_activity,dim=2) / n) ** 2 / (torch.sum((population_activity**2 / n),dim=2)+1e-10)
-    selectivity_history = (1 - activity_fraction) / (1 - 1 / n)
-    return selectivity_history
+    num_units = population_activity.shape[1] #dims: 0=batch/samples, 1=units
+    activity_fraction = (torch.sum(population_activity,dim=1) / num_units) ** 2 / (torch.sum((population_activity**2 / num_units),dim=1)+1e-10)
+    sparsity = (1 - activity_fraction) / (1 - 1 / num_units)
+    sparsity[torch.where(torch.sum(population_activity, dim=1) == 0.)] = 0. #Set sparsity to 0 if all units are inactive
+    return sparsity
+
+
+def compute_selectivity(population_activity):
+    """
+    Selectivity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
+    """
+    num_patterns = population_activity.shape[0] #dims: 0=batch/samples, 1=units
+    activity_fraction = (torch.sum(population_activity, dim=0) / num_patterns)**2 / torch.sum(population_activity**2 / num_patterns, dim=0)
+    selectivity = (1 - activity_fraction) / (1 - 1 / num_patterns)
+    selectivity[torch.where(torch.sum(population_activity, dim=0) == 0.)] = 0.
+    return selectivity
+
+
+def compute_discriminability(population_activity):
+    silent_pattern_idx = np.where(torch.sum(population_activity, dim=1) == 0.)[0]
+    similarity_matrix = cosine_similarity(population_activity)
+    similarity_matrix[silent_pattern_idx,:] = 1
+    similarity_matrix[:,silent_pattern_idx] = 1
+    similarity_matrix_idx = np.tril_indices_from(similarity_matrix, -1) # select values below diagonal
+    similarity = similarity_matrix[similarity_matrix_idx]
+    discriminability = 1 - similarity
+    return discriminability
 
 
 def spatial_structure_similarity_fft(img1, img2):
@@ -540,43 +601,16 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     idx, data, target = next(iter(test_dataloader))
     data.to(network.device)
     network.forward(data, no_grad=True)
-    activity = population.activity
 
-    num_patterns = activity.shape[0]
-    num_units = activity.shape[1]
-
-    # Compute population sparsity
-    activity_fraction = (torch.sum(activity, dim=1) / num_units) ** 2 / torch.sum(activity ** 2 / num_units, dim=1)
-    sparsity = (1 - activity_fraction) / (1 - 1 / num_units)
-    sparsity[torch.where(torch.sum(activity, dim=1) == 0.)] = 0.
-        # fraction_nonzero_units = np.count_nonzero(activity, axis=1) / num_units
-        # active_pattern_idx = np.where(fraction_nonzero_units != 0.)[0] #exlcude silent patterns
-        # sparsity = 1 - fraction_nonzero_units[active_pattern_idx]
-
-    total_act = torch.sum(population.activity, dim=0)
-    active_units_idx = torch.where(total_act > 1e-10)[0]
-
-    # Compute unit selectivity
-    activity_fraction = (torch.sum(activity[:,active_units_idx], dim=0) / num_patterns)**2 / \
-                        torch.sum(activity[:,active_units_idx]**2 / num_patterns, dim=0)
-    selectivity = (1 - activity_fraction) / (1 - 1 / num_patterns)
-    selectivity[torch.where(torch.sum(activity[:,active_units_idx], dim=0) == 0.)] = 0.
-        # fraction_nonzero_patterns = np.count_nonzero(activity, axis=0) / num_patterns
-        # active_unit_idx = np.where(fraction_nonzero_patterns != 0.)[0] #exlcude silent units
-        # selectivity = 1 - fraction_nonzero_patterns[active_unit_idx]
-
-    # Compute discriminability
-    silent_pattern_idx = np.where(torch.sum(activity, dim=1) == 0.)[0]
-    similarity_matrix = cosine_similarity(activity)
-    similarity_matrix[silent_pattern_idx,:] = 1
-    similarity_matrix[:,silent_pattern_idx] = 1
-    similarity_matrix_idx = np.tril_indices_from(similarity_matrix, -1) # select values below diagonal
-    similarity = similarity_matrix[similarity_matrix_idx]
-    discriminability = 1 - similarity
+    # total_act = torch.sum(population.activity, dim=0)
+    # active_units_idx = torch.where(total_act > 1e-10)[0] # Only consider units that are active at least once
+    selectivity = compute_selectivity(population.activity)
+    sparsity = compute_sparsity(population.activity)
+    discriminability = compute_discriminability(population.activity)
 
     # Compute structure
     if receptive_fields is not None:
-        receptive_fields = receptive_fields[active_units_idx]
+        # receptive_fields = receptive_fields[active_units_idx]
         structure = compute_rf_structure(receptive_fields)
     else:
         structure = []
