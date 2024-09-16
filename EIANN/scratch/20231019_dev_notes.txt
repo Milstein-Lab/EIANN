@@ -777,7 +777,8 @@ DONE 20240905:
  - BP_like_2L_learn_TD_DendLoss_1 (TD_DendLoss based on backward_activity, initialized random) with updated forward_dend_loss objective
  - BP_like_2L_learn_TD_DendLoss_2 (TD_DendLoss based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
  
-RUNNING 20240905:
+ 
+DONE 20240908:
 Shared config info:
  - dend_loss_v2 objective, which penalizes the absolute value of every unit's forward_dendritic_state
  
@@ -786,3 +787,20 @@ Shared config info:
  - Supervised_BCM_4
  - BTSP_3L_learn_TD_HWN_2
  - BTSP_3L_learn_TD_HWN_3
+ 
+NEED TO RUN 20240913:
+ - BTSP_3L_learn_TD_HWN_4
+  
+NEED TO EXPORT:
+ - BP_like_2L_fixed_TD (initialized random) with updated forward_dend_loss objective
+ - BP_like_2L_learn_TD_HWN_3 (TD_HWN based on backward_activity, initialized random) with updated forward_dend_loss objective
+ - BP_like_2L_learn_TD_HWN_4 (TD_HWN based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
+ 
+ 
+ - Supervised_BCM_4
+ 
+EXPORTED 20240916:
+ - BP_like_2K (like BP_like_2L, but with fixed DendI<-E and DendI<-DendI weights)
+ 
+NEED TO UPLOAD:
+ - Supervised_Hebb_WeightNorm_4
