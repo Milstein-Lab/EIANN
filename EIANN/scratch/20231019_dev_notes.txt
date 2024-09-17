@@ -747,9 +747,7 @@ These configs are DONE and correct:
  - Supervised_BCM_4 - ~82%
  - BTSP_3L - ~93%
  - BTSP_4L - ~73%
- 
  - BP_like_2L_learn_TD_HWN_1 (TD_HWN based on forward_activity)
- 
  - BP_like_2L with optuna NSGAIII sampler, population_size: 200, max_iter: 150
  - BP_like_2K (like BP_like_2L, but with fixed DendI<-E and DendI<-DendI weights)
  
@@ -758,13 +756,7 @@ These configs are DONE and correct:
   - looks like hot_start was pointed to the wrong file, caused corruption of history
  - BP_like_2K (like BP_like_2L, but with fixed DendI<-E and DendI<-DendI weights) - was not run with dend_loss objective on
  - Need to re-optimize many models with dend_loss_v2 objective, which will penalize the absolute value of every unit's forward_dendritic_state
- - Need to try BTSP_4M, like BTSP_3L but with Hebb_WeightNorm as the top-down rule
- 
- 
-HOT_STARTING:
-   (137 gens completed)
-  - BTSP_3L with updated forward_dend_loss objective (98 gens completed)
-   (143 gens completed)
+
   
 DONE 20240905:
  - BP_like_3M with updated forward_dend_loss objective (strangely, reducing this new objective compromised the accuracy and loss objectives)
@@ -776,6 +768,7 @@ DONE 20240905:
  - BP_like_2L_learn_TD_HWN_4 (TD_HWN based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
  - BP_like_2L_learn_TD_DendLoss_1 (TD_DendLoss based on backward_activity, initialized random) with updated forward_dend_loss objective
  - BP_like_2L_learn_TD_DendLoss_2 (TD_DendLoss based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
+ - BTSP_3L with updated forward_dend_loss objective
  
  
 DONE 20240908:
@@ -792,15 +785,15 @@ NEED TO RUN 20240913:
  - BTSP_3L_learn_TD_HWN_4
   
 NEED TO EXPORT:
- - BP_like_2L_fixed_TD (initialized random) with updated forward_dend_loss objective
- - BP_like_2L_learn_TD_HWN_3 (TD_HWN based on backward_activity, initialized random) with updated forward_dend_loss objective
- - BP_like_2L_learn_TD_HWN_4 (TD_HWN based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective
- 
- 
- - Supervised_BCM_4
+ - BP_like_2L_learn_TD_HWN_4 (TD_HWN based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective 
+ - BTSP_3L_learn_TD_HWN_3
  
 EXPORTED 20240916:
  - BP_like_2K (like BP_like_2L, but with fixed DendI<-E and DendI<-DendI weights)
+ - Supervised_Hebb_WeightNorm_4
+ - Supervised_BCM_4
+ - BP_like_2L_fixed_TD (initialized random) with updated forward_dend_loss objective
+ - BP_like_2L_learn_TD_HWN_3 (TD_HWN based on backward_activity, initialized random) with updated forward_dend_loss objective
  
 NEED TO UPLOAD:
- - Supervised_Hebb_WeightNorm_4
+ 
