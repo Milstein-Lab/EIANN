@@ -55,6 +55,7 @@ def test_train_network(network, MNIST_dataloaders):
                   store_params=True,
                   status_bar=True)
     ut.save_network(network, "test_network.pkl")
+    os.remove("test_network.pkl")
     
 
 # @pytest.mark.skipif(os.environ.get("CI") == "true", reason="Pickle file not saved in GitHub Actions")
