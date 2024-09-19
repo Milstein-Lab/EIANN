@@ -55,7 +55,6 @@ Figure 5: BTSP(learned top-down W + HebbWN dendI)
 '''
 
 
-
 def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite=False):
     '''
     Loads a network and saves plot-ready processed data into an hdf5 file.
@@ -135,7 +134,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
         else:
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
-        angles = ut.compute_dW_angles(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
+        angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
 
     # 3. Binned dendritic state (local loss)
@@ -291,6 +290,10 @@ def generate_single_model_figure(model_dict, config_path_prefix="network_config/
 ########################################################################################################
 
 
+# def E_population_comparisons(model_dict, model_list_heatmaps, save=True, overwrite=False):
+
+
+
 """Figure 1: Van_BP vs bpDale(learnedI)
     -> bpDale is more structured/sparse (focus on H1E metrics)"""
 def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
@@ -340,7 +343,6 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
         with h5py.File(data_file_path, 'r') as f:
             data_dict = f[network_name]
                 
-            ## Metrics plots
             print(f"Generating plots for {model_dict['name']}")
             if model_key in model_list_heatmaps:
                 seed = model_dict['seeds'][0] # example seed to plot
@@ -364,42 +366,27 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
 
                     # Receptive field plots
                     receptive_fields = torch.tensor(data_dict[seed][f"maxact_receptive_fields_{population}"])
+                    num_units = 10
+
                     ax = fig.add_subplot(axes[row, col*2+1])
                     ax.axis('off')
                     pos = ax.get_position()
-
-                    if receptive_fields.shape[0] > 20:
-                        num_units = 20
-                        new_left = pos.x0 - 0.01  # Move left boundary to the left
-                        new_bottom = pos.y0 + 0.005
-                        new_height = pos.height - 0.005
-                        ax.set_position([new_left, new_bottom, pos.width, new_height])
-                        rf_axes = gs.GridSpecFromSubplotSpec(4, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
-                        ax_list = []
-                        for j in range(num_units):
-                            ax = fig.add_subplot(rf_axes[j])
-                            ax_list.append(ax)
-                            # box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
-                            # ax.add_patch(box)
-                        preferred_classes = torch.argmax(torch.tensor(data_dict[seed]['average_pop_activity_dict'][population]), dim=1)
-                        im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
-                    else:
-                        num_units = 10
-                        new_left = pos.x0 - 0.01  # Move left boundary to the left
-                        new_bottom = pos.y0 + 0.028 # Move bottom boundary up
-                        new_height = pos.height - 0.045  # Decrease height
-                        ax.set_position([new_left, new_bottom, pos.width, new_height])
-                        rf_axes = gs.GridSpecFromSubplotSpec(2, 5, subplot_spec=ax, wspace=0.1, hspace=0.1)
-                        ax_list = []
-                        for j in range(num_units):
-                            ax = fig.add_subplot(rf_axes[j])
-                            ax_list.append(ax)
-                            # box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
-                            # ax.add_patch(box)
-                        preferred_classes = torch.argmax(torch.tensor(data_dict[seed]['average_pop_activity_dict'][population]), dim=1)
-                        im = pt.plot_receptive_fields(receptive_fields, sort=False, ax_list=ax_list, preferred_classes=preferred_classes)
+                    new_left = pos.x0 - 0.01  # Move left boundary to the left
+                    new_bottom = pos.y0 # Move bottom boundary up
+                    new_height = pos.height  # Decrease height
+                    new_width = pos.width - 0.036  # Decrease width
+                    ax.set_position([new_left, new_bottom, new_width, new_height])
+                    rf_axes = gs.GridSpecFromSubplotSpec(4, 3, subplot_spec=ax, wspace=0., hspace=0.1)
+                    ax_list = [fig.add_subplot(rf_axes[3,1])]
+                    for j in range(num_units-1):
+                        ax = fig.add_subplot(rf_axes[j])
+                        ax_list.append(ax)
+                        # box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
+                        # ax.add_patch(box)
+                    preferred_classes = torch.argmax(torch.tensor(data_dict[seed]['average_pop_activity_dict'][population]), dim=1)
+                    im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
                     fig_width, fig_height = fig.get_size_inches()
-                    cax = fig.add_axes([ax_list[0].get_position().x0+0.09, ax.get_position().y0-0.06/fig_height, 0.05, 0.03/fig_height])
+                    cax = fig.add_axes([ax_list[0].get_position().x0-0.02/fig_width, ax.get_position().y0-0.25/fig_height, 0.04, 0.03/fig_height])
                     fig.colorbar(im, cax=cax, orientation='horizontal')
 
                 col += 1
@@ -737,6 +724,14 @@ def main(figure, overwrite, save, single_model):
                     "BTSP":            {"config":"20240604_EIANN_2_hidden_mnist_BTSP_config_3L_complete_optimized.yaml",
                                         "color": "red",
                                         "name": "BTSP"},
+
+                    "bpLike_FA":       {"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml",
+                                        "color": "orange",
+                                        "name": "Feedback Alignment"},
+
+                    "bpLike_topdown":  {"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_3_complete_optimized.yaml",
+                                        "color": "purple",
+                                        "name": "Learned Top-Down"},
                  }
     for model_key in model_dict:
         model_dict[model_key]["seeds"] = seeds
@@ -749,8 +744,10 @@ def main(figure, overwrite, save, single_model):
             generate_single_model_figure(model_dict=model_dict[single_model], save=save, overwrite=overwrite)
 
     if figure in ["all", "fig1"]:
-        model_list_heatmaps = ["vanBP", "bpDale_learned", "hebb"]
-        model_list_metrics = ["vanBP", "bpDale_learned", "hebb"]
+        # model_list_heatmaps = ["vanBP", "bpDale_learned", "hebb"]
+        # model_list_metrics = ["vanBP", "bpDale_learned", "hebb"]
+        model_list_heatmaps = ["vanBP", "bpDale_learned", "bpLike_hebb"]
+        model_list_metrics = ["vanBP", "bpDale_learned", "bpLike_hebb"]
         generate_Fig1(model_dict, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
 
     elif figure in ["all", "fig2"]:
@@ -759,9 +756,10 @@ def main(figure, overwrite, save, single_model):
         generate_Fig2(model_dict, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
 
     elif figure in ["all", "fig3"]:
-        # model_list = ["bpLike_fixedDend", "bpLike_hebb", "bpLike_localBP"]
-        model_list_heatmaps = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
-        model_list_metrics = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
+        model_list_heatmaps = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebb"]
+        model_list_metrics = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebb"]
+        # model_list_heatmaps = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
+        # model_list_metrics = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
         generate_Fig3(model_dict, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
 
 
