@@ -780,13 +780,9 @@ Shared config info:
  - Supervised_BCM_4
  - BTSP_3L_learn_TD_HWN_2
  - BTSP_3L_learn_TD_HWN_3
- 
-NEED TO RUN 20240913:
- - BTSP_3L_learn_TD_HWN_4
   
 NEED TO EXPORT:
  - BP_like_2L_learn_TD_HWN_4 (TD_HWN based on backward_activity, initialized as clone of W_F) with updated forward_dend_loss objective 
- - BTSP_3L_learn_TD_HWN_3
  
 EXPORTED 20240916:
  - BP_like_2K (like BP_like_2L, but with fixed DendI<-E and DendI<-DendI weights)
@@ -794,6 +790,11 @@ EXPORTED 20240916:
  - Supervised_BCM_4
  - BP_like_2L_fixed_TD (initialized random) with updated forward_dend_loss objective
  - BP_like_2L_learn_TD_HWN_3 (TD_HWN based on backward_activity, initialized random) with updated forward_dend_loss objective
+ - BTSP_3L_learn_TD_HWN_3
  
 NEED TO UPLOAD:
+
+NEED TO RUN:
  
+RUNNING 20240918:
+ - BTSP_3L_learn_TD_HWN_4
