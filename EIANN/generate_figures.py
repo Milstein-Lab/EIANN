@@ -75,7 +75,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
 
     variables_to_save = ['percent_correct', 'average_pop_activity_dict', 
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps',
-                         'test_loss_history', 'test_accuracy_history', 'angle_vs_bp']
+                         'test_loss_history', 'test_accuracy_history', 'angle_vs_bp', 'feedback_weight_angle_history']
     variables_to_save.extend([f"metrics_dict_{population.fullname}" for population in network.populations.values()])
     variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values() if population.name=='E' and population.fullname!='InputE'])
     if "Dend" in "".join(network.populations.keys()):
@@ -100,7 +100,9 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     print(variables_to_recompute)
 
     # Load the saved network pickle
+    # print(saved_network_path)
     network = ut.load_network(saved_network_path)
+    # print("DONE")
     if type(network) != nt.Network:
         print("WARNING: Network pickle is not a Network object!")
         network = ut.build_EIANN_from_config(config_path, network_seed=network_seed)    
@@ -136,6 +138,10 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
         angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
+
+    # Forward vs Backward weight angle (weight symmetry)
+    FF_FB_angles = ut.compute_feedback_weight_angle_history(network)
+    ut.save_plot_data(network.name, network.seed, data_key='feedback_weight_angle_history', data=FF_FB_angles, file_path=data_file_path, overwrite=overwrite)
 
     # 3. Binned dendritic state (local loss)
     if 'binned_mean_forward_dendritic_state' in variables_to_recompute:
@@ -688,26 +694,32 @@ def generate_Fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
 @click.option('--overwrite', is_flag=True, default=False, help='Overwrite existing network data in plot_data.hdf5 file')
 @click.option('--save',      is_flag=True, default=True, help='Save plots')
 @click.option('--single-model', default=None, help='Model key for loading network data')
+@click.option('--generate-data', default=None, help='Generate HDF5 data files for plots')
 
-def main(figure, overwrite, save, single_model):
+def main(figure, overwrite, save, single_model, generate_data):
     # pt.update_plot_defaults()
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
 
-    model_dict =    {"vanBP":           {"config": "20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml",
+    model_dict =    {# Networks with weight transpose on top-down weights
+                    "vanBP":           {"config": "20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml",
                                         "color":  "black",
                                         "name":   "Vanilla Backprop"},
 
-                    "bpDale_learned":   {"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml",
+                    "bpDale_learned":  {"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml",
                                         "color":  "darkgray",
                                         "name":   "Backprop with \nDale's Law (learned I)"},
 
-                    "bpDale_fixed":     {"config": "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml",
+                    "bpDale_fixed":    {"config": "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml",
                                         "color":  "lightgray",
                                         "name":   "Backprop with Dale's Law\n(fixed I)"},
 
-                    "hebb":            {"config": "20240714_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
+                    "hebb_topsup":     {"config": "20240714_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
                                         "color":  "cyan",
                                         "name":   "Supervised Hebb \n(w/ weight norm.)"},
+
+                    "BTSP":            {"config":"20240604_EIANN_2_hidden_mnist_BTSP_config_3L_complete_optimized.yaml",
+                                        "color": "red",
+                                        "name": "BTSP"},
 
                     "bpLike_hebb":     {"config": "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml",
                                         "color":  "darkblue",
@@ -715,26 +727,55 @@ def main(figure, overwrite, save, single_model):
 
                     "bpLike_localBP":  {"config": "20240628_EIANN_2_hidden_mnist_BP_like_config_3M_complete_optimized.yaml",
                                         "color":  "black",
-                                        "name":   "Local LossFunc"}, # BP-local weight update rule with dendritic target propagation
+                                        "name":   "Local LossFunc"},  # BP-local weight update rule with dendritic target propagation
 
-                    "bpLike_fixedDend": {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
+                    "bpLike_fixedDend":{"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
                                         "color":  "gray",
-                                        "name":   "Fixed DendI"}, # BP-local weight update rule with dendritic target propagation
+                                        "name":   "Fixed DendI"},     # BP-local weight update rule with dendritic target propagation
 
-                    "BTSP":            {"config":"20240604_EIANN_2_hidden_mnist_BTSP_config_3L_complete_optimized.yaml",
-                                        "color": "red",
-                                        "name": "BTSP"},
-
+                    # Networks with learned top-down weights
                     "bpLike_FA":       {"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml",
                                         "color": "orange",
                                         "name": "Feedback Alignment"},
 
-                    "bpLike_topdown":  {"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_3_complete_optimized.yaml",
+                    "bpLike_learnedTD":{"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_3_complete_optimized.yaml",
+                                        "color": "purple",
+                                        "name": "Learned Top-Down"},
+
+                    "BCM":             {"config": "20240723_EIANN_2_hidden_mnist_Supervised_BCM_config_4_complete_optimized.yaml",
+                                        "color": "green",
+                                        "name": "BTSP"},
+
+                    "Hebb_WeightNorm": {"config": "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
+                                        "color": "green",
+                                        "name": "Hebb+WeightNorm"},
+                                        
+                    "BTSP_learnedTD": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
                                         "color": "purple",
                                         "name": "Learned Top-Down"},
                  }
+
     for model_key in model_dict:
         model_dict[model_key]["seeds"] = seeds
+
+    if generate_data is not None:
+        config_path_prefix="network_config/mnist/"
+        saved_network_path_prefix="data/mnist/"
+        if generate_data=='all':
+            model_list = model_dict.keys()
+        else:
+            model_list = [generate_data]
+        
+        for model_key in model_list:
+            model_dict = model_dict[model_key]
+            config_path = config_path_prefix + model_dict['config']
+            pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
+            network_name = model_dict['config'].split('.')[0]
+            data_file_path = f"data/plot_data_{network_name}.h5"
+            for seed in model_dict['seeds']:
+                saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
+                generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
+                gc.collect()
 
     if single_model is not None:
         if single_model=='all':
