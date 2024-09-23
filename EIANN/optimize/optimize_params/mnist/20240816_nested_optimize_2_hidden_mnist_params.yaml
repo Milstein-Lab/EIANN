@@ -4,6 +4,9 @@ van_bp_relu:
     # stability: after 50000 steps:
     #    accuracy: 96.99451
     #    loss: 0.0066554025
+    # CL:
+    #    final_accuracy: 37.59000015258789
+    #    final_loss: 0.08681437373161316
     H_learning_rate: 0.1652392249674756
     Output_learning_rate: 0.02168234235499228
     H1_init_weight_scale: 2.957309048541877
@@ -16,6 +19,9 @@ bpDale_relu_G:
     # stability: after 50000 steps:
     #    accuracy: 96.481
     #    loss: 0.00842079
+    # CL:
+    #    final_accuracy: 29.350000381469727
+    #    final_loss: 0.0951501727104187
     H_E_E_learning_rate: 0.3980860680942911
     Output_E_E_learning_rate: 0.07078468081982983
     H1_E_Input_E_init_weight_scale: 2.416858991797159
@@ -35,6 +41,14 @@ bpDale_relu_G:
     Output_I_Output_I_init_weight_scale: 1.532615660819997
     H_I_size: 50.0
     Output_I_size: 10.0
+bpDale_noI:
+    #    accuracy: 60.310997
+    #    loss: 0.06713178
+    H_learning_rate: 0.190425996980815
+    Output_learning_rate: 0.011046295251110779
+    H1_init_weight_scale: 0.03126589111604868
+    H2_init_weight_scale: 1.4197298419217201
+    Output_init_weight_scale: 3.9650112451759414
 BP_like_1J_fixed_scale:
     # only E<-E connections are learned
     #    accuracy: 95.4102
@@ -800,6 +814,9 @@ BP_like_2L_learn_TD_HWN_3:
     #    dynamics_residuals: 0.0
     #    loss: 0.0181923508644104
     #    mean_forward_dend_loss: 0.007130344118922949
+    # CL:
+    #    final_accuracy: 48.97999954223633
+    #    final_loss: 0.07432522624731064
     H1_E_Input_E_init_weight_scale: 1.1550441061756842
     H2_E_H1_E_init_weight_scale: 0.8830857995305974
     H_E_learning_rate: 0.00859500565535631
@@ -1291,6 +1308,50 @@ BTSP_3L_20240906:
     Output_I_Output_E_init_weight_scale: 0.40899699392447786
     Output_I_H2_E_init_weight_scale: 0.7334826792263466
     Output_I_Output_I_init_weight_scale: 1.6061623431695757
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
+BTSP_3L_fixed_TD_test:
+    # all H1.E units are updated and nudged
+    # with network-wide backward equilibration
+    # DendI_E and DendI_DendI are learned with Hebb_WeightNorm
+    # with auxiliary objective to reduce forward_dendritic_state
+    # BTSP_18 rule is temporally contrastive and has relu_gate
+    # Top-down weights are fixed and random
+    # compare to BP_like_2L/BTSP_3J
+    # stability: after 50000 steps:
+    H_E_FF_E_max_weight_scale: 8.708020884210457
+    H1_E_Input_E_init_weight_factor: 0.3964486539145835
+    H_E_E_learning_rate: 0.010684187047858134
+    H1_E_H2_E_init_weight_scale: 0.15882257086390864
+    neg_rate_th: 0.0
+    temporal_discount: 0.03293708034256198
+    H1_E_H1_SomaI_init_weight_scale: 1.9097461280647108
+    H1_SomaI_H1_E_init_weight_scale: 0.7988715561521368
+    H1_SomaI_Input_E_init_weight_scale: 2.332404017314044
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.1094486010650464
+    H1_E_H1_DendI_init_weight_scale: 1.4535761148211255
+    H_E_DendI_learning_rate: 0.04430703044231427
+    H1_DendI_H1_E_weight_scale: 1.849547700158448
+    H1_DendI_H1_DendI_weight_scale: 0.5076928504578072
+    DendI_E_learning_rate: 0.15049199764589485
+    DendI_DendI_learning_rate: 0.05826029473482425
+    H2_E_H1_E_init_weight_factor: 0.11724035855448017
+    H2_E_Output_E_init_weight_scale: 0.9850220661634735
+    H2_E_H2_SomaI_init_weight_scale: 0.20404626836077785
+    H2_SomaI_H2_E_init_weight_scale: 0.9986202129594428
+    H2_SomaI_H1_E_init_weight_scale: 1.717495385069392
+    H2_SomaI_H2_SomaI_init_weight_scale: 1.1775330288817358
+    H2_E_H2_DendI_init_weight_scale: 6.335219615888562
+    H2_DendI_H2_E_weight_scale: 5.012876792671696
+    H2_DendI_H2_DendI_weight_scale: 0.8922015946601665
+    Output_E_H2_E_max_weight_scale: 9.171732810585226
+    Output_E_H2_E_init_weight_factor: 0.9410056806212839
+    Output_E_H2_E_learning_rate: 0.012928299754735023
+    Output_E_Output_I_init_weight_scale: 0.12874267911286935
+    Output_I_Output_E_init_weight_scale: 0.5913562586696891
+    Output_I_H2_E_init_weight_scale: 0.8707283592852105
+    Output_I_Output_I_init_weight_scale: 1.7468839455314311
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
