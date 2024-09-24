@@ -42,14 +42,15 @@ projection_config:
                         - 0.061735095235877606
                     weight_bounds: !!python/tuple
                         - 0
-                        - null
+                        - 3.737942984542882
                     direction: F
-                    learning_rule: BP_like_2L
+                    learning_rule: BTSP_18
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
                         stochastic: False
-                        relu_gate: True
+                        neg_rate_th: 0.
+                        temporal_discount: 0.25
             H1:
                 SomaI:
                     weight_init: half_kaiming
@@ -63,7 +64,7 @@ projection_config:
                 DendI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 1.3308604685151206
+                        - 0.061041432117914914
                     weight_bounds: !!python/tuple
                         - null
                         - 0
@@ -73,7 +74,7 @@ projection_config:
                     learning_rule: DendriticLoss_6
                     learning_rule_kwargs:
                         sign: -1
-                        learning_rate: 0.04537932238567541
+                        learning_rate: 0.015920951416174885
             H2:
                 E:
                     weight_init: half_kaiming
@@ -153,17 +154,18 @@ projection_config:
                 E:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
-                        - 0.061735095235877606
+                        - 0.15660723756451086
                     weight_bounds: !!python/tuple
                         - 0
-                        - null
+                        - 3.1607571174129747
                     direction: F
-                    learning_rule: BP_like_2L
+                    learning_rule: BTSP_18
                     learning_rule_kwargs:
-                        learning_rate: 0.006900684389813614
-                        max_pop_fraction: 1.
+                        learning_rate: 0.05248973408306354
+                        neg_rate_th: 0.
                         stochastic: False
-                        relu_gate: True
+                        max_pop_fraction: 1.
+                        temporal_discount: 0.25
             H2:
                 SomaI:
                     weight_init: half_kaiming
@@ -270,14 +272,13 @@ projection_config:
                         - 0.15660723756451086
                     weight_bounds: !!python/tuple
                         - 0
-                        - null
+                        - 3.1607571174129747
                     direction: F
-                    learning_rule: BP_like_2L
+                    learning_rule: BTSP_18
                     learning_rule_kwargs:
                         learning_rate: 0.05248973408306354
-                        max_pop_fraction: 1.
-                        stochastic: False
-                        relu_gate: True
+                        neg_rate_th: 0.
+                        temporal_discount: 0.25
             Output:
                 SomaI:
                     weight_init: half_kaiming
