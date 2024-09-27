@@ -791,10 +791,19 @@ EXPORTED 20240916:
  - BP_like_2L_fixed_TD (initialized random) with updated forward_dend_loss objective
  - BP_like_2L_learn_TD_HWN_3 (TD_HWN based on backward_activity, initialized random) with updated forward_dend_loss objective
  - BTSP_3L_learn_TD_HWN_3
+
+EXPORTED 20240923:
+ - vanBP_noI
+
+NEED TO EXPORT:
+ - BTSP_3L_learn_TD_HWN_4
+ - Supervised_Hebb_WN_learn_SomaI
  
 NEED TO UPLOAD:
 
 NEED TO RUN:
  
 RUNNING 20240918:
- - BTSP_3L_learn_TD_HWN_4
+ 
+HOT_STARTING 20240927:
+ - BTSP_3L_fixed_TD (101 gens)
