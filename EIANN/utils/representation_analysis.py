@@ -212,14 +212,9 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         dParam_vec = []
         for key in predicted_dParam_history_dict:
             dParam = (new_state_dict[key]-state_dict[key])
+            dParam = dParam/torch.norm(dParam)
             predicted_dParam_history_dict[key].append(dParam)
             dParam_vec.append(dParam.flatten())
-
-            # if torch.all(dParam==0) and t>100 and "DendI" not in key:
-            #     print(f'Warning: dParam is all zeros at step {t}, {key}')
-            #     print(torch.all(new_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
-            #     return state_dict, new_state_dict, output, loss, dParam
-
         predicted_dParam_history_all.append(torch.cat(dParam_vec))
         
         # Compute the actual dParam of the first network
@@ -227,14 +222,9 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         dParam_vec = []
         for key in actual_dParam_history_dict:
             dParam = (next_state_dict[key]-state_dict[key])
+            dParam = dParam/torch.norm(dParam)
             actual_dParam_history_dict[key].append(dParam)
             dParam_vec.append(dParam.flatten())
-
-            # if torch.all(dParam==0) and t>100 and "DendI" not in key:
-            #     print(f'Warning: actual dParam is all zeros at step {t}, {key}')
-            #     print(torch.all(next_state_dict['module_dict.H1E_InputE.weight'] == state_dict['module_dict.H1E_InputE.weight']))
-            #     return state_dict, new_state_dict, output, loss, dParam
-
         actual_dParam_history_all.append(torch.cat(dParam_vec))
 
         # Compute the actual dParam of the first network (step-averaged), computed between consecutive saved checkpoints
@@ -255,15 +245,24 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     test_network.actual_dParam_history = actual_dParam_history_dict
     test_network.actual_dParam_history_stepaveraged = actual_dParam_history_dict_stepaveraged
 
-    # test_network.params_to_save.append('predicted_dParam_history')
-    # test_network.params_to_save.append('actual_dParam_history')
-    # test_network.params_to_save.append('actual_dParam_history_stepaveraged')
-    # if save_path is not None:
-    #     test_network.save(save_path)
     if save_path is not None:
         network_utils.save_network(test_network, save_path)
 
     return test_network
+
+
+def compute_vector_angle(vector1, vector2):
+    '''
+    Compute the angle between two vectors.
+    '''
+    vector1, vector2 = torch.tensor(vector1), torch.tensor(vector2)
+    dot_product = torch.dot(vector1, vector2)
+    norm_product = torch.norm(vector1) * torch.norm(vector2) + 1e-10  # Add a small constant to avoid division by zero
+    cos_angle = dot_product / norm_product
+    cos_angle = torch.clamp(cos_angle, -1.0, 1.0)  # clamp to avoid floating point rounding errors
+    angle_rad = torch.acos(cos_angle)
+    angle_deg = torch.rad2deg(angle_rad)
+    return angle_deg
 
 
 def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plot=False, binarize=False, only_updated_params=False):
@@ -284,7 +283,6 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
         ax_top = axes[0]
   
     angles = {}
-
     for i, param_name in enumerate(actual_dParam_history):
         angles[param_name] = []
         
@@ -302,10 +300,7 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
                 predicted_dParam = predicted_dParam[actual_dParam != 0]
                 actual_dParam = actual_dParam[actual_dParam != 0]
                 
-            cos_angle = torch.dot(predicted_dParam, actual_dParam) / (torch.norm(predicted_dParam)*torch.norm(actual_dParam)+1e-10)
-            cos_angle = torch.clamp(cos_angle, -1.0, 1.0) # clamp to avoid floating point rounding errors
-            angle_rad = np.arccos(cos_angle)
-            angle = angle_rad * 180 / np.pi
+            angle = compute_vector_angle(predicted_dParam, actual_dParam)
             angles[param_name].append(angle)
             if torch.isnan(angle):
                 print(f'Warning: angle is NaN at step {t}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
@@ -331,35 +326,41 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
             if '.' in param_name:
                 param_name = param_name.split('.')[1]
             ax.set_title(param_name)
-
             plt.tight_layout()
             fig.show()
 
     return angles
 
 
-def compute_feedback_weight_angle_history(network, plot=False):
-    angles = {}
+def compute_feedback_weight_angle_history(network, plot=False, ax=None):
     layers = list(network.layers)
-    for i, layer in enumerate(layers[1:-1], start=1):
-        next_layer = layers[i+1]
-        angles[f"{layer}E_{next_layer}E"] = []
-
-        for params in network.param_history:
+    angles = {f"{layer}E_{next_layer}E": [] for layer, next_layer in zip(layers[1:-1], layers[2:])}
+    angles["all_params"] = []
+    
+    for params in network.param_history:
+        forward_weights_all = []
+        backward_weights_all = []
+        for i, layer in enumerate(layers[1:-1], start=1):
+            next_layer = layers[i+1]
             forward_weights = params[f"module_dict.{next_layer}E_{layer}E.weight"].flatten()
-            backward_weights = params[f"module_dict.{layer}E_{next_layer}E.weight"].T.flatten()
-
-            # Compute angle between forward and backward weights
-            cos_angle = torch.dot(forward_weights, backward_weights) / (torch.norm(forward_weights)*torch.norm(backward_weights)+1e-10)
-            cos_angle = torch.clamp(cos_angle, -1.0, 1.0) # clamp to avoid floating point rounding errors
-            angle_rad = np.arccos(cos_angle)
-            angle = angle_rad * 180 / np.pi
-            angle = angle_rad            
+            forward_weights_all.append(forward_weights/torch.norm(forward_weights))
+            backward_projection_name = f"module_dict.{layer}E_{next_layer}E.weight"
+            if backward_projection_name in params:
+                backward_weights = params[backward_projection_name].T.flatten()
+                backward_weights_all.append(backward_weights/torch.norm(backward_weights))
+            else:
+                return []
+            angle = compute_vector_angle(forward_weights, backward_weights)
             angles[f"{layer}E_{next_layer}E"].append(angle.item())
-        angles[f"{layer}E_{next_layer}E"] = np.array(angles[f"{layer}E_{next_layer}E"])
+
+        angle = compute_vector_angle(torch.cat(forward_weights_all), torch.cat(backward_weights_all))
+        angles["all_params"].append(angle.item())
 
     if plot:
-        fig, ax = plt.subplots(1, 1, figsize=(5,3))
+        if ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=(5,3))
+        else:
+            fig = ax.get_figure()
         steps = network.val_history_train_steps
         for i,projection_pair in enumerate(angles):
             ax.plot(steps,angles[projection_pair], label=projection_pair)

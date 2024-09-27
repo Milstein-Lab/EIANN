@@ -744,7 +744,7 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
         average_pop_activity_dict = {population.fullname: average_pop_activity_dict[population.fullname]}
 
     for pop_name, avg_pop_activity in average_pop_activity_dict.items():
-        avg_pop_activity = torch.tensor(avg_pop_activity)
+        avg_pop_activity = torch.tensor(np.array(avg_pop_activity))
         if sort: # Sort units by their preferred input
             if pop_name == 'OutputE':
                 sort_idx = torch.arange(0, avg_pop_activity.shape[0])
