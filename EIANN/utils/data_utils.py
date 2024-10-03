@@ -341,14 +341,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
     else:
         return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
     
-def get_spiral_dataloaders(batch_size=1, N=2000, seed=0):
-    """
-    Generate and load spiral dataset into train, validation, and test dataloaders.
-    - batch_size: number of samples in each batch
-    - N: number of points in the spiral
-    """
-
-    def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0):
+def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0):
         """
         Generate points of spiral dataset
         - arm_size: number of points in each arm 
@@ -375,6 +368,13 @@ def get_spiral_dataloaders(batch_size=1, N=2000, seed=0):
             all_data.append((index, data, target))
 
         return all_data
+    
+def get_spiral_dataloaders(batch_size=1, N=2000, seed=0):
+    """
+    Generate and load spiral dataset into train, validation, and test dataloaders.
+    - batch_size: number of samples in each batch
+    - N: number of points in the spiral
+    """
     
     # Split data into train, validation, and test sets
     train_data = generate_spiral_data(arm_size=int(0.7*N), seed=seed)
