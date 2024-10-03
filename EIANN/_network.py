@@ -245,11 +245,12 @@ class Network(nn.Module):
                             delta_state = -post_pop.state + post_pop.bias
                             for projection in post_pop:
                                 pre_pop = projection.pre
-                                if projection.update_phase in ['forward', 'all', 'F', 'A']:
-                                    if projection.direction in ['forward', 'F']:
-                                        delta_state = delta_state + projection(pre_pop.activity)
-                                    elif projection.direction in ['recurrent', 'R']:
-                                        delta_state = delta_state + projection(pre_pop.prev_activity)
+                                if projection.compartment not in ['dend', 'dendrite']:
+                                    if projection.update_phase in ['forward', 'all', 'F', 'A']:
+                                        if projection.direction in ['forward', 'F']:
+                                            delta_state = delta_state + projection(pre_pop.activity)
+                                        elif projection.direction in ['recurrent', 'R']:
+                                            delta_state = delta_state + projection(pre_pop.prev_activity)
                             post_pop.state = post_pop.state + delta_state / post_pop.tau
                             post_pop.activity = post_pop.activation(post_pop.state)
                         if store_dynamics and t >= (self.forward_steps - store_num_steps):
@@ -725,11 +726,11 @@ class Population(object):
         :param device:
         """
         if batch_size > 1:
-            self.activity = torch.zeros((batch_size, self.size), device=device)
             self.state = torch.zeros((batch_size, self.size), device=device)
         else:
-            self.activity = torch.zeros(self.size, device=device)
             self.state = torch.zeros(self.size, device=device)
+        self.state += self.bias
+        self.activity = self.activation(self.state).to(device)
         self.forward_steps_activity = []
 
     def reset_history(self):
