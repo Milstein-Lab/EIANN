@@ -785,9 +785,13 @@ class Input(Population):
         self.include_bias = False
         self.reinit(network.device)
         self.reset_history()
-
-    def reset_history(self):
-        self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
+    
+    def reinit(self, device, batch_size=1):
+        """
+        Method for resetting state variables of a population
+        :param device:
+        """
+        self.forward_steps_activity = []
 
 
 class Projection(nn.Linear):
