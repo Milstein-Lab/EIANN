@@ -74,6 +74,7 @@ def convert_projection_config_dict(simple_format_dict):
     
     return extended_format_dict
 
+
 def convert_layer_config_dict(layer_config_dict):
     """
     Convert a layer config with simplified format to the extended format
