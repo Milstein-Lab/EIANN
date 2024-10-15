@@ -126,7 +126,7 @@ class Network(nn.Module):
 
     def init_weights_and_biases(self):
         for i, post_layer in enumerate(self):
-            if i > 0:
+            # if i > 0:
                 for post_pop in post_layer:
                     total_fan_in = 0
                     for projection in post_pop:
@@ -172,7 +172,7 @@ class Network(nn.Module):
 
     def constrain_weights_and_biases(self):
         for i, post_layer in enumerate(self):
-            if i > 0:
+            # if i > 0:
                 for post_pop in post_layer:
                     if post_pop.include_bias and post_pop.bias_bounds is not None:
                         post_pop.bias.data = post_pop.bias.data.clamp(*post_pop.bias_bounds)
@@ -185,7 +185,7 @@ class Network(nn.Module):
         
         # After all constraints have been applied, clone weights
         for i, post_layer in enumerate(self):
-            if i > 0:
+            # if i > 0:
                 for post_pop in post_layer:
                     for projection in post_pop:
                         if (projection.constrain_weight is not None and
@@ -473,18 +473,18 @@ class Network(nn.Module):
                 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
-                    if i > 0:
-                        for post_pop in post_layer:
-                            if post_pop.include_bias:
-                                post_pop.bias_learning_rule.step()
-                            for projection in post_pop:
-                                projection.learning_rule.step()
+                    # if i > 0:
+                    for post_pop in post_layer:
+                        if post_pop.include_bias:
+                            post_pop.bias_learning_rule.step()
+                        for projection in post_pop:
+                            projection.learning_rule.step()
                 
                 self.constrain_weights_and_biases()
 
                 # update learning rule parameters
                 for i, post_layer in enumerate(self):
-                    if i > 0:
+                    # if i > 0:
                         for post_pop in post_layer:
                             if post_pop.include_bias:
                                 post_pop.bias_learning_rule.update()
@@ -562,7 +562,7 @@ class Layer(object):
 
 
 class Population(object):
-    def __init__(self, network, layer, name, size, activation, activation_kwargs=None, tau=None,
+    def __init__(self, network, layer, name, size, activation='linear', activation_kwargs=None, tau=None,
                  include_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None,
                  bias_learning_rule=None, bias_learning_rule_kwargs=None, custom_update=None, custom_update_kwargs=None,
                  output_pop=False):
@@ -600,12 +600,13 @@ class Population(object):
 
         # Set callable activation function
         if isinstance(activation, str):
-            if hasattr(torch.nn.functional, activation):
+            if hasattr(ut, activation):
+                activation = getattr(ut, activation)
+            elif hasattr(torch.nn.functional, activation):
                 activation = getattr(torch.nn.functional, activation) 
             elif hasattr(external, activation):
                 activation = getattr(external, activation)
-            elif hasattr(ut, activation):
-                activation = getattr(ut, activation)
+
         if not callable(activation):
             raise RuntimeError \
                 ('Population: callable for activation: %s must be imported' % activation)
