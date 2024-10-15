@@ -9,62 +9,7 @@ import datetime
 def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'):
     '''
     Build an EIANN network from a config file
-    '''
-    def convert_projection_config_dict(simple_format_dict):
-        """
-        Convert a projection config with simplified format (formatted as "layer.population":{}) to the extended format with nested dicts (formatted as "layer": {"population": {}})
-        """
-        extended_format_dict = {}
-        
-        for layer_fullname, subdictionary in simple_format_dict.items():
-            layer_name, population_name = layer_fullname.split('.')
-            
-            if layer_name not in extended_format_dict: # If the first part of the split key isn't in the extended format dictionary, add it
-                extended_format_dict[layer_name] = {}
-
-            if population_name not in extended_format_dict[layer_name]: # If the second part of the split key isn't in the sub-dictionary, add it
-                extended_format_dict[layer_name][population_name] = {}
-            
-            # Iterate over the items in the sub-dictionary
-            for pre_layer_fullname, subsubdictionary in subdictionary.items():
-                pre_layer_name, pre_pop_name = pre_layer_fullname.split('.')
-                
-                if pre_layer_name not in extended_format_dict[layer_name][population_name]: # If the first part of the split key isn't already in the sub-sub-dictionary, add it
-                    extended_format_dict[layer_name][population_name][pre_layer_name] = {}
-                
-                # Add the second part of the split key to the sub-sub-dictionary, converting 'None' string values to Python None
-                extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name] = {}
-
-                # Translate projection properties in the subsubdictionary
-                for k, v in subsubdictionary.items():
-                    if k == 'type':
-                        if v.lower() in ['e', 'exc', 'excitatory']:
-                            extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name]['weight_bounds'] = [0, None]
-                        elif v.lower() in ['i', 'inh', 'inhibitory']:
-                            extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name]['weight_bounds'] = [None, 0]
-                    else:
-                        extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name][k] = None if v == 'None' else v
-        
-        return extended_format_dict
-    
-    def convert_layer_config_dict(layer_config_dict):
-        """
-        Convert a layer config with simplified format to the extended format
-        """
-        for layer in layer_config_dict:
-            for population in layer_config_dict[layer]:
-                if 'bias' in layer_config_dict[layer][population]: # Allows for syntax like bias: 'uniform(0,1)'
-                    bias_distribution = layer_config_dict[layer][population]['bias']
-                    bias_init = bias_distribution.split('(')[0] + '_' 
-                    init_args = bias_distribution.split('(')[1].split(')')[0].split(',')
-                    init_args = [float(arg) for arg in init_args]
-                    
-                    del layer_config_dict[layer][population]['bias']
-                    layer_config_dict[layer][population]['include_bias'] = True
-                    layer_config_dict[layer][population]['bias_init'] = bias_init
-                    layer_config_dict[layer][population]['bias_init_args'] = init_args
-        return layer_config_dict       
-        
+    '''        
     network_config = ut.read_from_yaml(config_path)
     layer_config = network_config['layer_config']
     projection_config = network_config['projection_config']
@@ -82,6 +27,70 @@ def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'
     
     network.name = os.path.splitext(os.path.basename(config_path))[0]
     return network
+
+
+def convert_config_dict(simple_format_dict):    
+    layer_config = simple_format_dict['layer_config']
+    simple_format_dict['layer_config'] = convert_layer_config_dict(layer_config)
+    projection_config = simple_format_dict['projection_config']
+    simple_format_dict['projection_config'] = convert_projection_config_dict(projection_config)
+    return simple_format_dict
+
+
+def convert_projection_config_dict(simple_format_dict):
+    """
+    Convert a projection config with simplified format (formatted as "layer.population":{}) to the extended format with nested dicts (formatted as "layer": {"population": {}})
+    """
+    extended_format_dict = {}
+    
+    for layer_fullname, subdictionary in simple_format_dict.items():
+        layer_name, population_name = layer_fullname.split('.')
+        
+        if layer_name not in extended_format_dict: # If the first part of the split key isn't in the extended format dictionary, add it
+            extended_format_dict[layer_name] = {}
+
+        if population_name not in extended_format_dict[layer_name]: # If the second part of the split key isn't in the sub-dictionary, add it
+            extended_format_dict[layer_name][population_name] = {}
+        
+        # Iterate over the items in the sub-dictionary
+        for pre_layer_fullname, subsubdictionary in subdictionary.items():
+            pre_layer_name, pre_pop_name = pre_layer_fullname.split('.')
+            
+            if pre_layer_name not in extended_format_dict[layer_name][population_name]: # If the first part of the split key isn't already in the sub-sub-dictionary, add it
+                extended_format_dict[layer_name][population_name][pre_layer_name] = {}
+            
+            # Add the second part of the split key to the sub-sub-dictionary, converting 'None' string values to Python None
+            extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name] = {}
+
+            # Translate projection properties in the subsubdictionary
+            for k, v in subsubdictionary.items():
+                if k == 'type':
+                    if v.lower() in ['e', 'exc', 'excitatory']:
+                        extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name]['weight_bounds'] = [0, None]
+                    elif v.lower() in ['i', 'inh', 'inhibitory']:
+                        extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name]['weight_bounds'] = [None, 0]
+                else:
+                    extended_format_dict[layer_name][population_name][pre_layer_name][pre_pop_name][k] = None if v == 'None' else v
+    
+    return extended_format_dict
+
+def convert_layer_config_dict(layer_config_dict):
+    """
+    Convert a layer config with simplified format to the extended format
+    """
+    for layer in layer_config_dict:
+        for population in layer_config_dict[layer]:
+            if 'bias' in layer_config_dict[layer][population]: # Allows for syntax like bias: 'uniform(0,1)'
+                bias_distribution = layer_config_dict[layer][population]['bias']
+                bias_init = bias_distribution.split('(')[0] + '_' 
+                init_args = bias_distribution.split('(')[1].split(')')[0].split(',')
+                init_args = [float(arg) for arg in init_args]
+                
+                del layer_config_dict[layer][population]['bias']
+                layer_config_dict[layer][population]['include_bias'] = True
+                layer_config_dict[layer][population]['bias_init'] = bias_init
+                layer_config_dict[layer][population]['bias_init_args'] = init_args
+    return layer_config_dict       
 
 
 def save_network(network, path=None, dir='saved_networks', file_name_base=None, disp=True):

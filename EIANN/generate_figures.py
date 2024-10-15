@@ -79,8 +79,8 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
 
     variables_to_save = ['percent_correct', 'average_pop_activity_dict', 
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps',
-                         'test_loss_history', 'test_accuracy_history', 'angle_vs_bp', 'feedback_weight_angle_history',
-                         'sparsity_history', 'selectivity_history']
+                         'test_loss_history', 'test_accuracy_history', 'angle_vs_bp', 'angle_vs_bp_stochastic',
+                         'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     variables_to_save.extend([f"metrics_dict_{population.fullname}" for population in network.populations.values()])
     variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values() if population.name=='E' and population.fullname!='InputE'])
     if "Dend" in "".join(network.populations.keys()):
@@ -88,7 +88,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
 
     # Open hdf5 and check if the relevant network data already exists       
     variables_to_recompute = []  
-    if os.path.exists(data_file_path):
+    if os.path.exists(data_file_path): # If the file exists, check if the network data already exists or needs to be recomputed
         with h5py.File(data_file_path, 'r') as file:
             if network_name in file.keys():
                 if seed in file[network_name].keys():
@@ -98,7 +98,17 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
                     elif set(variables_to_save).issubset(file[network_name][seed].keys()) and recompute is None:
                         return
                     else:
+                        print(f"Recomputing {network_name} {seed} in {data_file_path}")
                         variables_to_recompute = [var for var in variables_to_save if var not in file[network_name][seed].keys()]
+                else:
+                    print(f"Computing data for {network_name} {seed} in {data_file_path}")
+                    variables_to_recompute = variables_to_save     
+            else:
+                print(f"Computing data for {network_name} {seed} in {data_file_path}")
+                variables_to_recompute = variables_to_save     
+    else:
+        print(f"Creating new data file {data_file_path}")
+        variables_to_recompute = variables_to_save
     
     if recompute is not None and recompute not in variables_to_recompute:
         variables_to_recompute.append(recompute)
@@ -139,7 +149,19 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
                 receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=data_file_path, overwrite=overwrite)
             metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=data_file_path, overwrite=overwrite)
 
+
     # Angle vs backprop
+    if 'angle_vs_bp_stochastic' in variables_to_recompute:
+        stored_history_step_size = torch.diff(network.param_history_steps)[-1]
+        if 'H1SomaI' in network.populations:
+            config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
+            network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
+            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=1, constrain_params=False)
+        else:
+            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=1, constrain_params=False)
+        angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history, plot=True)
+        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=data_file_path, overwrite=overwrite)
+
     if 'angle_vs_bp' in variables_to_recompute:
         stored_history_step_size = torch.diff(network.param_history_steps)[-1]
         if 'H1SomaI' in network.populations:
@@ -754,18 +776,22 @@ def generate_Fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
 
 
 def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False): 
-    fig = plt.figure(figsize=(5.5, 4))
+    # fig = plt.figure(figsize=(5.5, 4))
+    fig = plt.figure(figsize=(11, 8))
+    # fig = plt.figure(figsize=(23.1, 16.8))
+
     # axes = gs.GridSpec(nrows=4, ncols=4, figure=fig, bottom=0.1, top=0.9, left=0.1, right=0.99, hspace=0.5, wspace=0.5)
     axes = gs.GridSpec(nrows=4, ncols=4, figure=fig, bottom=0.1, top=0.9, left=0.1, right=0.8, hspace=0.5, wspace=0.5)
     ax_accuracy = fig.add_subplot(axes[0,0])
     ax_structure = fig.add_subplot(axes[0,1])
+    ax_dendstate = fig.add_subplot(axes[0,2])
+    ax_angleBP_stoch = fig.add_subplot(axes[1,2])
     ax_sparsity = fig.add_subplot(axes[1,0])
     ax_selectivity = fig.add_subplot(axes[1,1])
     ax_FB_angles = fig.add_subplot(axes[2,0])
     ax_angleBP = fig.add_subplot(axes[2,1])
     ax_sparsity_hist = fig.add_subplot(axes[3,0])
     ax_selectivity_hist = fig.add_subplot(axes[3,1])
-    ax_dendstate = fig.add_subplot(axes[0,2])
 
     all_models = list(dict.fromkeys(model_list))
     for model_key in all_models:
@@ -818,6 +844,25 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
             ax_angleBP.set_ylabel('Angle vs BP')
             ax_angleBP.set_ylim([30,100])
             ax_angleBP.set_yticks(np.arange(30, 101, 30))
+
+            angle_all_seeds = []
+            from scipy.ndimage import gaussian_filter1d
+            for seed in model_dict['seeds']:
+                angle = data_dict[seed]['angle_vs_bp_stochastic']['all_params']
+                # box_width = 3
+                # smoothed_angle = np.convolve(angle, np.ones(box_width)/box_width, mode='same')
+                sigma = 1
+                smoothed_angle = gaussian_filter1d(angle, sigma)
+                angle_all_seeds.append(smoothed_angle)
+            avg_angle = np.nanmean(angle_all_seeds, axis=0)
+            error = np.nanstd(angle_all_seeds, axis=0)
+            ax_angleBP_stoch.plot(train_steps, avg_angle, label=model_dict["name"], color=model_dict["color"])
+            ax_angleBP_stoch.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
+            ax_angleBP_stoch.set_xlabel('Training step')
+            ax_angleBP_stoch.set_ylabel('Angle vs BP (stoch.)')
+            ax_angleBP_stoch.set_ylim([0,90])
+            ax_angleBP_stoch.set_xlim([0,20000])
+            ax_angleBP_stoch.set_yticks(np.arange(0, 101, 30))
             
             # Learning curves / metrics
             accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in data_dict]
@@ -955,10 +1000,16 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
                                             "name":   "Supervised Hebb \n(w/ weight norm.)"},
 
                         "BTSP":            {"config":"20240604_EIANN_2_hidden_mnist_BTSP_config_3L_complete_optimized.yaml",
-                                            "color": "red",
+                                            "color": "purple",
                                             "name": "BTSP"}, 
 
-                        "bpLike_hebbdend":     {"config": "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml",
+                        "Hebb_WeightNorm": {"config": "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
+                                            "color": "cyan",
+                                            "name": "HWN learned Top-Down"},
+
+
+
+                        "bpLike_hebbdend": {"config": "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml",
                                             "color":  "red",
                                             "name":   "Dendritic gating (Weight Symmetry)"}, # BP-local weight update rule with dendritic target propagation
 
@@ -970,11 +1021,10 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
                                             "color":  "gray",
                                             "name":   "Random"},     # BP-local weight update rule with dendritic target propagation
 
-                        "Hebb_WeightNorm": {"config": "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
-                                            "color": "cyan",
-                                            "name": "HWN learned Top-Down"},
 
-                        # Networks with separate top-down weights (i.e. not weight transpose)
+                        ## Networks with separate top-down weights (i.e. not weight transpose)
+
+                        # 1. Consulting nudged activity for updating forward weights + HWN rules
                         "bpLike_FA":       {"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml",
                                             "color": "gray",
                                             "name": "Random (Feedback Alignment)"},
@@ -990,6 +1040,12 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
                         "BTSP_learnedTD": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
                                             "color": "magenta",
                                             "name": "BTSP learned Top-Down"},
+
+                        # 2. Consulting forward (un-nudged) activity for updating forward weights + HWN rules
+                        "bpLike_learnedTD_nonudge":{"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HWN_1_complete_optimized.yaml",
+                                                    "color": "salmon",
+                                                    "name": "Learned top-town (Hebb) no-nudge"},
+
         }
 
     for model_key in model_dict_all:
@@ -1031,8 +1087,11 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
     if figure in ["all", "fig1"]:
         # model_list_heatmaps = ["vanBP", "bpDale_learned", "bpLike_hebbdend"]
         # model_list_metrics = ["vanBP", "bpDale_learned", "bpLike_hebbdend"]
-        model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_hebbdend"]
-        model_list_metrics = ["vanBP", "bpDale_fixed", "bpLike_hebbdend"]
+        model_list_heatmaps = ["bpLike_learnedTD", "bpDale_fixed", "bpLike_hebbdend"]
+        model_list_metrics = ["bpLike_learnedTD", "bpDale_fixed", "bpLike_hebbdend"]
+
+        model_list_heatmaps = ["vanBP", "bpDale_learned", "bpLike_learnedTD_nonudge"]
+        model_list_metrics = ["vanBP", "bpDale_learned", "bpLike_learnedTD_nonudge", "bpLike_learnedTD"]        
         generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
 
     elif figure in ["all", "fig2"]:
@@ -1049,11 +1108,15 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
 
     elif figure in ["all", "metrics"]:
         # model_list = ["bpLike_hebbdend", "bpLike_FA", "bpLike_learnedTD", "vanBP", "bpDale_learned"]
-        # model_list = ["vanBP", "bpDale_fixed", "bpLike_hebbdend"]
-
+        # model_list = ["vanBP", "bpDale_learned", "bpDale_fixed", "bpLike_hebbdend"]
         # model_list = ["vanBP", "bpDale_learned", "bpLike_hebbdend"]
+        # model_list = ["bpLike_learnedTD", "bpLike_FA", "bpLike_hebbdend", "BTSP"]
+
         # model_list = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
-        model_list = ["bpLike_learnedTD", "bpLike_FA", "bpLike_hebbdend"]
+        # model_list = ["bpLike_learnedTD", "bpLike_FA", "bpLike_hebbdend"]
+
+        model_list = ["vanBP", "bpDale_learned", "bpLike_learnedTD_nonudge", "bpLike_learnedTD"]
+
         generate_metrics_plot(model_dict_all, model_list, save=save, overwrite=overwrite)
 
 

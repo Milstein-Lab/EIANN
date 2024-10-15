@@ -3093,7 +3093,7 @@ class BTSP_16(LearningRule):
 
 class BTSP_17(LearningRule):
     def __init__(self, projection, neg_rate_th=None, dep_ratio=1., dep_th=0.01, dep_width=0.01, max_pop_fraction=1.,
-                 temporal_discount=0.25, stochastic=False, learning_rate=None):
+                 temporal_discount=0.25, stochastic=False, learning_rate=None, relu_gate=False):
         """
         Like the original BTSP class, this method includes both positive and negative modulatory events. In this
         variant, both positive and negative modulatory events nudge the somatic activity.
@@ -3117,6 +3117,7 @@ class BTSP_17(LearningRule):
         :param temporal_discount: float in [0, 1]
         :param stochastic: bool
         :param learning_rate: float
+        :param relu_gate: bool
         """
         super().__init__(projection, learning_rate)
         self.q_dep = get_scaled_rectified_sigmoid(dep_th, dep_th + dep_width)
@@ -3125,6 +3126,7 @@ class BTSP_17(LearningRule):
         self.max_pop_fraction = max_pop_fraction
         self.temporal_discount = temporal_discount
         self.stochastic = stochastic
+        self.relu_gate = relu_gate
         if self.projection.weight_bounds is None or self.projection.weight_bounds[1] is None:
             self.w_max = 2.
         else:
@@ -3263,13 +3265,17 @@ class BTSP_17(LearningRule):
                     # compute plateau events and nudge somatic state
                     if projection.learning_rule.__class__ == cls:
                         if pop is output_pop:
-                            output_pop.dendritic_state = (
-                                torch.clamp(target - output_pop.activity, min=-1, max=1))
-                            output_pop.plateau = output_pop.dendritic_state.detach().clone()
-                            output_pop.dend_to_soma = output_pop.dendritic_state.detach().clone()
+                            local_loss = torch.clamp(target - output_pop.activity, min=-1, max=1)
+                            output_pop.dendritic_state = local_loss.detach().clone()
+                            if projection.learning_rule.relu_gate:
+                                local_loss[output_pop.forward_activity == 0.] = 0
+                            output_pop.plateau[:] = local_loss.detach().clone()
+                            output_pop.dend_to_soma[:] = local_loss.detach().clone()
                         else:
                             max_units = math.ceil(projection.learning_rule.max_pop_fraction * pop.size)
                             local_loss = pop.dendritic_state.detach().clone()
+                            if projection.learning_rule.relu_gate:
+                                local_loss[pop.forward_activity == 0.] = 0
                             
                             pos_avail_indexes = (local_loss > 0.).nonzero().squeeze(1)
                             if projection.learning_rule.stochastic:
@@ -3291,10 +3297,10 @@ class BTSP_17(LearningRule):
                                                                                descending=True, stable=True)
                             neg_event_indexes = neg_avail_indexes[neg_candidate_rel_indexes][-max_units:]
                             
-                            pop.plateau[pos_event_indexes] = pop.dendritic_state[pos_event_indexes]
-                            pop.plateau[neg_event_indexes] = pop.dendritic_state[neg_event_indexes]
-                            pop.dend_to_soma[pos_event_indexes] = pop.dendritic_state[pos_event_indexes]
-                            pop.dend_to_soma[neg_event_indexes] = pop.dendritic_state[neg_event_indexes]
+                            pop.plateau[pos_event_indexes] = local_loss[pos_event_indexes]
+                            pop.plateau[neg_event_indexes] = local_loss[neg_event_indexes]
+                            pop.dend_to_soma[pos_event_indexes] = local_loss[pos_event_indexes]
+                            pop.dend_to_soma[neg_event_indexes] = local_loss[neg_event_indexes]
                         break
             # update activities
             cls.backward_nudge_activity(layer, store_dynamics=store_dynamics)
@@ -3325,11 +3331,11 @@ class BTSP_18(LearningRule):
         """
         Like the original BTSP class, this method includes both positive and negative modulatory events. In this
         variant, both positive and negative modulatory events nudge the somatic activity.
-        Plateaus increment an instructive signal (IS) that decays in two time steps. (Forward) presynaptic activity
+        Plateaus increment an instructive signal (IS) that decays in two time steps. Presynaptic activity
         increments an eligibility trace (ET) that decays to zero in two time steps. Positive modulatory events
         result in a BTSP weight update that depends on IS, current weight, and ET.
         Negative modulatory events only occur when postsynaptic activity is above a threshold. Negative modulatory
-        events result in a weight update proportional to plateaus and (forward) presynaptic activity.
+        events result in a weight update proportional to plateaus and presynaptic activity.
         If unit selection is stochastic, hidden units are selected for a weight update with a probability proportional
         to dendritic state by sampling a Bernoulli distribution. Otherwise, units are sorted by dendritic state. A fixed
         maximum fraction of hidden units are updated at each train step. Hidden units are "nudged" by dendritic state

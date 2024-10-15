@@ -792,18 +792,26 @@ EXPORTED 20240916:
  - BP_like_2L_learn_TD_HWN_3 (TD_HWN based on backward_activity, initialized random) with updated forward_dend_loss objective
  - BTSP_3L_learn_TD_HWN_3
 
-EXPORTED 20240923:
+EXPORTED/UPLOADED 20241003:
  - vanBP_noI
+ - BTSP_3L_fixed_TD
+ - Supervised_Hebb_WN_learn_SomaI
 
 NEED TO EXPORT:
  - BTSP_3L_learn_TD_HWN_4
- - Supervised_Hebb_WN_learn_SomaI
  
 NEED TO UPLOAD:
 
 NEED TO RUN:
+ - A set of configurations where the weight update depends only on forward activity (in fact backward equilibration is not even necessary)
+ - BP_like_5J [same as 2J but with equil and dend_state objectives]
+ - BP_like_5J_fixed_TD
+ - BP_like_5J_learn_TD_HWN_1
+ - BTSP_5J [can use BTSP_17 rule like BTSP_3K but with relu_gate=True]
+ - BTSP_5J_fixed_TD
+ - BTSP_5J_learn_TD_HWN_1
  
 RUNNING 20240918:
  
 HOT_STARTING 20240927:
- - BTSP_3L_fixed_TD (101 gens)
+ 
