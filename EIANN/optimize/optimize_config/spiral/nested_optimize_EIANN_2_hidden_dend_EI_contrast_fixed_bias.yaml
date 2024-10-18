@@ -1,0 +1,75 @@
+# Being used with: EIANN\optimize\nested_optimize_EIANN_spiral_2_hidden.py
+# Being used to optimize: EIANN\network_config\spiral\EIANN_2_hidden_spiral_dend_EI_contrast_fixed_bias_AM_20241003.yaml
+# Based on: EIANN\optimize\optimize_config\mnist\20240706_nested_optimize_EIANN_2_hidden_mnist_BP_like_config_2L.yaml
+
+bounds:
+    H1_E_Input_E_learning_rate: 
+        - 0.0001
+        - 0.5
+    H1_E_H1_E_learning_rate:
+        - 0.0001
+        - 0.5
+    H1_E_H2_E_weight_scale:
+        - 0.01
+        - 10.
+    
+    # H2_E_H1_E_learning_rate:
+    #     - 0.0001
+    #     - 0.5
+    H2_E_H2_E_learning_rate:
+        - 0.0001
+        - 0.5
+    H2_E_Output_E_weight_scale:
+        - 0.01
+        - 10.
+
+    Output_E_H2_E_learning_rate: 
+        - 0.0001
+        - 0.5
+default_params:
+rel_bounds:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 5600
+    epochs: 1
+    network_config_file_path: optimize/network_config/spiral/EIANN_2_hidden_spiral_dend_EI_contrast_fixed_bias_AM_20241003.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: False
+    include_dend_loss_objective: True
+update_context:
+    - source: optimize.nested_optimize_EIANN_spiral_2_hidden
+      function: update_spiral_config_2_hidden_dend_EI_contrast
+# param_gen: OptunaOptimizer
+stages:
+    - source: optimize.nested_optimize_EIANN_spiral_2_hidden
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+      # get_objectives: get_objectives_single
+optimization_title: EIANN_2_hidden_spiral_dend_EI_contrast_fixed_bias
+# x0:
+#     H1_E_Input_E_learning_rate: 0.04576
+#     H1_E_H1_E_learning_rate: 0.88063
+#     H1_E_H2_E_weight_scale: 1
+#     # H2_E_H1_E_learning_rate: 0.04576
+#     H2_E_H2_E_learning_rate: 0.04576
+#     H2_E_Output_E_weight_scale: 1
+#     Output_E_H2_E_learning_rate: 0.04576
+
+
+# To get analysis of features based on current congig, run this:
+# EIANN\EIANN$ python -m nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_dend_EI_contrast_fixed_bias.yaml --disp
+
+# To do optimization based on this config, run this:
+# EIANN\EIANN$ python -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_dend_EI_contrast_fixed_bias.yaml --disp --pop_size=1 --max_iter=10 --path_length=1

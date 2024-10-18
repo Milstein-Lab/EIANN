@@ -5,7 +5,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from skimage import metrics
 import scipy.stats as stats
 import copy
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 from scipy import signal
 
 from EIANN.utils import data_utils, network_utils
@@ -157,12 +157,20 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         param_history = network.param_history
         param_history_steps = network.param_history_steps
 
-    actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    forward_E_params = ["H1E_InputE", "H2E_H1E", "OutputE_H2E"]
+    actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if name.split('.')[1] in forward_E_params}
     actual_dParam_history_all = []
-    actual_dParam_history_dict_stepaveraged = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    actual_dParam_history_dict_stepaveraged = {name:[] for name,param in network.named_parameters() if name.split('.')[1] in forward_E_params}
     actual_dParam_history_stepaveraged_all = []
-    predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if name.split('.')[1] in forward_E_params}
     predicted_dParam_history_all = []
+
+    # actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    # actual_dParam_history_all = []
+    # actual_dParam_history_dict_stepaveraged = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    # actual_dParam_history_stepaveraged_all = []
+    # predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
+    # predicted_dParam_history_all = []
 
     for t in tqdm(range(len(param_history))):  
         # Load params into network
@@ -212,7 +220,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         dParam_vec = []
         for key in predicted_dParam_history_dict:
             dParam = (new_state_dict[key]-state_dict[key])
-            dParam = dParam/torch.norm(dParam)
+            dParam = dParam/(torch.norm(dParam)+1e-10)
             predicted_dParam_history_dict[key].append(dParam)
             dParam_vec.append(dParam.flatten())
         predicted_dParam_history_all.append(torch.cat(dParam_vec))
@@ -222,7 +230,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         dParam_vec = []
         for key in actual_dParam_history_dict:
             dParam = (next_state_dict[key]-state_dict[key])
-            dParam = dParam/torch.norm(dParam)
+            dParam = dParam/(torch.norm(dParam)+1e-10)
             actual_dParam_history_dict[key].append(dParam)
             dParam_vec.append(dParam.flatten())
         actual_dParam_history_all.append(torch.cat(dParam_vec))
@@ -255,7 +263,6 @@ def compute_vector_angle(vector1, vector2):
     '''
     Compute the angle between two vectors.
     '''
-    vector1, vector2 = torch.tensor(vector1), torch.tensor(vector2)
     dot_product = torch.dot(vector1, vector2)
     norm_product = torch.norm(vector1) * torch.norm(vector2) + 1e-10  # Add a small constant to avoid division by zero
     cos_angle = dot_product / norm_product
@@ -333,6 +340,9 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
 
 
 def compute_feedback_weight_angle_history(network, plot=False, ax=None):
+    '''
+    Compute the angle between the actual and predicted parameter updates (dW) for each training step.
+    '''
     layers = list(network.layers)
     angles = {f"{layer}E_{next_layer}E": [] for layer, next_layer in zip(layers[1:-1], layers[2:])}
     angles["all_params"] = []
@@ -343,11 +353,11 @@ def compute_feedback_weight_angle_history(network, plot=False, ax=None):
         for i, layer in enumerate(layers[1:-1], start=1):
             next_layer = layers[i+1]
             forward_weights = params[f"module_dict.{next_layer}E_{layer}E.weight"].flatten()
-            forward_weights_all.append(forward_weights/torch.norm(forward_weights))
+            forward_weights_all.append(forward_weights/(torch.norm(forward_weights)+1e-10))
             backward_projection_name = f"module_dict.{layer}E_{next_layer}E.weight"
             if backward_projection_name in params:
                 backward_weights = params[backward_projection_name].T.flatten()
-                backward_weights_all.append(backward_weights/torch.norm(backward_weights))
+                backward_weights_all.append(backward_weights/(torch.norm(backward_weights)+1e-10))
             else:
                 return []
             angle = compute_vector_angle(forward_weights, backward_weights)
@@ -361,7 +371,7 @@ def compute_feedback_weight_angle_history(network, plot=False, ax=None):
             fig, ax = plt.subplots(1, 1, figsize=(5,3))
         else:
             fig = ax.get_figure()
-        steps = network.val_history_train_steps
+        steps = network.param_history_steps
         for i,projection_pair in enumerate(angles):
             ax.plot(steps,angles[projection_pair], label=projection_pair)
         ax.legend()

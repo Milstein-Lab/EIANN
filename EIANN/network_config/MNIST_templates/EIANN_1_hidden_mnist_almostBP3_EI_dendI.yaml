@@ -28,7 +28,7 @@ projection_config:
       direction: F
       learning_rule: almost_backprop2
 
-    # Backward/dendrie projections  
+    # Backward/dendrite projections  
     H1.dendI:
       direction: F
       compartment: dendrite

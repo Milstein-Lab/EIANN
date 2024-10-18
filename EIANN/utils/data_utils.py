@@ -340,7 +340,55 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
         return train_dataloader, train_dataloader_CL1_full, train_dataloader_CL2_full, train_dataloader_CL1, train_dataloader_CL2, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
     else:
         return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
+    
+def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0):
+        """
+        Generate points of spiral dataset
+        - arm_size: number of points in each arm 
+        - K: number of arms
+        - sigma: noise level
+        - seed: random seed
+        """
+        np.random.seed(seed)
+        torch.manual_seed(seed)
 
+        t = torch.linspace(0, 1, arm_size) # Generate linearly spaced values from 0 to 1, used as the parameter that varies along the length of the spiral
+        X = torch.zeros(K*arm_size, 2)
+        y = torch.zeros(K*arm_size)
+
+        # arm_index is the offset or phase shift, allowing the function to generate points for each arm in the spiral
+        for arm_index in range(K):
+            X[arm_index*arm_size:(arm_index+1)*arm_size, 0] = t*(torch.sin(2*np.pi/K*(2*t+arm_index)) + sigma*torch.randn(arm_size))
+            X[arm_index*arm_size:(arm_index+1)*arm_size, 1] = t*(torch.cos(2*np.pi/K*(2*t+arm_index)) + sigma*torch.randn(arm_size))
+            y[arm_index*arm_size:(arm_index+1)*arm_size] = arm_index    
+
+        all_data = []
+        for index, (data, label) in enumerate(zip(X, y)):
+            target = torch.eye(K)[int(label)]
+            all_data.append((index, data, target))
+
+        return all_data
+    
+def get_spiral_dataloaders(batch_size=1, N=2000, seed=0):
+    """
+    Generate and load spiral dataset into train, validation, and test dataloaders.
+    - batch_size: number of samples in each batch
+    - N: number of points in the spiral
+    """
+    
+    # Split data into train, validation, and test sets
+    train_data = generate_spiral_data(arm_size=int(0.7*N), seed=seed)
+    val_data = generate_spiral_data(arm_size=int(0.15*N), seed=seed+1)
+    test_data = generate_spiral_data(arm_size=int(0.15*N), seed=seed+2)
+
+    data_generator = torch.Generator().manual_seed(seed)
+    batch_size = 1
+
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, generator=data_generator)
+    val_loader = DataLoader(val_data, batch_size=len(val_data), shuffle=False, num_workers=0)
+    test_loader = DataLoader(test_data, batch_size=len(test_data), shuffle=False, num_workers=0)
+
+    return train_loader, val_loader, test_loader, data_generator
 
 
 # *******************************************************************
