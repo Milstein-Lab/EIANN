@@ -820,6 +820,94 @@ BP_like_2L_learn_TD_DendLoss_2:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
+BP_like_5J:
+    # all H.E units are updated and nudged
+    # with relu gating
+    # no backward equilibration during backward phase
+    # weight update refers to forward activities
+    # with auxiliary objective to reduce forward dendritic state
+    # DendI.E and DendI.DendI learned with Hebb_WeightNorm
+    #    accuracy: 93.19440460205078
+    #    dynamics_residuals: 0.0
+    #    loss: 0.018292555585503578
+    #    mean_forward_dend_loss: 0.0033922923263162374
+    # stability: after 50000 steps:
+    H1_E_Input_E_init_weight_scale: 2.1944449483442714
+    H2_E_H1_E_init_weight_scale: 0.19699100861932295
+    H_E_E_learning_rate: 0.014965181204220036
+    H1_E_H2_E_weight_scale: 0.4982674648887008
+    H2_E_Output_E_weight_scale: 0.502089051257693
+    H1_E_H1_SomaI_init_weight_scale: 1.127575300929014
+    H1_SomaI_H1_E_init_weight_scale: 0.7922286649101926
+    H1_SomaI_Input_E_init_weight_scale: 2.9554092309918674
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.4659723687430724
+    H_E_DendI_learning_rate: 0.09987445881374112
+    H1_E_H1_DendI_init_weight_scale: 0.30874601934713247
+    H1_DendI_H1_E_weight_scale: 1.4197768374260917
+    H1_DendI_H1_DendI_weight_scale: 1.3979144717025254
+    H2_E_H2_SomaI_init_weight_scale: 0.0503457325183063
+    H2_SomaI_H2_E_init_weight_scale: 0.7245424339080535
+    H2_SomaI_H1_E_init_weight_scale: 0.1286862932555841
+    H2_SomaI_H2_SomaI_init_weight_scale: 0.15183277232938047
+    H2_E_H2_DendI_init_weight_scale: 1.6268802462850203
+    H2_DendI_H2_E_weight_scale: 1.0492802312906058
+    H2_DendI_H2_DendI_weight_scale: 1.2396575372740706
+    Output_E_H2_E_init_weight_scale: 5.574051454118832
+    DendI_E_learning_rate: 0.019254903668545556
+    DendI_DendI_learning_rate: 0.015159232301651981
+    Output_E_H2_E_learning_rate: 0.025823599084628956
+    Output_E_Output_I_init_weight_scale: 0.10783222041590698
+    Output_I_Output_E_init_weight_scale: 2.749075677576883
+    Output_I_H2_E_init_weight_scale: 0.43883100144555437
+    Output_I_Output_I_init_weight_scale: 2.539086723963597
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
+BP_like_5J_learn_TD_HWN_1:
+    # all H.E units are updated and nudged
+    # with relu gating
+    # no backward equilibration during backward phase
+    # weight update refers to forward activities
+    # with auxiliary objective to reduce forward dendritic state
+    # DendI.E and DendI.DendI learned with Hebb_WeightNorm
+    #    accuracy: 92.8458023071289
+    #    dynamics_residuals: 0.0
+    #    loss: 0.016994189471006393
+    #    mean_forward_dend_loss: 0.010076100751757622
+    # stability: after 50000 steps:
+    H1_E_Input_E_init_weight_scale: 2.2666950622809567
+    H2_E_H1_E_init_weight_scale: 0.7222533890467538
+    H_E_learning_rate: 0.013806504879046978
+    H2_E_Output_E_learning_rate: 0.0006164621136790176
+    H_E_TD_learning_rate: 0.02488367044737731
+    H1_E_H2_E_weight_scale: 0.04334211511806897
+    H2_E_Output_E_weight_scale: 0.9004643434895789
+    H1_E_H1_SomaI_init_weight_scale: 1.2628897682534976
+    H1_SomaI_H1_E_init_weight_scale: 0.6420596962839558
+    H1_SomaI_Input_E_init_weight_scale: 2.9974367498593577
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.5630897272239508
+    H_E_DendI_learning_rate: 0.14808072268540207
+    H1_E_H1_DendI_init_weight_scale: 0.8495189919947521
+    H1_DendI_H1_E_weight_scale: 2.7892064780766477
+    H1_DendI_H1_DendI_weight_scale: 1.3654694635823927
+    H2_E_H2_SomaI_init_weight_scale: 0.2780438491311376
+    H2_SomaI_H2_E_init_weight_scale: 0.14211025702446425
+    H2_SomaI_H1_E_init_weight_scale: 1.0521498637332394
+    H2_SomaI_H2_SomaI_init_weight_scale: 0.3623575131438266
+    H2_E_H2_DendI_init_weight_scale: 1.5225382038301358
+    H2_DendI_H2_E_weight_scale: 0.966309462384168
+    H2_DendI_H2_DendI_weight_scale: 0.8929922587685236
+    Output_E_H2_E_init_weight_scale: 5.1616305803614475
+    DendI_E_learning_rate: 0.023152441772177852
+    DendI_DendI_learning_rate: 0.0005327788408008016
+    Output_E_H2_E_learning_rate: 0.040693727211006114
+    Output_E_Output_I_init_weight_scale: 1.2592775412314963
+    Output_I_Output_E_init_weight_scale: 0.6729426618905242
+    Output_I_H2_E_init_weight_scale: 0.7775419560117509
+    Output_I_Output_I_init_weight_scale: 3.4873814085466424
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
 BP_like_2O:
     # all H.E units are updated and nudged
     # with network-wide equilibration during backward phase and relu gating
@@ -1394,7 +1482,47 @@ BTSP_4J:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
-
+BTSP_5J:
+    # weight update consults forward activity
+    #    accuracy: 90.8073959350586
+    #    dynamics_residuals: 0.0
+    #    loss: 0.024427808821201324
+    #    mean_forward_dend_loss: 0.009147725813090802
+    H_E_FF_E_max_weight_scale: 8.20234451457625
+    H1_E_Input_E_init_weight_factor: 0.3744353002121644
+    H_E_E_learning_rate: 0.025073971860883993
+    H1_E_H2_E_weight_scale: 0.14914008736853437
+    neg_rate_th: 0.0
+    temporal_discount: 0.004362208702675701
+    H1_E_H1_SomaI_init_weight_scale: 1.3056868766765932
+    H1_SomaI_H1_E_init_weight_scale: 0.5274538119816882
+    H1_SomaI_Input_E_init_weight_scale: 2.057140397900334
+    H1_SomaI_H1_SomaI_init_weight_scale: 0.7829176730602394
+    H1_E_H1_DendI_init_weight_scale: 1.5295843727785874
+    H_E_DendI_learning_rate: 0.05760530927478433
+    H1_DendI_H1_E_weight_scale: 1.8022683875103316
+    H1_DendI_H1_DendI_weight_scale: 1.0543493940588025
+    DendI_E_learning_rate: 0.10579204969313896
+    DendI_DendI_learning_rate: 0.25312487325961097
+    H2_E_H1_E_init_weight_factor: 0.08044161422596176
+    H2_E_Output_E_weight_scale: 1.1100417988762918
+    H2_E_H2_SomaI_init_weight_scale: 0.36559526012940174
+    H2_SomaI_H2_E_init_weight_scale: 0.6060199162988313
+    H2_SomaI_H1_E_init_weight_scale: 0.6461823599161363
+    H2_SomaI_H2_SomaI_init_weight_scale: 1.814415484451652
+    H2_E_H2_DendI_init_weight_scale: 5.573313576537959
+    H2_DendI_H2_E_weight_scale: 4.082097556420635
+    H2_DendI_H2_DendI_weight_scale: 2.653192347371432
+    Output_E_H2_E_max_weight_scale: 11.240378502647692
+    Output_E_H2_E_init_weight_factor: 0.9805814929343899
+    Output_E_H2_E_learning_rate: 0.019375669287968578
+    Output_E_Output_I_init_weight_scale: 0.3760301888244902
+    Output_I_Output_E_init_weight_scale: 1.0978728243951748
+    Output_I_H2_E_init_weight_scale: 0.7408852494299578
+    Output_I_Output_I_init_weight_scale: 2.6902818495321896
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
 Hebb_WeightNorm_4:
     #    accuracy: 34.799797
     #    loss: 0.0856768

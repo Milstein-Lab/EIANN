@@ -797,21 +797,23 @@ EXPORTED/UPLOADED 20241003:
  - BTSP_3L_fixed_TD
  - Supervised_Hebb_WN_learn_SomaI
 
+EXPORTED/UPLOADED 20241014:
+ - BP_like_5J [same as 2J but with equil and dend_state objectives]
+
 NEED TO EXPORT:
- - BTSP_3L_learn_TD_HWN_4
+ - BTSP_3L_learn_TD_HWN_4 
+ - BP_like_5J_learn_TD_HWN_1
+ - BTSP_5J [can use BTSP_17 rule like BTSP_3J but with relu_gate=True]
  
 NEED TO UPLOAD:
 
 NEED TO RUN:
  - A set of configurations where the weight update depends only on forward activity (in fact backward equilibration is not even necessary)
- - BP_like_5J [same as 2J but with equil and dend_state objectives]
  - BP_like_5J_fixed_TD
- - BP_like_5J_learn_TD_HWN_1
- - BTSP_5J [can use BTSP_17 rule like BTSP_3K but with relu_gate=True]
  - BTSP_5J_fixed_TD
- - BTSP_5J_learn_TD_HWN_1
  
-RUNNING 20240918:
+RUNNING 20241011:
+ 
  
 HOT_STARTING 20240927:
- 
+ - BTSP_5J_learn_TD_HWN_1 [ 131 gens]
