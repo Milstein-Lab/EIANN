@@ -371,7 +371,7 @@ def compute_feedback_weight_angle_history(network, plot=False, ax=None):
             fig, ax = plt.subplots(1, 1, figsize=(5,3))
         else:
             fig = ax.get_figure()
-        steps = network.val_history_train_steps
+        steps = network.param_history_steps
         for i,projection_pair in enumerate(angles):
             ax.plot(steps,angles[projection_pair], label=projection_pair)
         ax.legend()
