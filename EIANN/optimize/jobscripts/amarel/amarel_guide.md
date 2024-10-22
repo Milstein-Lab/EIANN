@@ -8,13 +8,14 @@ $ cd nested
 nested$ git checkout pre_release
 ```
 
-Make conda environment for EIANN
+Setup conda environment and local installation for EIANN
 ```bash
 nested$ cd ../EIANN
 EIANN$ conda create --name eiann python=3.9
 EIANN$ conda activate eiann
 EIANN$ pip install -r requirements.txt
 EIANN$ conda install anaconda::mpi4py
+EIANN$ pip install --target ~/miniconda/envs/eiann/lib/python3.9/site-packages -e .
 ```
 
 Load required modules
