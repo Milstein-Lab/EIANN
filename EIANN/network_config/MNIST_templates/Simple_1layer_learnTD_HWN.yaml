@@ -1,11 +1,11 @@
 layer_config:
     Input:
         E:
-            size: 5
+            size: 784
     Output:
         E:
             size: 10
-            # activation: relu
+            activation: relu
 
 projection_config:
     Output.E:
@@ -18,19 +18,20 @@ projection_config:
             weight_constraint: normalize_weight
             weight_constraint_kwargs:
                 scale: 0.1
-            learning_rule: Hebb_WeightNorm
-            learning_rule_kwargs:
-                learning_rate: 0.1
-                forward_only: true
+            learning_rule: null
+            # learning_rule: Hebb_WeightNorm
+            # learning_rule_kwargs:
+            #     learning_rate: 0.1
+            #     forward_only: true
 
     Input.E:
         Output.E:
-            # weight_init: half_kaiming
-            # weight_init_args: [0.]
-            weight_init: clone_weight
-            weight_init_args:
-                source: Output.E.Input.E
-                transpose: true
+            weight_init: half_kaiming
+            weight_init_args: [0.]
+            # weight_init: clone_weight
+            # weight_init_args:
+            #     source: Output.E.Input.E
+            #     transpose: true
             type: exc
             direction: F
             compartment: dend
