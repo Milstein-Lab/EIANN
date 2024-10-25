@@ -1523,6 +1523,50 @@ BTSP_5J:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
+BTSP_5J_learn_TD_HWN_1:
+    # weight update consults forward activity
+    # TD_HWN consults forward activity
+    #    accuracy: 68.43880462646484
+    #    dynamics_residuals: 0.04388498961925506
+    #    loss: 0.0497175008058548
+    #    mean_forward_dend_loss: 0.04940431341528893
+    H_E_FF_E_max_weight_scale: 5.14664159744874
+    H1_E_Input_E_init_weight_factor: 0.8972299264768389
+    H_E_E_learning_rate: 0.011755254631458826
+    H2_E_Output_E_learning_rate: 0.10229288780805439
+    H_E_TD_learning_rate: 0.021087938387224593
+    H1_E_H2_E_weight_scale: 0.4500395290060518
+    neg_rate_th: 0.0
+    temporal_discount: 0.004511303585360688
+    H1_E_H1_SomaI_init_weight_scale: 1.1006052329603717
+    H1_SomaI_H1_E_init_weight_scale: 0.19656963132662378
+    H1_SomaI_Input_E_init_weight_scale: 1.6913217221325245
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.2951195526212351
+    H1_E_H1_DendI_init_weight_scale: 2.7144605152564534
+    H_E_DendI_learning_rate: 0.196108119884788
+    H1_DendI_H1_E_weight_scale: 0.31866308339844923
+    H1_DendI_H1_DendI_weight_scale: 1.3658224713099767
+    DendI_E_learning_rate: 0.005666765318050923
+    DendI_DendI_learning_rate: 0.03667815506632662
+    H2_E_H1_E_init_weight_factor: 0.42603264932277857
+    H2_E_Output_E_weight_scale: 0.5384107988494501
+    H2_E_H2_SomaI_init_weight_scale: 0.5623242543554674
+    H2_SomaI_H2_E_init_weight_scale: 0.531531585178008
+    H2_SomaI_H1_E_init_weight_scale: 1.8163040736863918
+    H2_SomaI_H2_SomaI_init_weight_scale: 0.7023670741092747
+    H2_E_H2_DendI_init_weight_scale: 0.35661778180220716
+    H2_DendI_H2_E_weight_scale: 0.72460843892731
+    H2_DendI_H2_DendI_weight_scale: 1.30167308944467
+    Output_E_H2_E_max_weight_scale: 19.746481586047118
+    Output_E_H2_E_init_weight_factor: 0.1517104183427077
+    Output_E_H2_E_learning_rate: 0.009984435205042193
+    Output_E_Output_I_init_weight_scale: 0.04099953792347442
+    Output_I_Output_E_init_weight_scale: 1.5322222873029105
+    Output_I_H2_E_init_weight_scale: 2.472796721917389
+    Output_I_Output_I_init_weight_scale: 1.9287375785565064
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
 Hebb_WeightNorm_4:
     #    accuracy: 34.799797
     #    loss: 0.0856768
