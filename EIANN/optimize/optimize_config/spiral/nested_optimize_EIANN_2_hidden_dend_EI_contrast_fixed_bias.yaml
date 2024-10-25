@@ -4,28 +4,25 @@
 
 bounds:
     H1_E_Input_E_learning_rate: 
-        - 0.0001
-        - 0.5
+        - 0.001
+        - 0.25
     H1_E_H1_E_learning_rate:
         - 0.0001
-        - 0.5
+        - 0.25
     H1_E_H2_E_weight_scale:
         - 0.01
         - 10.
     
-    # H2_E_H1_E_learning_rate:
-    #     - 0.0001
-    #     - 0.5
     H2_E_H2_E_learning_rate:
         - 0.0001
-        - 0.5
+        - 0.25
     H2_E_Output_E_weight_scale:
         - 0.01
         - 10.
 
     Output_E_H2_E_learning_rate: 
         - 0.0001
-        - 0.5
+        - 0.25
 default_params:
 rel_bounds:
 kwargs:
@@ -49,7 +46,7 @@ kwargs:
 update_context:
     - source: optimize.nested_optimize_EIANN_spiral_2_hidden
       function: update_spiral_config_2_hidden_dend_EI_contrast
-# param_gen: OptunaOptimizer
+param_gen: PopulationAnnealing # can be OptunaOptimizer
 stages:
     - source: optimize.nested_optimize_EIANN_spiral_2_hidden
       get_args_static: get_random_seeds
@@ -58,17 +55,16 @@ stages:
       get_objectives: get_objectives
       # get_objectives: get_objectives_single
 optimization_title: EIANN_2_hidden_spiral_dend_EI_contrast_fixed_bias
-# x0:
-#     H1_E_Input_E_learning_rate: 0.04576
-#     H1_E_H1_E_learning_rate: 0.88063
-#     H1_E_H2_E_weight_scale: 1
-#     # H2_E_H1_E_learning_rate: 0.04576
-#     H2_E_H2_E_learning_rate: 0.04576
-#     H2_E_Output_E_weight_scale: 1
-#     Output_E_H2_E_learning_rate: 0.04576
+x0:
+    H1_E_Input_E_learning_rate: 0.1
+    H1_E_H1_E_learning_rate: 0.1
+    H1_E_H2_E_weight_scale: 1.
+    H2_E_H2_E_learning_rate: 0.1
+    H2_E_Output_E_weight_scale: 1.
+    Output_E_H2_E_learning_rate: 0.1
 
 
-# To get analysis of features based on current congig, run this:
+# To get analysis of features based on current config (of x0 values), run this:
 # EIANN\EIANN$ python -m nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_dend_EI_contrast_fixed_bias.yaml --disp
 
 # To do optimization based on this config, run this:
