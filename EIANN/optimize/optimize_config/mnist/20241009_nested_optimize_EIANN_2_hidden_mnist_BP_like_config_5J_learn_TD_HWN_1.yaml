@@ -123,10 +123,10 @@ kwargs:
     include_dend_loss_objective: True
     include_equilibration_dynamics_objective: True
 update_context:
-    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+    - source: EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist
       function: update_EIANN_config_2_hidden_BP_like_2L_learn_TD_HWN_1  # works with 5J
 stages:
-    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+    - source: EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
