@@ -27,9 +27,9 @@ plt.rcParams.update({'font.size': 6,
                     'xtick.major.pad':   2,
                     'ytick.major.pad':   2,
                     'legend.frameon':       False,
-                    'legend.handletextpad': 0.2,
-                    'legend.handlelength': 1,
-                    'legend.handleheight': 1,
+                    'legend.handletextpad': 0.5,
+                    'legend.handlelength': 0.8,
+                    # 'legend.handleheight': 10,
                     'legend.labelspacing': 0.2,
                     'legend.columnspacing': 1.2,
                     'lines.linewidth': 0.5,
@@ -39,14 +39,61 @@ plt.rcParams.update({'font.size': 6,
                     'text.usetex': False})
 
 '''
+Figure 1: Diagram - How Dendritic Target Propagation (DendTP) works
+    -> DendTP is a biologically plausible way to pass gradients to hidden layers
+    -> Compute local loss with top-down nudges and dendI subtraction
+    -> Diagram of nudges (+a+D) over time 
 
+Figure 2: Dale's Law architecture is able to learn good representations (even with random somaI). Is self-organization enough? (No)
+    -> vanBP vs bpDale(onlyE) vs bpDale(fixedI) vs Hebb(top-sup)
+    -> (bpDale is more structured/sparse [H1E/H2E metrics])
+
+Supplementary 1: learning somaI is not necessary
+    -> bpDale(learned) vs bpDale(fixed) [somaI representations + accuracy/selectivity/sparsity]
+
+How to compute accurate gradients with bio-plausible rule?
+Figure 3: Hebbian learning rule enables dendritic cancellation of forward activity
+    -> DendI representation: Random vs LocalBP vs HebbWN
+    -> Plot Dend State over time
+    -> Plot angle vs BP
+
+Figure 4: Given good bio-gradients, what do different bio-motivated learning rules give?
+    -> BTSP vs BCM vs HebbWN
+    -> Representations/RFs for HiddenE + metrics plots
+
+Supplement: Dend state + soma/dendI representations + angle vs BP
+
+Figure 5: Hebbian learning rule enables W/B alignment
+    -> FA vs BTSP vs bpLike
+    -> Plot W/B angle over time
+    -> Plot angle vs BP + accuracy
+    -> (Diagram + equations)
+
+Supplementary: Alternate/Different approaches to W/B alignment
+    -> If only consider postsynaptic D (not forward activity): perfect alignment (cf Burstprop)
+    -> If only consider forward activity: alignment only if cov(a)=I (eg. Gaussian noise or one-hot)
+    -> 'Coincidental' alignment: some alignment remains if cov(a)!=I, because of similarities in learned structure between PCA and BP
+
+Supplementary: DendTP performs well across different tasks (cf Burstprop Fig6)
+    -> Spirals requires biases (random fixed)
+    -> Plot train accuracy in Spirals
+    -> Plot test accuracy in Spirals
+    
+
+    
+--------------------------------------------------------------------------------------
+    
+Figure 2: somaI representations in bpDale(learnedI) vs top-sup HebbWN(learnedI) vs unsup-HebbWN(learnedI)
+    (top: OutputE + H1E, activity and receptive fields and metrics)
+    (bottom: OutputSomaI + H1SomaI, activity and metrics)
+    -> bpDale SomaI is unselective/unstructured, biological learning rule is not (focus on SomaI metrics)
+    -> sup HebbWN performance is mediocre (representational collapse), we need a biological way to pass gradients to hidden layers
 
 (switched to fixed somaI)
 -> bpDale still performs with fixedI, HebbWN does not, but BCM does (focus on H1E metrics)
 (Supp: bpDale(fixedI) vs top-sup HebbWN(fixedI) vs top-sup BCM(fixedI) vs unsup BCM(fixedI))
 
 Passing gradients with apical dendrites:
-
 Figure 3: dendritic_gating(bpLike) vs dendritic_gating w/ HebbWN dendritic learning
         -> Can compute local loss with top-down nudges and dendI subtraction
         -> dendritic subtraction is effective even with HebbWN
@@ -54,8 +101,6 @@ Figure 3: dendritic_gating(bpLike) vs dendritic_gating w/ HebbWN dendritic learn
 Figure 4: BTSP(weight transpose + HebbWN dendI) vs sup-HebbWN
         -> Local loss allows learning with a biological rule
         -> BTSP does better than Hebbian (Hebb too simple)
-
-Figure 5: BTSP(learned top-down W + HebbWN dendI)
 '''
 
 
@@ -337,13 +382,7 @@ def generate_single_model_figure(model_dict, config_path_prefix="network_config/
 ########################################################################################################
 
 
-# def E_population_comparisons(model_dict, model_list_heatmaps, save=True, overwrite=False):
-
-
-
-"""Figure 1: Van_BP vs bpDale(learnedI)
-    -> bpDale is more structured/sparse (focus on H1E metrics)"""
-def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
+def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
     '''
     Figure 1: Van_BP vs bpDale(learnedI)
         -> bpDale is more structured/sparse (focus on H1E metrics)
@@ -378,7 +417,6 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     # ax_structure   = fig.add_subplot(metrics_axes[1, 1])
     # ax_sparsity    = fig.add_subplot(metrics_axes[2, 0])
     # ax_selectivity = fig.add_subplot(metrics_axes[2, 1])    
-    col = 0
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     
@@ -393,6 +431,7 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
             generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
             gc.collect()
 
+    col = 0
     for i, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
@@ -463,7 +502,10 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                 ax_accuracy.set_xlabel('Training step')
                 ax_accuracy.set_ylabel('Test accuracy (%)', labelpad=-2)
                 ax_accuracy.set_ylim([0,100])
-                ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
+                ax_accuracy.legend(handlelength=1, ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
+                legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
+                for line in legend.get_lines():
+                    line.set_linewidth(1.5)
 
                 sparsity_all_seeds = []
                 for seed in data_dict:
@@ -471,7 +513,6 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                     for population in ['H1E', 'H2E']:
                         sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
                     sparsity_all_seeds.append(sparsity_one_seed)
-
                 # avg_sparsity_per_seed = [np.mean(x) for x in sparsity_all_seeds]
                 # avg_sparsity = np.mean(avg_sparsity_per_seed)
                 # error = np.std(avg_sparsity_per_seed)
@@ -491,7 +532,6 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                     for population in ['H1E', 'H2E']:
                         selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
                     selectivity_all_seeds.append(selectivity_one_seed)
-
                 # avg_selectivity_per_seed = [np.mean(x) for x in selectivity_all_seeds]
                 # avg_selectivity = np.mean(avg_selectivity_per_seed)
                 # error = np.std(avg_selectivity_per_seed)
@@ -513,7 +553,6 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                         for population in ['H1E', 'H2E']:
                             structure_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['structure'])
                         structure_all_seeds.append(structure_one_seed)
-
                     # avg_structure_per_seed = [np.mean(x) for x in structure_all_seeds]
                     # avg_structure = np.mean(avg_structure_per_seed)
                     # error = np.std(avg_structure_per_seed)
@@ -534,21 +573,12 @@ def generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, confi
             # ax_structure.set_xticklabels([model_key for model_key in model_list_metrics], fontsize=6, rotation=45, ha='right', rotation_mode='anchor')
 
 
-
-    if save:
-        fig.savefig("figures/Fig1_vanBP_bpDale_hebb.png", dpi=600)
-        fig.savefig("figures/Fig1_vanBP_bpDale_hebb.svg", dpi=600)
-
+    if save is not None:
+        fig.savefig(f"figures/{save}.png", dpi=600)
+        fig.savefig(f"figures/{save}.svg", dpi=600)
 
 
-"""
-Figure 2: bpDale(learnedI) vs top-sup HebbWN(learnedI) vs unsup-HebbWN(learnedI)
-    (top: OutputE + H1E, activity and receptive fields and metrics)
-    (bottom: OutputSomaI + H1SomaI, activity and metrics)
-    -> bpDale SomaI is unselective/unstructured, biological learning rule is not (focus on SomaI metrics)
-    -> sup HebbWN performance is mediocre (representational collapse), we need a biological way to pass gradients to hidden layers
-"""
-def generate_Fig2(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
+def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
 
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=6,                        
@@ -619,7 +649,10 @@ def generate_Fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                 ax_accuracy.set_xlabel('Training step')
                 ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
                 ax_accuracy.set_ylim([0,100])
-                ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=1, bbox_to_anchor=(1., 1.), loc='upper left', fontsize=6)
+                legend = ax_accuracy.legend(ncol=1, bbox_to_anchor=(1., 1.), loc='upper left', fontsize=6)
+                for line in legend.get_lines():
+                    line.set_linewidth(1.5)  # Adjust linewidth in the legend
+
 
                 sparsity_all_seeds = []
                 for seed in data_dict:
@@ -643,11 +676,11 @@ def generate_Fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
 
 
     if save:
-        fig.savefig("figures/Fig2_somaI.png", dpi=600)
-        fig.savefig("figures/Fig2_somaI.svg", dpi=600)
+        fig.savefig(f"figures/{save}.png", dpi=600)
+        fig.savefig(f"figures/{save}.svg", dpi=600)
 
 
-def generate_Fig3(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False):
+def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
 
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=6,                        
@@ -719,7 +752,9 @@ def generate_Fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                 ax_accuracy.set_xlabel('Training step')
                 ax_accuracy.set_ylabel('Accuracy', labelpad=-2)
                 ax_accuracy.set_ylim([0,100])
-                ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(-1., 1.3), loc='upper left', fontsize=6)
+                legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-2., 1.3), loc='upper left', fontsize=6)
+                for line in legend.get_lines():
+                    line.set_linewidth(1.5)  # Adjust linewidth in the legend
                 
                 sparsity_all_seeds = []
                 for seed in model_dict['seeds']:
@@ -771,14 +806,15 @@ def generate_Fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
 
 
     if save:
-        fig.savefig("figures/Fig3_DendI.png", dpi=600)
-        fig.savefig("figures/Fig3_DendI.svg", dpi=600)
+        fig.savefig(f"figures/{save}.png", dpi=600)
+        fig.savefig(f"figures/{save}.svg", dpi=600)
 
 
-def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=True, overwrite=False): 
-    # fig = plt.figure(figsize=(5.5, 4))
-    fig = plt.figure(figsize=(11, 8))
+def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False): 
+    fig = plt.figure(figsize=(5.5, 4))
+    # fig = plt.figure(figsize=(11, 8))
     # fig = plt.figure(figsize=(23.1, 16.8))
+    fig = plt.figure(figsize=(7, 4))
 
     # axes = gs.GridSpec(nrows=4, ncols=4, figure=fig, bottom=0.1, top=0.9, left=0.1, right=0.99, hspace=0.5, wspace=0.5)
     axes = gs.GridSpec(nrows=4, ncols=4, figure=fig, bottom=0.1, top=0.9, left=0.1, right=0.8, hspace=0.5, wspace=0.5)
@@ -861,9 +897,9 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
             ax_angleBP_stoch.set_xlabel('Training step')
             ax_angleBP_stoch.set_ylabel('Angle vs BP (stoch.)')
             ax_angleBP_stoch.set_ylim([0,90])
-            ax_angleBP_stoch.set_xlim([0,20000])
             ax_angleBP_stoch.set_yticks(np.arange(0, 101, 30))
-            
+            # ax_angleBP_stoch.set_xlim([0,20000])
+
             # Learning curves / metrics
             accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in data_dict]
             avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
@@ -876,7 +912,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
             ax_accuracy.set_ylim([0,100])
             legend = ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(0., 1.5), loc='upper left', fontsize=6)
             for line in legend.get_lines():
-                line.set_linewidth(2)  # Adjust linewidth in the legend
+                line.set_linewidth(1.5)  # Adjust linewidth in the legend
 
             sparsity_all_seeds = []
             for seed in data_dict:
@@ -962,8 +998,8 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
             
 
     if save:
-        fig.savefig("figures/metrics_all_models.png", dpi=300)
-        fig.savefig("figures/metrics_all_models.svg", dpi=300)
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
 
@@ -973,12 +1009,11 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
 @click.command()
 @click.option('--figure', default=None, help='Figure to generate')
 @click.option('--overwrite', is_flag=True, default=False, help='Overwrite existing network data in plot_data.hdf5 file')
-@click.option('--save',      is_flag=True, default=True, help='Save plots')
 @click.option('--single-model', default=None, help='Model key for loading network data')
 @click.option('--generate-data', default=None, help='Generate HDF5 data files for plots')
 @click.option('--recompute', default=None, help='Recompute plot data for a particular parameter')
 
-def main(figure, overwrite, save, single_model, generate_data, recompute):
+def main(figure, overwrite, single_model, generate_data, recompute):
     # pt.update_plot_defaults()
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
 
@@ -988,7 +1023,7 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
                                             "name":   "Vanilla Backprop"},
 
                         "bpDale_learned":  {"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml",
-                                            "color":  "cyan",
+                                            "color":  "blue",
                                             "name":   "Backprop + Dale's Law (learned somaI)"},
 
                         "bpDale_fixed":    {"config": "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml",
@@ -996,7 +1031,7 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
                                             "name":   "Backprop + Dale's Law (fixed somaI)"},
 
                         "hebb_topsup":     {"config": "20240714_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
-                                            "color":  "cyan",
+                                            "color":  "green",
                                             "name":   "Supervised Hebb \n(w/ weight norm.)"},
 
                         "BTSP":            {"config":"20240604_EIANN_2_hidden_mnist_BTSP_config_3L_complete_optimized.yaml",
@@ -1007,6 +1042,9 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
                                             "color": "cyan",
                                             "name": "HWN learned Top-Down"},
 
+                        "bpDale_noI":     {"config": "20240919_EIANN_2_hidden_mnist_bpDale_noI_relu_SGD_config_G_complete_optimized.yaml",
+                                           "color": "blue",
+                                           "name": "Dale's Law (no somaI)"},
 
 
                         "bpLike_hebbdend": {"config": "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml",
@@ -1026,7 +1064,7 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
 
                         # 1. Consulting nudged activity for updating forward weights + HWN rules
                         "bpLike_FA":       {"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml",
-                                            "color": "gray",
+                                            "color": "lightgray",
                                             "name": "Random (Feedback Alignment)"},
 
                         "bpLike_learnedTD":{"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_3_complete_optimized.yaml",
@@ -1045,6 +1083,10 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
                         "bpLike_learnedTD_nonudge":{"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HWN_1_complete_optimized.yaml",
                                                     "color": "salmon",
                                                     "name": "Learned top-town (Hebb) no-nudge"},
+                        
+                        "HebbWN_learned_somaI": {"config": "20240919_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_learn_somaI_config_4_complete_optimized.yaml",
+                                                 "color": "cyan",
+                                                 "name": "Supervised HebbWN learned somaI"},
 
         }
 
@@ -1080,44 +1122,42 @@ def main(figure, overwrite, save, single_model, generate_data, recompute):
     if single_model is not None:
         if single_model=='all':
             for model_key in model_dict_all:
-                generate_single_model_figure(model_dict=model_dict_all[model_key], save=save, overwrite=overwrite)
+                generate_single_model_figure(model_dict=model_dict_all[model_key], save=True, overwrite=overwrite)
         else:
-            generate_single_model_figure(model_dict=model_dict_all[single_model], save=save, overwrite=overwrite)
+            generate_single_model_figure(model_dict=model_dict_all[single_model], save=True, overwrite=overwrite)
 
-    if figure in ["all", "fig1"]:
-        # model_list_heatmaps = ["vanBP", "bpDale_learned", "bpLike_hebbdend"]
-        # model_list_metrics = ["vanBP", "bpDale_learned", "bpLike_hebbdend"]
-        model_list_heatmaps = ["bpLike_learnedTD", "bpDale_fixed", "bpLike_hebbdend"]
-        model_list_metrics = ["bpLike_learnedTD", "bpDale_fixed", "bpLike_hebbdend"]
+    if figure == "fig1":
+        print("Diagram figure not implemented")
 
-        model_list_heatmaps = ["vanBP", "bpDale_learned", "bpLike_learnedTD_nonudge"]
-        model_list_metrics = ["vanBP", "bpDale_learned", "bpLike_learnedTD_nonudge", "bpLike_learnedTD"]        
-        generate_Fig1(model_dict_all, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
+    if figure in ["all", "fig2"]:
+        model_list_heatmaps = ["vanBP", "bpDale_fixed", "hebb_topsup"]
+        model_list_metrics = model_list_heatmaps
+        figure_name = "Fig2_vanBP_bpDale_hebb"
+        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
-    elif figure in ["all", "fig2"]:
+    elif figure in ["all", "S1"]:
         model_list_heatmaps = ["bpDale_learned", "bpDale_fixed"]
         model_list_metrics = ["bpDale_learned", "bpDale_fixed"]
-        generate_Fig2(model_dict_all, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
+        figure_name = "Fig2_supplement_somaI"
+        compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
     elif figure in ["all", "fig3"]:
         model_list_heatmaps = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
         model_list_metrics = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
-        # model_list_heatmaps = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
-        # model_list_metrics = ["BTSP", "bpLike_fixedDend", "bpLike_hebb"]
-        generate_Fig3(model_dict_all, model_list_heatmaps, model_list_metrics, save=save, overwrite=overwrite)
+        figure_name = "Fig3_dendI"
+        compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+
+    elif figure in ["all","fig4"]:
+        #BTSP vs BCM vs HebbWN
+        model_list_heatmaps = ["BTSP", "BCM", "Hebb_WeightNorm"]
+        model_list_metrics = model_list_heatmaps
+        figure_name = "Fig4_BTSP_BCM_HebbWN"
+        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
     elif figure in ["all", "metrics"]:
-        # model_list = ["bpLike_hebbdend", "bpLike_FA", "bpLike_learnedTD", "vanBP", "bpDale_learned"]
-        # model_list = ["vanBP", "bpDale_learned", "bpDale_fixed", "bpLike_hebbdend"]
-        # model_list = ["vanBP", "bpDale_learned", "bpLike_hebbdend"]
-        # model_list = ["bpLike_learnedTD", "bpLike_FA", "bpLike_hebbdend", "BTSP"]
-
-        # model_list = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
-        # model_list = ["bpLike_learnedTD", "bpLike_FA", "bpLike_hebbdend"]
-
-        model_list = ["vanBP", "bpDale_learned", "bpLike_learnedTD_nonudge", "bpLike_learnedTD"]
-
-        generate_metrics_plot(model_dict_all, model_list, save=save, overwrite=overwrite)
+        model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_learnedTD", "bpLike_FA"]
+        figure_name = "metrics_all_models"
+        generate_metrics_plot(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
 
 
 if __name__=="__main__":
