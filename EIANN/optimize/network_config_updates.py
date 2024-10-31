@@ -10062,7 +10062,7 @@ def update_EIANN_config_2_hidden_mnist_BTSP_D1(x, context):
     context.projection_config['Output']['E']['Output']['FBI']['weight_init_args'] = (-Output_E_Output_FBI_weight_scale,)
     context.projection_config['Output']['FBI']['Output']['E']['weight_init_args'] = (Output_FBI_Output_E_weight_scale,)
 
-def update_spiral_config_2_hidden_dend_EI_contrast(x, context):
+def update_spiral_config_2_hidden_dend_EI_contrast_fixed_bias(x, context):
     '''
     Based on update_EIANN_config_2_hidden_BP_like_2E
     :param x:

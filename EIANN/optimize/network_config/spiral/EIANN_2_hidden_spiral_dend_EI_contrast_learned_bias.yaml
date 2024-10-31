@@ -1,0 +1,115 @@
+# Equivalent to dend_EI_contrast_learned_bias from Summer2024 project
+
+layer_config:
+  Input:
+    E:
+      size: 2
+
+  H1:
+    E:
+      size: 128
+      activation: relu 
+      include_bias: True
+      bias_learning_rule: DendriticLossBias
+      bias_learning_rule_kwargs:
+        learning_rate: 0.2456298781576449
+
+  H2:
+    E:
+      size: 32
+      activation: relu
+      include_bias: True
+      bias_learning_rule: DendriticLossBias
+      bias_learning_rule_kwargs:
+        learning_rate: 0.2456298781576449
+
+  Output:
+    E:
+      size: 4
+      activation: relu
+      include_bias: True
+      bias_learning_rule: DendriticLossBias
+      bias_learning_rule_kwargs:
+        learning_rate: 0.2456298781576449
+
+
+projection_config:
+  H1.E:
+    Input.E:
+      direction: F
+      learning_rule: BP_like_2E
+      learning_rule_kwargs:
+        max_pop_fraction: 1.0
+        stochastic: false
+        relu_gate: True
+        learning_rate: 0.2456298781576449
+      weight_init: scaled_kaiming
+      weight_init_args:
+        - 1
+    H2.E:
+      update_phase: B
+      learning_rule: null
+      compartment: dend
+      weight_constraint: clone_weight
+      weight_constraint_kwargs:
+        source: H2.E.H1.E
+        transpose: true
+        scale: 0.01140447075341817
+    H1.E:
+      direction: F
+      update_phase: B
+      compartment: dend
+      learning_rule: DendriticLoss_6
+      learning_rule_kwargs:
+        sign: -1
+        learning_rate: 0.2030527432885036
+  # above part says that H1.E gets projections from Input.E to the soma, H2.E to the dendrite, and to itself (H1.E) as a recurrent connection
+
+  H2.E:
+    H1.E:
+      direction: F
+      learning_rule: BP_like_2E
+      learning_rule_kwargs:
+        max_pop_fraction: 1.0
+        stochastic: false
+        relu_gate: True
+        learning_rate: 0.2456298781576449
+      weight_init: scaled_kaiming
+      weight_init_args:
+        - 1
+    Output.E:
+      update_phase: B
+      learning_rule: null
+      compartment: dend
+      weight_constraint: clone_weight
+      weight_constraint_kwargs:
+        source: Output.E.H2.E
+        transpose: true
+        scale: 0.12370737050591936
+    H2.E:
+      direction: F
+      update_phase: B
+      compartment: dend
+      learning_rule: DendriticLoss_6
+      learning_rule_kwargs:
+        sign: -1
+        learning_rate: 0.22487600456347123
+
+  Output.E:
+    H2.E:
+      direction: F
+      learning_rule: BP_like_2E
+      learning_rule_kwargs:
+        max_pop_fraction: 1.0
+        stochastic: false
+        relu_gate: True
+        learning_rate: 0.0500490639838144
+      weight_init: scaled_kaiming
+      weight_init_args:
+        - 1
+
+training_kwargs:
+  tau: 1
+  forward_steps: 1
+  backward_steps: 0
+  learning_rate: 0.2456298781576449
