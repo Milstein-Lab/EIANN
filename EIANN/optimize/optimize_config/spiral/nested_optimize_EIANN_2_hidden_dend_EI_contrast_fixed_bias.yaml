@@ -1,5 +1,5 @@
 # Being used with: EIANN\optimize\nested_optimize_EIANN_spiral_2_hidden.py
-# Being used to optimize: EIANN\network_config\spiral\EIANN_2_hidden_spiral_dend_EI_contrast_fixed_bias_AM_20241003.yaml
+# Being used to optimize: EIANN\network_config\spiral\EIANN_2_hidden_spiral_dend_EI_contrast_fixed_bias.yaml
 # Based on: EIANN\optimize\optimize_config\mnist\20240706_nested_optimize_EIANN_2_hidden_mnist_BP_like_config_2L.yaml
 
 bounds:
@@ -71,4 +71,4 @@ x0:
 # EIANN\EIANN$ python -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_dend_EI_contrast_fixed_bias.yaml --disp --pop_size=1 --max_iter=10 --path_length=1
 
 # To optimize with MPI (locally), run this:
-# EIANN\EIANN$ mpiexec -n 6 python -m mpi4py.futures -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_dend_EI_contrast_fixed_bias.yaml --disp --pop_size=1 --max_iter=3 --path_length=1 --framework=mpi
+# EIANN\EIANN$ mpiexec -n 5 python -m mpi4py.futures -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_dend_EI_contrast_fixed_bias.yaml --disp --pop_size=1 --max_iter=3 --path_length=1 --framework=mpi --num_instances=4
