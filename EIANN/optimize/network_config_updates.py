@@ -10069,7 +10069,6 @@ def update_spiral_config_2_hidden_dend_EI_contrast_fixed_bias(x, context):
     :param context:
     '''
     param_dict = param_array_to_dict(x, context.param_names)
-    H1_E_Input_E_learning_rate = param_dict['H1_E_Input_E_learning_rate']
 
     H1_E_H2_E_weight_scale = (param_dict['H1_E_H2_E_weight_scale'] *
                               (math.sqrt(context.layer_config['H1']['E']['size']) /
@@ -10079,6 +10078,7 @@ def update_spiral_config_2_hidden_dend_EI_contrast_fixed_bias(x, context):
                                   (math.sqrt(context.layer_config['H2']['E']['size']) /
                                    math.sqrt(context.layer_config['Output']['E']['size'])))
 
+    H1_E_Input_E_learning_rate = param_dict['H1_E_Input_E_learning_rate']
     Output_E_H2_E_learning_rate = param_dict['Output_E_H2_E_learning_rate']
     H1_E_H1_E_learning_rate = param_dict['H1_E_H1_E_learning_rate']
     H2_E_H2_E_learning_rate = param_dict['H2_E_H2_E_learning_rate']
@@ -10086,23 +10086,68 @@ def update_spiral_config_2_hidden_dend_EI_contrast_fixed_bias(x, context):
     # print(f"{context.projection_config}\n")
     # print(f"{context.projection_config['H1']['E']}\n")
     
-    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
-        H1_E_Input_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H1_E_Input_E_learning_rate
     
-    context.projection_config['H1']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
-        H1_E_H1_E_learning_rate
+    context.projection_config['H1']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H1_E_H1_E_learning_rate
 
-    context.projection_config['H1']['E']['H2']['E']['weight_constraint_kwargs']['scale'] = (
-        H1_E_H2_E_weight_scale)
+    context.projection_config['H1']['E']['H2']['E']['weight_constraint_kwargs']['scale'] = H1_E_H2_E_weight_scale
 
-    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
-        H1_E_Input_E_learning_rate
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H1_E_Input_E_learning_rate
 
-    context.projection_config['H2']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = \
-        H2_E_H2_E_learning_rate
+    context.projection_config['H2']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = H2_E_H2_E_learning_rate
 
-    context.projection_config['H2']['E']['Output']['E']['weight_constraint_kwargs']['scale'] = (
-        H2_E_Output_E_weight_scale)
+    context.projection_config['H2']['E']['Output']['E']['weight_constraint_kwargs']['scale'] = H2_E_Output_E_weight_scale
 
-    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = \
-        Output_E_H2_E_learning_rate
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = Output_E_H2_E_learning_rate
+
+def update_spiral_config_2_hidden_dend_EI_contrast_learned_bias(x, context):
+    '''
+    Based on update_EIANN_config_2_hidden_BP_like_2E
+    :param x:
+    :param context:
+    '''
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    H1_E_H2_E_weight_scale = (param_dict['H1_E_H2_E_weight_scale'] *
+                              (math.sqrt(context.layer_config['H1']['E']['size']) /
+                               math.sqrt(context.layer_config['H2']['E']['size'])))
+
+    H2_E_Output_E_weight_scale = (param_dict['H2_E_Output_E_weight_scale'] *
+                                  (math.sqrt(context.layer_config['H2']['E']['size']) /
+                                   math.sqrt(context.layer_config['Output']['E']['size'])))
+
+    # Forward learning rates
+    H1_E_Input_E_learning_rate = param_dict['H1_E_Input_E_learning_rate']
+    Output_E_H2_E_learning_rate = param_dict['Output_E_H2_E_learning_rate']
+
+    # Recurrent learning rates
+    H1_E_H1_E_learning_rate = param_dict['H1_E_H1_E_learning_rate']
+    H2_E_H2_E_learning_rate = param_dict['H2_E_H2_E_learning_rate']
+
+    # Bias learning rates
+    H1_E_bias_learning_rate = param_dict['H1_E_bias_learning_rate']
+    H2_E_bias_learning_rate = param_dict['H2_E_bias_learning_rate']
+    Output_E_bias_learning_rate = param_dict['Output_E_bias_learning_rate']
+
+    # print(f"{context.projection_config}\n")
+    # print(f"{context.projection_config['H1']['E']}\n")
+    
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H1_E_Input_E_learning_rate
+    
+    context.projection_config['H1']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H1_E_H1_E_learning_rate
+
+    context.projection_config['H1']['E']['H2']['E']['weight_constraint_kwargs']['scale'] = H1_E_H2_E_weight_scale
+
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H1_E_Input_E_learning_rate
+
+    context.projection_config['H2']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = H2_E_H2_E_learning_rate
+
+    context.projection_config['H2']['E']['Output']['E']['weight_constraint_kwargs']['scale'] = H2_E_Output_E_weight_scale
+
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = Output_E_H2_E_learning_rate
+
+    context.layer_config['H1']['E']['bias_learning_rule_kwargs']['learning_rate'] = H1_E_bias_learning_rate
+
+    context.layer_config['H2']['E']['bias_learning_rule_kwargs']['learning_rate'] = H2_E_bias_learning_rate
+
+    context.layer_config['Output']['E']['bias_learning_rule_kwargs']['learning_rate'] = Output_E_bias_learning_rate
