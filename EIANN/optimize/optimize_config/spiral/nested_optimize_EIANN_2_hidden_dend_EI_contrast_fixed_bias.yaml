@@ -69,3 +69,6 @@ x0:
 
 # To do optimization based on this config, run this:
 # EIANN\EIANN$ python -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_dend_EI_contrast_fixed_bias.yaml --disp --pop_size=1 --max_iter=10 --path_length=1
+
+# To optimize with MPI (locally), run this:
+# EIANN\EIANN$ mpiexec -n 6 python -m mpi4py.futures -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_dend_EI_contrast_fixed_bias.yaml --disp --pop_size=1 --max_iter=3 --path_length=1 --framework=mpi
