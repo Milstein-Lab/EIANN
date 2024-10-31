@@ -893,3 +893,31 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
         fig.tight_layout()
         fig.show()
     return residuals
+
+
+def compute_dendritic_state_dynamics(network):
+    for layer in network:
+        for population in layer:
+            # Initialize dendritic state history dynamics
+            population.forward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history)
+            population.backward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history)
+            for sample in range(len(network.sample_order)):
+                if population == network.output_pop: # The output population has no dynamics, only constant nudges towards target activity
+                    population.backward_dendritic_state_history_dynamics[sample] = population.plateau_history[sample].unsqueeze(0).repeat(15, 1)
+                else:
+                    population.dendritic_state = torch.zeros(population.size)
+                    for phase in ['forward', 'backward']:
+                        for t in range(network.forward_steps):
+                            for projection in population:
+                                if projection.compartment == 'dend':
+                                    if projection.direction in ['forward', 'F']:
+                                        pre_activity = projection.pre.activity_history[sample,t]
+                                        population.dendritic_state = (population.dendritic_state + projection(pre_activity))
+                                    elif projection.direction in ['recurrent', 'R']:
+                                        pre_activity = projection.pre.activity_history[sample,t-1] if t > 0 else torch.zeros_like(projection.pre.activity_history[sample,0])                                    
+                                        population.dendritic_state  = (population.dendritic_state + projection(pre_activity))
+                            if phase == 'forward':
+                                population.forward_dendritic_state_history_dynamics[sample,t] = population.dendritic_state
+                            elif phase == 'backward':
+                                population.backward_dendritic_state_history_dynamics[sample,t] = population.dendritic_state
+    

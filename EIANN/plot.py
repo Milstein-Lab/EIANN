@@ -191,11 +191,10 @@ def plot_EIANN_1_hidden_autoenc_config_summary(network, test_dataloader, sorted_
 
 def plot_train_loss_history(network, title=None):
     """
-    Plot loss and accuracy history from training
+    Plot loss history from training
     :param network:
     :param title: str
     """
-    # network.loss_history = network.loss_history.cpu()
     if title is None:
         title_str = ''
     else:
@@ -226,6 +225,38 @@ def plot_validate_loss_history(network, title=None):
     plt.ylabel('Validation loss')
     fig.suptitle('Validation loss%s' % title_str)
     fig.tight_layout()
+    fig.show()
+
+
+def plot_accuracy_history(network):
+    """
+    Assumes network has been trained and a val_accuracy_history has been stored.
+    :param network:
+    """
+    assert len(network.val_accuracy_history) > 0, 'Network must contain a stored val_accuracy_history'
+    fig = plt.figure()
+    plt.plot(network.val_history_train_steps, network.val_accuracy_history)
+    plt.xlabel('Training steps')
+    plt.ylabel('Validation accuracy')
+    fig.show()
+
+
+def plot_error_history(network):
+    """
+    Assumes network has been trained and a val_accuracy_history has been stored.
+    :param network:
+    """
+    assert len(network.val_accuracy_history) > 0, 'Network must contain a stored val_accuracy_history'
+    error_rate = 100 - network.val_accuracy_history
+    train_steps = network.val_history_train_steps
+
+    fig = plt.figure()
+    plt.plot(train_steps, error_rate)
+    plt.yscale('log')
+    plt.ylim(0, 100)
+    plt.yticks([10, 100], labels=['10%', '100%'])
+    plt.xlabel('Train steps')
+    plt.ylabel('Error Rate (%)')
     fig.show()
 
 
