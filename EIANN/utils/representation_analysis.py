@@ -165,13 +165,6 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if name.split('.')[1] in forward_E_params}
     predicted_dParam_history_all = []
 
-    # actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
-    # actual_dParam_history_all = []
-    # actual_dParam_history_dict_stepaveraged = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
-    # actual_dParam_history_stepaveraged_all = []
-    # predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
-    # predicted_dParam_history_all = []
-
     for t in tqdm(range(len(param_history))):  
         # Load params into network
         state_dict = prev_param_history[t]
@@ -896,6 +889,8 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
 
 
 def compute_dendritic_state_dynamics(network):
+    assert len(network.output_pop.activity_history.shape)==3, "Network must have saved dynamics for each sample, with history dimensions=(samples, timesteps, units)"
+
     for layer in network:
         for population in layer:
             # Initialize dendritic state history dynamics

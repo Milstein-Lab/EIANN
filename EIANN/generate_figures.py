@@ -57,11 +57,13 @@ Figure 3: Hebbian learning rule enables dendritic cancellation of forward activi
     -> Plot Dend State over time
     -> Plot angle vs BP
 
+Supplementary 2: E cell representations for dendritic models
+
 Figure 4: Given good bio-gradients, what do different bio-motivated learning rules give?
     -> BTSP vs BCM vs HebbWN
     -> Representations/RFs for HiddenE + metrics plots
 
-Supplement: Dend state + soma/dendI representations + angle vs BP
+Supplement: Dend state + soma/dendI representations + angle vs BP for bio learning rule
 
 Figure 5: Hebbian learning rule enables W/B alignment
     -> FA vs BTSP vs bpLike
@@ -1143,9 +1145,15 @@ def main(figure, overwrite, single_model, generate_data, recompute):
 
     elif figure in ["all", "fig3"]:
         model_list_heatmaps = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
-        model_list_metrics = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
+        model_list_metrics = model_list_heatmaps
         figure_name = "Fig3_dendI"
         compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+
+    elif figure in ["all", "S2"]:
+        model_list_heatmaps = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
+        model_list_metrics = model_list_heatmaps
+        figure_name = "FigS2_Ecells_bpLike"
+        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
     elif figure in ["all","fig4"]:
         #BTSP vs BCM vs HebbWN
@@ -1153,6 +1161,21 @@ def main(figure, overwrite, single_model, generate_data, recompute):
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig4_BTSP_BCM_HebbWN"
         compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+
+    # elif figure in ["all", "S3"]:
+    #     pass
+
+    elif figure in ["all", "fig5"]:
+        model_list_heatmaps = ["bpLike_FA", "bpLike_learnedTD", "BTSP_learnedTD"]
+        model_list_metrics = model_list_heatmaps
+        figure_name = "Fig5_WBalignment_FA_bpLike_BTSP"
+        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+
+        # Figure 5: Hebbian learning rule enables W/B alignment
+        #     -> FA vs BTSP vs bpLike
+        #     -> Plot W/B angle over time
+        #     -> Plot angle vs BP + accuracy
+        #     -> (Diagram + equations)
 
     elif figure in ["all", "metrics"]:
         model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_learnedTD", "bpLike_FA"]

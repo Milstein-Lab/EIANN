@@ -326,7 +326,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
         
     # Put data in dataloader
     data_generator = torch.Generator()
-    train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=batch_size)
+    train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=50_000)
     train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=batch_size)
     val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10_000:], batch_size=10_000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10_000, shuffle=False)

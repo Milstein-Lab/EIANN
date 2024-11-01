@@ -228,6 +228,22 @@ def plot_validate_loss_history(network, title=None):
     fig.show()
 
 
+def plot_loss_history(network):
+    """
+    Assumes network has been trained and a val_loss_history has been stored.
+    :param network:
+    """
+    assert len(network.val_loss_history) > 0, 'Network must contain a stored val_loss_history'
+    fig = plt.figure()
+    plt.plot(network.loss_history, label='Training loss')
+    plt.plot(network.val_history_train_steps, network.val_loss_history, label='Validation loss', color='red')
+    plt.legend()
+    plt.xlabel('Training steps')
+    plt.ylabel('Validation loss')
+    fig.tight_layout()
+    fig.show()
+    
+
 def plot_accuracy_history(network):
     """
     Assumes network has been trained and a val_accuracy_history has been stored.
@@ -805,7 +821,7 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
             raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
             
 
-def plot_batch_accuracy(network, test_dataloader, population=None, sorted_output_idx=None, title=None,
+def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_output_idx=None, title=None,
                         export=False, overwrite=False, ax=None):
     """
     Compute total accuracy (% correct) on given dataset
