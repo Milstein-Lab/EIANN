@@ -57,11 +57,13 @@ Figure 3: Hebbian learning rule enables dendritic cancellation of forward activi
     -> Plot Dend State over time
     -> Plot angle vs BP
 
+Supplementary 2: E cell representations for dendritic models
+
 Figure 4: Given good bio-gradients, what do different bio-motivated learning rules give?
     -> BTSP vs BCM vs HebbWN
     -> Representations/RFs for HiddenE + metrics plots
 
-Supplement: Dend state + soma/dendI representations + angle vs BP
+Supplement: Dend state + soma/dendI representations + angle vs BP for bio learning rule
 
 Figure 5: Hebbian learning rule enables W/B alignment
     -> FA vs BTSP vs bpLike
@@ -1030,17 +1032,17 @@ def main(figure, overwrite, single_model, generate_data, recompute):
                                             "color":  "cyan",
                                             "name":   "Backprop + Dale's Law (fixed somaI)"},
 
-                        "hebb_topsup":     {"config": "20240714_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
+                        "HebbWN_topsup":     {"config": "20240714_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
                                             "color":  "green",
-                                            "name":   "Supervised Hebb \n(w/ weight norm.)"},
+                                            "name":   "Top-supervised HebbWN"},
 
                         "BTSP":            {"config":"20240604_EIANN_2_hidden_mnist_BTSP_config_3L_complete_optimized.yaml",
                                             "color": "purple",
                                             "name": "BTSP"}, 
 
-                        "Hebb_WeightNorm": {"config": "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
+                        "HebbWN": {"config": "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
                                             "color": "cyan",
-                                            "name": "HWN learned Top-Down"},
+                                            "name": "HWN (B=W^T)"},
 
                         "bpDale_noI":     {"config": "20240919_EIANN_2_hidden_mnist_bpDale_noI_relu_SGD_config_G_complete_optimized.yaml",
                                            "color": "blue",
@@ -1072,7 +1074,7 @@ def main(figure, overwrite, single_model, generate_data, recompute):
                                             "name": "Learned top-town (Hebb)"},
 
                         "BCM":             {"config": "20240723_EIANN_2_hidden_mnist_Supervised_BCM_config_4_complete_optimized.yaml",
-                                            "color": "green",
+                                            "color": "yellow",
                                             "name": "Supervised BCM"},
                                             
                         "BTSP_learnedTD": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
@@ -1143,16 +1145,37 @@ def main(figure, overwrite, single_model, generate_data, recompute):
 
     elif figure in ["all", "fig3"]:
         model_list_heatmaps = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
-        model_list_metrics = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
+        model_list_metrics = model_list_heatmaps
         figure_name = "Fig3_dendI"
         compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
+    elif figure in ["all", "S2"]:
+        model_list_heatmaps = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
+        model_list_metrics = model_list_heatmaps
+        figure_name = "FigS2_Ecells_bpLike"
+        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+
     elif figure in ["all","fig4"]:
         #BTSP vs BCM vs HebbWN
-        model_list_heatmaps = ["BTSP", "BCM", "Hebb_WeightNorm"]
+        model_list_heatmaps = ["BTSP", "BCM", "HebbWN_topsup"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig4_BTSP_BCM_HebbWN"
         compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+
+    # elif figure in ["all", "S3"]:
+    #     pass
+
+    elif figure in ["all", "fig5"]:
+        model_list_heatmaps = ["bpLike_FA", "bpLike_learnedTD", "BTSP_learnedTD"]
+        model_list_metrics = model_list_heatmaps
+        figure_name = "Fig5_WBalignment_FA_bpLike_BTSP"
+        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+
+        # Figure 5: Hebbian learning rule enables W/B alignment
+        #     -> FA vs BTSP vs bpLike
+        #     -> Plot W/B angle over time
+        #     -> Plot angle vs BP + accuracy
+        #     -> (Diagram + equations)
 
     elif figure in ["all", "metrics"]:
         model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_learnedTD", "bpLike_FA"]

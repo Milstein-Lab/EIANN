@@ -1,4 +1,4 @@
-# Equivalent to dend_EI_contrast_fixed_bias from Summer2024 project
+# Equivalent to dend_EI_contrast_learned_bias from Summer2024 project
 
 layer_config:
   Input:
@@ -9,21 +9,28 @@ layer_config:
     E:
       size: 128
       activation: relu 
-      bias_learning_rule: Null
       include_bias: True
+      bias_learning_rule: DendriticLossBias
+      bias_learning_rule_kwargs:
+        learning_rate: 0.2456298781576449
 
   H2:
     E:
       size: 32
       activation: relu
-      bias_learning_rule: Null
       include_bias: True
+      bias_learning_rule: DendriticLossBias
+      bias_learning_rule_kwargs:
+        learning_rate: 0.2456298781576449
 
   Output:
     E:
       size: 4
       activation: relu
       include_bias: True
+      bias_learning_rule: DendriticLossBias
+      bias_learning_rule_kwargs:
+        learning_rate: 0.2456298781576449
 
 
 projection_config:

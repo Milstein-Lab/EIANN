@@ -165,13 +165,6 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if name.split('.')[1] in forward_E_params}
     predicted_dParam_history_all = []
 
-    # actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
-    # actual_dParam_history_all = []
-    # actual_dParam_history_dict_stepaveraged = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
-    # actual_dParam_history_stepaveraged_all = []
-    # predicted_dParam_history_dict = {name:[] for name,param in network.named_parameters() if param.is_learned and name in test_network.state_dict()}
-    # predicted_dParam_history_all = []
-
     for t in tqdm(range(len(param_history))):  
         # Load params into network
         state_dict = prev_param_history[t]
@@ -893,3 +886,33 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
         fig.tight_layout()
         fig.show()
     return residuals
+
+
+def compute_dendritic_state_dynamics(network):
+    assert len(network.output_pop.activity_history.shape)==3, "Network must have saved dynamics for each sample, with history dimensions=(samples, timesteps, units)"
+
+    for layer in network:
+        for population in layer:
+            # Initialize dendritic state history dynamics
+            population.forward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history)
+            population.backward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history)
+            for sample in range(len(network.sample_order)):
+                if population == network.output_pop: # The output population has no dynamics, only constant nudges towards target activity
+                    population.backward_dendritic_state_history_dynamics[sample] = population.plateau_history[sample].unsqueeze(0).repeat(15, 1)
+                else:
+                    population.dendritic_state = torch.zeros(population.size)
+                    for phase in ['forward', 'backward']:
+                        for t in range(network.forward_steps):
+                            for projection in population:
+                                if projection.compartment == 'dend':
+                                    if projection.direction in ['forward', 'F']:
+                                        pre_activity = projection.pre.activity_history[sample,t]
+                                        population.dendritic_state = (population.dendritic_state + projection(pre_activity))
+                                    elif projection.direction in ['recurrent', 'R']:
+                                        pre_activity = projection.pre.activity_history[sample,t-1] if t > 0 else torch.zeros_like(projection.pre.activity_history[sample,0])                                    
+                                        population.dendritic_state  = (population.dendritic_state + projection(pre_activity))
+                            if phase == 'forward':
+                                population.forward_dendritic_state_history_dynamics[sample,t] = population.dendritic_state
+                            elif phase == 'backward':
+                                population.backward_dendritic_state_history_dynamics[sample,t] = population.dendritic_state
+    
