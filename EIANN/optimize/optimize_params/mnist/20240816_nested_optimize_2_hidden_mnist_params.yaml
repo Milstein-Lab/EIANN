@@ -517,7 +517,7 @@ BP_like_2L_20240816:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
-BP_like_2L_20240904:
+BP_like_2L_20240904_not_used:
     #    accuracy: 92.15980529785156
     #    dynamics_residuals: 0.0
     #    loss: 0.019446907564997673
@@ -673,6 +673,7 @@ BP_like_2L_learn_TD_HWN_3:
     # CL:
     #    final_accuracy: 48.97999954223633
     #    final_loss: 0.07432522624731064
+    # extended train_steps=50000: failed, unstable
     H1_E_Input_E_init_weight_scale: 1.1550441061756842
     H2_E_H1_E_init_weight_scale: 0.8830857995305974
     H_E_learning_rate: 0.00859500565535631
@@ -1696,6 +1697,56 @@ Top_Layer_Supervised_Hebb_WeightNorm_5:
     Output_I_Output_I_weight_scale: 0.60004382980485
     H_I_size: 50.0
     Output_I_size: 10.0
+Top_Layer_Supervised_Hebb_WeightNorm_6:
+    # total failure
+    #    accuracy: 73.0276
+    #    dynamics_residuals: 0.662732
+    #    loss: 0.09097976
+    H1_E_Input_E_weight_scale: 1.6585411900520306
+    H2_E_H1_E_weight_scale: 2.2347330373246357
+    H_E_E_learning_rate: 0.00217090656158324
+    E_I_learning_rate: 0.02675517584135816
+    I_E_learning_rate: 0.01905160391054633
+    I_I_learning_rate: 0.05388134825297485
+    H1_E_H1_SomaI_weight_scale: 6.475008753866384
+    H1_SomaI_H1_E_weight_scale: 0.15784965452689947
+    H1_SomaI_Input_E_weight_scale: 0.44187326393042264
+    H1_SomaI_H1_SomaI_weight_scale: 0.11765801230336549
+    H2_E_H2_SomaI_weight_scale: 0.3613487748400158
+    H2_SomaI_H2_E_weight_scale: 0.2745941488781141
+    H2_SomaI_H1_E_weight_scale: 2.574469312406169
+    H2_SomaI_H2_SomaI_weight_scale: 7.151665581432894
+    Output_E_H2_E_weight_scale: 1.7916898553893217
+    Output_E_H2_E_learning_rate: 0.09005193553242592
+    Output_E_Output_I_weight_scale: 0.2826794088809505
+    Output_I_Output_E_weight_scale: 0.941106136369128
+    Output_I_H2_E_weight_scale: 0.981210145097396
+    Output_I_Output_I_weight_scale: 0.4597139850413463
+    H_I_size: 50.0
+    Output_I_size: 10.0
+Top_Layer_Supervised_Hebb_WeightNorm_7_test:
+    H1_E_Input_E_weight_scale: 0.5724529756358654
+    H2_E_H1_E_weight_scale: 0.5437316922522328
+    H_E_E_learning_rate: 0.00480850675626521
+    E_I_learning_rate: 0.019436435425348574
+    I_E_learning_rate: 0.0005466773400097006
+    I_I_learning_rate: 0.022377111153226402
+    H1_E_H1_SomaI_weight_scale: 1.3007577637602221
+    H1_SomaI_H1_E_weight_scale: 0.985896441562464
+    H1_SomaI_Input_E_weight_scale: 0.8057897561375428
+    H1_SomaI_H1_SomaI_weight_scale: 1.4781212426634462
+    H2_E_H2_SomaI_weight_scale: 0.9819726450986679
+    H2_SomaI_H2_E_weight_scale: 0.4234957433546155
+    H2_SomaI_H1_E_weight_scale: 0.13385007927105566
+    H2_SomaI_H2_SomaI_weight_scale: 0.9419802380281433
+    Output_E_H2_E_init_weight_scale: 0.2957612551213066
+    Output_E_H2_E_learning_rate: 0.0019074456063618008
+    Output_E_Output_I_weight_scale: 1.0185453454659343
+    Output_I_Output_E_weight_scale: 0.7669342605333298
+    Output_I_H2_E_weight_scale: 0.13083515153695796
+    Output_I_Output_I_weight_scale: 0.8229178743880762
+    H_I_size: 50.0
+    Output_I_size: 10.0
 Supervised_Hebb_WeightNorm_4_20240820:
     #    accuracy: 44.644203186035156
     #    dynamics_residuals: 0.34598463773727417
@@ -1769,6 +1820,8 @@ Supervised_Hebb_WeightNorm_4_20240911:
     H_I_size: 50.0
     Output_I_size: 10.0
 Supervised_Hebb_WeightNorm_4_learn_SomaI:
+    # This config failed by exploiting a strange edge case - small loss due to small activity values, and high accuracy
+    # due to argmax over tiny floating point differences.
     #    accuracy: 73.74400329589844
     #    dynamics_residuals: 0.6123652458190918
     #    loss: 0.0912703275680542

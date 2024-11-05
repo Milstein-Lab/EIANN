@@ -812,8 +812,16 @@ NEED TO RUN:
  - BP_like_5J_fixed_TD
  - BTSP_5J_fixed_TD
  
+ABANDONDED:
+	HOT_STARTING 20240927:
+ 	 - BTSP_5J_learn_TD_HWN_1 [ 131 gens]
+	HOT_STARTING 20241105:
+ 	 - Supervised_Hebb_WN_6 [101 gens]
+ 	 
 RUNNING 20241011:
+ - Top_Layer_Supervised_Hebb_WN_7 (uses BP_like_2L in Output.E cells)
  
- 
-HOT_STARTING 20240927:
- - BTSP_5J_learn_TD_HWN_1 [ 131 gens]
+NEED TO RUN:
+ - BP_like_2L_learn_TD_5 (modulate Hebb_WN with dendritic state)
+ - BP_like_2L_learn_TD_6 (learn TD weights with Hebb_Temporal_Contrast)
+ - Supervised_Hebb_WN_7 (uses BP_like_2L in Output.E cells, uses Hebb_Temporal_Contrast in Hidden.E cells)

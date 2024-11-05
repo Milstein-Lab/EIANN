@@ -5,9 +5,14 @@ num_instances: 5
 data_seed_start: 1
 supervised: True
 status_bar: True
-train_steps: 40000
-epochs: 2
+train_steps: 50000
+epochs: 1
 val_interval:
     - 0
     - -1
-    - 10000
+    - 250
+store_history_interval:
+    - 0
+    - -1
+    - 250
+constrain_equilibration_dynamics: True

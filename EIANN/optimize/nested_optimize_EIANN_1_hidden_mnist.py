@@ -1,5 +1,4 @@
 import torch
-# torch.use_deterministic_algorithms(mode=True)
 import torchvision
 import torchvision.transforms as T
 from torch.utils.data import DataLoader
@@ -88,8 +87,6 @@ def config_worker():
         context.store_params = False
     else:
         context.store_params = str_to_bool(context.store_params)
-    if 'store_params_interval' not in context():
-        context.store_params_interval = (0, -1, 100)
     if context.debug:
         context.store_num_steps = None
     elif 'store_num_steps' not in context():
@@ -138,19 +135,28 @@ def config_worker():
     else:
         context.include_equilibration_dynamics_objective = str_to_bool(context.include_equilibration_dynamics_objective)
     
-    context.store_history_interval = None
+    if 'store_history_interval' not in context():
+        context.store_history_interval = None
+    
+    context.train_steps = int(context.train_steps)
+    
+    history_interval = max(min(250, int(context.train_steps / 200)), 100)
+    if 'store_params_interval' not in context():
+        context.store_params_interval = (0, -1, history_interval)
+    
+    if context.full_analysis:
+        context.val_interval = (0, -1, history_interval)
+        context.store_params_interval = context.val_interval
+        context.store_params = True
+        context.store_num_steps = None
+        if context.store_history_interval is not None:
+            context.store_history_interval = context.val_interval
+    
     if context.include_dend_loss_objective:
         if not context.store_history:
             context.store_history = True
-            context.store_history_interval = context.val_interval
-
-    context.train_steps = int(context.train_steps)
-    
-    if context.full_analysis:
-        context.val_interval = (0, -1, 100)
-        context.store_params_interval = (0, -1, 100)
-        context.store_params = True
-        context.store_num_steps = None
+            if context.store_history_interval is None:
+                context.store_history_interval = context.val_interval
     
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
@@ -228,6 +234,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     :param data_seed: int
     :param model_id: str
     :param export: bool
+    :param plot: bool
     :return: dict
     """
     update_source_contexts(x, context)
@@ -257,7 +264,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         except:
             pass
         if context.plot_initial:
-            plot_batch_accuracy(network, test_dataloader, population='all', title='Initial')
+            title = 'Initial (%i, %i)' % (seed, data_seed)
+            plot_batch_accuracy(network, test_dataloader, population='all', title=title)
     
     if 'data_file_path' not in context():
         network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
@@ -354,12 +362,12 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         results['mean_forward_dend_loss'] = mean_forward_dend_loss
     
     if plot:
-        # print('Weights match: %s' % torch.all(final_weights == network.Output.E.H1.E.weight.data))
+        title = 'Final (%i, %i)' % (seed, data_seed)
         plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
-                            title='Final')
+                            title=title)
         plot_train_loss_history(network)
         plot_validate_loss_history(network)
-
+    
     if context.compute_receptive_fields:
         # Compute receptive fields
         population = network.H1.E
@@ -369,7 +377,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     
     if plot:
         plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
-
+    
     if context.full_analysis:
         metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
         plot_representation_metrics(metrics_dict)
