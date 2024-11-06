@@ -16,7 +16,6 @@ class Network(nn.Module):
                  criterion=MSELoss, criterion_kwargs=None, seed=None, device='cpu', tau=1, forward_steps=1,
                  backward_steps=1, verbose=False):
         """
-
         :param layer_config: nested dict
         :param projection_config: nested dict
         :param learning_rate: float; applies to weights and biases in absence of projection-specific learning rates
@@ -30,7 +29,7 @@ class Network(nn.Module):
         :param forward_steps: int
         :param backward_steps: int
         :param verbose: bool
-        """
+        """    
         super().__init__()
         self.device = torch.device(device)
         self.layer_config = layer_config
@@ -71,7 +70,6 @@ class Network(nn.Module):
         self.projections = {}
 
         # Build network populations
-        self.output_pop = None
         self.layers = {}
         for i, (layer_name, pop_config) in enumerate(layer_config.items()):
             layer = Layer(self, layer_name)
@@ -86,9 +84,9 @@ class Network(nn.Module):
                 self.populations[pop.fullname] = pop
         
         # if no output_pop is designated, default to the first population specified in the final layer
-        if self.output_pop is None:
-            output_layer = list(self)[-1]
-            self.output_pop = next(iter(output_layer))
+        input_layer, *_, output_layer = list(self)
+        self.output_pop = next(iter(output_layer))
+        self.input_pop = next(iter(input_layer))
 
         # Build network projections
         for post_layer_name in projection_config:
@@ -207,7 +205,6 @@ class Network(nn.Module):
 
     def forward(self, sample, store_history=False, store_dynamics=False, store_num_steps=None, no_grad=False):
         """
-
         :param sample: tensor
         :param store_history: bool
         :param store_dynamics: bool
@@ -215,30 +212,23 @@ class Network(nn.Module):
         :param no_grad: bool
         :return: tensor
         """
-        if len(sample.shape) > 1:
-            batch_size = sample.shape[0]
-        else:
-            batch_size = 1
-        
         if store_num_steps is None:
             store_num_steps = self.forward_steps
         
-        for i, layer in enumerate(self):
-            if i == 0:
-                input_pop = next(iter(layer))
-            for pop in layer:
-                pop.reinit(self.device, batch_size=batch_size)
-        input_pop.activity = torch.squeeze(sample)
+        for population in self.populations.values():
+                population.reinit(self.device, batch_size=sample.shape[0])
+
+        self.input_pop.activity = torch.squeeze(sample)
 
         for t in range(self.forward_steps):
             if (t >= self.forward_steps - self.backward_steps) and not no_grad:
                 track_grad = True
             else:
                 track_grad = False
+
             with torch.set_grad_enabled(track_grad):
-                for post_layer in self:
-                    for post_pop in post_layer:
-                        post_pop.prev_activity = post_pop.activity
+                for population in self.populations.values():
+                    population.prev_activity = population.activity
                 for i, post_layer in enumerate(self):
                     for post_pop in post_layer:
                         if i > 0:
@@ -350,9 +340,8 @@ class Network(nn.Module):
         if samples_per_epoch is None:
             samples_per_epoch = len(train_dataloader)
         
-        # includes initial state before first train step
+        # Define timepoints for validation
         train_step_range = torch.arange(epochs * samples_per_epoch)
-        
         if val_interval[0] < 0 and abs(val_interval[0]) > len(train_step_range):
             val_start_index = 0
         else:
@@ -363,7 +352,7 @@ class Network(nn.Module):
         if val_start_index == 0 and 0 not in val_range:
             val_range = torch.cat((torch.tensor([0]), val_range))
         
-        # Load validation data & initialize intermediate variables
+        # Load validation data and initialize intermediate variables
         if val_dataloader is not None:
             assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
             idx, val_data, val_target = next(iter(val_dataloader))
@@ -406,8 +395,7 @@ class Network(nn.Module):
                     torch.arange(store_params_end_index, store_params_start_index - 1, -store_params_step_size).flip(0))
                 if store_params_start_index == 0 and 0 not in store_params_range:
                     store_params_range = torch.cat((torch.tensor([0]), store_params_range))
-                
-            if (0 in store_params_range) and store_params_step_size == 1:
+            if (0 in store_params_range) and store_params_step_size == 1: # store initial state of the network
                 self.param_history.append(deepcopy(self.state_dict()))
                 self.param_history_steps.append(-1)
         
@@ -417,16 +405,19 @@ class Network(nn.Module):
         else:
             epoch_iter = range(epochs)
         
-        # initialize learning rule parameters
+        # Initialize learning rule parameters
         for post_layer in self:
             for post_pop in post_layer:
                 if post_pop.include_bias:
                     post_pop.bias_learning_rule.reinit()
                 for projection in post_pop:
                     projection.learning_rule.reinit()
-                
+        
+
+        #######################################################
+        #*************     Main training loop     *************
+        #######################################################
         train_step = 0
-        # Main training loop
         for epoch in epoch_iter:
             epoch_sample_order = []
             if status_bar and len(train_dataloader) > epochs:
@@ -439,12 +430,11 @@ class Network(nn.Module):
                 if sample_count >= samples_per_epoch:
                     break
                 
-                sample_data = torch.squeeze(sample_data)
+                # sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
                 if not sample_data.device == self.device:
                     sample_data = sample_data.to(self.device)
                     sample_target = sample_target.to(self.device)
-                    
                 epoch_sample_order.append(sample_idx)
                 
                 if store_history:
@@ -454,6 +444,7 @@ class Network(nn.Module):
                         this_train_step_store_history = train_step in store_history_range
                 else:
                     this_train_step_store_history = False
+
                 output = self.forward(sample_data, store_history=this_train_step_store_history,
                                       store_dynamics=store_dynamics)
                 
