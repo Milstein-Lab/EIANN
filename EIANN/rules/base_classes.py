@@ -19,6 +19,10 @@ class LearningRule(object):
     @classmethod
     def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         pass
+    
+    @classmethod
+    def shared_backward_methods(cls, learning_rule):
+        return learning_rule.__class__.backward.__func__ is cls.backward.__func__
 
 
 class BiasLearningRule(object):
@@ -40,3 +44,7 @@ class BiasLearningRule(object):
     @classmethod
     def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         pass
+    
+    @classmethod
+    def shared_backward_methods(cls, learning_rule):
+        return learning_rule.__class__.backward.__func__ is cls.backward.__func__

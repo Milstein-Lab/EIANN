@@ -1496,7 +1496,7 @@ class BP_like_2L(LearningRule):
                         pop.backward_steps_activity = []
                 # initialize dendritic state variables
                 for projection in pop:
-                    if projection.learning_rule.__class__ == cls:
+                    if cls.shared_backward_methods(projection.learning_rule):
                         pop.plateau = torch.zeros(pop.size, device=network.device)
                         pop.dend_to_soma = torch.zeros(pop.size, device=network.device)
                         break
@@ -1509,7 +1509,7 @@ class BP_like_2L(LearningRule):
                     for pop in layer:
                         for projection in pop:
                             # compute plateau events and nudge somatic state
-                            if projection.learning_rule.__class__ == cls:
+                            if cls.shared_backward_methods(projection.learning_rule):
                                 if pop is output_pop:
                                     local_loss = torch.clamp(target - output_pop.activity, min=-1, max=1)
                                     output_pop.dendritic_state = local_loss.detach().clone()
@@ -1540,7 +1540,6 @@ class BP_like_2L(LearningRule):
                                         sorted, neg_candidate_rel_indexes = torch.sort(local_loss[neg_avail_indexes],
                                                                                        descending=True, stable=True)
                                     neg_event_indexes = neg_avail_indexes[neg_candidate_rel_indexes][-max_units:]
-                                    
                                     pop.plateau[pos_event_indexes] = local_loss[pos_event_indexes]
                                     pop.plateau[neg_event_indexes] = local_loss[neg_event_indexes]
                                     pop.dend_to_soma[pos_event_indexes] = local_loss[pos_event_indexes]
