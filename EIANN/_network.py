@@ -642,7 +642,9 @@ class Population(object):
 
         self.bias_learning_rule = bias_learning_rule_class(self, **bias_learning_rule_kwargs)
         if bias_learning_rule_class.backward not in self.network.backward_methods:
-            self.network.backward_methods.append(bias_learning_rule_class.backward)
+            if not any([bias_learning_rule_class.backward.__func__ is backward_method.__func__
+                        for backward_method in self.network.backward_methods]):
+                self.network.backward_methods.append(bias_learning_rule_class.backward)
 
         self.network.parameter_dict[self.fullname+'_bias'] = self.bias
         self.network.optimizer_params_list.append({'params': self.bias,
@@ -737,7 +739,9 @@ class Population(object):
         :param projection: :class:'Projection'
         """
         if projection.learning_rule.__class__.backward not in self.network.backward_methods:
-            self.network.backward_methods.append(projection.learning_rule.__class__.backward)
+            if not any([projection.learning_rule.__class__.backward.__func__ is backward_method.__func__
+                        for backward_method in self.network.backward_methods]):
+                self.network.backward_methods.append(projection.learning_rule.__class__.backward)
 
         if projection.pre.layer.name not in self.projections:
             self.projections[projection.pre.layer.name] = {}

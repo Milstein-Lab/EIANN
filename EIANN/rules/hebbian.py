@@ -1,4 +1,6 @@
 from .base_classes import LearningRule, BiasLearningRule
+from .backprop_like import BP_like_2L
+
 import torch
 import math
 
@@ -2332,3 +2334,62 @@ class Supervised_Hebb_WeightNorm_6(LearningRule):
                             pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
                         else:
                             pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
+                            
+                            
+class Hebbian_Temporal_Contrast(BP_like_2L):
+    def __init__(self, projection, max_pop_fraction=1., stochastic=False, learning_rate=None, relu_gate=True):
+        """
+        Output units are nudged to target. Hidden dendrites locally compute an error as the difference between
+        excitation and inhibition.
+        Weight updates are computed using the Contrastive Hebbian Learning approach of Xie & Seung, 2003.
+        If unit selection is stochastic, hidden units are selected for a weight update with a probability proportional
+        to dendritic state by sampling a Bernoulli distribution. Otherwise, units are sorted by dendritic state. A fixed
+        maximum fraction of hidden units are updated at each train step. Hidden units are "nudged" by dendritic state
+        when selected for a weight update. Nudges to somatic state are applied instantaneously, rather than being
+        subject to slow equilibration. During nudging, activities are re-equilibrated across all layers.
+        :param projection: :class:'nn.Linear'
+        :param max_pop_fraction: float in [0, 1]
+        :param stochastic: bool
+        :param learning_rate: float
+        :param relu_gate: bool
+        """
+        super().__init__(projection, max_pop_fraction, stochastic, learning_rate, relu_gate)
+    
+    def step(self):
+        forward_post_activity = torch.clamp(self.projection.post.forward_activity, min=0, max=1)
+        backward_post_activity = torch.clamp(self.projection.post.activity, min=0, max=1).detach().clone()
+        if self.relu_gate:
+            backward_post_activity[forward_post_activity == 0.] = 0.
+        if self.projection.direction in ['forward', 'F']:
+            forward_pre_activity = torch.clamp(self.projection.pre.forward_activity, min=0, max=1)
+            backward_pre_activity = torch.clamp(self.projection.pre.activity, min=0, max=1)
+        elif self.projection.direction in ['recurrent', 'R']:
+            forward_pre_activity = torch.clamp(self.projection.pre.prev_forward_activity, min=0, max=1)
+            backward_pre_activity = torch.clamp(self.projection.pre.prev_activity, min=0, max=1)
+        delta_weight = (torch.outer(backward_post_activity, backward_pre_activity) -
+                        torch.outer(forward_post_activity, forward_pre_activity)).detach().clone()
+        self.projection.weight.data += self.learning_rate * delta_weight
+
+
+class Top_Down_Hebbian_Temporal_Contrast_1(LearningRule):
+    def __init__(self, projection, learning_rate=None):
+        """
+        Assumes another learning rule has updated activity during a backward phase.
+        Weight updates are computed using the Contrastive Hebbian Learning approach of Xie & Seung, 2003.
+        :param projection: :class:'nn.Linear'
+        :param learning_rate: float
+        """
+        super().__init__(projection, learning_rate)
+    
+    def step(self):
+        forward_post_activity = torch.clamp(self.projection.post.forward_activity, min=0, max=1)
+        backward_post_activity = torch.clamp(self.projection.post.activity, min=0, max=1).detach().clone()
+        if self.projection.direction in ['forward', 'F']:
+            forward_pre_activity = torch.clamp(self.projection.pre.forward_activity, min=0, max=1)
+            backward_pre_activity = torch.clamp(self.projection.pre.activity, min=0, max=1)
+        elif self.projection.direction in ['recurrent', 'R']:
+            forward_pre_activity = torch.clamp(self.projection.pre.prev_forward_activity, min=0, max=1)
+            backward_pre_activity = torch.clamp(self.projection.pre.prev_activity, min=0, max=1)
+        delta_weight = (torch.outer(backward_post_activity, backward_pre_activity) -
+                        torch.outer(forward_post_activity, forward_pre_activity)).detach().clone()
+        self.projection.weight.data += self.learning_rate * delta_weight

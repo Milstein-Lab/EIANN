@@ -4,7 +4,7 @@ seed_start: 1
 num_instances: 5
 data_seed_start: 1
 supervised: True
-status_bar: True
+status_bar: False
 train_steps: 50000
 epochs: 1
 val_interval:
