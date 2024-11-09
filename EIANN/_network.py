@@ -217,7 +217,9 @@ class Network(nn.Module):
         
         for population in self.populations.values():
                 population.reinit(self.device, batch_size=sample.shape[0])
-
+    
+        if not hasattr(self, 'input_pop'):
+            self.input_pop = next(iter(list(self)[0]))
         self.input_pop.activity = torch.squeeze(sample)
 
         for t in range(self.forward_steps):
@@ -316,7 +318,7 @@ class Network(nn.Module):
                 if store_history and hasattr(post_pop, 'forward_dendritic_state'):
                     post_pop.append_attribute_history('forward_dendritic_state',
                                                       post_pop.forward_dendritic_state.detach().clone())
-    
+                
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
               store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
               store_params_interval=None, save_to_file=None, status_bar=False, debug=False):
