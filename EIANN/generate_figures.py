@@ -10,6 +10,10 @@ import h5py
 import click
 import gc
 import copy
+from PIL import Image
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+import os
 
 import EIANN.utils as ut
 import EIANN.plot as pt
@@ -177,6 +181,9 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
         ut.load_network_dict(network, saved_network_path)
     network.seed = seed
     network.name = network_name
+    if not hasattr(network, 'input_pop'):
+        input_layer = list(network)[0]
+        network.input_pop = next(iter(input_layer))
 
     # Load dataset
     all_dataloaders = ut.get_MNIST_dataloaders(sub_dataloader_size=1000)
@@ -515,13 +522,13 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
                     for population in ['H1E', 'H2E']:
                         sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
                     sparsity_all_seeds.append(sparsity_one_seed)
-                # avg_sparsity_per_seed = [np.mean(x) for x in sparsity_all_seeds]
-                # avg_sparsity = np.mean(avg_sparsity_per_seed)
-                # error = np.std(avg_sparsity_per_seed)
-                # ax_sparsity.bar(i, avg_sparsity, yerr=error, color=model_dict["color"], width=0.4, label=model_dict["name"])
-                # ax_sparsity.set_ylabel('Sparsity')
-                # ax_sparsity.set_ylim([0,1])
-                # ax_sparsity.set_xticks([0,1,2])
+                avg_sparsity_per_seed = [np.mean(x) for x in sparsity_all_seeds]
+                avg_sparsity = np.mean(avg_sparsity_per_seed)
+                error = np.std(avg_sparsity_per_seed)
+                ax_sparsity.bar(i, avg_sparsity, yerr=error, color=model_dict["color"], width=0.4, label=model_dict["name"])
+                ax_sparsity.set_ylabel('Sparsity')
+                ax_sparsity.set_ylim([0,1])
+                ax_sparsity.set_xticks([0,1,2])
 
                 pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=model_dict["name"], color=model_dict["color"])
                 ax_sparsity.set_ylabel('Fraction of patterns')
@@ -534,13 +541,13 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
                     for population in ['H1E', 'H2E']:
                         selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
                     selectivity_all_seeds.append(selectivity_one_seed)
-                # avg_selectivity_per_seed = [np.mean(x) for x in selectivity_all_seeds]
-                # avg_selectivity = np.mean(avg_selectivity_per_seed)
-                # error = np.std(avg_selectivity_per_seed)
-                # ax_selectivity.bar(i, avg_selectivity, yerr=error, color=model_dict["color"], width=0.4, label=model_dict["name"])
-                # ax_selectivity.set_ylabel('Selectivity')
-                # ax_selectivity.set_ylim([0,1])
-                # ax_selectivity.set_xticks([0,1,2])
+                avg_selectivity_per_seed = [np.mean(x) for x in selectivity_all_seeds]
+                avg_selectivity = np.mean(avg_selectivity_per_seed)
+                error = np.std(avg_selectivity_per_seed)
+                ax_selectivity.bar(i, avg_selectivity, yerr=error, color=model_dict["color"], width=0.4, label=model_dict["name"])
+                ax_selectivity.set_ylabel('Selectivity')
+                ax_selectivity.set_ylim([0,1])
+                ax_selectivity.set_xticks([0,1,2])
 
                 pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
                 ax_selectivity.set_ylabel('Fraction of units')
@@ -576,8 +583,8 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
 
 
     if save is not None:
-        fig.savefig(f"figures/{save}.png", dpi=600)
-        fig.savefig(f"figures/{save}.svg", dpi=600)
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
 def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
@@ -678,8 +685,8 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
 
 
     if save:
-        fig.savefig(f"figures/{save}.png", dpi=600)
-        fig.savefig(f"figures/{save}.svg", dpi=600)
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
 def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
@@ -808,8 +815,111 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
 
 
     if save:
-        fig.savefig(f"figures/{save}.png", dpi=600)
-        fig.savefig(f"figures/{save}.svg", dpi=600)
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
+
+
+def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+    fig = plt.figure(figsize=(5.5, 9))
+    axes = gs.GridSpec(nrows=3, ncols=3,                        
+                       left=0.1,right=0.9,
+                       top=0.75, bottom = 0.3,
+                       wspace=0.15, hspace=0.5)
+    ax_accuracy1 = fig.add_subplot(axes[0,0])
+    ax_angle_vs_BP1 = fig.add_subplot(axes[1,0])
+    ax_FB_angle1 = fig.add_subplot(axes[2,0])
+    ax_accuracy2 = fig.add_subplot(axes[0,1])
+    ax_angle_vs_BP2 = fig.add_subplot(axes[1,1])
+    ax_FB_angle2 = fig.add_subplot(axes[2,1])
+
+    all_models = list(dict.fromkeys(model_list1 + model_list2))
+    for model_key in all_models:
+        model_dict = model_dict_all[model_key]
+        config_path = config_path_prefix + model_dict['config']
+        pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
+        network_name = model_dict['config'].split('.')[0]
+        data_file_path = f"data/plot_data_{network_name}.h5"
+        for seed in model_dict['seeds']:
+            saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
+            generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
+            gc.collect()
+
+    for i, model_key in enumerate(all_models):
+        model_dict = model_dict_all[model_key]
+        config_path = config_path_prefix + model_dict['config']
+        pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
+        network_name = model_dict['config'].split('.')[0]
+        data_file_path = f"data/plot_data_{network_name}.h5"
+
+        with h5py.File(data_file_path, 'r') as f:
+            data_dict = f[network_name]
+            print(f"Generating plots for {model_dict['name']}")
+
+            if model_key in model_list1:
+                ax_accuracy = ax_accuracy1
+                ax_angle_vs_BP = ax_angle_vs_BP1
+                ax_FB_angle = ax_FB_angle1
+            if model_key in model_list2:
+                ax_accuracy = ax_accuracy2
+                ax_angle_vs_BP = ax_angle_vs_BP2
+                ax_FB_angle = ax_FB_angle2
+                
+            # Plot accuracy
+            accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in data_dict]
+            avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
+            error = np.std(accuracy_all_seeds, axis=0)
+            train_steps = data_dict[seed]['val_history_train_steps'][:]
+            ax_accuracy.plot(train_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
+            ax_accuracy.fill_between(train_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"], linewidth=0)
+            ax_accuracy.set_xlabel('Training step')
+            ax_accuracy.set_ylabel('Test accuracy (%)', labelpad=-2)
+            ax_accuracy.set_ylim([0,100])
+            ax_accuracy.legend(handlelength=1, ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
+            legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
+            for line in legend.get_lines():
+                line.set_linewidth(1.5)
+
+            # Plot angle vs BP
+            angle_all_seeds = []
+            from scipy.ndimage import gaussian_filter1d
+            for seed in model_dict['seeds']:
+                angle = data_dict[seed]['angle_vs_bp_stochastic']['all_params']
+                sigma = 1
+                smoothed_angle = gaussian_filter1d(angle, sigma)
+                angle_all_seeds.append(smoothed_angle)
+            avg_angle = np.nanmean(angle_all_seeds, axis=0)
+            error = np.nanstd(angle_all_seeds, axis=0)
+            ax_angle_vs_BP.plot(train_steps, avg_angle, label=model_dict["name"], color=model_dict["color"])
+            ax_angle_vs_BP.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
+            ax_angle_vs_BP.set_xlabel('Training step')
+            ax_angle_vs_BP.set_ylabel('Angle vs BP (stoch.)')
+            ax_angle_vs_BP.set_ylim([0,90])
+            ax_angle_vs_BP.set_yticks(np.arange(0, 101, 30))
+            # ax_angle_vs_BP.set_xlim([0,20000])
+
+            # Plot angles: forward weights W vs backward weights B
+            fb_angles_all_seeds = []
+            for seed in model_dict['seeds']:
+                for projection in data_dict[seed]["feedback_weight_angle_history"]:
+                    fb_angles_all_seeds.append(data_dict[seed]["feedback_weight_angle_history"][projection][:])
+            avg_angles = np.mean(fb_angles_all_seeds, axis=0)
+            std_angles = np.std(fb_angles_all_seeds, axis=0)
+            if np.isnan(avg_angles).any():
+                print(f"Warning: NaN values found in avg_angles for {network_name}.")
+            else:
+                ax_FB_angle.plot(train_steps, avg_angles, color=model_dict['color'], label=model_dict['name'])
+                ax_FB_angle.fill_between(train_steps, avg_angles-std_angles, avg_angles+std_angles, alpha=0.5, color=model_dict['color'], linewidth=0)
+            ax_FB_angle.set_xlabel('Training step')
+            ax_FB_angle.set_ylim(bottom=-2, top=90)
+            ax_FB_angle.set_yticks(np.arange(0, 91, 30))
+            ax_FB_angle.set_ylabel('Angle \n(F vs B weights)')
+
+
+    if save is not None:
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
+
+
 
 
 def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False): 
@@ -1007,6 +1117,60 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
 
 
 
+# def images_to_pdf(image_paths, output_path):
+#     # Create a canvas for the PDF
+#     c = canvas.Canvas(output_path, pagesize=letter)
+#     width, height = letter  # US Letter size in points (612 x 792)
+
+#     for img_path in image_paths:
+#         # Open each image using PIL
+#         img = Image.open(img_path)
+#         # img_width, img_height = img.size
+#         img_width, img_height = (5.5, 9)
+        
+#         # Set the page size to letter dimensions
+#         c.setPageSize((width, height))
+        
+#         # Draw the image on the page (cropped if it's too large)
+#         c.drawImage(img_path, 0, height - img_height, width=img_width, height=img_height)
+        
+#         # Add a caption with the image filename
+#         caption = os.path.basename(img_path)  # Extract filename from the path
+#         c.setFont("Helvetica", 10)  # Set font for the caption
+#         c.drawString(10, 20, caption)  # Position the caption at the bottom-left
+        
+#         # Create a new page for the next image
+#         c.showPage()
+    
+#     # Save the PDF
+#     c.save()
+
+
+def images_to_pdf(image_paths, output_path):
+    # Create a canvas for the PDF
+    c = canvas.Canvas(output_path, pagesize=letter)
+    width, height = letter
+
+    for img_path in image_paths:
+        # Open each image using PIL
+        img = Image.open(img_path)
+        img_width, img_height = img.size
+        c.setPageSize((width, height))
+        
+        # Draw the image on the canvas
+        c.drawImage(img_path, 0, 0, width=width, height=height)
+        
+        # Add a caption with the image filename
+        caption = os.path.basename(img_path)  # Extract filename from the path
+        c.setFont("Helvetica", 10)  # Set font for the caption
+        c.drawString(10, 20, caption)  # Position the caption at the bottom-left
+        
+        c.showPage()  # Add a new page in the PDF for the next image
+    c.save()  # Save the PDF file
+
+
+
+
 
 @click.command()
 @click.option('--figure', default=None, help='Figure to generate')
@@ -1080,6 +1244,10 @@ def main(figure, overwrite, single_model, generate_data, recompute):
                         "BTSP_learnedTD": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
                                             "color": "magenta",
                                             "name": "BTSP learned Top-Down"},
+
+                        "BTSP_FA":        {"config": "20240923_EIANN_2_hidden_mnist_BTSP_config_3L_fixed_TD_complete_optimized.yaml",
+                                            "color": "orange",
+                                            "name": "BTSP fixed TD(FA)"},
 
                         # 2. Consulting forward (un-nudged) activity for updating forward weights + HWN rules
                         "bpLike_learnedTD_nonudge":{"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HWN_1_complete_optimized.yaml",
@@ -1165,22 +1333,25 @@ def main(figure, overwrite, single_model, generate_data, recompute):
     # elif figure in ["all", "S3"]:
     #     pass
 
+    # Figure 5: Hebbian learning rule enables W/B alignment
+    #           -> Plot angles over time + accuracy
+    #           -> (Diagram + equations)
     elif figure in ["all", "fig5"]:
-        model_list_heatmaps = ["bpLike_FA", "bpLike_learnedTD", "BTSP_learnedTD"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "Fig5_WBalignment_FA_bpLike_BTSP"
-        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
-
-        # Figure 5: Hebbian learning rule enables W/B alignment
-        #     -> FA vs BTSP vs bpLike
-        #     -> Plot W/B angle over time
-        #     -> Plot angle vs BP + accuracy
-        #     -> (Diagram + equations)
+        model_list1 = ["bpLike_hebbdend", "bpLike_FA", "bpLike_learnedTD"]
+        model_list2 = ["BTSP", "BTSP_FA", "BTSP_learnedTD"]
+        figure_name = "Fig5_WB_alignment_FA_bpLike_BTSP"
+        compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, overwrite=overwrite)
+    
 
     elif figure in ["all", "metrics"]:
         model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_learnedTD", "bpLike_FA"]
         figure_name = "metrics_all_models"
         generate_metrics_plot(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
+
+    # # Combine figures into one PDF
+    # directory = "figures/"
+    # image_paths = [os.path.join(directory, figure) for figure in os.listdir(directory) if figure.endswith('.png') and figure.startswith('Fig')]
+    # images_to_pdf(image_paths=image_paths, output_path= "figures/all_figures.pdf")
 
 
 if __name__=="__main__":
