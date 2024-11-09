@@ -10482,6 +10482,7 @@ def update_spiral_config_2_hidden_dend_EI_contrast_learned_bias(x, context):
     '''
     param_dict = param_array_to_dict(x, context.param_names)
 
+    # Weight scales
     H1_E_H2_E_weight_scale = (param_dict['H1_E_H2_E_weight_scale'] *
                               (math.sqrt(context.layer_config['H1']['E']['size']) /
                                math.sqrt(context.layer_config['H2']['E']['size'])))
@@ -10502,10 +10503,8 @@ def update_spiral_config_2_hidden_dend_EI_contrast_learned_bias(x, context):
     H1_E_bias_learning_rate = param_dict['H1_E_bias_learning_rate']
     H2_E_bias_learning_rate = param_dict['H2_E_bias_learning_rate']
     Output_E_bias_learning_rate = param_dict['Output_E_bias_learning_rate']
-
-    # print(f"{context.projection_config}\n")
-    # print(f"{context.projection_config['H1']['E']}\n")
     
+    # Update context
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H1_E_Input_E_learning_rate
     
     context.projection_config['H1']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H1_E_H1_E_learning_rate
@@ -10525,3 +10524,13 @@ def update_spiral_config_2_hidden_dend_EI_contrast_learned_bias(x, context):
     context.layer_config['H2']['E']['bias_learning_rule_kwargs']['learning_rate'] = H2_E_bias_learning_rate
 
     context.layer_config['Output']['E']['bias_learning_rule_kwargs']['learning_rate'] = Output_E_bias_learning_rate
+
+def update_spiral_config_2_hidden_bpDale(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    # Learning rate (global)
+    learning_rate = param_dict['learning_rate']
+
+    # Update context
+    context.training_kwargs['optimizer'] = 'SGD'
+    context.training_kwargs['learning_rate'] = learning_rate

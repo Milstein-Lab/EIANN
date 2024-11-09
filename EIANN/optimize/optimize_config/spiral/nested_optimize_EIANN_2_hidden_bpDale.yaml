@@ -1,0 +1,52 @@
+# Being used with optimization script: EIANN\optimize\nested_optimize_EIANN_spiral_2_hidden.py
+# Being used to optimize: EIANN\network_config\spiral\EIANN_2_hidden_spiral_bpDale.yaml
+# Update function in: EIANN\optimize\network_config_updates.py
+
+bounds:
+    learning_rate:
+        - 0.0001
+        - 0.25
+default_params:
+rel_bounds:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 5600
+    epochs: 1
+    network_config_file_path: optimize/network_config/spiral/EIANN_2_hidden_spiral_bpDale.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: False
+    include_dend_loss_objective: False
+update_context:
+    - source: optimize.nested_optimize_EIANN_spiral_2_hidden
+      function: update_spiral_config_2_hidden_bpDale
+param_gen: PopulationAnnealing
+stages:
+    - source: optimize.nested_optimize_EIANN_spiral_2_hidden
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+      # get_objectives: get_objectives_single
+optimization_title: EIANN_2_hidden_spiral_bpDale
+x0:
+    learning_rate: 0.05
+
+
+# To get analysis of features based on current config (of x0 values), run this:
+# EIANN\EIANN$ python -m nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale.yaml --disp
+
+# To do optimization based on this config, run this:
+# EIANN\EIANN$ python -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale.yaml --disp --pop_size=1 --max_iter=2 --path_length=1
+
+# To optimize with MPI (locally), run this:
+# EIANN\EIANN$ mpiexec -n 5 python -m mpi4py.futures -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale.yaml --disp --pop_size=1 --max_iter=3 --path_length=1 --framework=mpi --num_instances=4
