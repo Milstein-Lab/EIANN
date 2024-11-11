@@ -249,12 +249,11 @@ class Network(nn.Module):
                             post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
 
         if store_history:
-            for layer in self:
-                for pop in layer:
-                    if store_dynamics:
-                        pop.append_attribute_history('activity', pop.forward_steps_activity)
-                    else:
-                        pop.append_attribute_history('activity', pop.activity.detach().clone())
+            for pop in self.populations.values():
+                if store_dynamics:
+                    pop.append_attribute_history('activity', pop.forward_steps_activity)
+                else:
+                    pop.append_attribute_history('activity', pop.activity.detach().clone())
 
         return self.output_pop.activity
 
@@ -293,31 +292,44 @@ class Network(nn.Module):
 
         return loss.item()
 
-    def update_forward_state(self, store_history=False):
+    def update_forward_state(self, store_history=False, store_dynamics=False, store_num_steps=None):
         """
         Clone forward neuronal activities and initialize forward dendritic states.
         """
-        for layer in self:
-            for post_pop in layer:
-                post_pop.forward_activity = post_pop.activity.detach().clone()
-                post_pop.forward_prev_activity = post_pop.prev_activity.detach().clone()
+        if store_num_steps is None:
+            store_num_steps = self.forward_steps
+
+        for post_pop in self.populations.values():
+            post_pop.forward_activity = post_pop.activity.detach().clone()
+            post_pop.forward_prev_activity = post_pop.prev_activity.detach().clone()
+            
+            init_dend_state = False
+            for projection in post_pop:
+                pre_pop = projection.pre
+                if projection.compartment == 'dend':
+                    if not init_dend_state:
+                        post_pop.forward_dendritic_state = torch.zeros(post_pop.size, device=self.device)
+                        init_dend_state = True
+                        if store_dynamics:
+                            post_pop.forward_dendritic_state_steps = torch.zeros(store_num_steps, post_pop.size, device=self.device)
+
+                    if projection.direction in ['forward', 'F']:
+                        post_pop.forward_dendritic_state = post_pop.forward_dendritic_state + projection(pre_pop.activity)
+                        if store_dynamics:
+                            pre_activity_dynamics = torch.stack(pre_pop.forward_steps_activity[self.forward_steps-store_num_steps:])
+                            post_pop.forward_dendritic_state_steps = post_pop.forward_dendritic_state_steps + projection(pre_activity_dynamics)
+                    elif projection.direction in ['recurrent', 'R']:
+                        post_pop.forward_dendritic_state = post_pop.forward_dendritic_state + projection(pre_pop.prev_activity)
+                        if store_dynamics:
+                            pre_activity_dynamics = torch.stack(pre_pop.forward_steps_activity[self.forward_steps-store_num_steps:-1])
+                            post_pop.forward_dendritic_state_steps[1:] = post_pop.forward_dendritic_state_steps[1:] + projection(pre_activity_dynamics)
+
+            if store_history and hasattr(post_pop, 'forward_dendritic_state'):
+                if store_dynamics:
+                    post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state_steps.detach().clone())
+                else:
+                    post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state.detach().clone())
                 
-                init_dend_state = False
-                for projection in post_pop:
-                    pre_pop = projection.pre
-                    if projection.compartment == 'dend':
-                        if not init_dend_state:
-                            post_pop.forward_dendritic_state = torch.zeros(post_pop.size, device=self.device)
-                            init_dend_state = True
-                        if projection.direction in ['forward', 'F']:
-                            post_pop.forward_dendritic_state = (post_pop.forward_dendritic_state +
-                                                                projection(pre_pop.activity))
-                        elif projection.direction in ['recurrent', 'R']:
-                            post_pop.forward_dendritic_state = (post_pop.forward_dendritic_state +
-                                                                projection(pre_pop.prev_activity))
-                if store_history and hasattr(post_pop, 'forward_dendritic_state'):
-                    post_pop.append_attribute_history('forward_dendritic_state',
-                                                      post_pop.forward_dendritic_state.detach().clone())
                 
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
               store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
@@ -458,7 +470,7 @@ class Network(nn.Module):
                     self.prev_param_history.append(deepcopy(self.state_dict()))  # Store parameters for dW comparison
                 
                 # Update state variables required for weight and bias updates
-                self.update_forward_state(store_history=this_train_step_store_history)
+                self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
                 
                 for backward in self.backward_methods:
                     backward(self, output, sample_target, store_history=this_train_step_store_history,
