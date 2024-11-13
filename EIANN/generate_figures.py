@@ -213,7 +213,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=1, constrain_params=False)
         else:
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=1, constrain_params=False)
-        angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history, plot=True)
+        angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history)
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=data_file_path, overwrite=overwrite)
 
     if 'angle_vs_bp' in variables_to_recompute:
@@ -823,8 +823,8 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=3, ncols=3,                        
                        left=0.1,right=0.9,
-                       top=0.75, bottom = 0.3,
-                       wspace=0.15, hspace=0.5)
+                       top=0.9, bottom = 0.6,
+                       wspace=0.4, hspace=0.5)
     ax_accuracy1 = fig.add_subplot(axes[0,0])
     ax_angle_vs_BP1 = fig.add_subplot(axes[1,0])
     ax_FB_angle1 = fig.add_subplot(axes[2,0])
@@ -869,15 +869,11 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
             avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
             error = np.std(accuracy_all_seeds, axis=0)
             train_steps = data_dict[seed]['val_history_train_steps'][:]
-            ax_accuracy.plot(train_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
+            ax_accuracy.plot(train_steps, avg_accuracy, color=model_dict["color"], label=model_dict["name"])
             ax_accuracy.fill_between(train_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"], linewidth=0)
             ax_accuracy.set_xlabel('Training step')
             ax_accuracy.set_ylabel('Test accuracy (%)', labelpad=-2)
             ax_accuracy.set_ylim([0,100])
-            ax_accuracy.legend(handlelength=1, ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
-            legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
-            for line in legend.get_lines():
-                line.set_linewidth(1.5)
 
             # Plot angle vs BP
             angle_all_seeds = []
@@ -889,13 +885,17 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
                 angle_all_seeds.append(smoothed_angle)
             avg_angle = np.nanmean(angle_all_seeds, axis=0)
             error = np.nanstd(angle_all_seeds, axis=0)
+            ax_angle_vs_BP.hlines(30, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
+            ax_angle_vs_BP.hlines(60, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
+            ax_angle_vs_BP.hlines(90, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
             ax_angle_vs_BP.plot(train_steps, avg_angle, label=model_dict["name"], color=model_dict["color"])
             ax_angle_vs_BP.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
             ax_angle_vs_BP.set_xlabel('Training step')
-            ax_angle_vs_BP.set_ylabel('Angle vs BP (stoch.)')
-            ax_angle_vs_BP.set_ylim([0,90])
+            ax_angle_vs_BP.set_ylabel('Angle vs BP')
+            ax_angle_vs_BP.set_ylim([0,100])
+            ax_angle_vs_BP.set_xlim([-1000,20000])
             ax_angle_vs_BP.set_yticks(np.arange(0, 101, 30))
-            # ax_angle_vs_BP.set_xlim([0,20000])
+
 
             # Plot angles: forward weights W vs backward weights B
             fb_angles_all_seeds = []
@@ -904,6 +904,9 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
                     fb_angles_all_seeds.append(data_dict[seed]["feedback_weight_angle_history"][projection][:])
             avg_angles = np.mean(fb_angles_all_seeds, axis=0)
             std_angles = np.std(fb_angles_all_seeds, axis=0)
+            ax_FB_angle.hlines(30, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
+            ax_FB_angle.hlines(60, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
+            ax_FB_angle.hlines(90, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
             if np.isnan(avg_angles).any():
                 print(f"Warning: NaN values found in avg_angles for {network_name}.")
             else:
@@ -913,7 +916,50 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
             ax_FB_angle.set_ylim(bottom=-2, top=90)
             ax_FB_angle.set_yticks(np.arange(0, 91, 30))
             ax_FB_angle.set_ylabel('Angle \n(F vs B weights)')
+            ax_FB_angle.set_xlim([-1000,20000])
 
+    # ax_accuracy.legend(handlelength=1, ncol=3, bbox_to_anchor=(-0.3, 1.5), loc='upper left', fontsize=6)
+    legend = ax_accuracy1.legend(ncol=1, bbox_to_anchor=(-0.1, 1.6), loc='upper left')
+    for line in legend.get_lines():
+        line.set_linewidth(1.5)
+    legend = ax_accuracy2.legend(ncol=1, bbox_to_anchor=(-0.1, 1.6), loc='upper left')
+    for line in legend.get_lines():
+        line.set_linewidth(1.5)
+
+    if save is not None:
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
+
+
+def plot_dynamics(save=None):
+    #Model: bpLike_WT_hebbdend
+    saved_network_path = "../data/mnist/20240516_EIANN_2_hidden_mnist_BP_like_config_2L_66049_257_complete_dynamics.pkl"
+    if not os.path.exists(saved_network_path):
+        config_path = "../network_config/mnist/20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized_dynamics.yaml"
+        network = ut.build_EIANN_from_config(config_path, network_seed=66049)
+        train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = ut.get_MNIST_dataloaders(sub_dataloader_size=20_000)
+        data_generator.manual_seed(257)
+        network.train(train_sub_dataloader, 
+                        epochs=1,
+                        samples_per_epoch=20_000,
+                        store_history=True, 
+                        store_dynamics=True,
+                        store_params=True,
+                        store_params_interval=(0,-1,100),
+                        status_bar=True)
+        ut.save_network(network, saved_network_path)
+    else:
+        network = ut.load_network(saved_network_path)
+
+    fig = plt.figure(figsize=(5.5, 9))
+    gs_axes = gs.GridSpec(nrows=3, ncols=1,                        
+                       left=0.1,right=0.9,
+                       top=0.9, bottom = 0.6,
+                       wspace=0.4, hspace=0.5)
+    axes = [fig.add_subplot(gs_axes[i]) for i in range(3)]
+
+    # Plot dynamics for example neurons
+    pt.plot_network_dynamics_example(population=network.H2.E, units=[20,21,25], t=900, axes=axes)
 
     if save is not None:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -921,14 +967,10 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
 
 
 
-
 def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False): 
-    fig = plt.figure(figsize=(5.5, 4))
-    # fig = plt.figure(figsize=(11, 8))
-    # fig = plt.figure(figsize=(23.1, 16.8))
+    # fig = plt.figure(figsize=(5.5, 4))
     fig = plt.figure(figsize=(7, 4))
 
-    # axes = gs.GridSpec(nrows=4, ncols=4, figure=fig, bottom=0.1, top=0.9, left=0.1, right=0.99, hspace=0.5, wspace=0.5)
     axes = gs.GridSpec(nrows=4, ncols=4, figure=fig, bottom=0.1, top=0.9, left=0.1, right=0.8, hspace=0.5, wspace=0.5)
     ax_accuracy = fig.add_subplot(axes[0,0])
     ax_structure = fig.add_subplot(axes[0,1])
@@ -940,6 +982,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
     ax_angleBP = fig.add_subplot(axes[2,1])
     ax_sparsity_hist = fig.add_subplot(axes[3,0])
     ax_selectivity_hist = fig.add_subplot(axes[3,1])
+    ax_error_hist = fig.add_subplot(axes[3,2])
 
     all_models = list(dict.fromkeys(model_list))
     for model_key in all_models:
@@ -1026,6 +1069,17 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
             for line in legend.get_lines():
                 line.set_linewidth(1.5)  # Adjust linewidth in the legend
 
+            error_rate_all_seeds = [(100 - np.array(acc)) for acc in accuracy_all_seeds]
+            avg_error_rate = np.mean(error_rate_all_seeds, axis=0)
+            error = np.std(error_rate_all_seeds, axis=0)
+            ax_error_hist.plot(val_steps, avg_error_rate, label=model_dict["name"], color=model_dict["color"])
+            ax_error_hist.fill_between(val_steps, avg_error_rate-error, avg_error_rate+error, alpha=0.2, color=model_dict["color"], linewidth=0)
+            ax_error_hist.set_xlabel('Training step')
+            ax_error_hist.set_ylabel('Error Rate (%)', labelpad=0)
+            ax_error_hist.set_yscale('log')
+            ax_error_hist.set_ylim(5, 100)
+            ax_error_hist.set_yticks([10, 100], labels=['10%', '100%'])
+
             sparsity_all_seeds = []
             for seed in data_dict:
                 sparsity_one_seed = []
@@ -1106,7 +1160,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
                 ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.5, color=model_dict["color"], linewidth=0)
                 ax_dendstate.set_xlabel('Training step')
                 ax_dendstate.set_ylabel('Dendritic state')
-                ax_dendstate.set_ylim(bottom=-0.0, top=0.06)
+                ax_dendstate.set_ylim(bottom=-0.0, top=0.1)
             
 
     if save:
@@ -1183,81 +1237,87 @@ def main(figure, overwrite, single_model, generate_data, recompute):
     # pt.update_plot_defaults()
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
 
-    model_dict_all =    {# Networks with weight transpose on top-down weights
-                        "vanBP":           {"config": "20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml",
-                                            "color":  "black",
-                                            "name":   "Vanilla Backprop"},
+    model_dict_all = {
+            ##########################
+            # Backprop models
+            ##########################
+            "vanBP":       {"config": "20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml",
+                            "color":  "black",
+                            "name":   "Vanilla Backprop"},
 
-                        "bpDale_learned":  {"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml",
-                                            "color":  "blue",
-                                            "name":   "Backprop + Dale's Law (learned somaI)"},
+            "bpDale_learned":{"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml",
+                            "color":  "blue",
+                            "name":   "Backprop + Dale's Law (learned somaI)"},
 
-                        "bpDale_fixed":    {"config": "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml",
-                                            "color":  "cyan",
-                                            "name":   "Backprop + Dale's Law (fixed somaI)"},
+            "bpDale_fixed":{"config": "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml",
+                            "color":  "cyan",
+                            "name":   "Backprop + Dale's Law (fixed somaI)"},
 
-                        "HebbWN_topsup":     {"config": "20240714_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
-                                            "color":  "green",
-                                            "name":   "Top-supervised HebbWN"},
+            "bpDale_noI":  {"config": "20240919_EIANN_2_hidden_mnist_bpDale_noI_relu_SGD_config_G_complete_optimized.yaml",
+                            "color": "blue",
+                            "name": "Dale's Law (no somaI)"},
 
-                        "BTSP":            {"config":"20240604_EIANN_2_hidden_mnist_BTSP_config_3L_complete_optimized.yaml",
-                                            "color": "purple",
-                                            "name": "BTSP"}, 
+            ##########################
+            # bpLike models
+            ##########################
+            "bpLike_WT_hebbdend":  {"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_complete_optimized.yaml",
+                                    "color": "black",
+                                    "name": "bpLike_WT_hebbdend"},
 
-                        "HebbWN": {"config": "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
-                                            "color": "cyan",
-                                            "name": "HWN (B=W^T)"},
+            "bpLike_WT_hebbdend_eq":  {"config": "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml",
+                                    "color":  "red",
+                                    "name":   "bpLike_WT_hebbdend_eq"},
 
-                        "bpDale_noI":     {"config": "20240919_EIANN_2_hidden_mnist_bpDale_noI_relu_SGD_config_G_complete_optimized.yaml",
-                                           "color": "blue",
-                                           "name": "Dale's Law (no somaI)"},
+            "bpLike_hebbTD_hebbdend":{"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HWN_1_complete_optimized.yaml",
+                                    "color": "blue",
+                                    "name": "bpLike_hebbTD_hebbdend"},
 
+            "bpLike_hebbTD_hebbdend_eq":{"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_3_complete_optimized.yaml",
+                                    "color": "magenta",
+                                    "name": "bpLike_hebbTD_hebbdend_eq"},
 
-                        "bpLike_hebbdend": {"config": "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml",
-                                            "color":  "red",
-                                            "name":   "Dendritic gating (Weight Symmetry)"}, # BP-local weight update rule with dendritic target propagation
+            "bpLike_WT_localBP_eq":   {"config": "20240628_EIANN_2_hidden_mnist_BP_like_config_3M_complete_optimized.yaml",
+                                    "color":  "black",
+                                    "name":   "bpLike_WT_localBP_eq"},
 
-                        "bpLike_localBP":  {"config": "20240628_EIANN_2_hidden_mnist_BP_like_config_3M_complete_optimized.yaml",
-                                            "color":  "black",
-                                            "name":   "Backprop (local loss func.))"},  # BP-local weight update rule with dendritic target propagation
+            "bpLike_WT_fixedDend_eq": {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
+                                    "color":  "gray",
+                                    "name":   "bpLike_WT_fixedDend_eq"},
 
-                        "bpLike_fixedDend":{"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
-                                            "color":  "gray",
-                                            "name":   "Random"},     # BP-local weight update rule with dendritic target propagation
+            "bpLike_fixedTD_hebbdend_eq":{"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml",
+                                    "color": "lightgray",
+                                    "name": "bpLike_fixedTD_hebbdend_eq"},
 
+            ##########################
+            # Biological models
+            ##########################
+            "HebbWN_topsup":       {"config": "20240714_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
+                                    "color":  "green",
+                                    "name":   "Top-supervised HebbWN"},
 
-                        ## Networks with separate top-down weights (i.e. not weight transpose)
+            "HebbWN":              {"config": "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
+                                    "color": "cyan",
+                                    "name": "HWN (B=W^T)"},
 
-                        # 1. Consulting nudged activity for updating forward weights + HWN rules
-                        "bpLike_FA":       {"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml",
-                                            "color": "lightgray",
-                                            "name": "Random (Feedback Alignment)"},
+            "HebbWN_learned_somaI":{"config": "20240919_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_learn_somaI_config_4_complete_optimized.yaml",
+                                    "color": "cyan",
+                                    "name": "Supervised HebbWN learned somaI"},
 
-                        "bpLike_learnedTD":{"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_3_complete_optimized.yaml",
-                                            "color": "orange",
-                                            "name": "Learned top-town (Hebb)"},
+            "BCM":  {"config": "20240723_EIANN_2_hidden_mnist_Supervised_BCM_config_4_complete_optimized.yaml",
+                    "color": "yellow",
+                    "name": "Supervised BCM"},
 
-                        "BCM":             {"config": "20240723_EIANN_2_hidden_mnist_Supervised_BCM_config_4_complete_optimized.yaml",
-                                            "color": "yellow",
-                                            "name": "Supervised BCM"},
-                                            
-                        "BTSP_learnedTD": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
-                                            "color": "magenta",
-                                            "name": "BTSP learned Top-Down"},
+            "BTSP_WT_hebbdend":     {"config":"20240604_EIANN_2_hidden_mnist_BTSP_config_3L_complete_optimized.yaml",
+                                    "color": "cyan",
+                                    "name": "BTSP_WT_hebbdend"}, 
 
-                        "BTSP_FA":        {"config": "20240923_EIANN_2_hidden_mnist_BTSP_config_3L_fixed_TD_complete_optimized.yaml",
-                                            "color": "orange",
-                                            "name": "BTSP fixed TD(FA)"},
+            "BTSP_hebbTD_hebbdend": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
+                                    "color": "magenta",
+                                    "name": "BTSP_hebbTD_hebbdend"},
 
-                        # 2. Consulting forward (un-nudged) activity for updating forward weights + HWN rules
-                        "bpLike_learnedTD_nonudge":{"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HWN_1_complete_optimized.yaml",
-                                                    "color": "salmon",
-                                                    "name": "Learned top-town (Hebb) no-nudge"},
-                        
-                        "HebbWN_learned_somaI": {"config": "20240919_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_learn_somaI_config_4_complete_optimized.yaml",
-                                                 "color": "cyan",
-                                                 "name": "Supervised HebbWN learned somaI"},
-
+            "BTSP_fixedTD_hebbdend":{"config": "20240923_EIANN_2_hidden_mnist_BTSP_config_3L_fixed_TD_complete_optimized.yaml",
+                                    "color": "black",
+                                    "name": "BTSP_fixedTD_hebbdend"},
         }
 
     for model_key in model_dict_all:
@@ -1265,7 +1325,7 @@ def main(figure, overwrite, single_model, generate_data, recompute):
 
     if recompute is not None and generate_data is None:
         generate_data = 'all'
-        # generate_data = ['bpLike_FA', 'bpLike_learnedTD', 'BTSP_learnedTD', 'BCM']
+        # generate_data = ['bpLike_FA', 'bpLike_hebbTD', 'BTSP_hebbTD', 'BCM']
         print(f"Recomputing data for {generate_data}")
 
     if generate_data is not None:
@@ -1297,7 +1357,7 @@ def main(figure, overwrite, single_model, generate_data, recompute):
             generate_single_model_figure(model_dict=model_dict_all[single_model], save=True, overwrite=overwrite)
 
     if figure == "fig1":
-        print("Diagram figure not implemented")
+        plot_dynamics()
 
     if figure in ["all", "fig2"]:
         model_list_heatmaps = ["vanBP", "bpDale_fixed", "hebb_topsup"]
@@ -1312,13 +1372,13 @@ def main(figure, overwrite, single_model, generate_data, recompute):
         compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
     elif figure in ["all", "fig3"]:
-        model_list_heatmaps = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
+        model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig3_dendI"
         compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
     elif figure in ["all", "S2"]:
-        model_list_heatmaps = ["bpLike_fixedDend", "bpLike_localBP", "bpLike_hebbdend"]
+        model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS2_Ecells_bpLike"
         compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
@@ -1344,7 +1404,10 @@ def main(figure, overwrite, single_model, generate_data, recompute):
     
 
     elif figure in ["all", "metrics"]:
-        model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_learnedTD", "bpLike_FA"]
+        # model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_hebbTD", "bpLike_FA"]
+        model_list = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
+
+        # model_list = ["bpLike_hebbTD_hebbdend_eq", "bpLike_WT_hebbdend_eq", "bpLike_hebbTD_hebbdend", "bpLike_WT_hebbdend"]
         figure_name = "metrics_all_models"
         generate_metrics_plot(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
 
