@@ -889,30 +889,29 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
 
 
 def compute_dendritic_state_dynamics(network):
-    assert len(network.output_pop.activity_history.shape)==3, "Network must have saved dynamics for each sample, with history dimensions=(samples, timesteps, units)"
+    print('Computing dendritic state dynamics from param and activity history...')
+    for i, (param_step, state_dict) in tqdm(enumerate(zip(network.param_history_steps, network.prev_param_history))):
+        network.load_state_dict(state_dict)
 
-    for layer in network:
-        for population in layer:
-            # Initialize dendritic state history dynamics
-            population.forward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history)
-            population.backward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history)
-            for sample in range(len(network.sample_order)):
-                if population == network.output_pop: # The output population has no dynamics, only constant nudges towards target activity
-                    population.backward_dendritic_state_history_dynamics[sample] = population.plateau_history[sample].unsqueeze(0).repeat(15, 1)
-                else:
-                    population.dendritic_state = torch.zeros(population.size)
-                    for phase in ['forward', 'backward']:
-                        for t in range(network.forward_steps):
-                            for projection in population:
-                                if projection.compartment == 'dend':
-                                    if projection.direction in ['forward', 'F']:
-                                        pre_activity = projection.pre.activity_history[sample,t]
-                                        population.dendritic_state = (population.dendritic_state + projection(pre_activity))
-                                    elif projection.direction in ['recurrent', 'R']:
-                                        pre_activity = projection.pre.activity_history[sample,t-1] if t > 0 else torch.zeros_like(projection.pre.activity_history[sample,0])                                    
-                                        population.dendritic_state  = (population.dendritic_state + projection(pre_activity))
-                            if phase == 'forward':
-                                population.forward_dendritic_state_history_dynamics[sample,t] = population.dendritic_state
-                            elif phase == 'backward':
-                                population.backward_dendritic_state_history_dynamics[sample,t] = population.dendritic_state
+        # Compute dendritic state history dynamics
+        for population in network.populations.values():
+            if hasattr(population,'dendritic_state') and not hasattr(population, 'forward_dendritic_state_history_dynamics'):
+                # Initialize dendritic state history dynamics
+                population.forward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history[network.param_history_steps])
+                population.backward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history[network.param_history_steps])
+
+            if population is network.output_pop:
+                population.backward_dendritic_state_history_dynamics[i] = population.backward_dendritic_state_history[param_step] # Output dendritic state is fixed to output error, does not have dynamics
+            else:
+                for projection in population:
+                    if projection.compartment in ['dend', 'dendrite']:
+                        assert hasattr(projection.pre, 'backward_activity_history'), f"{projection.pre.fullname} does not have backward activity history"
+                        assert projection.pre.backward_activity_history is not None, f"{projection.pre.fullname} does not have backward activity history"
+                        if projection.direction in ['forward', 'F']:
+                            population.forward_dendritic_state_history_dynamics[i] += projection(projection.pre.activity_history[param_step])
+                            population.backward_dendritic_state_history_dynamics[i] += projection(projection.pre.backward_activity_history[param_step])
+                        elif projection.direction in ['recurrent', 'R']:
+                            population.forward_dendritic_state_history_dynamics[i,1:] += projection(projection.pre.activity_history[param_step,:-1])
+                            population.backward_dendritic_state_history_dynamics[i,0] += projection(projection.pre.activity_history[param_step,-1]) # Start of backward phase: recurrent connections refer to last activity of forward phase
+                            population.backward_dendritic_state_history_dynamics[i,1:] += projection(projection.pre.backward_activity_history[param_step,:-1])
     
