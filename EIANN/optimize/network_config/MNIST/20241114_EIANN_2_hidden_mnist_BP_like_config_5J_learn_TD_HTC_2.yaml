@@ -1,8 +1,7 @@
-# H2.E.Output.E cloned (and rescaled) from Output.E.H2.E
-# H1.E.H2.E cloned (and rescaled) from H2.E.H1.E
+# TD weights learned with Top_Down_Hebbian_Temporal_Contrast_1 (forward only)
 # DendI.E and DendI.DendI learned with Hebb_WeightNorm
 # E.DendI learned with DendriticLoss_6
-# forward E weights learned with BP_like_2E (no backward equilibration)
+# forward E weight update consults forward activitiy
 layer_config:
     Input:
         E:
@@ -46,12 +45,13 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_2E
+                    learning_rule: BP_like_2L
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
                         stochastic: False
                         relu_gate: True
+                        forward_only: True
             H1:
                 SomaI:
                     weight_init: half_kaiming
@@ -79,17 +79,17 @@ projection_config:
             H2:
                 E:
                     weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                        - 1.3308604685151206
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: H2.E.H1.E
-                        transpose: True
-                        scale: 0.4473952435945524
                     update_phase: B
                     compartment: dend
-                    learning_rule: null
+                    learning_rule: Top_Down_Hebbian_Temporal_Contrast_1
+                    learning_rule_kwargs:
+                        learning_rate: 0.1
+                        forward_only: True
         SomaI:
             Input:
                 E:
@@ -109,8 +109,8 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    direction: R
                     update_phase: A
+                    direction: R
                     learning_rule: null
                 SomaI:
                     weight_init: half_kaiming
@@ -133,6 +133,7 @@ projection_config:
                         - 0
                         - null
                     direction: R
+                    update_phase: A
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         sign: 1
@@ -147,7 +148,6 @@ projection_config:
                         - null
                         - 0
                     direction: R
-                    update_phase: A
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         sign: -1
@@ -164,12 +164,13 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_2E
+                    learning_rule: BP_like_2L
                     learning_rule_kwargs:
                         learning_rate: 0.006900684389813614
                         max_pop_fraction: 1.
                         stochastic: False
                         relu_gate: True
+                        forward_only: True
             H2:
                 SomaI:
                     weight_init: half_kaiming
@@ -197,17 +198,17 @@ projection_config:
             Output:
                 E:
                     weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                        - 1.3308604685151206
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: Output.E.H2.E
-                        transpose: True
-                        scale: 0.4473952435945524
                     update_phase: B
                     compartment: dend
-                    learning_rule: null
+                    learning_rule: Top_Down_Hebbian_Temporal_Contrast_1
+                    learning_rule_kwargs:
+                        learning_rate: 0.1
+                        forward_only: True
         SomaI:
             H1:
                 E:
@@ -227,8 +228,8 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    direction: R
                     update_phase: A
+                    direction: R
                     learning_rule: null
                 SomaI:
                     weight_init: half_kaiming
@@ -282,12 +283,13 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: BP_like_2E
+                    learning_rule: BP_like_2L
                     learning_rule_kwargs:
                         learning_rate: 0.05248973408306354
                         max_pop_fraction: 1.
                         stochastic: False
                         relu_gate: True
+                        forward_only: True
             Output:
                 SomaI:
                     weight_init: half_kaiming
@@ -317,8 +319,8 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    direction: R
                     update_phase: A
+                    direction: R
                     learning_rule: null
                 SomaI:
                     weight_init: half_kaiming

@@ -2372,24 +2372,32 @@ class Hebbian_Temporal_Contrast(BP_like_2L):
 
 
 class Top_Down_Hebbian_Temporal_Contrast_1(LearningRule):
-    def __init__(self, projection, learning_rate=None):
+    def __init__(self, projection, learning_rate=None, forward_only=False):
         """
         Assumes another learning rule has updated activity during a backward phase.
         Weight updates are computed using the Contrastive Hebbian Learning approach of Xie & Seung, 2003.
         :param projection: :class:'nn.Linear'
         :param learning_rate: float
+        :param forward_only: bool; whether to consult forward_activity in weight update
         """
         super().__init__(projection, learning_rate)
+        self.forward_only = forward_only
     
     def step(self):
         forward_post_activity = torch.clamp(self.projection.post.forward_activity, min=0, max=1)
         backward_post_activity = torch.clamp(self.projection.post.activity, min=0, max=1).detach().clone()
         if self.projection.direction in ['forward', 'F']:
             forward_pre_activity = torch.clamp(self.projection.pre.forward_activity, min=0, max=1)
-            backward_pre_activity = torch.clamp(self.projection.pre.activity, min=0, max=1)
+            if not self.forward_only:
+                backward_pre_activity = torch.clamp(self.projection.pre.activity, min=0, max=1)
         elif self.projection.direction in ['recurrent', 'R']:
             forward_pre_activity = torch.clamp(self.projection.pre.prev_forward_activity, min=0, max=1)
-            backward_pre_activity = torch.clamp(self.projection.pre.prev_activity, min=0, max=1)
-        delta_weight = (torch.outer(backward_post_activity, backward_pre_activity) -
-                        torch.outer(forward_post_activity, forward_pre_activity)).detach().clone()
+            if not self.forward_only:
+                backward_pre_activity = torch.clamp(self.projection.pre.prev_activity, min=0, max=1)
+        if self.forward_only:
+            delta_weight = (torch.outer(backward_post_activity - forward_post_activity,
+                                        forward_pre_activity)).detach().clone()
+        else:
+            delta_weight = (torch.outer(backward_post_activity, backward_pre_activity) -
+                            torch.outer(forward_post_activity, forward_pre_activity)).detach().clone()
         self.projection.weight.data += self.learning_rate * delta_weight
