@@ -269,7 +269,7 @@ def plot_error_history(network):
     fig = plt.figure()
     plt.plot(train_steps, error_rate)
     plt.yscale('log')
-    plt.ylim(0, 100)
+    plt.ylim(top=100)
     plt.yticks([10, 100], labels=['10%', '100%'])
     plt.xlabel('Train steps')
     plt.ylabel('Error Rate (%)')
@@ -427,6 +427,74 @@ def plot_network_dynamics(network):
             average_activity_dynamics = torch.mean(population.activity_history[-21:], dim=(0,2))
             ax.plot(average_activity_dynamics)
             ax.set_title(f'{population.fullname} dynamics')
+
+
+def plot_network_dynamics_example(population, units, t, axes=None, colors=None):
+    network = population.network
+    if not hasattr(population, 'backward_dendritic_state_history_dynamics'):
+        ut.compute_dendritic_state_dynamics(network)
+
+    t_idx = torch.argmin(torch.abs(network.param_history_steps - t))
+    if t not in network.param_history_steps:
+        print(f"Closest saved train step {network.param_history_steps[t_idx].item()}")
+
+    cmap= plt.get_cmap('Set1')
+    colors = [cmap(i) for i in range(len(units))]
+    if axes is None:
+        fig = plt.figure(figsize=(10, 6))
+        gs_axes = gs.GridSpec(nrows=3, ncols=1,
+                           left=0.05, right=0.98,
+                           top=0.83, bottom=0.1,
+                           wspace=0.3, hspace=0.8)
+        axes = [fig.add_subplot(gs_axes[i]) for i in range(3)]
+    forward_x = np.arange(0, 15)
+    backward_x = np.arange(15, 30)
+
+    ax = axes[0]
+    ax.hlines(0, 0, 30, color='gray',alpha=1, linewidth=1, linestyle='--')
+    ax.vlines(14.5, -1, 1, color='red',alpha=1, linewidth=2, linestyle='--')
+    for unit,c in zip(units,colors):
+        ax.plot(forward_x, population.forward_dendritic_state_history_dynamics[t_idx,:,unit], color=c)
+        ax.plot(backward_x, population.backward_dendritic_state_history_dynamics[t_idx,:,unit], color=c)
+    ymax1 = torch.max(population.forward_dendritic_state_history_dynamics[t_idx,-10:,units])
+    ymin1 = torch.min(population.forward_dendritic_state_history_dynamics[t_idx,-10:,units])
+    ymax2 = torch.max(population.backward_dendritic_state_history_dynamics[t_idx,:,units])
+    ymin2 = torch.min(population.backward_dendritic_state_history_dynamics[t_idx,:,units])
+    ax.set_ylim(min(ymin1, ymin2)*1.1, max(ymax1, ymax2)*1.1)
+    ax.set_xlim(0, 30)
+    ax.set_xlabel('Time step')
+    ax.set_ylabel('Dend state')
+
+    ax = axes[1]
+    ax.vlines(14.5, -1, 1, color='red',alpha=1, linewidth=2, linestyle='--')
+    for unit,c in zip(units,colors):
+        ax.plot(forward_x, population.activity_history[network.param_history_steps[t_idx],:,unit], color=c)
+        ax.plot(backward_x, population.backward_activity_history[network.param_history_steps[t_idx],:,unit], color=c)
+    ymax1 = torch.max(population.activity_history[network.param_history_steps[t_idx],-10:,units])
+    ymax2 = torch.max(population.backward_activity_history[network.param_history_steps[t_idx],:,units])
+    ax.set_ylim(-0.005, max(ymax1, ymax2)*1.1)
+    ax.set_xlim(0, 30)
+    ax.set_xlabel('Time step')
+    ax.set_ylabel('Activity')
+
+    ax = axes[2]
+    x = network.param_history_steps
+    # ax.hlines(0, 0, network.param_history_steps[-1], color='r',alpha=1, linewidth=1)
+
+    mean_forward_dend = torch.mean(torch.abs(population.forward_dendritic_state_history_dynamics[:,-1,:]), dim=1)
+    mean_backward_dend = torch.mean(torch.abs(population.backward_dendritic_state_history_dynamics[:,0,:]), dim=1)
+
+    ax.plot(x, mean_forward_dend, label='forward',  alpha=0.5, linewidth=1.5, color='k')
+    ax.plot(x, mean_backward_dend, label='backward', alpha=0.6, linewidth=1.5, color='k', linestyle='--')
+    # mean_forward =  torch.mean(population.forward_dendritic_state_history_dynamics, dim=2)[:,-1]
+    # mean_backward = torch.mean(population.backward_dendritic_state_history_dynamics, dim=2)[:,0]
+    # ax.plot(x, mean_forward, label='forward', alpha=1, linewidth=1)
+    # ax.plot(x, mean_backward, label='backward', alpha=1, linewidth=1)
+    legend = ax.legend()
+    for line in legend.get_lines():
+        line.set_linewidth(2)
+    ax.set_xlabel('Train step')
+    ax.set_ylabel('|Dend state|')
 
 
 def plot_sparsity_history(network):
