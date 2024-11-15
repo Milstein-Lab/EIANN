@@ -10438,6 +10438,7 @@ def update_EIANN_config_2_hidden_mnist_BTSP_D1(x, context):
 
 def update_spiral_config_2_hidden_dend_EI_contrast_fixed_bias(x, context):
     '''
+    Update the spiral configuration for a 2-hidden-layer network with dendritic EI contrast fixed bias.
     Based on update_EIANN_config_2_hidden_BP_like_2E
     :param x:
     :param context:
@@ -10476,6 +10477,7 @@ def update_spiral_config_2_hidden_dend_EI_contrast_fixed_bias(x, context):
 
 def update_spiral_config_2_hidden_dend_EI_contrast_learned_bias(x, context):
     '''
+    Update the spiral configuration for a 2-hidden-layer network with dendritic EI contrast learned bias.
     Based on update_EIANN_config_2_hidden_BP_like_2E
     :param x:
     :param context:
@@ -10526,6 +10528,11 @@ def update_spiral_config_2_hidden_dend_EI_contrast_learned_bias(x, context):
     context.layer_config['Output']['E']['bias_learning_rule_kwargs']['learning_rate'] = Output_E_bias_learning_rate
 
 def update_spiral_config_2_hidden_bpDale(x, context):
+    """
+    Update the spiral configuration for a 2-hidden-layer network with bpDale.
+    :param x: Parameter array
+    :param context: Context object containing configuration details
+    """
     param_dict = param_array_to_dict(x, context.param_names)
 
     # Learning rate (global)
