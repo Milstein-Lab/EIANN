@@ -805,8 +805,6 @@ EXPORTED/UPLOADED 20241014:
 NEED TO EXPORT (abandoned):
  - BTSP_3L_learn_TD_HWN_4 
  
-NEED TO UPLOAD:
-
 NEED TO RUN (abandoned):
  - BTSP_5J_fixed_TD
  
@@ -815,16 +813,14 @@ ABANDONDED:
  	 - BTSP_5J_learn_TD_HWN_1 [ 131 gens]
 	HOT_STARTING 20241105:
  	 - Supervised_Hebb_WN_6 [101 gens]
-
-NEED TO RUN:
- - BP_like_2L_learn_TD_5 (modulate Hebb_WN with dendritic state)
+ 	- BP_like_2L_learn_TD_5 (modulate Hebb_WN with dendritic state)
  
 COMPLETED:
  - Top_Layer_Supervised_Hebb_WN_7 (uses BP_like_2L in Output.E cells)
  - Hebb_Temp_Contrast_1 (uses BP_like_2L in Output.E cells, uses Hebb_Temporal_Contrast_1 in Hidden.E cells)
  - BP_like_2L_learn_TD_HTC_1 (learn TD weights with Hebb_Temporal_Contrast_1) - worse than FA
 
-EXPORTED:
+EXPORTED AND UPLOADED:
  - Hebb_Temp_Contrast_1 (uses BP_like_2L in Output.E cells, uses Hebb_Temporal_Contrast_1 in Hidden.E cells)
  - BP_like_2L_learn_TD_HTC_1 (learn TD weights with Hebb_Temporal_Contrast_1) - worse than FA 
 
