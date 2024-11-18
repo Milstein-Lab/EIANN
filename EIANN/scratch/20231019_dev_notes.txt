@@ -799,17 +799,15 @@ EXPORTED/UPLOADED 20241003:
 
 EXPORTED/UPLOADED 20241014:
  - BP_like_5J [same as 2J but with equil and dend_state objectives]
-
-NEED TO EXPORT:
- - BTSP_3L_learn_TD_HWN_4 
  - BP_like_5J_learn_TD_HWN_1
  - BTSP_5J [can use BTSP_17 rule like BTSP_3J but with relu_gate=True]
  
+NEED TO EXPORT (abandoned):
+ - BTSP_3L_learn_TD_HWN_4 
+ 
 NEED TO UPLOAD:
 
-NEED TO RUN:
- - A set of configurations where the weight update depends only on forward activity (in fact backward equilibration is not even necessary)
- - BP_like_5J_fixed_TD
+NEED TO RUN (abandoned):
  - BTSP_5J_fixed_TD
  
 ABANDONDED:
@@ -817,11 +815,24 @@ ABANDONDED:
  	 - BTSP_5J_learn_TD_HWN_1 [ 131 gens]
 	HOT_STARTING 20241105:
  	 - Supervised_Hebb_WN_6 [101 gens]
- 	 
-RUNNING 20241011:
- - Top_Layer_Supervised_Hebb_WN_7 (uses BP_like_2L in Output.E cells)
- 
+
 NEED TO RUN:
  - BP_like_2L_learn_TD_5 (modulate Hebb_WN with dendritic state)
- - BP_like_2L_learn_TD_6 (learn TD weights with Hebb_Temporal_Contrast)
- - Supervised_Hebb_WN_7 (uses BP_like_2L in Output.E cells, uses Hebb_Temporal_Contrast in Hidden.E cells)
+ 
+COMPLETED:
+ - Top_Layer_Supervised_Hebb_WN_7 (uses BP_like_2L in Output.E cells)
+ - Hebb_Temp_Contrast_1 (uses BP_like_2L in Output.E cells, uses Hebb_Temporal_Contrast_1 in Hidden.E cells)
+ - BP_like_2L_learn_TD_HTC_1 (learn TD weights with Hebb_Temporal_Contrast_1) - worse than FA
+
+EXPORTED:
+ - Hebb_Temp_Contrast_1 (uses BP_like_2L in Output.E cells, uses Hebb_Temporal_Contrast_1 in Hidden.E cells)
+ - BP_like_2L_learn_TD_HTC_1 (learn TD weights with Hebb_Temporal_Contrast_1) - worse than FA 
+
+NEED TO EXPORT:
+ - Hebb_Temp_Contrast_1 (uses BP_like_2L in Output.E cells, uses Hebb_Temporal_Contrast_1 in Hidden.E cells)
+ 
+RUNNING 20241114:
+ - BP_like_5J_fixed_TD
+ - BP_like_5K
+ - BP_like_5M
+ - BP_like_5J_learn_TD_HTC_2

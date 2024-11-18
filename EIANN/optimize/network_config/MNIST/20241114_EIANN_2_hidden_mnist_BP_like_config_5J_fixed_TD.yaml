@@ -1,5 +1,4 @@
-# H2.E.Output.E cloned (and rescaled) from Output.E.H2.E
-# H1.E.H2.E cloned (and rescaled) from H2.E.H1.E
+# TD weights are fixed and random
 # DendI.E and DendI.DendI learned with Hebb_WeightNorm
 # E.DendI learned with DendriticLoss_6
 # forward E weights learned with BP_like_2E (no backward equilibration)
@@ -79,14 +78,11 @@ projection_config:
             H2:
                 E:
                     weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                        - 1.3308604685151206
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: H2.E.H1.E
-                        transpose: True
-                        scale: 0.4473952435945524
                     update_phase: B
                     compartment: dend
                     learning_rule: null
@@ -197,14 +193,11 @@ projection_config:
             Output:
                 E:
                     weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                        - 1.3308604685151206
                     weight_bounds: !!python/tuple
                         - 0
                         - null
-                    weight_constraint: clone_weight
-                    weight_constraint_kwargs:
-                        source: Output.E.H2.E
-                        transpose: True
-                        scale: 0.4473952435945524
                     update_phase: B
                     compartment: dend
                     learning_rule: null

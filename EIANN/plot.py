@@ -1636,7 +1636,7 @@ def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataload
         losses[i] = compute_loss(test_network, state_dict, test_dataloader)
     loss_grid = losses.reshape([PC1_range.size, PC2_range.size])
 
-    plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
+    # plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
 
     lines_PC1 = []
     lines_PC2 = []
@@ -1712,4 +1712,42 @@ def plot_FB_weight_alignment(*projections, title=None):
     axes.legend(loc='best', frameon=False)
     fig.tight_layout()
     clean_axes(axes)
+    fig.show()
+
+def plot_spiral_accuracy(net, test_dataloader):
+    '''
+    Function to plot loss landscape of spiral classification task by marking incorrect points red
+    '''
+    fig, axes = plt.subplots(1, 1, figsize=(5, 5))
+
+    # Test batch inputs
+    inputs = net.Input.E.activity
+
+    # Predicted labels after training 
+    outputs = net.Output.E.activity
+    _, predicted_labels = torch.max(outputs, 1)
+
+    # Test labels
+    on_device = False
+    for _, _, sample_target in test_dataloader:
+        sample_target = torch.squeeze(sample_target)
+        if not on_device:
+            sample_target = sample_target.to(net.device)
+        break
+    _, test_labels = torch.max(sample_target, 1)
+
+    # Accuracy
+    accuracy = (predicted_labels == test_labels).sum().item() / len(test_labels)
+
+    # Graphing
+    correct_indices = (predicted_labels == test_labels).nonzero().squeeze()
+    axes.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
+    wrong_indices = (predicted_labels != test_labels).nonzero().squeeze()
+    axes.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
+    axes.set_xlabel('x1')
+    axes.set_ylabel('x2')
+    axes.set_title('Predictions')
+    axes.text(0.02, 0.95, f'Accuracy: {accuracy:.2%}', verticalalignment='top', horizontalalignment='left', transform=axes.transAxes, color='black', fontsize=11)
+
+    fig.tight_layout(rect=[0, 0, 1, 0.95]) 
     fig.show()

@@ -1388,7 +1388,8 @@ class BP_like_2E(LearningRule):
 
 
 class BP_like_2L(LearningRule):
-    def __init__(self, projection, max_pop_fraction=1., stochastic=False, learning_rate=None, relu_gate=False):
+    def __init__(self, projection, max_pop_fraction=1., stochastic=False, learning_rate=None, relu_gate=False,
+                 forward_only=False):
         """
         Output units are nudged to target. Hidden dendrites locally compute an error as the difference between
         excitation and inhibition. Weight updates are proportional to local error and presynaptic firing rate (after
@@ -1403,22 +1404,29 @@ class BP_like_2L(LearningRule):
         :param stochastic: bool
         :param learning_rate: float
         :param relu_gate: bool
+        :param forward_only: bool; whether to consult forward activity in weight update
         """
         super().__init__(projection, learning_rate)
         self.max_pop_fraction = max_pop_fraction
         self.stochastic = stochastic
         self.relu_gate = relu_gate
+        self.forward_only = forward_only
         projection.post.register_attribute_history('plateau')
         projection.post.register_attribute_history('backward_activity')
         projection.post.register_attribute_history('backward_dendritic_state')
     
     def step(self):
         if self.projection.direction in ['forward', 'F']:
-            delta_weight = torch.outer(self.projection.post.plateau,
-                                       torch.clamp(self.projection.pre.activity, min=0, max=1))
+            if self.forward_only:
+                pre_activity = torch.clamp(self.projection.pre.forward_activity, min=0, max=1)
+            else:
+                pre_activity = torch.clamp(self.projection.pre.activity, min=0, max=1)
         elif self.projection.direction in ['recurrent', 'R']:
-            delta_weight = torch.outer(self.projection.post.plateau,
-                                       torch.clamp(self.projection.pre.prev_activity, min=0, max=1))
+            if self.forward_only:
+                pre_activity = torch.clamp(self.projection.pre.forward_prev_activity, min=0, max=1)
+            else:
+                pre_activity = torch.clamp(self.projection.pre.prev_activity, min=0, max=1)
+        delta_weight = torch.outer(self.projection.post.plateau, pre_activity)
         self.projection.weight.data += self.learning_rate * delta_weight
     
     @classmethod
