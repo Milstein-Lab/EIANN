@@ -429,14 +429,15 @@ def plot_network_dynamics(network):
             ax.set_title(f'{population.fullname} dynamics')
 
 
-def plot_network_dynamics_example(population, units, t, axes=None, colors=None):
-    network = population.network
-    if not hasattr(population, 'backward_dendritic_state_history_dynamics'):
-        ut.compute_dendritic_state_dynamics(network)
+def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, population, units, t, axes=None, colors=None):
+    forward_dendritic_state_history_dynamics =  dendritic_dynamics_dict[population]['forward_dendritic_state_history_dynamics']
+    backward_dendritic_state_history_dynamics = dendritic_dynamics_dict[population]['backward_dendritic_state_history_dynamics']
+    activity_history = dendritic_dynamics_dict[population]['activity_history']
+    backward_activity_history = dendritic_dynamics_dict[population]['backward_activity_history']
 
-    t_idx = torch.argmin(torch.abs(network.param_history_steps - t))
-    if t not in network.param_history_steps:
-        print(f"Closest saved train step {network.param_history_steps[t_idx].item()}")
+    t_idx = np.argmin(np.abs(param_history_steps - t))
+    if t not in param_history_steps:
+        print(f"Closest saved train step {param_history_steps[t_idx].item()}")
 
     cmap= plt.get_cmap('Set1')
     colors = [cmap(i) for i in range(len(units))]
@@ -447,6 +448,8 @@ def plot_network_dynamics_example(population, units, t, axes=None, colors=None):
                            top=0.83, bottom=0.1,
                            wspace=0.3, hspace=0.8)
         axes = [fig.add_subplot(gs_axes[i]) for i in range(3)]
+    assert len(axes) == 3, "Must provide 3 axes"
+
     forward_x = np.arange(0, 15)
     backward_x = np.arange(15, 30)
 
@@ -454,12 +457,12 @@ def plot_network_dynamics_example(population, units, t, axes=None, colors=None):
     ax.hlines(0, 0, 30, color='gray',alpha=1, linewidth=1, linestyle='--')
     ax.vlines(14.5, -1, 1, color='red',alpha=1, linewidth=2, linestyle='--')
     for unit,c in zip(units,colors):
-        ax.plot(forward_x, population.forward_dendritic_state_history_dynamics[t_idx,:,unit], color=c)
-        ax.plot(backward_x, population.backward_dendritic_state_history_dynamics[t_idx,:,unit], color=c)
-    ymax1 = torch.max(population.forward_dendritic_state_history_dynamics[t_idx,-10:,units])
-    ymin1 = torch.min(population.forward_dendritic_state_history_dynamics[t_idx,-10:,units])
-    ymax2 = torch.max(population.backward_dendritic_state_history_dynamics[t_idx,:,units])
-    ymin2 = torch.min(population.backward_dendritic_state_history_dynamics[t_idx,:,units])
+        ax.plot(forward_x, forward_dendritic_state_history_dynamics[t_idx,:,unit], color=c)
+        ax.plot(backward_x, backward_dendritic_state_history_dynamics[t_idx,:,unit], color=c)
+    ymax1 = np.max(forward_dendritic_state_history_dynamics[t_idx,-10:,units])
+    ymin1 = np.min(forward_dendritic_state_history_dynamics[t_idx,-10:,units])
+    ymax2 = np.max(backward_dendritic_state_history_dynamics[t_idx,:,units])
+    ymin2 = np.min(backward_dendritic_state_history_dynamics[t_idx,:,units])
     ax.set_ylim(min(ymin1, ymin2)*1.1, max(ymax1, ymax2)*1.1)
     ax.set_xlim(0, 30)
     ax.set_xlabel('Time step')
@@ -468,28 +471,21 @@ def plot_network_dynamics_example(population, units, t, axes=None, colors=None):
     ax = axes[1]
     ax.vlines(14.5, -1, 1, color='red',alpha=1, linewidth=2, linestyle='--')
     for unit,c in zip(units,colors):
-        ax.plot(forward_x, population.activity_history[network.param_history_steps[t_idx],:,unit], color=c)
-        ax.plot(backward_x, population.backward_activity_history[network.param_history_steps[t_idx],:,unit], color=c)
-    ymax1 = torch.max(population.activity_history[network.param_history_steps[t_idx],-10:,units])
-    ymax2 = torch.max(population.backward_activity_history[network.param_history_steps[t_idx],:,units])
+        ax.plot(forward_x, activity_history[param_history_steps[t_idx],:,unit], color=c)
+        ax.plot(backward_x, backward_activity_history[param_history_steps[t_idx],:,unit], color=c)
+    ymax1 = np.max(activity_history[param_history_steps[t_idx],-10:,units])
+    ymax2 = np.max(backward_activity_history[param_history_steps[t_idx],:,units])
     ax.set_ylim(-0.005, max(ymax1, ymax2)*1.1)
     ax.set_xlim(0, 30)
     ax.set_xlabel('Time step')
     ax.set_ylabel('Activity')
 
     ax = axes[2]
-    x = network.param_history_steps
-    # ax.hlines(0, 0, network.param_history_steps[-1], color='r',alpha=1, linewidth=1)
-
-    mean_forward_dend = torch.mean(torch.abs(population.forward_dendritic_state_history_dynamics[:,-1,:]), dim=1)
-    mean_backward_dend = torch.mean(torch.abs(population.backward_dendritic_state_history_dynamics[:,0,:]), dim=1)
-
-    ax.plot(x, mean_forward_dend, label='forward',  alpha=0.5, linewidth=1.5, color='k')
-    ax.plot(x, mean_backward_dend, label='backward', alpha=0.6, linewidth=1.5, color='k', linestyle='--')
-    # mean_forward =  torch.mean(population.forward_dendritic_state_history_dynamics, dim=2)[:,-1]
-    # mean_backward = torch.mean(population.backward_dendritic_state_history_dynamics, dim=2)[:,0]
-    # ax.plot(x, mean_forward, label='forward', alpha=1, linewidth=1)
-    # ax.plot(x, mean_backward, label='backward', alpha=1, linewidth=1)
+    # ax.hlines(0, 0, param_history_steps[-1], color='r',alpha=1, linewidth=1)
+    mean_forward_dend = np.mean(np.abs(forward_dendritic_state_history_dynamics[:,-1,:]), axis=1)
+    mean_backward_dend = np.mean(np.abs(backward_dendritic_state_history_dynamics[:,0,:]), axis=1)
+    ax.plot(param_history_steps, mean_forward_dend, label='forward',  alpha=0.5, linewidth=1.5, color='k')
+    ax.plot(param_history_steps, mean_backward_dend, label='backward', alpha=0.6, linewidth=1.5, color='k', linestyle='--')
     legend = ax.legend()
     for line in legend.get_lines():
         line.set_linewidth(2)
