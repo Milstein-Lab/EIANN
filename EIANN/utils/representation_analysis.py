@@ -890,15 +890,24 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
 
 def compute_dendritic_state_dynamics(network):
     print('Computing dendritic state dynamics from param and activity history...')
+    dendritic_dynamics_dict = {}
+
     for i, (param_step, state_dict) in tqdm(enumerate(zip(network.param_history_steps, network.prev_param_history))):
         network.load_state_dict(state_dict)
 
         # Compute dendritic state history dynamics
         for population in network.populations.values():
-            if hasattr(population,'dendritic_state') and not hasattr(population, 'forward_dendritic_state_history_dynamics'):
+            if not hasattr(population,'dendritic_state'):
+                continue
+            elif not hasattr(population, 'forward_dendritic_state_history_dynamics'):
                 # Initialize dendritic state history dynamics
                 population.forward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history[network.param_history_steps])
                 population.backward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history[network.param_history_steps])
+
+            dendritic_dynamics_dict[population.fullname] = {"forward_dendritic_state_history_dynamics": population.forward_dendritic_state_history_dynamics,
+                                                            "backward_dendritic_state_history_dynamics": population.backward_dendritic_state_history_dynamics,
+                                                            "activity_history": population.activity_history,
+                                                            "backward_activity_history": population.backward_activity_history}
 
             if population is network.output_pop:
                 population.backward_dendritic_state_history_dynamics[i] = population.backward_dendritic_state_history[param_step] # Output dendritic state is fixed to output error, does not have dynamics
@@ -914,4 +923,7 @@ def compute_dendritic_state_dynamics(network):
                             population.forward_dendritic_state_history_dynamics[i,1:] += projection(projection.pre.activity_history[param_step,:-1])
                             population.backward_dendritic_state_history_dynamics[i,0] += projection(projection.pre.activity_history[param_step,-1]) # Start of backward phase: recurrent connections refer to last activity of forward phase
                             population.backward_dendritic_state_history_dynamics[i,1:] += projection(projection.pre.backward_activity_history[param_step,:-1])
-    
+
+    for key, value in dendritic_dynamics_dict.items():
+        dendritic_dynamics_dict[key] = {k: v.detach().clone().numpy() for k, v in value.items() if v is not None}
+    return dendritic_dynamics_dict

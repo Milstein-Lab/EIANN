@@ -67,7 +67,7 @@ Figure 4: Given good bio-gradients, what do different bio-motivated learning rul
     -> BTSP vs BCM vs HebbWN
     -> Representations/RFs for HiddenE + metrics plots
 
-Supplement: Dend state + soma/dendI representations + angle vs BP for bio learning rule
+Supplement: Dend state + soma/dendI representations + angle vs BP for bio learning rule (+ RFs?)
 
 Figure 5: Hebbian learning rule enables W/B alignment
     -> FA vs BTSP vs bpLike
@@ -931,35 +931,57 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def plot_dynamics(save=None):
-    #Model: bpLike_WT_hebbdend
-    saved_network_path = "../data/mnist/20240516_EIANN_2_hidden_mnist_BP_like_config_2L_66049_257_complete_dynamics.pkl"
-    if not os.path.exists(saved_network_path):
-        config_path = "../network_config/mnist/20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized_dynamics.yaml"
-        network = ut.build_EIANN_from_config(config_path, network_seed=66049)
-        train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = ut.get_MNIST_dataloaders(sub_dataloader_size=20_000)
-        data_generator.manual_seed(257)
-        network.train(train_sub_dataloader, 
-                        epochs=1,
-                        samples_per_epoch=20_000,
-                        store_history=True, 
-                        store_dynamics=True,
-                        store_params=True,
-                        store_params_interval=(0,-1,100),
-                        status_bar=True)
-        ut.save_network(network, saved_network_path)
-    else:
-        network = ut.load_network(saved_network_path)
+def plot_dynamics(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+    model_key = "bpLike_WT_hebbdend_eq"
+    model_dict = model_dict_all[model_key]
+    network_name = model_dict['config'].split('.')[0] + "_dynamics"
+    # data_file_path = f"data/plot_data_{network_name}.h5"
+
+    data_file_path = "notebooks/saved_networks/test.h5"
+
+    # Open hdf5 and check if the dynamics data already exists      
+    recompute = False
+    if not os.path.exists(data_file_path) or overwrite:
+        recompute = True
+
+    print(f"Recompute: {recompute}")
+    if recompute:
+        print(f"Computing dynamics for {network_name}...")
+        saved_network_path = saved_network_path_prefix + "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_66049_257_complete_dynamics.pkl"        
+        if not os.path.exists(saved_network_path):
+            config_path = config_path_prefix + "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized_dynamics.yaml"
+            network = ut.build_EIANN_from_config(config_path, network_seed=66049)
+            train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = ut.get_MNIST_dataloaders(sub_dataloader_size=20_000)
+            data_generator.manual_seed(257)
+            network.train(train_sub_dataloader, 
+                            epochs=1,
+                            samples_per_epoch=20_000,
+                            store_history=True, 
+                            store_dynamics=True,
+                            store_params=True,
+                            store_params_interval=(0,-1,100),
+                            status_bar=True)
+            ut.save_network(network, saved_network_path)
+        else:
+            network = ut.load_network(saved_network_path)
+        dendritic_dynamics_dict = ut.compute_dendritic_state_dynamics(network)
+        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='dendritic_dynamics_dict', data=dendritic_dynamics_dict, file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='param_history_steps', data=network.param_history_steps, file_path=data_file_path, overwrite=overwrite)
+
+    print("Generating figure...")
 
     fig = plt.figure(figsize=(5.5, 9))
-    gs_axes = gs.GridSpec(nrows=3, ncols=1,                        
+    gs_axes = gs.GridSpec(nrows=3, ncols=2,                        
                        left=0.1,right=0.9,
                        top=0.9, bottom = 0.6,
                        wspace=0.4, hspace=0.5)
-    axes = [fig.add_subplot(gs_axes[i]) for i in range(3)]
+    axes = [fig.add_subplot(gs_axes[i,0]) for i in range(3)]
+    with h5py.File(data_file_path, 'r') as f:
+        data_dict = f[network_name]['retrained_with_dynamics']
+        dendritic_dynamics_dict  = data_dict['dendritic_dynamics_dict']
+        param_history_steps = data_dict['param_history_steps'][:]
 
-    # Plot dynamics for example neurons
-    pt.plot_network_dynamics_example(population=network.H2.E, units=[20,21,25], t=900, axes=axes)
+        pt.plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, population="H2E", units=[0,7], t=5000, axes=axes)
 
     if save is not None:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -1276,9 +1298,13 @@ def main(figure, overwrite, single_model, generate_data, recompute):
                                     "color": "magenta",
                                     "name": "bpLike_hebbTD_hebbdend_eq"},
 
+            "bpLike_WT_localBP": {},
+
             "bpLike_WT_localBP_eq":   {"config": "20240628_EIANN_2_hidden_mnist_BP_like_config_3M_complete_optimized.yaml",
                                     "color":  "black",
                                     "name":   "bpLike_WT_localBP_eq"},
+
+            "bpLike_WT_fixedDend":   {},
 
             "bpLike_WT_fixedDend_eq": {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
                                     "color":  "gray",
@@ -1291,7 +1317,7 @@ def main(figure, overwrite, single_model, generate_data, recompute):
             ##########################
             # Biological models
             ##########################
-            "HebbWN_topsup":       {"config": "20240714_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
+            "HebbWN_topsup":       {"config": "20241105_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_7_complete_optimized.yaml",
                                     "color":  "green",
                                     "name":   "Top-supervised HebbWN"},
 
@@ -1356,21 +1382,26 @@ def main(figure, overwrite, single_model, generate_data, recompute):
         else:
             generate_single_model_figure(model_dict=model_dict_all[single_model], save=True, overwrite=overwrite)
 
+    # Diagrams + example dynamics
     if figure == "fig1":
-        plot_dynamics()
+        figure_name = "Fig1_diagrams_dynamics"
+        plot_dynamics(model_dict_all, save=figure_name, overwrite=overwrite)
 
+    # Backprop models
     if figure in ["all", "fig2"]:
-        model_list_heatmaps = ["vanBP", "bpDale_fixed", "hebb_topsup"]
+        model_list_heatmaps = ["vanBP", "bpDale_learned", "hebb_topsup"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
         compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
+    # Analyze somaI selectivity
     elif figure in ["all", "S1"]:
-        model_list_heatmaps = ["bpDale_learned", "bpDale_fixed"]
-        model_list_metrics = ["bpDale_learned", "bpDale_fixed"]
+        model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "hebb_topsup"]
+        model_list_metrics = ["bpDale_learned", "bpDale_fixed", "hebb_topsup"]
         figure_name = "Fig2_supplement_somaI"
         compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
+    # Analyze DendI
     elif figure in ["all", "fig3"]:
         model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
@@ -1383,22 +1414,22 @@ def main(figure, overwrite, single_model, generate_data, recompute):
         figure_name = "FigS2_Ecells_bpLike"
         compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
+    # Biological learning rules (with WT/good gradients)
     elif figure in ["all","fig4"]:
-        #BTSP vs BCM vs HebbWN
-        model_list_heatmaps = ["BTSP", "BCM", "HebbWN_topsup"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "Fig4_BTSP_BCM_HebbWN"
-        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+        pass # Plot only metrics
+        # model_list_heatmaps = ["BTSP_WT_hebbdend", "Supervised_BCM", "HebbWN_temp_contrast"]
+        # model_list_metrics = model_list_heatmaps
+        # figure_name = "Fig4_BTSP_BCM_HebbWN"
+        # compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
-    # elif figure in ["all", "S3"]:
-    #     pass
+    # Representations in bio-learning rules
+    elif figure in ["all", "S3"]:
+        pass
 
-    # Figure 5: Hebbian learning rule enables W/B alignment
-    #           -> Plot angles over time + accuracy
-    #           -> (Diagram + equations)
+    # Forward (W) vs backward (B) alignment angle
     elif figure in ["all", "fig5"]:
         model_list1 = ["bpLike_hebbdend", "bpLike_FA", "bpLike_learnedTD"]
-        model_list2 = ["BTSP", "BTSP_FA", "BTSP_learnedTD"]
+        model_list2 = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
         figure_name = "Fig5_WB_alignment_FA_bpLike_BTSP"
         compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, overwrite=overwrite)
     
