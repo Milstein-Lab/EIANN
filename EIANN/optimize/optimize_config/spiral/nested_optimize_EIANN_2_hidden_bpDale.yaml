@@ -1,8 +1,10 @@
 # Being used with optimization script: EIANN\optimize\nested_optimize_EIANN_spiral_2_hidden.py
-# Being used to optimize: EIANN\network_config\spiral\EIANN_2_hidden_spiral_bpDale.yaml
+# Being used to optimize: 
+#   - EIANN\network_config\spiral\EIANN_2_hidden_spiral_bpDale.yaml
+#   - EIANN\network_config\spiral\EIANN_2_hidden_spiral_bpDale_SomaI_bias.yaml
 # Update function in: EIANN\optimize\network_config_updates.py
 
-# Based on \EIANN\optimize\optimize_config\mnist\20240419_nested_optimize_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F.yaml
+# Based on EIANN\optimize\optimize_config\mnist\20240419_nested_optimize_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F.yaml
 
 bounds:
     H_E_E_learning_rate:
@@ -77,7 +79,7 @@ kwargs:
     status_bar: False
     train_steps: 5600
     epochs: 1
-    network_config_file_path: optimize/network_config/spiral/EIANN_2_hidden_spiral_bpDale.yaml
+    network_config_file_path: optimize/network_config/spiral/EIANN_2_hidden_spiral_bpDale_SomaI_bias.yaml # Change this line to change bpDale nodel being run
     val_interval:
         - -1000
         - -1
