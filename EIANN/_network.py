@@ -329,8 +329,7 @@ class Network(nn.Module):
                     post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state_steps.detach().clone())
                 else:
                     post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state.detach().clone())
-                
-                
+                       
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
               store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
               store_params_interval=None, save_to_file=None, status_bar=False, debug=False):

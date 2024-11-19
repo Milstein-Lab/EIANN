@@ -1,4 +1,4 @@
-# TD weights learned with Hebb_WeightNorm
+# TD weights learned with Hebb_Temp_Contrast_1 (consults forward pre activity)
 # DendI.E and DendI.DendI learned with Hebb_WeightNorm
 # E.DendI learned with DendriticLoss_6
 layer_config:
@@ -78,17 +78,17 @@ projection_config:
             H2:
                 E:
                     weight_init: half_kaiming
-                    weight_constraint: normalize_weight
-                    weight_constraint_kwargs:
-                        scale: 5.36355008130285
+                    weight_init_args: !!python/tuple
+                        - 1.3308604685151206
                     weight_bounds: !!python/tuple
                         - 0
                         - null
                     update_phase: B
                     compartment: dend
-                    learning_rule: Hebb_WeightNorm
+                    learning_rule: Top_Down_Hebbian_Temporal_Contrast_1
                     learning_rule_kwargs:
                         learning_rate: 0.1
+                        forward_only: True
         SomaI:
             Input:
                 E:
@@ -197,17 +197,17 @@ projection_config:
             Output:
                 E:
                     weight_init: half_kaiming
-                    weight_constraint: normalize_weight
-                    weight_constraint_kwargs:
-                        scale: 5.36355008130285
+                    weight_init_args: !!python/tuple
+                        - 1.3308604685151206
                     weight_bounds: !!python/tuple
                         - 0
                         - null
                     update_phase: B
                     compartment: dend
-                    learning_rule: Hebb_WeightNorm
+                    learning_rule: Top_Down_Hebbian_Temporal_Contrast_1
                     learning_rule_kwargs:
                         learning_rate: 0.1
+                        forward_only: True
         SomaI:
             H1:
                 E:
