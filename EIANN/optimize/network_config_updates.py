@@ -10682,14 +10682,82 @@ def update_spiral_config_2_hidden_dend_EI_contrast_learned_bias(x, context):
 def update_spiral_config_2_hidden_bpDale(x, context):
     """
     Update the spiral configuration for a 2-hidden-layer network with bpDale.
+    Based on update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_F
+
     :param x: Parameter array
     :param context: Context object containing configuration details
     """
     param_dict = param_array_to_dict(x, context.param_names)
-
-    # Learning rate (global)
-    learning_rate = param_dict['learning_rate']
-
-    # Update context
+    
+    # Get hidden layer learning rates
+    H_E_E_learning_rate = param_dict['H_E_E_learning_rate']
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+    I_I_learning_rate = param_dict['I_I_learning_rate']
+    
+    # Get H1 weight scales
+    H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
+    H1_E_H1_I_init_weight_scale = param_dict['H1_E_H1_I_init_weight_scale']
+    H1_I_Input_E_init_weight_scale = param_dict['H1_I_Input_E_init_weight_scale']
+    H1_I_H1_E_init_weight_scale = param_dict['H1_I_H1_E_init_weight_scale']
+    H1_I_H1_I_init_weight_scale = param_dict['H1_I_H1_I_init_weight_scale']
+    
+    # Get H2 weight scales
+    H2_E_H1_E_init_weight_scale = param_dict['H2_E_H1_E_init_weight_scale']
+    H2_E_H2_I_init_weight_scale = param_dict['H2_E_H2_I_init_weight_scale']
+    H2_I_H1_E_init_weight_scale = param_dict['H2_I_H1_E_init_weight_scale']
+    H2_I_H2_E_init_weight_scale = param_dict['H2_I_H2_E_init_weight_scale']
+    H2_I_H2_I_init_weight_scale = param_dict['H2_I_H2_I_init_weight_scale']
+    
+    # Get Output learning rates and weight scales
+    Output_E_E_learning_rate = param_dict['Output_E_E_learning_rate']
+    Output_E_H2_E_init_weight_scale = param_dict['Output_E_H2_E_init_weight_scale']
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+    Output_I_H2_E_init_weight_scale = param_dict['Output_I_H2_E_init_weight_scale']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+    
+    # Update H1.E context
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_I_init_weight_scale,)
+    
+    # Update H1.SomaI context
+    context.projection_config['H1']['SomaI']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_I_Input_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_init_args'] = (H1_I_H1_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_I_H1_I_init_weight_scale,)
+    
+    # Update H2.E context
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_E_H1_E_init_weight_scale,)
+    context.projection_config['H2']['E']['H2']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['H2']['E']['H2']['SomaI']['weight_init_args'] = (H2_E_H2_I_init_weight_scale,)
+    
+    # Update H2.SomaI context
+    context.projection_config['H2']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H2']['SomaI']['H1']['E']['weight_init_args'] = (H2_I_H1_E_init_weight_scale,)
+    context.projection_config['H2']['SomaI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H2']['SomaI']['H2']['E']['weight_init_args'] = (H2_I_H2_E_init_weight_scale,)
+    context.projection_config['H2']['SomaI']['H2']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+    context.projection_config['H2']['SomaI']['H2']['SomaI']['weight_init_args'] = (H2_I_H2_I_init_weight_scale,)
+    
+    # Update Output.E context
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = Output_E_E_learning_rate
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
+    context.projection_config['Output']['E']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = (Output_E_Output_I_init_weight_scale,)
+    
+    # Update Output.SomaI context
+    context.projection_config['Output']['SomaI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['Output']['SomaI']['H2']['E']['weight_init_args'] = (Output_I_H2_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_init_args'] = (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = (Output_I_Output_I_init_weight_scale,)
+    
+    # Set optimizer in context
     context.training_kwargs['optimizer'] = 'SGD'
-    context.training_kwargs['learning_rate'] = learning_rate

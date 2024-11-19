@@ -40,11 +40,8 @@ projection_config:
   H1.E:
     Input.E:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - 0
-          - null
+      weight_init_args: [1.]
+      type: exc # same as weight bounds 0 to null
       direction: F
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -52,11 +49,8 @@ projection_config:
 
     H1.SomaI:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - null
-          - 0
+      weight_init_args: [1.]
+      type: inh # same as weight bounds null to 0
       direction: R
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -65,11 +59,8 @@ projection_config:
   H1.SomaI:
     Input.E:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - 0
-          - null
+      weight_init_args: [1.]
+      type: exc
       direction: F
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -77,11 +68,8 @@ projection_config:
 
     H1.E:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - 0
-          - null
+      weight_init_args: [1.]
+      type: exc
       direction: R
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -89,11 +77,8 @@ projection_config:
 
     H1.SomaI:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - null
-          - 0.
+      weight_init_args: [1.]
+      type: inh
       weight_constraint: no_autapses
       direction: R
       learning_rule: Backprop
@@ -104,11 +89,8 @@ projection_config:
   H2.E:
     H1.E:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - 0
-          - null
+      weight_init_args: [1.]
+      type: exc
       direction: F
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -116,11 +98,8 @@ projection_config:
 
     H2.SomaI:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - null
-          - 0
+      weight_init_args: [1.]
+      type: inh
       direction: R
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -129,11 +108,8 @@ projection_config:
   H2.SomaI:
     H1.E:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - 0
-          - null
+      weight_init_args: [1.]
+      type: exc
       direction: F
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -141,11 +117,8 @@ projection_config:
 
     H2.E:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - 0
-          - null
+      weight_init_args: [1.]
+      type: exc
       direction: R
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -153,11 +126,8 @@ projection_config:
 
     H2.SomaI:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - null
-          - 0.
+      weight_init_args: [1.]
+      type: inh
       weight_constraint: no_autapses
       direction: R
       learning_rule: Backprop
@@ -168,11 +138,8 @@ projection_config:
   Output.E:
     H2.E:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - 0
-          - null
+      weight_init_args: [1.]
+      type: exc
       direction: F
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -180,11 +147,8 @@ projection_config:
 
     Output.SomaI:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - null
-          - 0
+      weight_init_args: [1.]
+      type: inh 
       direction: R
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -193,11 +157,8 @@ projection_config:
   Output.SomaI:
     H2.E:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple # is this the same as type: exc
-          - 1.
-      weight_bounds:
-          - 0
-          - null
+      weight_init_args: [1.]
+      type: exc
       direction: F
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -205,11 +166,8 @@ projection_config:
 
     Output.E:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - 0
-          - null
+      weight_init_args: [1.]
+      type: exc
       direction: R
       learning_rule: Backprop
       learning_rule_kwargs:
@@ -217,11 +175,8 @@ projection_config:
 
     Output.SomaI:
       weight_init: half_kaiming
-      weight_init_args: !!python/tuple
-          - 1.
-      weight_bounds:
-          - null
-          - 0
+      weight_init_args: [1.]
+      type: inh
       weight_constraint: no_autapses
       direction: R
       learning_rule: Backprop
