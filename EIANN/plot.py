@@ -1719,7 +1719,7 @@ def plot_spiral_accuracy(net, test_dataloader):
     Function to plot loss landscape of spiral classification task by marking incorrect points red
 
     :param net: network object after training
-    :param test_dataloader: dataloader with (data,target) to use for computing loss.
+    :param test_dataloader: dataloader with (data,target)
     '''
     fig, axes = plt.subplots(1, 1, figsize=(5, 5))
 
