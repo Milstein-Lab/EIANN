@@ -10,10 +10,7 @@ import h5py
 import click
 import gc
 import copy
-from PIL import Image
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-import os
 
 import EIANN.utils as ut
 import EIANN.plot as pt
@@ -971,11 +968,11 @@ def plot_dynamics(model_dict_all, config_path_prefix="network_config/mnist/", sa
     print("Generating figure...")
 
     fig = plt.figure(figsize=(5.5, 9))
-    gs_axes = gs.GridSpec(nrows=3, ncols=2,                        
-                       left=0.1,right=0.9,
-                       top=0.9, bottom = 0.6,
-                       wspace=0.4, hspace=0.5)
-    axes = [fig.add_subplot(gs_axes[i,0]) for i in range(3)]
+    gs_axes = gs.GridSpec(nrows=1, ncols=2,                        
+                       left=0.2,right=0.9,
+                       top=0.9, bottom = 0.82,
+                       wspace=0.3, hspace=0.5)
+    axes = [fig.add_subplot(gs_axes[0,i]) for i in range(2)]
     with h5py.File(data_file_path, 'r') as f:
         data_dict = f[network_name]['retrained_with_dynamics']
         dendritic_dynamics_dict  = data_dict['dendritic_dynamics_dict']
@@ -1223,28 +1220,35 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
 
 
 def images_to_pdf(image_paths, output_path):
+    # Define US Letter page size in points
+    letter_size = [8.5 * 72, 11 * 72]  # 612 x 792 points
+    fig_size = [5.5 * 72, 9 * 72]  # 5.5 x 9 inches in points
+    
+    fig_width = fig_size[0]
+    fig_height = fig_size[1]
+    
+    margin_x = (letter_size[0] - fig_width) / 2
+    margin_y = (letter_size[1] - fig_height) / 2
+    
     # Create a canvas for the PDF
-    c = canvas.Canvas(output_path, pagesize=letter)
-    width, height = letter
-
+    c = canvas.Canvas(output_path, pagesize=letter_size)
+    
     for img_path in image_paths:
-        # Open each image using PIL
-        img = Image.open(img_path)
-        img_width, img_height = img.size
-        c.setPageSize((width, height))
+        c.setPageSize(letter_size)
         
-        # Draw the image on the canvas
-        c.drawImage(img_path, 0, 0, width=width, height=height)
+        # Draw the image on the page
+        c.drawImage(img_path, margin_x, margin_y, width=fig_width, height=fig_height)
         
         # Add a caption with the image filename
-        caption = os.path.basename(img_path)  # Extract filename from the path
-        c.setFont("Helvetica", 10)  # Set font for the caption
-        c.drawString(10, 20, caption)  # Position the caption at the bottom-left
+        caption = os.path.basename(img_path)
+        c.setFont("Helvetica", 12)
+        caption_x = letter_size[0]*0.35
+        caption_y = letter_size[1] - margin_y
+        c.drawString(caption_x, caption_y, caption)
         
         c.showPage()  # Add a new page in the PDF for the next image
-    c.save()  # Save the PDF file
-
-
+    
+    c.save()
 
 
 
@@ -1389,15 +1393,15 @@ def main(figure, overwrite, single_model, generate_data, recompute):
 
     # Backprop models
     if figure in ["all", "fig2"]:
-        model_list_heatmaps = ["vanBP", "bpDale_learned", "hebb_topsup"]
+        model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
         compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
     # Analyze somaI selectivity
     elif figure in ["all", "S1"]:
-        model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "hebb_topsup"]
-        model_list_metrics = ["bpDale_learned", "bpDale_fixed", "hebb_topsup"]
+        model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup"]
+        model_list_metrics = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup"]
         figure_name = "Fig2_supplement_somaI"
         compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
@@ -1442,10 +1446,11 @@ def main(figure, overwrite, single_model, generate_data, recompute):
         figure_name = "metrics_all_models"
         generate_metrics_plot(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
 
-    # # Combine figures into one PDF
-    # directory = "figures/"
-    # image_paths = [os.path.join(directory, figure) for figure in os.listdir(directory) if figure.endswith('.png') and figure.startswith('Fig')]
-    # images_to_pdf(image_paths=image_paths, output_path= "figures/all_figures.pdf")
+
+    # Combine figures into one PDF
+    directory = "figures/"
+    image_paths = [os.path.join(directory, figure) for figure in os.listdir(directory) if figure.endswith('.png') and figure.startswith('Fig')]
+    images_to_pdf(image_paths=image_paths, output_path= directory+"all_figures.pdf")
 
 
 if __name__=="__main__":

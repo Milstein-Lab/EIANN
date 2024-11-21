@@ -14,6 +14,8 @@ layer_config:
     SomaI:
       size: 32
       activation: relu
+      include_bias: True 
+      bias_learning_rule: Null
 
   H2:
     E:
@@ -24,6 +26,8 @@ layer_config:
     SomaI:
       size: 8
       activation: relu
+      include_bias: True 
+      bias_learning_rule: Null
 
   Output:
     E:
@@ -34,6 +38,8 @@ layer_config:
     SomaI:
       size: 4
       activation: relu
+      include_bias: True 
+      bias_learning_rule: Null
 
 projection_config:
   # H1 Layers (E and SomaI)

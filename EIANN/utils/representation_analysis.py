@@ -257,7 +257,7 @@ def compute_vector_angle(vector1, vector2):
     Compute the angle between two vectors.
     '''
     dot_product = torch.dot(vector1, vector2)
-    norm_product = torch.norm(vector1) * torch.norm(vector2) + 1e-10  # Add a small constant to avoid division by zero
+    norm_product = torch.norm(vector1) * torch.norm(vector2)
     cos_angle = dot_product / norm_product
     cos_angle = torch.clamp(cos_angle, -1.0, 1.0)  # clamp to avoid floating point rounding errors
     angle_rad = torch.acos(cos_angle)
@@ -354,6 +354,50 @@ def compute_feedback_weight_angle_history(network, plot=False, ax=None):
             else:
                 return []
             angle = compute_vector_angle(forward_weights, backward_weights)
+            angles[f"{layer}E_{next_layer}E"].append(angle.item())
+
+        angle = compute_vector_angle(torch.cat(forward_weights_all), torch.cat(backward_weights_all))
+        angles["all_params"].append(angle.item())
+
+    if plot:
+        if ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=(5,3))
+        else:
+            fig = ax.get_figure()
+        steps = network.param_history_steps
+        for i,projection_pair in enumerate(angles):
+            ax.plot(steps,angles[projection_pair], label=projection_pair)
+        ax.legend()
+        ax.set_xlabel('Training step')
+        ax.set_ylabel('Angle \n(forward vs backward weights)')
+        ax.set_ylim(bottom=-2, top=90)
+        ax.set_yticks(np.arange(0, 91, 30))
+    return angles
+
+
+def compute_feedback_dW_angle_history(network, plot=False, ax=None):
+    '''
+    Compute the angle between the actual and predicted parameter updates (dW) for each training step.
+    '''
+    layers = list(network.layers)
+    angles = {f"{layer}E_{next_layer}E": [] for layer, next_layer in zip(layers[1:-1], layers[2:])}
+    angles["all_params"] = []
+    
+    for params, prev_params in zip(network.param_history, network.prev_param_history):
+        forward_weights_all = []
+        backward_weights_all = []
+        for i, layer in enumerate(layers[1:-1], start=1):
+            next_layer = layers[i+1]
+            forward_dW = params[f"module_dict.{next_layer}E_{layer}E.weight"].flatten() - prev_params[f"module_dict.{next_layer}E_{layer}E.weight"].flatten()
+
+            forward_weights_all.append(forward_dW/(torch.norm(forward_dW)+1e-10))
+            backward_projection_name = f"module_dict.{layer}E_{next_layer}E.weight"
+            if backward_projection_name in params:
+                backward_dW = params[backward_projection_name].T.flatten() - prev_params[backward_projection_name].T.flatten()
+                backward_weights_all.append(backward_dW/(torch.norm(backward_dW)+1e-10))
+            else:
+                return []
+            angle = compute_vector_angle(forward_dW, backward_dW)
             angles[f"{layer}E_{next_layer}E"].append(angle.item())
 
         angle = compute_vector_angle(torch.cat(forward_weights_all), torch.cat(backward_weights_all))

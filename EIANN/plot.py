@@ -444,21 +444,21 @@ def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, 
     if axes is None:
         fig = plt.figure(figsize=(10, 6))
         gs_axes = gs.GridSpec(nrows=3, ncols=1,
-                           left=0.05, right=0.98,
+                           left=0.1, right=0.98,
                            top=0.83, bottom=0.1,
                            wspace=0.3, hspace=0.8)
         axes = [fig.add_subplot(gs_axes[i]) for i in range(3)]
-    assert len(axes) == 3, "Must provide 3 axes"
+    # assert len(axes) == 3, "Must provide 3 axes"
 
     forward_x = np.arange(0, 15)
     backward_x = np.arange(15, 30)
 
     ax = axes[0]
     ax.hlines(0, 0, 30, color='gray',alpha=1, linewidth=1, linestyle='--')
-    ax.vlines(14.5, -1, 1, color='red',alpha=1, linewidth=2, linestyle='--')
+    ax.vlines(14.5, -1, 1, color='red',alpha=1, linewidth=1, linestyle='--')
     for unit,c in zip(units,colors):
-        ax.plot(forward_x, forward_dendritic_state_history_dynamics[t_idx,:,unit], color=c)
-        ax.plot(backward_x, backward_dendritic_state_history_dynamics[t_idx,:,unit], color=c)
+        ax.plot(forward_x, forward_dendritic_state_history_dynamics[t_idx,:,unit], color=c, linewidth=1)
+        ax.plot(backward_x, backward_dendritic_state_history_dynamics[t_idx,:,unit], color=c, linewidth=1)
     ymax1 = np.max(forward_dendritic_state_history_dynamics[t_idx,-10:,units])
     ymin1 = np.min(forward_dendritic_state_history_dynamics[t_idx,-10:,units])
     ymax2 = np.max(backward_dendritic_state_history_dynamics[t_idx,:,units])
@@ -469,10 +469,10 @@ def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, 
     ax.set_ylabel('Dend state')
 
     ax = axes[1]
-    ax.vlines(14.5, -1, 1, color='red',alpha=1, linewidth=2, linestyle='--')
+    ax.vlines(14.5, -1, 1, color='red',alpha=1, linewidth=1, linestyle='--')
     for unit,c in zip(units,colors):
-        ax.plot(forward_x, activity_history[param_history_steps[t_idx],:,unit], color=c)
-        ax.plot(backward_x, backward_activity_history[param_history_steps[t_idx],:,unit], color=c)
+        ax.plot(forward_x, activity_history[param_history_steps[t_idx],:,unit], color=c, linewidth=1)
+        ax.plot(backward_x, backward_activity_history[param_history_steps[t_idx],:,unit], color=c, linewidth=1)
     ymax1 = np.max(activity_history[param_history_steps[t_idx],-10:,units])
     ymax2 = np.max(backward_activity_history[param_history_steps[t_idx],:,units])
     ax.set_ylim(-0.005, max(ymax1, ymax2)*1.1)
@@ -480,17 +480,17 @@ def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, 
     ax.set_xlabel('Time step')
     ax.set_ylabel('Activity')
 
-    ax = axes[2]
-    # ax.hlines(0, 0, param_history_steps[-1], color='r',alpha=1, linewidth=1)
-    mean_forward_dend = np.mean(np.abs(forward_dendritic_state_history_dynamics[:,-1,:]), axis=1)
-    mean_backward_dend = np.mean(np.abs(backward_dendritic_state_history_dynamics[:,0,:]), axis=1)
-    ax.plot(param_history_steps, mean_forward_dend, label='forward',  alpha=0.5, linewidth=1.5, color='k')
-    ax.plot(param_history_steps, mean_backward_dend, label='backward', alpha=0.6, linewidth=1.5, color='k', linestyle='--')
-    legend = ax.legend()
-    for line in legend.get_lines():
-        line.set_linewidth(2)
-    ax.set_xlabel('Train step')
-    ax.set_ylabel('|Dend state|')
+    # ax = axes[2]
+    # # ax.hlines(0, 0, param_history_steps[-1], color='r',alpha=1, linewidth=1)
+    # mean_forward_dend = np.mean(np.abs(forward_dendritic_state_history_dynamics[:,-1,:]), axis=1)
+    # mean_backward_dend = np.mean(np.abs(backward_dendritic_state_history_dynamics[:,0,:]), axis=1)
+    # ax.plot(param_history_steps, mean_forward_dend, label='forward',  alpha=0.5, linewidth=1.5, color='k')
+    # ax.plot(param_history_steps, mean_backward_dend, label='backward', alpha=0.6, linewidth=1.5, color='r')
+    # legend = ax.legend()
+    # for line in legend.get_lines():
+    #     line.set_linewidth(2)
+    # ax.set_xlabel('Train step')
+    # ax.set_ylabel('|Dend state|')
 
 
 def plot_sparsity_history(network):
@@ -1717,6 +1717,9 @@ def plot_FB_weight_alignment(*projections, title=None):
 def plot_spiral_accuracy(net, test_dataloader):
     '''
     Function to plot loss landscape of spiral classification task by marking incorrect points red
+
+    :param net: network object after training
+    :param test_dataloader: dataloader with (data,target)
     '''
     fig, axes = plt.subplots(1, 1, figsize=(5, 5))
 
