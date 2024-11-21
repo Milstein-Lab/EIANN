@@ -2384,22 +2384,24 @@ class Top_Down_Hebbian_Temporal_Contrast_1(LearningRule):
         self.forward_only = forward_only
     
     def step(self):
-        forward_post_activity = torch.clamp(self.projection.post.forward_activity, min=0, max=1)
-        backward_post_activity = torch.clamp(self.projection.post.activity, min=0, max=1).detach().clone()
+        forward_lower_layer_post_activity = torch.clamp(self.projection.post.forward_activity, min=0, max=1)
+        if not self.forward_only:
+            backward_lower_layer_post_activity = torch.clamp(self.projection.post.activity, min=0, max=1)
         if self.projection.direction in ['forward', 'F']:
-            forward_pre_activity = torch.clamp(self.projection.pre.forward_activity, min=0, max=1)
-            if not self.forward_only:
-                backward_pre_activity = torch.clamp(self.projection.pre.activity, min=0, max=1)
+            forward_upper_layer_pre_activity = self.projection.pre.forward_activity
+            backward_upper_layer_pre_activity = self.projection.pre.activity
         elif self.projection.direction in ['recurrent', 'R']:
-            forward_pre_activity = torch.clamp(self.projection.pre.prev_forward_activity, min=0, max=1)
-            if not self.forward_only:
-                backward_pre_activity = torch.clamp(self.projection.pre.prev_activity, min=0, max=1)
+            forward_upper_layer_pre_activity = self.projection.pre.prev_forward_activity
+            backward_upper_layer_pre_activity = self.projection.pre.prev_activity
         if self.forward_only:
-            delta_weight = (torch.outer(backward_post_activity - forward_post_activity,
-                                        forward_pre_activity)).detach().clone()
+            delta_weight = (torch.outer(forward_lower_layer_post_activity,
+                                        torch.clamp(backward_upper_layer_pre_activity -
+                                                    forward_upper_layer_pre_activity, min=-1, max=1))).detach().clone()
         else:
-            delta_weight = (torch.outer(backward_post_activity, backward_pre_activity) -
-                            torch.outer(forward_post_activity, forward_pre_activity)).detach().clone()
+            delta_weight = (torch.outer(backward_lower_layer_post_activity,
+                                        torch.clamp(backward_upper_layer_pre_activity, min=0, max=1) -
+                            torch.outer(forward_lower_layer_post_activity,
+                                        torch.clamp(forward_upper_layer_pre_activity, min=0, max=1)))).detach().clone()
         self.projection.weight.data += self.learning_rate * delta_weight
 
 
@@ -2408,19 +2410,39 @@ class Top_Down_Hebbian_Temporal_Contrast_3(LearningRule):
         """
         Assumes another learning rule has updated activity during a backward phase.
         Weight updates are computed using the Contrastive Hebbian Learning approach of Xie & Seung, 2003.
-        Consults presynaptic activity equilibated during the backward phase.
+        Consults presynaptic activity equilibrated during the backward phase.
         :param projection: :class:'nn.Linear'
         :param learning_rate: float
         """
         super().__init__(projection, learning_rate)
     
     def step(self):
-        forward_post_activity = torch.clamp(self.projection.post.forward_activity, min=0, max=1)
-        backward_post_activity = torch.clamp(self.projection.post.activity, min=0, max=1).detach().clone()
+        backward_lower_layer_post_activity = torch.clamp(self.projection.post.activity, min=0, max=1)
         if self.projection.direction in ['forward', 'F']:
-            backward_pre_activity = torch.clamp(self.projection.pre.activity, min=0, max=1)
+            forward_upper_layer_pre_activity = self.projection.pre.forward_activity
+            backward_upper_layer_pre_activity = self.projection.pre.activity
         elif self.projection.direction in ['recurrent', 'R']:
-            backward_pre_activity = torch.clamp(self.projection.pre.prev_activity, min=0, max=1)
-        delta_weight = (torch.outer(backward_post_activity - forward_post_activity,
-                                    backward_pre_activity)).detach().clone()
+            forward_upper_layer_pre_activity = self.projection.pre.prev_forward_activity
+            backward_upper_layer_pre_activity = self.projection.pre.prev_activity
+        delta_weight = (torch.outer(backward_lower_layer_post_activity,
+                                    torch.clamp(backward_upper_layer_pre_activity -
+                                                forward_upper_layer_pre_activity, min=-1, max=1))).detach().clone()
+        self.projection.weight.data += self.learning_rate * delta_weight
+
+
+class Top_Down_Direct(LearningRule):
+    def __init__(self, projection, learning_rate=None):
+        """
+        Assumes another learning rule has updated activity during a backward phase.
+        Weight updates are computed using the Contrastive Hebbian Learning approach of Xie & Seung, 2003.
+        Consults forward (bottom up) activity and (top down) plateau.
+        :param projection: :class:'nn.Linear'
+        :param learning_rate: float
+        """
+        super().__init__(projection, learning_rate)
+    
+    def step(self):
+        lower_layer_post_forward_activity = torch.clamp(self.projection.post.forward_activity, min=0, max=1)
+        upper_layer_pre_plateau = self.projection.pre.plateau
+        delta_weight = torch.outer(lower_layer_post_forward_activity, upper_layer_pre_plateau).detach().clone()
         self.projection.weight.data += self.learning_rate * delta_weight
