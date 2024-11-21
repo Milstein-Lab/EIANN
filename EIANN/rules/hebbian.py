@@ -2399,9 +2399,9 @@ class Top_Down_Hebbian_Temporal_Contrast_1(LearningRule):
                                                     forward_upper_layer_pre_activity, min=-1, max=1))).detach().clone()
         else:
             delta_weight = (torch.outer(backward_lower_layer_post_activity,
-                                        torch.clamp(backward_upper_layer_pre_activity, min=0, max=1) -
+                                        torch.clamp(backward_upper_layer_pre_activity, min=0, max=1)) -
                             torch.outer(forward_lower_layer_post_activity,
-                                        torch.clamp(forward_upper_layer_pre_activity, min=0, max=1)))).detach().clone()
+                                        torch.clamp(forward_upper_layer_pre_activity, min=0, max=1))).detach().clone()
         self.projection.weight.data += self.learning_rate * delta_weight
 
 
