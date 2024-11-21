@@ -124,8 +124,7 @@ kwargs:
     include_equilibration_dynamics_objective: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
-      # function: update_EIANN_config_2_hidden_BP_like_2L_learn_TD_HTC_2_clone_init
-      function: update_EIANN_config_2_hidden_BP_like_2L_learn_TD_Direct_clone_init
+      function: update_EIANN_config_2_hidden_BP_like_2L_learn_TD_HTC_2_clone_init
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       get_args_static: get_random_seeds
