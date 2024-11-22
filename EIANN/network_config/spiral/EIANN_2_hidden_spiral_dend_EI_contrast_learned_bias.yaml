@@ -1,4 +1,5 @@
 # Equivalent to dend_EI_contrast_learned_bias from Summer2024 project
+# Works with only E cells
 
 layer_config:
   Input:

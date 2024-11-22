@@ -11,15 +11,6 @@ bounds:
     Output_E_E_learning_rate:
         - 0.0001
         - 1.
-    E_I_learning_rate:
-        - 0.0001
-        - 1.
-    I_E_learning_rate:
-        - 0.0001
-        - 1.
-    I_I_learning_rate:
-        - 0.0001
-        - 1.
     H1_E_Input_E_init_weight_scale:
         - 0.01
         - 10.
@@ -77,7 +68,7 @@ kwargs:
     status_bar: False
     train_steps: 5600
     epochs: 1
-    network_config_file_path: optimize/network_config/spiral/EIANN_2_hidden_spiral_bpDale.yaml
+    network_config_file_path: optimize/network_config/spiral/EIANN_2_hidden_spiral_bpDale_fixed_I.yaml
     val_interval:
         - -1000
         - -1
@@ -96,14 +87,10 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-      # get_objectives: get_objectives_single
-optimization_title: EIANN_2_hidden_spiral_bpDale
+optimization_title: EIANN_2_hidden_spiral_bpDale_fixed_I
 x0:
     H_E_E_learning_rate: 0.5
     Output_E_E_learning_rate: 0.5
-    E_I_learning_rate: 0.002
-    I_E_learning_rate: 0.002
-    I_I_learning_rate: 0.002
     H1_E_Input_E_init_weight_scale: 1.
     H1_E_H1_I_init_weight_scale: 1.
     H1_I_Input_E_init_weight_scale: 1.
@@ -122,10 +109,10 @@ x0:
 
 
 # To get analysis of features based on current config (of x0 values), run this:
-# EIANN\EIANN$ python -m nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale.yaml --disp --status_bar --num_instances=1
+# EIANN\EIANN$ python -m nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale_fixed_I.yaml --disp --status_bar --num_instances=1
 
 # To do optimization based on this config, run this:
-# EIANN\EIANN$ python -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale.yaml --disp --pop_size=1 --max_iter=2 --path_length=1
+# EIANN\EIANN$ python -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale_fixed_I.yaml --disp --pop_size=1 --max_iter=2 --path_length=1
 
 # To optimize with MPI (locally), run this:
-# EIANN\EIANN$ mpiexec -n 5 python -m mpi4py.futures -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale.yaml --disp --pop_size=1 --max_iter=3 --path_length=1 --framework=mpi --num_instances=4
+# EIANN\EIANN$ mpiexec -n 5 python -m mpi4py.futures -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale_fixed_I.yaml --disp --pop_size=1 --max_iter=3 --path_length=1 --framework=mpi --num_instances=4

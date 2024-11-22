@@ -11094,11 +11094,13 @@ def update_spiral_config_2_hidden_bpDale(x, context):
     """
     param_dict = param_array_to_dict(x, context.param_names)
     
-    # Get hidden layer learning rates
+    # Get hidden layer learning rate
     H_E_E_learning_rate = param_dict['H_E_E_learning_rate']
-    E_I_learning_rate = param_dict['E_I_learning_rate']
-    I_E_learning_rate = param_dict['I_E_learning_rate']
-    I_I_learning_rate = param_dict['I_I_learning_rate']
+
+    # Get learning rates for E-I and I-I interactions
+    E_I_learning_rate = param_dict.get('E_I_learning_rate')
+    I_E_learning_rate = param_dict.get('I_E_learning_rate')
+    I_I_learning_rate = param_dict.get('I_I_learning_rate')
     
     # Get H1 weight scales
     H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
@@ -11121,47 +11123,54 @@ def update_spiral_config_2_hidden_bpDale(x, context):
     Output_I_H2_E_init_weight_scale = param_dict['Output_I_H2_E_init_weight_scale']
     Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
     Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+
+    # Update context for E-I and I-I interactions if available
+    if E_I_learning_rate is not None:
+        context.projection_config['H1']['E']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+        context.projection_config['H2']['E']['H2']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+        context.projection_config['Output']['E']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+
+    if I_E_learning_rate is not None:
+        context.projection_config['H1']['SomaI']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+        context.projection_config['H1']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+        context.projection_config['H2']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+        context.projection_config['H2']['SomaI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+        context.projection_config['Output']['SomaI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+        context.projection_config['Output']['SomaI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+
+    if I_I_learning_rate is not None:
+        context.projection_config['H1']['SomaI']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+        context.projection_config['H2']['SomaI']['H2']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+        context.projection_config['Output']['SomaI']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
     
     # Update H1.E context
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
     context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
-    context.projection_config['H1']['E']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
     context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_I_init_weight_scale,)
     
     # Update H1.SomaI context
-    context.projection_config['H1']['SomaI']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
     context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_I_Input_E_init_weight_scale,)
-    context.projection_config['H1']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
     context.projection_config['H1']['SomaI']['H1']['E']['weight_init_args'] = (H1_I_H1_E_init_weight_scale,)
-    context.projection_config['H1']['SomaI']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
     context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_I_H1_I_init_weight_scale,)
     
     # Update H2.E context
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
     context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_E_H1_E_init_weight_scale,)
-    context.projection_config['H2']['E']['H2']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
     context.projection_config['H2']['E']['H2']['SomaI']['weight_init_args'] = (H2_E_H2_I_init_weight_scale,)
     
     # Update H2.SomaI context
-    context.projection_config['H2']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
     context.projection_config['H2']['SomaI']['H1']['E']['weight_init_args'] = (H2_I_H1_E_init_weight_scale,)
-    context.projection_config['H2']['SomaI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
     context.projection_config['H2']['SomaI']['H2']['E']['weight_init_args'] = (H2_I_H2_E_init_weight_scale,)
-    context.projection_config['H2']['SomaI']['H2']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
     context.projection_config['H2']['SomaI']['H2']['SomaI']['weight_init_args'] = (H2_I_H2_I_init_weight_scale,)
     
     # Update Output.E context
     context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = Output_E_E_learning_rate
     context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
-    context.projection_config['Output']['E']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
     context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = (Output_E_Output_I_init_weight_scale,)
     
     # Update Output.SomaI context
-    context.projection_config['Output']['SomaI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
     context.projection_config['Output']['SomaI']['H2']['E']['weight_init_args'] = (Output_I_H2_E_init_weight_scale,)
-    context.projection_config['Output']['SomaI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
     context.projection_config['Output']['SomaI']['Output']['E']['weight_init_args'] = (Output_I_Output_E_init_weight_scale,)
-    context.projection_config['Output']['SomaI']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
     context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = (Output_I_Output_I_init_weight_scale,)
     
     # Set optimizer in context

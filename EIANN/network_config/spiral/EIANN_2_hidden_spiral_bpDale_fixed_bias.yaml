@@ -1,3 +1,6 @@
+# bpDale fixed bias
+# no bias for the SomaI connections
+
 layer_config:
     Input:
         E:
