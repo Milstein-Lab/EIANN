@@ -22,3 +22,7 @@ bpDale_fixed_bias:
   Output_I_H2_E_init_weight_scale: 2.9825937356216428
   Output_I_Output_E_init_weight_scale: 1.0769939543056573
   Output_I_Output_I_init_weight_scale: 2.6202485514274394
+
+# To generate network_config based on optimized params:
+# cd EIANN/EIANN
+# mpiexec -n 3 python -i -m mpi4py.futures -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale.yaml --disp --num_instances=2 --framework=mpi --plot --model-key=bpDale_fixed_bias --interactive --param-file-path=optimize/optimize_params/spiral/20241120_2_hidden_spiral_bpDale_fixed_bias_params.yaml --export_network_config_file_path=network_config/spiral/EIANN_2_hidden_spiral_bpDale_fixed_bias --export

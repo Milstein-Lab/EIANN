@@ -48,10 +48,11 @@ if [[ "$PWD" == *"/EIANN" ]]; then
     if [[ "$CONDA_DEFAULT_ENV" != "eiann" ]]; then
         conda activate eiann
     fi
+else
+    if [[ "$CONDA_DEFAULT_ENV" == "eiann" ]]; then
+        conda deactivate
+    fi
 fi
-
-# Add EIANN and nested directories to PYTHONPATH
-export PYTHONPATH=$PYTHONPATH:/home/<user>
 ```
 Where ```<user>``` is the Amarel username (found with ```echo $USER```).
 
