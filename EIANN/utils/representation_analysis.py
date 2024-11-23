@@ -964,6 +964,7 @@ def compute_dendritic_state_dynamics(network):
                             population.forward_dendritic_state_history_dynamics[i] += projection(projection.pre.activity_history[param_step])
                             population.backward_dendritic_state_history_dynamics[i] += projection(projection.pre.backward_activity_history[param_step])
                         elif projection.direction in ['recurrent', 'R']:
+                            assert hasattr(projection.pre, 'backward_activity_history'), f"{projection.pre.fullname} does not have backward activity history"
                             population.forward_dendritic_state_history_dynamics[i,1:] += projection(projection.pre.activity_history[param_step,:-1])
                             population.backward_dendritic_state_history_dynamics[i,0] += projection(projection.pre.activity_history[param_step,-1]) # Start of backward phase: recurrent connections refer to last activity of forward phase
                             population.backward_dendritic_state_history_dynamics[i,1:] += projection(projection.pre.backward_activity_history[param_step,:-1])
