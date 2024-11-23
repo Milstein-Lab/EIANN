@@ -1,0 +1,237 @@
+layer_config:
+    Input:
+        E:
+            size: 2
+    H1:
+        E:
+            size: 128
+            activation: relu
+            include_bias: true
+            bias_learning_rule: null
+        SomaI:
+            size: 32
+            activation: relu
+            include_bias: true
+            bias_learning_rule: null
+    H2:
+        E:
+            size: 32
+            activation: relu
+            include_bias: true
+            bias_learning_rule: null
+        SomaI:
+            size: 8
+            activation: relu
+            include_bias: true
+            bias_learning_rule: null
+    Output:
+        E:
+            size: 4
+            activation: relu
+            include_bias: true
+            bias_learning_rule: null
+        SomaI:
+            size: 4
+            activation: relu
+            include_bias: true
+            bias_learning_rule: null
+projection_config:
+    H1:
+        E:
+            Input:
+                E:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.27966416052170656
+                    weight_bounds:
+                    - 0
+                    - null
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.0646692623215052
+            H1:
+                SomaI:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.8234034112739447
+                    weight_bounds:
+                    - null
+                    - 0
+                    direction: R
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.08384512004261163
+        SomaI:
+            Input:
+                E:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 2.885594556463265
+                    weight_bounds:
+                    - 0
+                    - null
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.16694745696347138
+            H1:
+                E:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 2.5235994901720433
+                    weight_bounds:
+                    - 0
+                    - null
+                    direction: R
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.16694745696347138
+                SomaI:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 3.129907476484524
+                    weight_bounds:
+                    - null
+                    - 0
+                    weight_constraint: no_autapses
+                    direction: R
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.006187910825981493
+    H2:
+        E:
+            H1:
+                E:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 3.77343567791609
+                    weight_bounds:
+                    - 0
+                    - null
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.0646692623215052
+            H2:
+                SomaI:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 2.9919665532750237
+                    weight_bounds:
+                    - null
+                    - 0
+                    direction: R
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.08384512004261163
+        SomaI:
+            H1:
+                E:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 3.5596442684041465
+                    weight_bounds:
+                    - 0
+                    - null
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.16694745696347138
+            H2:
+                E:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.6877435132674447
+                    weight_bounds:
+                    - 0
+                    - null
+                    direction: R
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.16694745696347138
+                SomaI:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 2.7765682909783584
+                    weight_bounds:
+                    - null
+                    - 0
+                    weight_constraint: no_autapses
+                    direction: R
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.006187910825981493
+    Output:
+        E:
+            H2:
+                E:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 8.178029282470275
+                    weight_bounds:
+                    - 0
+                    - null
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.626473720904568
+            Output:
+                SomaI:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.06580613168399956
+                    weight_bounds:
+                    - null
+                    - 0
+                    direction: R
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.08384512004261163
+        SomaI:
+            H2:
+                E:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.9381419139375996
+                    weight_bounds:
+                    - 0
+                    - null
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.16694745696347138
+            Output:
+                E:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.7551538639114991
+                    weight_bounds:
+                    - 0
+                    - null
+                    direction: R
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.16694745696347138
+                SomaI:
+                    weight_init: half_kaiming
+                    weight_init_args: !!python/tuple
+                    - 1.3288324291833475
+                    weight_bounds:
+                    - null
+                    - 0
+                    weight_constraint: no_autapses
+                    direction: R
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.006187910825981493
+training_kwargs:
+    tau: 3
+    forward_steps: 15
+    backward_steps: 3
+    learning_rate: 0.2
+    verbose: false
+    optimizer: SGD
+
+# After optimization, accuracy: 95.33%
+# with more seeds, this model does slightly better than bpDale_fixed_bias
