@@ -1,0 +1,28 @@
+bpDale_fixed_bias:
+  # accuracy: 96.59333038330078
+  # dynamics_residuals: 0.0 --> this is good
+  # loss: 0.01772148162126541
+  H_E_E_learning_rate: 0.07928821245454076
+  Output_E_E_learning_rate: 0.7890572982579509
+  E_I_learning_rate: 0.04993029667116595
+  I_E_learning_rate: 0.29665214630808295
+  I_I_learning_rate: 0.03435021672542757
+  H1_E_Input_E_init_weight_scale: 0.33791064400403814
+  H1_E_H1_I_init_weight_scale: 0.7897233682695971
+  H1_I_Input_E_init_weight_scale: 3.613234479260869
+  H1_I_H1_E_init_weight_scale: 2.4754450889978408
+  H1_I_H1_I_init_weight_scale: 3.7717560856951007
+  H2_E_H1_E_init_weight_scale: 3.6585792623178532
+  H2_E_H2_I_init_weight_scale: 3.614372165839622
+  H2_I_H1_E_init_weight_scale: 2.8898248794102672
+  H2_I_H2_E_init_weight_scale: 2.4289889309361476
+  H2_I_H2_I_init_weight_scale: 2.578020384416537
+  Output_E_H2_E_init_weight_scale: 8.977006271866303
+  Output_E_Output_I_init_weight_scale: 0.2923221561313602
+  Output_I_H2_E_init_weight_scale: 2.9825937356216428
+  Output_I_Output_E_init_weight_scale: 1.0769939543056573
+  Output_I_Output_I_init_weight_scale: 2.6202485514274394
+
+# To generate network_config based on optimized params:
+# cd EIANN/EIANN
+# mpiexec -n 3 python -i -m mpi4py.futures -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale.yaml --disp --num_instances=2 --framework=mpi --plot --model-key=bpDale_fixed_bias --interactive --param-file-path=optimize/optimize_params/spiral/20241120_2_hidden_spiral_bpDale_fixed_bias_params.yaml --export_network_config_file_path=network_config/spiral/EIANN_2_hidden_spiral_bpDale_fixed_bias --export

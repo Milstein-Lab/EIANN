@@ -19,7 +19,7 @@ sbatch <<EOT
 #SBATCH -e /scratch/${USER}/logs/EIANN/$JOB_NAME.%j.e
 #SBATCH -p main                                             # Choose the appropriate partition (options: main, gpu, mem, cmain, cgpu, nonpre, graphical)
 #SBATCH --ntasks=251                                        # Total number of cores/tasks across all nodes
-#SBATCH --time=10:00:00                                     # Time limit for the job
+#SBATCH --time=24:00:00                                     # Time limit for the job
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu          # Email notifications
 #SBATCH --mail-type=ALL                                     # Get email notifications on job start, end, and failure
 
@@ -35,7 +35,7 @@ EOT
 
 # Run with this:
 # cd $HOME/EIANN/EIANN/optimize/jobscripts/amarel
-# sh optimize_EIANN_amarel.sh optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale.yaml spiral_bpDale
+# sh optimize_EIANN_amarel.sh optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale.yaml spiral_bpDale_SomaI_bias
 
 # See error and output logs with this:
 # cd /scratch/$USER/logs/EIANN

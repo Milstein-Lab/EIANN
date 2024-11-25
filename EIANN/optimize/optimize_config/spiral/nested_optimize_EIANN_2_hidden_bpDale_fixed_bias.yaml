@@ -1,0 +1,131 @@
+# Being used with optimization script: EIANN\optimize\nested_optimize_EIANN_spiral_2_hidden.py
+# Being used to optimize: EIANN\network_config\spiral\EIANN_2_hidden_spiral_bpDale_fixed_bias.yaml
+# Update function in: EIANN\optimize\network_config_updates.py
+
+# Based on EIANN\optimize\optimize_config\mnist\20240419_nested_optimize_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F.yaml
+
+bounds:
+    H_E_E_learning_rate:
+        - 0.0001
+        - 1.
+    Output_E_E_learning_rate:
+        - 0.0001
+        - 1.
+    E_I_learning_rate:
+        - 0.0001
+        - 1.
+    I_E_learning_rate:
+        - 0.0001
+        - 1.
+    I_I_learning_rate:
+        - 0.0001
+        - 1.
+    H1_E_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_E_H1_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_I_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_I_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_I_H1_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H2_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_I_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_I_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_I_H2_I_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_Output_I_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_I_init_weight_scale:
+        - 0.01
+        - 10.
+default_params:
+rel_bounds:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 5600
+    epochs: 1
+    network_config_file_path: optimize/network_config/spiral/EIANN_2_hidden_spiral_bpDale_fixed_bias.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: True
+    include_equilibration_dynamics_objective: True
+    include_dend_loss_objective: False
+update_context:
+    - source: optimize.nested_optimize_EIANN_spiral_2_hidden
+      function: update_spiral_config_2_hidden_bpDale
+param_gen: PopulationAnnealing
+stages:
+    - source: optimize.nested_optimize_EIANN_spiral_2_hidden
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+      # get_objectives: get_objectives_single
+optimization_title: EIANN_2_hidden_spiral_bpDale_fixed_bias
+x0:
+    H_E_E_learning_rate: 0.5
+    Output_E_E_learning_rate: 0.5
+    E_I_learning_rate: 0.002
+    I_E_learning_rate: 0.002
+    I_I_learning_rate: 0.002
+    H1_E_Input_E_init_weight_scale: 1.
+    H1_E_H1_I_init_weight_scale: 1.
+    H1_I_Input_E_init_weight_scale: 1.
+    H1_I_H1_E_init_weight_scale: 1.
+    H1_I_H1_I_init_weight_scale: 1.
+    H2_E_H1_E_init_weight_scale: 1.
+    H2_E_H2_I_init_weight_scale: 1.
+    H2_I_H1_E_init_weight_scale: 1.
+    H2_I_H2_E_init_weight_scale: 1.
+    H2_I_H2_I_init_weight_scale: 1.
+    Output_E_H2_E_init_weight_scale: 1.2
+    Output_E_Output_I_init_weight_scale: 0.1
+    Output_I_H2_E_init_weight_scale: 0.1
+    Output_I_Output_E_init_weight_scale: 0.1
+    Output_I_Output_I_init_weight_scale: 0.1
+
+
+# To get analysis of features based on current config (of x0 values), run this:
+# EIANN\EIANN$ python -m nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale_fixed_bias.yaml --disp --status_bar --num_instances=1
+
+# To do optimization based on this config, run this:
+# EIANN\EIANN$ python -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale_fixed_bias.yaml --disp --pop_size=1 --max_iter=2 --path_length=1
+
+# To optimize with MPI (locally), run this:
+# EIANN\EIANN$ mpiexec -n 5 python -m mpi4py.futures -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale_fixed_bias.yaml --disp --pop_size=1 --max_iter=3 --path_length=1 --framework=mpi --num_instances=4

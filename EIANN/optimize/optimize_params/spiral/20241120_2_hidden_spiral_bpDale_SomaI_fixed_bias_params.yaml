@@ -1,0 +1,29 @@
+bpDale_SomaI_fixed_bias:
+  # accuracy: 96.67500305175781
+  # dynamics_residuals: 0.0
+  # loss: 0.018116816878318787
+  H_E_E_learning_rate: 0.0646692623215052
+  Output_E_E_learning_rate: 0.626473720904568
+  E_I_learning_rate: 0.08384512004261163
+  I_E_learning_rate: 0.16694745696347138
+  I_I_learning_rate: 0.006187910825981493
+  H1_E_Input_E_init_weight_scale: 0.27966416052170656
+  H1_E_H1_I_init_weight_scale: 0.8234034112739447
+  H1_I_Input_E_init_weight_scale: 2.885594556463265
+  H1_I_H1_E_init_weight_scale: 2.5235994901720433
+  H1_I_H1_I_init_weight_scale: 3.129907476484524
+  H2_E_H1_E_init_weight_scale: 3.77343567791609
+  H2_E_H2_I_init_weight_scale: 2.9919665532750237
+  H2_I_H1_E_init_weight_scale: 3.5596442684041465
+  H2_I_H2_E_init_weight_scale: 0.6877435132674447
+  H2_I_H2_I_init_weight_scale: 2.7765682909783584
+  Output_E_H2_E_init_weight_scale: 8.178029282470275
+  Output_E_Output_I_init_weight_scale: 0.06580613168399956
+  Output_I_H2_E_init_weight_scale: 0.9381419139375996
+  Output_I_Output_E_init_weight_scale: 0.7551538639114991
+  Output_I_Output_I_init_weight_scale: 1.3288324291833475
+
+# To generate network_config based on optimized params:
+# cd EIANN/EIANN
+# mpiexec -n 3 python -i -m mpi4py.futures -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale_SomaI_fixed_bias.yaml --disp --num_instances=2 --framework=mpi --model-key=bpDale_SomaI_fixed_bias --interactive --param-file-path=optimize/optimize_params/spiral/20241120_2_hidden_spiral_bpDale_SomaI_fixed_bias_params.yaml --export_network_config_file_path=network_config/spiral/EIANN_2_hidden_spiral_bpDale_SomaI_fixed_bias --export
+# can include '--plot' flag
