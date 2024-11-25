@@ -1135,6 +1135,7 @@ BP_like_5J_learn_TD_Direct_test:
     H_I_size: 50.0
     Output_I_size: 10.0
 BP_like_5J_learn_TD_HTC_2:
+    # bad, bug in learning rule
     #    accuracy: 90.6124038696289
     #    dynamics_residuals: 0.0
     #    loss: 0.022109379991889
