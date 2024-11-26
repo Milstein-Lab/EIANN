@@ -830,9 +830,14 @@ DONE:
  - BP_like_5J_fixed_TD
  - BP_like_5K
  - BP_like_5M 
-
-HOT_STARTING 20241124:
- - BP_like_5J_learn_TD_HTC_2_clone_init (89 gens)
- - BTSP_3L_learn_TD_HTC_3 (98 gens)
- - BTSP_3L_learn_TD_HTC_2 (98 gens)
+ - BP_like_5J_learn_TD_HTC_2_clone_init
+ - BTSP_3L_learn_TD_HTC_3
+ - BTSP_3L_learn_TD_HTC_2
+ 
+HOT_STARTING 20241126:
  - BP_like_5J_learn_TD_HTC_2 (134 gens)
+ - BTSP_3L_learn_TD_HTC_1 (95 gens)
+ - BP_like_5J_learn_TD_HTCWN_2
+ 
+RUNNING:
+ - Hebb_Temp_Contrast_2
