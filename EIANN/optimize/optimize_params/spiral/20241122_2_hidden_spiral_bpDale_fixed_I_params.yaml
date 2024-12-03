@@ -1,0 +1,23 @@
+bpDale_fixed_I:
+  H_E_E_learning_rate: 0.12711801035095285
+  Output_E_E_learning_rate: 0.9590586034976559
+  H1_E_Input_E_init_weight_scale: 1.264518456863321
+  H1_E_H1_I_init_weight_scale: 4.39618088408909
+  H1_I_Input_E_init_weight_scale: 1.3019173312460153
+  H1_I_H1_E_init_weight_scale: 0.6357672108785779
+  H1_I_H1_I_init_weight_scale: 2.873663260001858
+  H2_E_H1_E_init_weight_scale: 8.931218585380691
+  H2_E_H2_I_init_weight_scale: 1.2113825640155396
+  H2_I_H1_E_init_weight_scale: 8.716029511586127
+  H2_I_H2_E_init_weight_scale: 0.21045797770924163
+  H2_I_H2_I_init_weight_scale: 0.6791866578685575
+  Output_E_H2_E_init_weight_scale: 9.022763867075657
+  Output_E_Output_I_init_weight_scale: 2.011555903945859
+  Output_I_H2_E_init_weight_scale: 3.1482774292827895
+  Output_I_Output_E_init_weight_scale: 1.5793242650242838
+  Output_I_Output_I_init_weight_scale: 4.970817122417524
+  # accuracy: 95.3833236694336
+  # dynamics_residuals: 0.0
+  # loss: 0.029024040326476097
+
+# mpiexec -n 3 python -i -m mpi4py.futures -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale_fixed_I.yaml --disp --num_instances=2 --framework=mpi --plot --model-key=bpDale_fixed_I --interactive --param-file-path=optimize/optimize_params/spiral/20241122_2_hidden_spiral_bpDale_fixed_I_params.yaml --export_network_config_file_path=network_config/spiral/EIANN_2_hidden_spiral_bpDale_fixed_I --export
