@@ -120,35 +120,35 @@ stages:
       filter_features: filter_features
       get_objectives: get_objectives
 optimization_title: EIANN_2_hidden_spiral_BP_like_5J_fixed_bias
-x0:
-    H1_E_Input_E_init_weight_scale: 1.
-    H2_E_H1_E_init_weight_scale: 1.
-    H_E_E_learning_rate: 0.1
-    H1_E_H2_E_weight_scale: 1.
-    H2_E_Output_E_weight_scale: 1.
-    H1_E_H1_SomaI_init_weight_scale: 1.
-    H1_SomaI_H1_E_init_weight_scale: 1.
-    H1_SomaI_Input_E_init_weight_scale: 1.
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.
-    H_E_DendI_learning_rate: 0.1
-    H1_E_H1_DendI_init_weight_scale: 1.
-    H1_DendI_H1_E_weight_scale: 1.
-    H1_DendI_H1_DendI_weight_scale: 1.
-    H2_E_H2_SomaI_init_weight_scale: 1.
-    H2_SomaI_H2_E_init_weight_scale: 1.
-    H2_SomaI_H1_E_init_weight_scale: 1.
-    H2_SomaI_H2_SomaI_init_weight_scale: 1.
-    H2_E_H2_DendI_init_weight_scale: 1.
-    H2_DendI_H2_E_weight_scale: 1.
-    H2_DendI_H2_DendI_weight_scale: 1.
-    Output_E_H2_E_init_weight_scale: 1.
-    DendI_E_learning_rate: 0.1
-    DendI_DendI_learning_rate: 0.1
-    Output_E_H2_E_learning_rate: 0.1
-    Output_E_Output_I_init_weight_scale: 1.
-    Output_I_Output_E_init_weight_scale: 1.
-    Output_I_H2_E_init_weight_scale: 1.
-    Output_I_Output_I_init_weight_scale: 1.
+# x0:
+#     H1_E_Input_E_init_weight_scale: 1.
+#     H2_E_H1_E_init_weight_scale: 1.
+#     H_E_E_learning_rate: 0.1
+#     H1_E_H2_E_weight_scale: 1.
+#     H2_E_Output_E_weight_scale: 1.
+#     H1_E_H1_SomaI_init_weight_scale: 1.
+#     H1_SomaI_H1_E_init_weight_scale: 1.
+#     H1_SomaI_Input_E_init_weight_scale: 1.
+#     H1_SomaI_H1_SomaI_init_weight_scale: 1.
+#     H_E_DendI_learning_rate: 0.1
+#     H1_E_H1_DendI_init_weight_scale: 1.
+#     H1_DendI_H1_E_weight_scale: 1.
+#     H1_DendI_H1_DendI_weight_scale: 1.
+#     H2_E_H2_SomaI_init_weight_scale: 1.
+#     H2_SomaI_H2_E_init_weight_scale: 1.
+#     H2_SomaI_H1_E_init_weight_scale: 1.
+#     H2_SomaI_H2_SomaI_init_weight_scale: 1.
+#     H2_E_H2_DendI_init_weight_scale: 1.
+#     H2_DendI_H2_E_weight_scale: 1.
+#     H2_DendI_H2_DendI_weight_scale: 1.
+#     Output_E_H2_E_init_weight_scale: 1.
+#     DendI_E_learning_rate: 0.1
+#     DendI_DendI_learning_rate: 0.1
+#     Output_E_H2_E_learning_rate: 0.1
+#     Output_E_Output_I_init_weight_scale: 1.
+#     Output_I_Output_E_init_weight_scale: 1.
+#     Output_I_H2_E_init_weight_scale: 1.
+#     Output_I_Output_I_init_weight_scale: 1.
 
 
 # To get analysis of features based on current config (of x0 values), run this:
