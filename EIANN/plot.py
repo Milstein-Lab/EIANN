@@ -1713,6 +1713,7 @@ def plot_FB_weight_alignment(*projections, title=None):
     clean_axes(axes)
     fig.show()
 
+
 def plot_spiral_accuracy(net, test_dataloader):
     '''
     Function to plot loss landscape of spiral classification task by marking incorrect points red
