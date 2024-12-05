@@ -448,14 +448,13 @@ def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, 
                            top=0.83, bottom=0.1,
                            wspace=0.3, hspace=0.8)
         axes = [fig.add_subplot(gs_axes[i]) for i in range(3)]
-    # assert len(axes) == 3, "Must provide 3 axes"
 
-    forward_x = np.arange(0, 15)
-    backward_x = np.arange(15, 30)
+    forward_x = np.arange(-14, 1) -0.5
+    backward_x = np.arange(0, 15) +0.5
 
     ax = axes[0]
-    ax.hlines(0, 0, 30, color='gray',alpha=1, linewidth=1, linestyle='--')
-    ax.vlines(14.5, -1, 1, color='red',alpha=1, linewidth=1, linestyle='--')
+    ax.hlines(0, -15, 15, color='gray',alpha=1, linewidth=1, linestyle='--')
+    ax.vlines(0, -0.1, 0.1, color='red',alpha=1, linewidth=1, linestyle='--')
     for unit,c in zip(units,colors):
         ax.plot(forward_x, forward_dendritic_state_history_dynamics[t_idx,:,unit], color=c, linewidth=1)
         ax.plot(backward_x, backward_dendritic_state_history_dynamics[t_idx,:,unit], color=c, linewidth=1)
@@ -464,20 +463,20 @@ def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, 
     ymax2 = np.max(backward_dendritic_state_history_dynamics[t_idx,:,units])
     ymin2 = np.min(backward_dendritic_state_history_dynamics[t_idx,:,units])
     ax.set_ylim(min(ymin1, ymin2)*1.1, max(ymax1, ymax2)*1.1)
-    ax.set_xlim(0, 30)
-    ax.set_xlabel('Time step')
+    ax.set_xlim(-10, 10)
+    ax.set_xlabel('Time from nudge')
     ax.set_ylabel('Dend state')
 
     ax = axes[1]
-    ax.vlines(14.5, -1, 1, color='red',alpha=1, linewidth=1, linestyle='--')
+    ax.vlines(0, -0.1, 0.1, color='red',alpha=1, linewidth=1, linestyle='--')
     for unit,c in zip(units,colors):
         ax.plot(forward_x, activity_history[param_history_steps[t_idx],:,unit], color=c, linewidth=1)
         ax.plot(backward_x, backward_activity_history[param_history_steps[t_idx],:,unit], color=c, linewidth=1)
     ymax1 = np.max(activity_history[param_history_steps[t_idx],-10:,units])
     ymax2 = np.max(backward_activity_history[param_history_steps[t_idx],:,units])
     ax.set_ylim(-0.005, max(ymax1, ymax2)*1.1)
-    ax.set_xlim(0, 30)
-    ax.set_xlabel('Time step')
+    ax.set_xlim(-10, 10)
+    ax.set_xlabel('Time from nudge')
     ax.set_ylabel('Activity')
 
     # ax = axes[2]

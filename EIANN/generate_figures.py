@@ -484,11 +484,11 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
     print("Generating figure...")
 
     fig = plt.figure(figsize=(5.5, 9))
-    gs_axes = gs.GridSpec(nrows=1, ncols=2,                        
-                       left=0.2,right=0.9,
-                       top=0.9, bottom = 0.82,
+    gs_axes = gs.GridSpec(nrows=2, ncols=1,                        
+                       left=0.68,right=0.97,
+                       top=0.86, bottom = 0.65,
                        wspace=0.3, hspace=0.5)
-    axes = [fig.add_subplot(gs_axes[0,i]) for i in range(2)]
+    axes = [fig.add_subplot(gs_axes[i,0]) for i in range(2)]
     with h5py.File(data_file_path, 'r') as f:
         data_dict = f[network_name]['retrained_with_dynamics']
         dendritic_dynamics_dict  = data_dict['dendritic_dynamics_dict']
@@ -786,7 +786,7 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="netwo
             plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
             plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP)
 
-    legend = ax_accuracy.legend(ncol=4, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
+    legend = ax_accuracy.legend(ncol=2, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
     for line in legend.get_lines():
         line.set_linewidth(1.5)
 
@@ -1075,9 +1075,13 @@ def main(figure, overwrite, generate_data, recompute):
                                         "color": "magenta",
                                         "name": "bpLike_hebbTD_hebbdend_eq"},
 
-            "bpLike_TC_hebbdend": {"config": "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTC_2_complete_optimized.yaml",
+            "bpLike_TCWN_hebbdend": {"config": "20241120_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTCWN_2_complete_optimized.yaml",
                                    "color": "green",
-                                   "name": "bpLike_TC_hebbdend"},
+                                   "name": "bpLike_TCWN_hebbdend"}, # TC with weight norm
+
+            # "bpLike_TC_hebbdend": {"config": "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTC_2_complete_optimized.yaml",
+            #                        "color": "green",
+            #                        "name": "bpLike_TC_hebbdend"},  # TC applied to activity of wrong (bottom-up) unit instead of top-down unit
 
             "bpLike_WT_localBP":   {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5M_complete_optimized.yaml",
                                     "color": "orange",
@@ -1110,13 +1114,13 @@ def main(figure, overwrite, generate_data, recompute):
                                     "color":  "green",
                                     "name":   "Top-supervised HebbWN"}, # bpLike in the top layer
 
-            "Supervised_HebbWN_WT":{"config": "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
+            "Supervised_HebbWN_WT_hebbdend":{"config": "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
                                     "color": "olive",
-                                    "name": "Supervised_HebbWN_WT"},
+                                    "name": "Supervised_HebbWN_WT_hebbdend"}, 
 
-            "Supervised_HebbTempCont_WT_hebbdend": {"config": "20241106_EIANN_2_hidden_mnist_Hebb_Temp_Contrast_config_1_complete_optimized.yaml",
-                                                    "color": "purple",
-                                                    "name": "Supervised Hebb Temp Contrast WT"}, # Like target propagation / temporal contrast on forward dW
+            "SupHebbTempCont_WT_hebbdend": {"config": "20241125_EIANN_2_hidden_mnist_Hebb_Temp_Contrast_config_2_complete_optimized.yaml",
+                                            "color": "purple",
+                                            "name": "Supervised Hebb Temp Contrast WT"}, # Like target propagation / temporal contrast on forward dW
 
             "Supervised_HebbWN_learned_somaI":{"config": "20240919_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_learn_somaI_config_4_complete_optimized.yaml",
                                                 "color": "lime",
@@ -1137,6 +1141,10 @@ def main(figure, overwrite, generate_data, recompute):
             "BTSP_fixedTD_hebbdend":{"config": "20240923_EIANN_2_hidden_mnist_BTSP_config_3L_fixed_TD_complete_optimized.yaml",
                                     "color": "black",
                                     "name": "BTSP_fixedTD_hebbdend"},
+
+            "BTSP_TCWN_hebbdend": {"config": "20241126_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HTCWN_3_complete_optimized.yaml",
+                                    "color": "green",
+                                    "name": "BTSP_TCWN_hebbdend"}, # top-down learning with TempContrast+weight norm
         }
 
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
@@ -1166,8 +1174,8 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Backprop models
     if figure in ["all", "fig2"]:
-        model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
-        # model_list_heatmaps = ["bpLike_fixedTD_hebbdend", "bpLike_WT_hebbdend", "bpLike_TC_hebbdend"]
+        # model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
+        model_list_heatmaps = ["bpLike_fixedTD_hebbdend", "bpLike_WT_hebbdend", "bpLike_TC_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
         compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
@@ -1195,12 +1203,13 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Biological learning rules (with WT/good gradients)
     elif figure in ["all","fig4"]:
-        # Plot only metrics
-        model_list = ["bpLike_WT_hebbdend", "Supervised_HebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
+        model_list = ["bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
         figure_name = "Fig4_BTSP_BCM_HebbWN"
         compare_metrics_simple(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
 
         # add diagrams (BCM, temp cont, btsp)
+
+    # Supplement to Fig.4: "Supervised_HebbWN_WT_hebbdend" -> Performs badly because HWN is potentiation-only
         
         
     # Representations in bio-learning rules (Supplement to Fig.4)
@@ -1209,9 +1218,9 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Forward (W) vs backward (B) alignment angle
     elif figure in ["all", "fig5"]:
-        model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_hebbTD_hebbdend", "bpLike_TC_hebbdend"]
+        model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_hebbTD_hebbdend", "bpLike_TCWN_hebbdend"]
         # model_list2 = ["bpLike_WT_hebbdend_eq", "bpLike_fixedTD_hebbdend_eq", "bpLike_hebbTD_hebbdend_eq"]
-        model_list2 = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
+        model_list2 = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
         figure_name = "Fig5_WB_alignment_FA_bpLike_BTSP"
         compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, overwrite=overwrite)
         # add dendstate
