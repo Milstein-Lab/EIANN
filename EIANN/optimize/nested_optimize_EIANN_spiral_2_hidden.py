@@ -132,7 +132,7 @@ def config_worker():
         context.store_num_steps = None
     
     network_config = read_from_yaml(context.network_config_file_path)
-    # network_config = utils.convert_config_dict(network_config) # TODO fix this for simplified configs
+    network_config = utils.convert_config_dict(network_config)
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
