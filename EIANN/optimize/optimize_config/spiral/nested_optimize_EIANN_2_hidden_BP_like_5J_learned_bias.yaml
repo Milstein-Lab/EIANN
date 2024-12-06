@@ -165,7 +165,7 @@ x0:
 
 
 # To get analysis of features based on current config (of x0 values), run this:
-# EIANN\EIANN$ python -m nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_learned_bias.yaml --disp
+# EIANN\EIANN$ python -m nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_learned_bias.yaml --disp --status_bar
 
 # To do optimization based on this config, run this:
 # EIANN\EIANN$ python -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_learned_bias.yaml --disp --pop_size=1 --max_iter=10 --path_length=1

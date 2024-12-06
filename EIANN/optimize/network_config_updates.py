@@ -11148,7 +11148,8 @@ def update_EIANN_config_2_hidden_mnist_BTSP_D1(x, context):
     context.projection_config['Output']['E']['Output']['FBI']['weight_init_args'] = (-Output_E_Output_FBI_weight_scale,)
     context.projection_config['Output']['FBI']['Output']['E']['weight_init_args'] = (Output_FBI_Output_E_weight_scale,)
 
-# Spiral update rules
+# ----------------------------- Spiral update rules -----------------------------
+
 def update_spiral_config_2_hidden_dend_EI_contrast_fixed_bias(x, context):
     '''
     Update the spiral configuration for a 2-hidden-layer network with dendritic EI contrast fixed bias.
@@ -11257,6 +11258,11 @@ def update_spiral_config_2_hidden_bpDale(x, context):
     E_I_learning_rate = param_dict.get('E_I_learning_rate')
     I_E_learning_rate = param_dict.get('I_E_learning_rate')
     I_I_learning_rate = param_dict.get('I_I_learning_rate')
+
+    # Get bias learning rates
+    H1_E_bias_learning_rate = param_dict.get('H1_E_bias_learning_rate')
+    H2_E_bias_learning_rate = param_dict.get('H2_E_bias_learning_rate')
+    Output_E_bias_learning_rate = param_dict.get('Output_E_bias_learning_rate')
     
     # Get H1 weight scales
     H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
@@ -11298,6 +11304,14 @@ def update_spiral_config_2_hidden_bpDale(x, context):
         context.projection_config['H1']['SomaI']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
         context.projection_config['H2']['SomaI']['H2']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
         context.projection_config['Output']['SomaI']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+
+    # Update context for bias if available
+    if H1_E_bias_learning_rate is not None:
+        context.layer_config['H1']['E']['bias_learning_rule_kwargs']['learning_rate'] = H1_E_bias_learning_rate
+    if H2_E_bias_learning_rate is not None:
+        context.layer_config['H2']['E']['bias_learning_rule_kwargs']['learning_rate'] = H2_E_bias_learning_rate
+    if Output_E_bias_learning_rate is not None:
+        context.layer_config['Output']['E']['bias_learning_rule_kwargs']['learning_rate'] = Output_E_bias_learning_rate
     
     # Update H1.E context
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
