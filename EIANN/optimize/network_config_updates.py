@@ -11253,7 +11253,7 @@ def update_spiral_config_2_hidden_bpDale(x, context):
     # Get hidden layer learning rate
     H_E_E_learning_rate = param_dict['H_E_E_learning_rate']
 
-    # Get learning rates for E-I and I-I interactions
+    # Get learning rates for E-I and I-I interactions (use .get() since they might not always be there)
     E_I_learning_rate = param_dict.get('E_I_learning_rate')
     I_E_learning_rate = param_dict.get('I_E_learning_rate')
     I_I_learning_rate = param_dict.get('I_I_learning_rate')
@@ -11334,7 +11334,7 @@ def update_spiral_config_2_hidden_bpDale(x, context):
 
 def update_spiral_config_2_hidden_BP_like_5J(x, context):
     """
-    Update the spiral configuration for a 2-hidden-layer network with BP_like_5J.
+    Update the spiral configuration for a 2-hidden-layer network with BP_like_5J (both learned and fixed bias)
     Based on update_EIANN_config_2_hidden_BP_like_2I
 
     :param x: Parameter array
@@ -11349,14 +11349,9 @@ def update_spiral_config_2_hidden_BP_like_5J(x, context):
     DendI_DendI_learning_rate = param_dict['DendI_DendI_learning_rate']
 
     # Bias learning rates
-    # H1_E_bias_learning_rate = param_dict.get('H1_E_bias_learning_rate')
-    # H1_SomaI_bias_learning_rate = param_dict.get('H1_SomaI_bias_learning_rate')
-    # H1_DendI_bias_learning_rate = param_dict.get('H1_DendI_bias_learning_rate')
-    # H2_E_bias_learning_rate = param_dict.get('H1_E_bias_learning_rate')
-    # H2_SomaI_bias_learning_rate = param_dict.get('H1_SomaI_bias_learning_rate')
-    # H2_DendI_bias_learning_rate = param_dict.get('H1_DendI_bias_learning_rate')
-    # Output_E_bias_learning_rate = param_dict.get('H1_E_bias_learning_rate')
-    # Output_SomaI_bias_learning_rate = param_dict.get('H1_SomaI_bias_learning_rate')
+    H1_E_bias_learning_rate = param_dict.get('H1_E_bias_learning_rate')
+    H2_E_bias_learning_rate = param_dict.get('H2_E_bias_learning_rate')
+    Output_E_bias_learning_rate = param_dict.get('Output_E_bias_learning_rate')
     
     # Weight scales and constraints
     H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
@@ -11398,7 +11393,13 @@ def update_spiral_config_2_hidden_BP_like_5J(x, context):
     Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
 
     # Update context for bias if available
-    
+    if H1_E_bias_learning_rate is not None:
+        context.layer_config['H1']['E']['bias_learning_rule_kwargs']['learning_rate'] = H1_E_bias_learning_rate
+    if H2_E_bias_learning_rate is not None:
+        context.layer_config['H2']['E']['bias_learning_rule_kwargs']['learning_rate'] = H2_E_bias_learning_rate
+    if Output_E_bias_learning_rate is not None:
+        context.layer_config['Output']['E']['bias_learning_rule_kwargs']['learning_rate'] = Output_E_bias_learning_rate
+        
     # Update H1 context
     context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
