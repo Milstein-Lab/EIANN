@@ -1,0 +1,30 @@
+bpDale_learned_bias:
+  H_E_E_learning_rate: 0.17515893364196825
+  Output_E_E_learning_rate: 0.370787917145862
+  E_I_learning_rate: 0.07836630590668701
+  I_E_learning_rate: 0.24925779245776264
+  I_I_learning_rate: 0.15795094440809446
+  H1_E_Input_E_init_weight_scale: 0.45341851689677354
+  H1_E_H1_I_init_weight_scale: 0.07472398800493957
+  H1_I_Input_E_init_weight_scale: 4.7663561644212695
+  H1_I_H1_E_init_weight_scale: 3.808885460644247
+  H1_I_H1_I_init_weight_scale: 2.763489999934272
+  H2_E_H1_E_init_weight_scale: 1.7446583559346398
+  H2_E_H2_I_init_weight_scale: 2.380940376727865
+  H2_I_H1_E_init_weight_scale: 2.0621350397176026
+  H2_I_H2_E_init_weight_scale: 1.3709140014148784
+  H2_I_H2_I_init_weight_scale: 1.873646660129378
+  Output_E_H2_E_init_weight_scale: 4.135808199833921
+  Output_E_Output_I_init_weight_scale: 0.18000609094170478
+  Output_I_H2_E_init_weight_scale: 1.0407814652680418
+  Output_I_Output_E_init_weight_scale: 0.511680233881991
+  Output_I_Output_I_init_weight_scale: 0.6118420054156947
+  H1_E_bias_learning_rate: 0.0023723741273216116
+  H2_E_bias_learning_rate: 0.002384074673608417
+  Output_E_bias_learning_rate: 0.008060654677551906
+  # features:
+  # accuracy: 96.47167205810547
+  # dynamics_residuals: 0.0
+  # loss: 0.01938546821475029
+
+# mpiexec -n 3 python -i -m mpi4py.futures -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_bpDale_learned_bias.yaml --disp --num_instances=2 --framework=mpi --model-key=bpDale_learned_bias --interactive --param-file-path=optimize/optimize_params/spiral/20241206_2_hidden_spiral_bpDale_learned_bias_params.yaml --export_network_config_file_path=network_config/spiral/EIANN_2_hidden_spiral_bpDale_learned_bias --export
