@@ -287,6 +287,21 @@ def plot_accuracy_all_seeds(data_dict, model_dict, ax):
         line.set_linewidth(1.5)
 
 
+def plot_error_all_seeds(data_dict, model_dict, ax):
+    accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in data_dict]
+    error_rate_all_seeds = [(100 - np.array(acc)) for acc in accuracy_all_seeds]
+    avg_error_rate = np.mean(error_rate_all_seeds, axis=0)
+    error = np.std(error_rate_all_seeds, axis=0)
+    val_steps = data_dict[next(iter(data_dict))]['val_history_train_steps'][:]
+    ax.plot(val_steps, avg_error_rate, label=model_dict["name"], color=model_dict["color"])
+    ax.fill_between(val_steps, avg_error_rate-error, avg_error_rate+error, alpha=0.2, color=model_dict["color"], linewidth=0)
+    ax.set_xlabel('Training step')
+    ax.set_ylabel('Error Rate (%)', labelpad=0)
+    ax.set_yscale('log')
+    ax.set_ylim(5, 100)
+    ax.set_yticks([10, 100], labels=['10%', '100%'])
+
+
 def plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot, ax, plot_type='cdf'):
     sparsity_all_seeds = []
     for seed in data_dict:
@@ -374,6 +389,8 @@ def plot_structure_all_seeds(data_dict, model_dict, ax, plot_type='cdf'):
 
 
 def plot_dendritic_state_all_seeds(data_dict, model_dict, ax):
+    if 'binned_mean_forward_dendritic_state_steps' not in data_dict[next(iter(data_dict.keys()))]:
+        return
     dendstate_all_seeds = []
     for seed in model_dict['seeds']:
         dendstate_one_seed = data_dict[seed]['binned_mean_forward_dendritic_state']['all'][:]
@@ -385,7 +402,8 @@ def plot_dendritic_state_all_seeds(data_dict, model_dict, ax):
     ax.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.5, color=model_dict["color"], linewidth=0)
     ax.set_xlabel('Training step')
     ax.set_ylabel('Dendritic state')
-    ax.set_ylim(bottom=-0., top=0.3)
+    ax.set_yscale('log')
+    # ax.set_ylim(bottom=-0., top=0.3)
 
 
 def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True):
@@ -421,6 +439,9 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax):
         for projection in data_dict[seed]["feedback_weight_angle_history"]:
             fb_angles_all_seeds.append(data_dict[seed]["feedback_weight_angle_history"][projection][:])
 
+    if len(fb_angles_all_seeds) == 0:
+        print(f"No feedback weight angles found for {model_dict['name']}")
+        return
     avg_angles = np.mean(fb_angles_all_seeds, axis=0)
     std_angles = np.std(fb_angles_all_seeds, axis=0)
     train_steps = data_dict[seed]['val_history_train_steps'][:]
@@ -561,7 +582,7 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
                     new_left = pos.x0 - 0.01  # Move left boundary to the left
                     new_bottom = pos.y0 # Move bottom boundary up
                     new_height = pos.height  # Decrease height
-                    new_width = pos.width - 0.036  # Decrease width
+                    new_width = pos.width - 0.036  # Decrease width 
                     ax.set_position([new_left, new_bottom, new_width, new_height])
                     rf_axes = gs.GridSpecFromSubplotSpec(4, 3, subplot_spec=ax, wspace=0., hspace=0.1)
                     ax_list = [fig.add_subplot(rf_axes[3,1])]
@@ -701,8 +722,8 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
             # Plot metrics
             if model_key in model_list_metrics:                
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity)
-                plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity)
+                # plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity)
+                # plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity)
                 plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
                 plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle)
             legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-2., 1.3), loc='upper left', fontsize=6)
@@ -761,14 +782,14 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
 
 
 def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=3,                        
+    fig = plt.figure(figsize=(5.5, 3))
+    axes = gs.GridSpec(nrows=2, ncols=3,                        
                        left=0.1,right=0.9,
-                       top=0.9, bottom = 0.6,
+                       top=0.9, bottom = 0.1,
                        wspace=0.4, hspace=0.5)
-    ax_accuracy = fig.add_subplot(axes[0,1])
+    ax_accuracy = fig.add_subplot(axes[1,0])
     ax_dendstate = fig.add_subplot(axes[1,1])
-    ax_angle_vs_BP = fig.add_subplot(axes[2,1])
+    ax_angle_vs_BP = fig.add_subplot(axes[1,2])
 
     all_models = list(dict.fromkeys(model_list))
     generate_data_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
@@ -786,7 +807,7 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="netwo
             plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
             plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP)
 
-    legend = ax_accuracy.legend(ncol=2, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
+    legend = ax_accuracy.legend(ncol=4, bbox_to_anchor=(-0.1, 1.4), loc='upper left')
     for line in legend.get_lines():
         line.set_linewidth(1.5)
 
@@ -832,120 +853,18 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
         with h5py.File(data_file_path, 'r') as f:
             data_dict = f[network_name]
 
-            # Forward vs backward angles
-            fb_angles_all_seeds = []
-            for seed in model_dict['seeds']:
-                train_steps = data_dict[seed]['val_history_train_steps'][:]
-                for projection in data_dict[seed]["feedback_weight_angle_history"]:
-                    fb_angles_all_seeds.append(data_dict[seed]["feedback_weight_angle_history"][projection][:])
-            ax = ax_FB_angles
-            avg_angles = np.mean(fb_angles_all_seeds, axis=0)
-            std_angles = np.std(fb_angles_all_seeds, axis=0)
-            if np.isnan(avg_angles).any():
-                print(f"Warning: NaN values found in avg_angles for {network_name}.")
-            else:
-                ax.plot(train_steps, avg_angles, color=model_dict['color'], label=model_dict['name'])
-                ax.fill_between(train_steps, avg_angles-std_angles, avg_angles+std_angles, alpha=0.5, color=model_dict['color'], linewidth=0)
-            ax.set_xlabel('Training step')
-            ax.set_ylim(bottom=-2, top=90)
-            ax.set_yticks(np.arange(0, 91, 30))
-            ax.set_ylabel('Angle \n(F vs B weights)')
-
-            # Angle vs BP
-            angle_all_seeds = []
-            for seed in model_dict['seeds']:
-                angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
-            avg_angle = np.mean(angle_all_seeds, axis=0)
-            error = np.std(angle_all_seeds, axis=0)
-            ax_angleBP.plot(train_steps[1:], avg_angle, label=model_dict["name"], color=model_dict["color"])
-            ax_angleBP.fill_between(train_steps[1:], avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
-            ax_angleBP.set_xlabel('Training step')
-            ax_angleBP.set_ylabel('Angle vs BP')
-            ax_angleBP.set_ylim([30,100])
-            ax_angleBP.set_yticks(np.arange(30, 101, 30))
-
-            angle_all_seeds = []
-            from scipy.ndimage import gaussian_filter1d
-            for seed in model_dict['seeds']:
-                angle = data_dict[seed]['angle_vs_bp_stochastic']['all_params']
-                # box_width = 3
-                # smoothed_angle = np.convolve(angle, np.ones(box_width)/box_width, mode='same')
-                sigma = 1
-                smoothed_angle = gaussian_filter1d(angle, sigma)
-                angle_all_seeds.append(smoothed_angle)
-            avg_angle = np.nanmean(angle_all_seeds, axis=0)
-            error = np.nanstd(angle_all_seeds, axis=0)
-            ax_angleBP_stoch.plot(train_steps, avg_angle, label=model_dict["name"], color=model_dict["color"])
-            ax_angleBP_stoch.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
-            ax_angleBP_stoch.set_xlabel('Training step')
-            ax_angleBP_stoch.set_ylabel('Angle vs BP (stoch.)')
-            ax_angleBP_stoch.set_ylim([0,90])
-            ax_angleBP_stoch.set_yticks(np.arange(0, 101, 30))
-            # ax_angleBP_stoch.set_xlim([0,20000])
-
-            # Learning curves / metrics
-            accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in data_dict]
-            avg_accuracy = np.mean(accuracy_all_seeds, axis=0)
-            error = np.std(accuracy_all_seeds, axis=0)
-            val_steps = data_dict[seed]['val_history_train_steps'][:]
-            ax_accuracy.plot(val_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
-            ax_accuracy.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"], linewidth=0)
-            ax_accuracy.set_xlabel('Training step')
-            ax_accuracy.set_ylabel('Test accuracy (%)', labelpad=0)
-            ax_accuracy.set_ylim([0,100])
-            legend = ax_accuracy.legend(handlelength=1, handletextpad=0.5, ncol=3, bbox_to_anchor=(0., 1.5), loc='upper left', fontsize=6)
-            for line in legend.get_lines():
-                line.set_linewidth(1.5)  # Adjust linewidth in the legend
-
-            error_rate_all_seeds = [(100 - np.array(acc)) for acc in accuracy_all_seeds]
-            avg_error_rate = np.mean(error_rate_all_seeds, axis=0)
-            error = np.std(error_rate_all_seeds, axis=0)
-            ax_error_hist.plot(val_steps, avg_error_rate, label=model_dict["name"], color=model_dict["color"])
-            ax_error_hist.fill_between(val_steps, avg_error_rate-error, avg_error_rate+error, alpha=0.2, color=model_dict["color"], linewidth=0)
-            ax_error_hist.set_xlabel('Training step')
-            ax_error_hist.set_ylabel('Error Rate (%)', labelpad=0)
-            ax_error_hist.set_yscale('log')
-            ax_error_hist.set_ylim(5, 100)
-            ax_error_hist.set_yticks([10, 100], labels=['10%', '100%'])
-
-            sparsity_all_seeds = []
-            for seed in data_dict:
-                sparsity_one_seed = []
-                for population in ['H1E', 'H2E']:
-                    sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
-                sparsity_all_seeds.append(sparsity_one_seed)
-            pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax_sparsity, label=model_dict["name"], color=model_dict["color"])
-            ax_sparsity.set_ylabel('Fraction of patterns')
-            ax_sparsity.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
-            ax_sparsity.set_xlim([0,1])
-
-            selectivity_all_seeds = []
-            for seed in data_dict:
-                selectivity_one_seed = []
-                for population in ['H1E', 'H2E']:
-                    selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
-                selectivity_all_seeds.append(selectivity_one_seed)
-            pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax_selectivity, label=model_dict["name"], color=model_dict["color"])
-            ax_selectivity.set_ylabel('Fraction of units')
-            ax_selectivity.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
-            ax_selectivity.set_xlim([0,1])
-
-            receptive_fields = data_dict[seed][f"maxact_receptive_fields_{population}"]
-            if receptive_fields is not None:
-                structure_all_seeds = []
-                for seed in data_dict:
-                    structure_one_seed = []
-                    for population in ['H1E', 'H2E']:
-                        structure_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['structure'])
-                    structure_all_seeds.append(structure_one_seed)
-                pt.plot_cumulative_distribution(structure_all_seeds, ax=ax_structure, label=model_dict["name"], color=model_dict["color"])
-                ax_structure.set_ylabel('Fraction of units')
-                ax_structure.set_xlabel("Structure (Moran's I)") # \n(Moran's I spatial autocorrelation)")
-                ax_structure.set_xlim([0,1])
-            else:
-                ax_structure.axis('off')
+            plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angles)
+            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angleBP, stochastic=False)
+            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angleBP_stoch, stochastic=True)
+            plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
+            plot_error_all_seeds(data_dict, model_dict, ax=ax_error_hist)
+            plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
+            plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity)
+            plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity)
+            plot_structure_all_seeds(data_dict, model_dict, ax=ax_structure)
 
             # Sparsity history
+            val_steps = data_dict[seed]['val_history_train_steps'][:]
             sparsity_history_all_seeds = []
             for seed in data_dict:
                 H1E_sparsity_history = data_dict[seed]['sparsity_history']['H1E'][:]
@@ -974,22 +893,6 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
             ax_selectivity_hist.set_xlabel('Training step')
             ax_selectivity_hist.set_ylabel('Selectivity')
             ax_selectivity_hist.set_ylim([0,1])
-
-            # Dendritic state
-            if 'binned_mean_forward_dendritic_state' in data_dict[seed]:
-                dendstate_all_seeds = []
-                for seed in model_dict['seeds']:
-                        binned_mean_forward_dendritic_state_steps = data_dict[seed]['binned_mean_forward_dendritic_state_steps'][:]
-                        dendstate_one_seed = data_dict[seed]['binned_mean_forward_dendritic_state']['all'][:]
-                        dendstate_all_seeds.append(dendstate_one_seed)
-                avg_dendstate = np.mean(dendstate_all_seeds, axis=0)
-                error = np.std(dendstate_all_seeds, axis=0)            
-                ax_dendstate.plot(binned_mean_forward_dendritic_state_steps, avg_dendstate, label=model_dict["name"], color=model_dict["color"])
-                ax_dendstate.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.5, color=model_dict["color"], linewidth=0)
-                ax_dendstate.set_xlabel('Training step')
-                ax_dendstate.set_ylabel('Dendritic state')
-                ax_dendstate.set_ylim(bottom=-0.0, top=0.1)
-            
 
     if save:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -1145,6 +1048,12 @@ def main(figure, overwrite, generate_data, recompute):
             "BTSP_TCWN_hebbdend": {"config": "20241126_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HTCWN_3_complete_optimized.yaml",
                                     "color": "green",
                                     "name": "BTSP_TCWN_hebbdend"}, # top-down learning with TempContrast+weight norm
+
+            ##########################
+            # Spirals dataset models
+            ##########################
+            
+            
         }
 
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
@@ -1174,8 +1083,9 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Backprop models
     if figure in ["all", "fig2"]:
-        # model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
-        model_list_heatmaps = ["bpLike_fixedTD_hebbdend", "bpLike_WT_hebbdend", "bpLike_TC_hebbdend"]
+        model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
+        # model_list_heatmaps = ["bpLike_fixedTD_hebbdend", "bpLike_WT_hebbdend", "bpLike_TCWN_hebbdend"]
+        # model_list_heatmaps = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
         compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
@@ -1190,11 +1100,12 @@ def main(figure, overwrite, generate_data, recompute):
     # Analyze DendI
     elif figure in ["all", "fig3"]:
         model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
-        model_list_metrics = model_list_heatmaps #+ ["bpDale_fixed"]
+        model_list_metrics = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
+        # model_list_metrics = model_list_heatmaps #+ ["bpDale_fixed"]
         figure_name = "Fig3_dendI"
         compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
-    # Supplement to Fig.3
+    # S2 (Supplement to Fig.3)
     elif figure in ["all", "S2"]:
         model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
@@ -1227,7 +1138,8 @@ def main(figure, overwrite, generate_data, recompute):
 
     elif figure in ["all", "metrics"]:
         # model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_hebbTD", "bpLike_FA"]
-        model_list = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
+        # model_list = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
+        model_list = ["bpDale_learned", "bpLike_TCWN_hebbdend"]
 
         # model_list = ["bpLike_hebbTD_hebbdend_eq", "bpLike_WT_hebbdend_eq", "bpLike_hebbTD_hebbdend", "bpLike_WT_hebbdend"]
         figure_name = "metrics_all_models"
