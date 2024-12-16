@@ -33,7 +33,9 @@ def convert_config_dict(simple_format_dict):
     layer_config = simple_format_dict['layer_config']
     simple_format_dict['layer_config'] = convert_layer_config_dict(layer_config)
     projection_config = simple_format_dict['projection_config']
-    simple_format_dict['projection_config'] = convert_projection_config_dict(projection_config)
+    projection_config_keys = list(projection_config.keys())
+    if ("." in str(projection_config_keys[0])): 
+        simple_format_dict['projection_config'] = convert_projection_config_dict(projection_config)
     return simple_format_dict
 
 

@@ -8,6 +8,8 @@ layer_config:
         E:
             size: 128
             activation: relu
+            include_bias: True 
+            bias_learning_rule: Null
         SomaI:
             size: 32
             activation: relu
@@ -18,6 +20,8 @@ layer_config:
         E:
             size: 32
             activation: relu
+            include_bias: True 
+            bias_learning_rule: Null
         SomaI:
             size: 8
             activation: relu
@@ -28,6 +32,8 @@ layer_config:
         E:
             size: 4
             activation: relu
+            include_bias: True 
+            bias_learning_rule: Null
         SomaI:
             size: 4
             activation: relu

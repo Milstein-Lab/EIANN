@@ -340,7 +340,8 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
         return train_dataloader, train_dataloader_CL1_full, train_dataloader_CL2_full, train_dataloader_CL1, train_dataloader_CL2, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
     else:
         return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
-    
+
+
 def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0):
         """
         Generate points of spiral dataset
@@ -368,6 +369,7 @@ def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0):
             all_data.append((index, data, target))
 
         return all_data
+
     
 def get_spiral_dataloaders(batch_size=1, N=2000, seed=0):
     """
