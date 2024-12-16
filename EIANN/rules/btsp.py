@@ -3691,7 +3691,7 @@ class BTSP_19(LearningRule):
         neg_error = self.projection.post.plateau.detach().clone()
         neg_error[self.projection.post.plateau > 0.] = 0.
         neg_error = neg_error.unsqueeze(1)
-        delta_weight = ET * neg_error
+        delta_weight += ET * neg_error
         
         self.projection.weight.data += self.learning_rate * delta_weight
     
