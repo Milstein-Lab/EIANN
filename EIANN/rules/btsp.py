@@ -3649,49 +3649,41 @@ class BTSP_19(LearningRule):
         plateau_prob = self.projection.post.plateau.detach().clone()
         neg_indexes = (self.projection.post.plateau < 0.).nonzero(as_tuple=True)
         plateau_prob[neg_indexes] = 0.
-        
-        IS = torch.ones_like(plateau_prob)
-        IS[neg_indexes] = 0.
-        
         plateau_prob = plateau_prob.unsqueeze(1)
-        IS = IS.unsqueeze(1)
         
+        IS_val = 1.
         if self.projection.direction in ['forward', 'F']:
-            ET = torch.clamp(self.projection.pre.activity, 0., 1.).unsqueeze(0)
+            ET = torch.clamp(self.projection.pre.activity, 0., 1.)
         elif self.projection.direction in ['recurrent', 'R']:
-            ET = torch.clamp(self.projection.pre.prev_activity, 0., 1.).unsqueeze(0)
+            ET = torch.clamp(self.projection.pre.prev_activity, 0., 1.)
             
         # pre activity and post plateau for current sample
         delta_weight = (plateau_prob *
-                        ((self.w_max - self.projection.weight) * ET * IS -
-                         self.projection.weight * self.dep_ratio * self.q_dep(ET * IS))).detach().clone()
+                        ((self.w_max - self.projection.weight) * ET.unsqueeze(0) * IS_val -
+                         self.projection.weight * self.dep_ratio *
+                         self.q_dep(ET * IS_val).unsqueeze(0))).detach().clone()
         
         # pre activity for prev sample and post plateau for current sample
         past_ET = torch.clamp(self.projection.pre.past_activity, 0., 1.) * self.temporal_discount
-        past_ET = past_ET.unsqueeze(0)
-        delta_weight += (plateau_prob * ((self.w_max - self.projection.weight) * past_ET * IS -
-                               self.projection.weight * self.dep_ratio * self.q_dep(past_ET * IS))).detach().clone()
+        delta_weight += (plateau_prob * ((self.w_max - self.projection.weight) * past_ET.unsqueeze(0) * IS_val -
+                                         self.projection.weight * self.dep_ratio *
+                                         self.q_dep(past_ET * IS_val).unsqueeze(0))).detach().clone()
         
         # pre activity for current sample and post plateau for prev sample
         past_plateau_prob = self.projection.post.past_plateau.detach().clone()
         neg_indexes = (self.projection.post.past_plateau < 0.).nonzero(as_tuple=True)
         past_plateau_prob[neg_indexes] = 0.
-        
-        past_IS = torch.ones_like(past_plateau_prob) * self.temporal_discount
-        past_IS[neg_indexes] = 0.
-        
         past_plateau_prob = past_plateau_prob.unsqueeze(1)
-        past_IS = past_IS.unsqueeze(1)
         
-        delta_weight += (past_plateau_prob * ((self.w_max - self.projection.weight) * ET * past_IS -
+        past_IS_val = self.temporal_discount
+        delta_weight += (past_plateau_prob * ((self.w_max - self.projection.weight) * ET.unsqueeze(0) * past_IS_val -
                                     self.projection.weight * self.dep_ratio *
-                                    self.q_dep(ET * past_IS))).detach().clone()
+                                    self.q_dep(ET * past_IS_val).unsqueeze(0))).detach().clone()
         
         # neg error - weight update proportional to loss and presynaptic activity
         neg_error = self.projection.post.plateau.detach().clone()
         neg_error[self.projection.post.plateau > 0.] = 0.
-        neg_error = neg_error.unsqueeze(1)
-        delta_weight += ET * neg_error
+        delta_weight += ET.unsqueeze(0) * neg_error.unsqueeze(1)
         
         self.projection.weight.data += self.learning_rate * delta_weight
     
