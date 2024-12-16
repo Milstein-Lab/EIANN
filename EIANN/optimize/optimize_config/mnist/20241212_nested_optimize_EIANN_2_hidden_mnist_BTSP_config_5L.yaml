@@ -1,0 +1,176 @@
+bounds:
+    H_E_FF_E_max_weight_scale:
+        - 0.01
+        - 20.
+    H1_E_Input_E_init_weight_factor:
+        - 0.01
+        - 1.
+    H_E_E_learning_rate:
+        - 0.0001
+        - 0.25
+    H1_E_H2_E_weight_scale:
+        - 0.01
+        - 10.
+    neg_rate_th:
+        - 0.
+        - 0.5
+    temporal_discount:
+        - 0.0001
+        - 0.5
+    H1_E_H1_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_SomaI_H1_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_E_H1_DendI_init_weight_scale:
+        - 0.01
+        - 10.
+    H_E_DendI_learning_rate:
+        - 0.0001
+        - 0.25
+    H1_DendI_H1_E_weight_scale:
+        - 0.01
+        - 10.
+    H1_DendI_H1_DendI_weight_scale:
+        - 0.01
+        - 10.
+    DendI_E_learning_rate:
+        - 0.0001
+        - 1.
+    DendI_DendI_learning_rate:
+        - 0.0001
+        - 1.
+    H2_E_H1_E_init_weight_factor:
+        - 0.01
+        - 1.
+    H2_E_Output_E_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H2_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_SomaI_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_SomaI_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_SomaI_H2_SomaI_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H2_DendI_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_DendI_H2_E_weight_scale:
+        - 0.01
+        - 10.
+    H2_DendI_H2_DendI_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_H2_E_max_weight_scale:
+        - 0.01
+        - 20.
+    Output_E_H2_E_init_weight_factor:
+        - 0.01
+        - 1.
+    Output_E_H2_E_learning_rate:
+        - 0.0001
+        - 0.25
+    Output_E_Output_I_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_I_init_weight_scale:
+        - 0.01
+        - 10.
+    max_pop_fraction:
+        - 0.01
+        - 1.
+    H_I_size:
+        - 1
+        - 100
+    Output_I_size:
+        - 1
+        - 10
+default_params:
+    H_I_size: 50
+    Output_I_size: 10
+    neg_rate_th: 0.
+    max_pop_fraction: 1.
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 20000
+    epochs: 1
+    network_config_file_path: optimize/network_config/MNIST/20241212_EIANN_2_hidden_mnist_BTSP_config_5L.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: True
+    include_dend_loss_objective: True
+    include_equilibration_dynamics_objective: True
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+      function: update_EIANN_config_2_hidden_BTSP_3J  # works with 5L
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_mnist_BTSP_5L
+x0:
+    H_E_FF_E_max_weight_scale: 7.788609158406613
+    H1_E_Input_E_init_weight_factor: 0.44148085242662294
+    H_E_E_learning_rate: 0.00938294618946663
+    H1_E_H2_E_weight_scale: 0.16914695597382515
+    neg_rate_th: 0.0
+    temporal_discount: 0.03536559104213365
+    H1_E_H1_SomaI_init_weight_scale: 1.8465890474026487
+    H1_SomaI_H1_E_init_weight_scale: 0.7559077315353061
+    H1_SomaI_Input_E_init_weight_scale: 2.343115372006121
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.0868198240743892
+    H1_E_H1_DendI_init_weight_scale: 1.7371394099251893
+    H_E_DendI_learning_rate: 0.03888840729184042
+    H1_DendI_H1_E_weight_scale: 1.818219554989597
+    H1_DendI_H1_DendI_weight_scale: 0.5070979162787277
+    DendI_E_learning_rate: 0.13292864353596703
+    DendI_DendI_learning_rate: 0.06085700670526915
+    H2_E_H1_E_init_weight_factor: 0.11128317870213929
+    H2_E_Output_E_weight_scale: 0.9552263595956582
+    H2_E_H2_SomaI_init_weight_scale: 0.307379610388407
+    H2_SomaI_H2_E_init_weight_scale: 0.3016102106647725
+    H2_SomaI_H1_E_init_weight_scale: 1.9665123573403203
+    H2_SomaI_H2_SomaI_init_weight_scale: 0.9120145277865381
+    H2_E_H2_DendI_init_weight_scale: 6.018251161556481
+    H2_DendI_H2_E_weight_scale: 4.590664762918663
+    H2_DendI_H2_DendI_weight_scale: 0.883285944933908
+    Output_E_H2_E_max_weight_scale: 9.856494070402997
+    Output_E_H2_E_init_weight_factor: 0.9351330816419723
+    Output_E_H2_E_learning_rate: 0.019856826836325604
+    Output_E_Output_I_init_weight_scale: 0.30960437593267404
+    Output_I_Output_E_init_weight_scale: 0.21986736823621184
+    Output_I_H2_E_init_weight_scale: 0.8093417138412852
+    Output_I_Output_I_init_weight_scale: 1.5466764661394883
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
