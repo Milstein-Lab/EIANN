@@ -11346,6 +11346,7 @@ def update_spiral_config_2_hidden_bpDale(x, context):
     # Set optimizer in context
     context.training_kwargs['optimizer'] = 'SGD'
 
+
 def update_spiral_config_2_hidden_BP_like_5J(x, context):
     """
     Update the spiral configuration for a 2-hidden-layer network with BP_like_5J (both learned and fixed bias)
