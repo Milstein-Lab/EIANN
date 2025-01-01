@@ -836,10 +836,15 @@ DONE:
  - BP_like_5J_learn_TD_HTCWN_2
  - BTSP_3L_learn_TD_HTC_1 (abandoned)
  - BP_like_5J_learn_TD_HTC_2 (abandoned)
+ - Hebb_Temp_Contrast_2
+ - BTSP_3L_learn_TD_HTCWN_3
  
-HOT_STARTING 20241126:  
- - BTSP_3L_learn_TD_HTCWN_3 (95 gens)
- - Hebb_Temp_Contrast_2 (140 gens)
+HOT_STARTING 20241223:
+ - BTSP_5L (104 gens)  
+ - BTSP_5L_fixed_TD (98 gens)
+ - BTSP_5L_learn_TD_HTCWN_3 (95 gens)
+ 
 
-RUNNING:
+RUNNING 20241223:
+ 
  

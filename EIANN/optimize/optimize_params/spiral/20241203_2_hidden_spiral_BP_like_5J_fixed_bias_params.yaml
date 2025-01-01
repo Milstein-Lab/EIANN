@@ -33,4 +33,40 @@ BP_like_5J_fixed_bias:
   # loss: 0.07929886877536774
   # mean_forward_dend_loss: 0.015182169713079929
 
+20241220_BP_like_5J_fixed_bias:
+    # extended bounds on learning_rate params
+    #    accuracy: 86.68167114257812
+    #    dynamics_residuals: 0.0
+    #    loss: 0.06934739649295807
+    #    mean_forward_dend_loss: 0.006754968408495187
+    H1_E_Input_E_init_weight_scale: 2.578473193255989
+    H2_E_H1_E_init_weight_scale: 2.9477366750728278
+    H_E_E_learning_rate: 0.1777254460098952
+    H1_E_H2_E_weight_scale: 0.010623432865526588
+    H2_E_Output_E_weight_scale: 0.08924154348330568
+    H1_E_H1_SomaI_init_weight_scale: 1.0269529972558968
+    H1_SomaI_H1_E_init_weight_scale: 2.7831948645264184
+    H1_SomaI_Input_E_init_weight_scale: 4.992827946269447
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.8645825481131617
+    H_E_DendI_learning_rate: 0.2739410579956126
+    H1_E_H1_DendI_init_weight_scale: 3.8423545509627752
+    H1_DendI_H1_E_weight_scale: 7.422986609703745
+    H1_DendI_H1_DendI_weight_scale: 0.8703467284900993
+    H2_E_H2_SomaI_init_weight_scale: 4.428507706568743
+    H2_SomaI_H2_E_init_weight_scale: 0.16952903296912092
+    H2_SomaI_H1_E_init_weight_scale: 1.8877726116006204
+    H2_SomaI_H2_SomaI_init_weight_scale: 2.2024497443084194
+    H2_E_H2_DendI_init_weight_scale: 3.471808791205207
+    H2_DendI_H2_E_weight_scale: 6.3345652958714505
+    H2_DendI_H2_DendI_weight_scale: 1.2771788086491616
+    Output_E_H2_E_init_weight_scale: 8.318801573710452
+    DendI_E_learning_rate: 0.25931209562559865
+    DendI_DendI_learning_rate: 0.010138870622460645
+    Output_E_H2_E_learning_rate: 0.17670253199727096
+    Output_E_Output_I_init_weight_scale: 0.842699042731273
+    Output_I_Output_E_init_weight_scale: 0.6230095093329311
+    Output_I_H2_E_init_weight_scale: 0.05416421642559829
+    Output_I_Output_I_init_weight_scale: 2.9628885880721896
+
+
 # mpiexec -n 3 python -i -m mpi4py.futures -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_fixed_bias.yaml --disp --num_instances=2 --framework=mpi --model-key=BP_like_5J_fixed_bias --interactive --param-file-path=optimize/optimize_params/spiral/20241203_2_hidden_spiral_BP_like_5J_fixed_bias_params.yaml --export_network_config_file_path=network_config/spiral/EIANN_2_hidden_spiral_BP_like_5J_fixed_bias --export
