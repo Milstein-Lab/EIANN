@@ -2120,8 +2120,8 @@ BTSP_5L_fixed_TD:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
-BTSP_5L_learn_TD_HTCWN:
-    # Like BTSP_3L_learn_TD_HTCWN; uses BTSP_19 learning rule with adjascent sample contrast implementation bug fixed
+BTSP_5L_learn_TD_HTCWN_3:
+    # Like BTSP_3L_learn_TD_HTCWN_3; uses BTSP_19 learning rule with adjascent sample contrast implementation bug fixed
     #    accuracy: 92.39118957519531
     #    dynamics_residuals: 0.0
     #    loss: 0.0186226237565279
