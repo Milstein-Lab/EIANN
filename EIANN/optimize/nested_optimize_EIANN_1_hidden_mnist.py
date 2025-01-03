@@ -162,13 +162,19 @@ def config_worker():
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
-
+    
     # Load dataset
-    tensor_flatten = T.Compose([T.ToTensor(), T.Lambda(torch.flatten)])
+    if context.interactive:
+        download = True
+    else:
+        download = False
+    tensor_flatten = T.Compose([
+        T.ToTensor(),
+        T.Lambda(torch.flatten)])
     MNIST_train_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=True,
-                                                     download=True, transform=tensor_flatten)
+                                                     download=download, transform=tensor_flatten)
     MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=False,
-                                                    download=True, transform=tensor_flatten)
+                                                    download=download, transform=tensor_flatten)
 
     # Add index to train & test data
     MNIST_train = []

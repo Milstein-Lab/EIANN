@@ -149,12 +149,17 @@ def config_worker():
         T.Grayscale(num_output_channels=1),
         T.Lambda(torch.flatten)])
     
+    if context.interactive:
+        download = True
+    else:
+        download = False
+    
     # Load the training dataset
     CIFAR10_train_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data', train=True,
-                                                         download=True, transform=transform)
+                                                         download=download, transform=transform)
     # Load the test dataset
-    CIFAR10_test_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data', train=False, download=True,
-                                                        transform=transform)
+    CIFAR10_test_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data', train=False,
+                                                        download=download, transform=transform)
     
     # Define the classes
     context.class_labels = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
