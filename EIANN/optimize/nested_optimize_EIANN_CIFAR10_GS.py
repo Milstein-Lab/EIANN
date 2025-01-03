@@ -23,25 +23,6 @@ import EIANN.utils as utils
 
 context = Context()
 
-# run 5 random seeds in parallel:
-# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --store_history=True --retrain=False --full_analysis=True --status_bar=True
-
-# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=bpDale \
-#   --export --export-file-path=multiseed_mnist_metrics.hdf5 --store_history=True --retrain=False --full_analysis=True --status_bar=True
-
-# run a single seed (must be run from the root directory of EIANN):
-# python -m nested.analyze --framework=serial \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis=True --status_bar=True
-
-# python -m nested.analyze --framework=serial --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=btsp --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --status_bar=True --plot --full_analysis=True
-
 
 def config_controller():
     if 'debug' not in context():
@@ -162,31 +143,39 @@ def config_worker():
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
-
-    # Load dataset
-    tensor_flatten = T.Compose([T.ToTensor(), T.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=True,
-                                                     download=True, transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=False,
-                                                    download=True, transform=tensor_flatten)
-
+    
+    transform = T.Compose([
+        T.ToTensor(),
+        T.Grayscale(num_output_channels=1),
+        T.Lambda(torch.flatten)])
+    
+    # Load the training dataset
+    CIFAR10_train_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data', train=True,
+                                                         download=True, transform=transform)
+    # Load the test dataset
+    CIFAR10_test_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data', train=False, download=True,
+                                                        transform=transform)
+    
+    # Define the classes
+    context.class_labels = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+    
     # Add index to train & test data
-    MNIST_train = []
-    for idx, (data, target) in enumerate(MNIST_train_dataset):
-        target = torch.eye(len(MNIST_train_dataset.classes))[target]
-        MNIST_train.append((idx, data, target))
-
-    MNIST_test = []
-    for idx, (data, target) in enumerate(MNIST_test_dataset):
-        target = torch.eye(len(MNIST_test_dataset.classes))[target]
-        MNIST_test.append((idx, data, target))
+    CIFAR10_train = []
+    for idx, (data, target) in enumerate(CIFAR10_train_dataset):
+        target = torch.eye(len(CIFAR10_train_dataset.classes))[target]
+        CIFAR10_train.append((idx, data, target))
+    
+    CIFAR10_test = []
+    for idx, (data, target) in enumerate(CIFAR10_test_dataset):
+        target = torch.eye(len(CIFAR10_test_dataset.classes))[target]
+        CIFAR10_test.append((idx, data, target))
 
     # Put data in dataloader
     context.data_generator = torch.Generator()
     context.train_sub_dataloader = \
-        torch.utils.data.DataLoader(MNIST_train[0:-10000], shuffle=True, generator=context.data_generator)
-    context.val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
-    context.test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
+        torch.utils.data.DataLoader(CIFAR10_train[0:-10000], shuffle=True, generator=context.data_generator)
+    context.val_dataloader = torch.utils.data.DataLoader(CIFAR10_train[-10000:], batch_size=10000, shuffle=False)
+    context.test_dataloader = torch.utils.data.DataLoader(CIFAR10_test, batch_size=10000, shuffle=False)
 
 
 def get_mean_forward_dend_loss(network, num_steps, abs=True):
@@ -254,7 +243,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                        'training_kwargs': context.training_kwargs}
         write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
         if context.disp:
-            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
+            print('nested_optimize_EIANN_CIFAR10_GS: pid: %i exported network config to %s' %
                   (os.getpid(), context.export_network_config_file_path))
     
     if plot:
@@ -277,7 +266,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if os.path.exists(context.data_file_path) and not context.retrain:
         network = utils.load_network(context.data_file_path)
         if context.disp:
-            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i loaded network history from %s' %
+            print('nested_optimize_EIANN_CIFAR10_GS: pid: %i loaded network history from %s' %
                   (os.getpid(), context.data_file_path))
     else:
         data_generator.manual_seed(data_seed)
@@ -306,7 +295,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         elif context.eval_accuracy == 'best':
             min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_dataloader, plot=plot)
         else:
-            raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
+            raise Exception('nested_optimize_EIANN_CIFAR10_GS: eval_accuracy must be final or best, not %s' %
                             context.eval_accuracy)
         sorted_val_loss_history, sorted_val_accuracy_history = \
             recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx=sorted_output_idx,
@@ -345,7 +334,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         results = {'loss': best_loss_window,
                    'accuracy': best_accuracy_window}
     else:
-        raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
+        raise Exception('nested_optimize_EIANN_CIFAR10_GS: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
 
     if np.isnan(results['loss']) or np.isinf(results['loss']):
@@ -401,7 +390,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if export:
         utils.save_network(network, path=context.data_file_path, disp=False)
         if context.disp:
-            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network history to %s' %
+            print('nested_optimize_EIANN_CIFAR10_GS: pid: %i exported network history to %s' %
                   (os.getpid(), context.data_file_path))
     
     if not context.interactive:

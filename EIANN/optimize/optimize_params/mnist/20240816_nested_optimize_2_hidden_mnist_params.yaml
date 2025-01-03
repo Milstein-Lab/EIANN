@@ -1,3 +1,9 @@
+van_bp_relu_0_hidden:
+    #    accuracy: 89.91481
+    #    loss: 0.022169944
+    Output_learning_rate: 0.004068166395236531
+    Output_init_weight_scale: 0.0264769781294784
+
 van_bp_relu:
     #    accuracy: 96.0245
     #    loss: 0.009116223
