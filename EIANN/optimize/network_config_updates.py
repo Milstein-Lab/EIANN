@@ -509,6 +509,19 @@ def update_EIANN_config_2_hidden_van_bp_relu_SGD_G(x, context):
     context.training_kwargs['optimizer'] = 'SGD'
 
 
+def update_EIANN_config_0_hidden_van_bp_relu_SGD_G(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    Output_learning_rate = param_dict['Output_learning_rate']
+    Output_init_weight_scale = param_dict['Output_init_weight_scale']
+    
+    context.projection_config['Output']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = (
+        Output_learning_rate)
+    context.projection_config['Output']['E']['Input']['E']['weight_init_args'] = (Output_init_weight_scale,)
+    
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
 def update_EIANN_config_1_hidden_Gjorgjieva_Hebb_A(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
 
