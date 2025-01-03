@@ -1,7 +1,7 @@
 #!/bin/bash -l
 export DATE=$(date +%Y%m%d_%H%M%S)
 export LABEL="$2"
-export JOB_NAME=optimize_EIANN_mnist_dev_"$LABEL"_"$DATE"
+export JOB_NAME=optimize_EIANN_cifar10_dev_"$LABEL"_"$DATE"
 export CONFIG_FILE_PATH="$1"
 sbatch <<EOT
 #!/bin/bash -l
@@ -23,6 +23,6 @@ cd $PROJECT/EIANN/EIANN
 export MPI4PY_RC_RECV_MPROBE=false
 
 mpirun -n 1001 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
-  --output-dir=data/mnist --pop_size=200 --max_iter=1 --path_length=1 --disp \
+  --output-dir=data/cifar10 --pop_size=200 --max_iter=1 --path_length=1 --disp \
   --framework=mpi
 EOT
