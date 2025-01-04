@@ -577,7 +577,8 @@ def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
 
 
 def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_classes=None, average_pop_activity=None, 
-                          num_units=None, num_cols=None, num_rows=None, activity_threshold=1e-10, cmap='custom', ax_list=None):
+                          num_units=None, num_cols=None, num_rows=None, activity_threshold=1e-10, cmap='custom',
+                          ax_list=None, dimensions=None):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
     structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
@@ -586,12 +587,15 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
     :param receptive_fields:
     :param scale:
     :param sort:
+    :param preferred_classes:
+    :param average_pop_activity:
     :param num_units:
     :param num_cols:
     :param num_rows:
     :param activity_threshold: float
     :param cmap:
     :param ax_list:
+    :param dimensions: tuple of int
     """
     if isinstance(scale, torch.Tensor):
         scale = scale.diagonal()
@@ -599,10 +603,15 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         active_idx = torch.where(scale > activity_threshold)
         scale = scale[active_idx]
         receptive_fields = receptive_fields[active_idx]
-
+    
+    if dimensions is None:
+        rf_width = rf_height = 28
+    else:
+        rf_width, rf_height = dimensions
+    
     # Sort units by tuning structure of their receptive fields
     if sort: 
-        structure = ut.compute_rf_structure(receptive_fields)
+        structure = ut.compute_rf_structure(receptive_fields, dimensions=dimensions)
         sorted_idx = np.argsort(-structure)
         receptive_fields = receptive_fields[sorted_idx]
         if isinstance(scale, torch.Tensor):
@@ -702,7 +711,8 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         axes_heatmap = gs.GridSpec(10,1, right=0.2, hspace=0.01)
         for i,rf_idx in enumerate(example_units):
             ax = fig.add_subplot(axes_heatmap[i, 0])
-            ax.imshow(receptive_fields[rf_idx].view(28,28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max, aspect='equal', interpolation='none')
+            ax.imshow(receptive_fields[rf_idx].view(rf_width, rf_height), cmap=my_cmap, vmin=colorscale_min,
+                      vmax=colorscale_max, aspect='equal', interpolation='none')
             ax.axis('off')
             if preferred_classes is not None:
                 ax.text(0, 8, f'{preferred_classes[rf_idx]}', color='k', fontsize=4)     
@@ -717,8 +727,8 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         else:
             ax = ax_list[i]
         
-        im = ax.imshow(receptive_fields[i].view(28, 28), cmap=my_cmap, vmin=colorscale_min, vmax=colorscale_max,
-                       aspect='equal', interpolation='none')
+        im = ax.imshow(receptive_fields[i].view(rf_width, rf_height), cmap=my_cmap, vmin=colorscale_min,
+                       vmax=colorscale_max, aspect='equal', interpolation='none')
         ax.axis('off')
 
         if preferred_classes is not None:
@@ -736,7 +746,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
 
 
 def plot_unit_receptive_field(population, dataloader, unit):
-
+    # TODO: not robust to changes in input dimensions
     fig, ax = plt.subplots(1,2, figsize=(6,3))
 
     weighted_avg_input = ut.compute_act_weighted_avg(population, dataloader)

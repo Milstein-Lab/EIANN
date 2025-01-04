@@ -4,3 +4,12 @@ van_bp_0_hidden:
     Output_learning_rate: 0.0005847663211683789
     Output_init_weight_scale: 0.02393758110172608
 
+van_bp:
+    #    accuracy: 31.873001
+    #    loss: 0.08117257
+    H_learning_rate: 0.016375973062263342
+    Output_learning_rate: 0.2622559432514619
+    H1_init_weight_scale: 3.1272064401948922
+    H2_init_weight_scale: 0.355094114913974
+    Output_init_weight_scale: 0.13850610523723217
+

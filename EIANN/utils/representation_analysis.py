@@ -629,12 +629,18 @@ def compute_diag_fisher(network, train_dataloader_CL1_full):
     return diag_fisher
 
 
-def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False, 
-                                   export=False, export_path=None, overwrite=False):
+def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False, export=False,
+                                   export_path=None, overwrite=False, dimensions=None):
     """
     Compute representation metrics for a population of neurons
     :param population: Population object
+    :param test_dataloader:
     :param receptive_fields: (optional) receptive fields for each neuron
+    :param plot: bool
+    :param export: bool
+    :param export_path: str (path)
+    :param overwrite: bool
+    :param dimensions: tuple of int
     :return: dictionary of metrics
     """
 
@@ -659,7 +665,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     # Compute structure
     if receptive_fields is not None:
         # receptive_fields = receptive_fields[active_units_idx]
-        structure = compute_rf_structure(receptive_fields)
+        structure = compute_rf_structure(receptive_fields, dimensions=dimensions)
     else:
         structure = []
 
@@ -704,7 +710,7 @@ def compute_act_weighted_avg(population, dataloader):
 
 
 def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, softplus=False, export=False,
-                                    export_path=None, overwrite=False):
+                                    export_path=None, overwrite=False, test_dataloader=None):
     """
     Use the 'activation maximization' method to compute receptive fields for all units in the population
 
@@ -713,6 +719,10 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     :param sigmoid: if True, use sigmoid activation function for the input images;
                     if False, returns unfiltered receptive fields and activities from act_weighted_avg images
     :param softplus: if True, use softplus activation function for the input images;
+    :param export: bool
+    :param export_path: str (path)
+    :param overwrite: bool
+    :param test_dataloader:
     :return:
     """
 
@@ -741,7 +751,9 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     input_size = population.network.Input.E.size
     all_images = [torch.empty(num_units, input_size).uniform_(-0.01,0.01)]
 
-    train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = data_utils.get_MNIST_dataloaders(sub_dataloader_size=20_000)
+    if test_dataloader is None:
+        train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = (
+            data_utils.get_MNIST_dataloaders(sub_dataloader_size=20_000))
     idx, data, target = next(iter(test_dataloader))
 
     print("Optimizing receptive field images...")

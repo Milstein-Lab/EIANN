@@ -374,7 +374,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         plot_train_loss_history(network)
         plot_validate_loss_history(network)
     
-    if 'H1' in network:
+    if 'H1' in network.layers:
         if context.compute_receptive_fields:
             # Compute receptive fields
             population = network.H1.E
@@ -386,7 +386,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
     
     if context.full_analysis:
-        if 'H1' in network:
+        if 'H1' in network.layers:
             metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
             plot_representation_metrics(metrics_dict)
         

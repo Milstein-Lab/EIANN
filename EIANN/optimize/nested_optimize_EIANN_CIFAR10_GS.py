@@ -362,20 +362,21 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         plot_train_loss_history(network)
         plot_validate_loss_history(network)
     
-    if 'H1' in network:
+    if 'H1' in network.layers:
         if context.compute_receptive_fields:
             # Compute receptive fields
             population = network.H1.E
-            receptive_fields = utils.compute_maxact_receptive_fields(population)
+            receptive_fields = utils.compute_maxact_receptive_fields(population, test_dataloader=test_dataloader)
         else:
             receptive_fields = network.H1.E.Input.E.weight.detach()
         
         if plot:
-            plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
+            plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10, dimensions=(32, 32))
     
     if context.full_analysis:
-        if 'H1' in network:
-            metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
+        if 'H1' in network.layers:
+            metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields,
+                                                                dimensions=(32, 32))
             plot_representation_metrics(metrics_dict)
         
         test_loss_history, test_accuracy_history = \
