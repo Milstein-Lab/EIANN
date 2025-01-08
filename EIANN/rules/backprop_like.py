@@ -1227,7 +1227,7 @@ class BP_like_1I(LearningRule):
 
 
 class BP_like_2E(LearningRule):
-    def __init__(self, projection, max_pop_fraction=0.025, stochastic=True, learning_rate=None, relu_gate=False):
+    def __init__(self, projection, max_pop_fraction=1., stochastic=False, learning_rate=None, relu_gate=False):
         """
         Output units are nudged to target. Hidden dendrites locally compute an error as the difference between
         excitation and inhibition. Weight updates are proportional to local error and (forward) presynaptic firing rate.

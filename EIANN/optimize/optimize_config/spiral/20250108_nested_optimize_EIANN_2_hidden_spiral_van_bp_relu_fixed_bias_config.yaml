@@ -41,7 +41,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_sprial_van_bp_relu_fixed_bias
+optimization_title: EIANN_2_hidden_spiral_van_bp_relu_fixed_bias
 x0:
     H_learning_rate: 0.05
     Output_learning_rate: 0.05

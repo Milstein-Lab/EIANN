@@ -78,7 +78,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_sprial_bpDale_fixed_SomaI_fixed_bias
+optimization_title: EIANN_2_hidden_spiral_bpDale_fixed_SomaI_fixed_bias
 x0:
     H_E_E_learning_rate: 0.05
     Output_E_E_learning_rate: 0.05

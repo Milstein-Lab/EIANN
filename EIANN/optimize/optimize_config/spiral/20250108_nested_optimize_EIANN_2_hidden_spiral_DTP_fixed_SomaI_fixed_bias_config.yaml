@@ -1,8 +1,3 @@
-# Being used with: EIANN\optimize\nested_optimize_EIANN_spiral_2_hidden.py
-# Being used to optimize: EIANN\optimize\network_config\spiral\EIANN_2_hidden_spiral_BP_like_5J_fixed_bias.yaml
-
-# Based on: EIANN\optimize\optimize_config\mnist\20241009_nested_optimize_EIANN_2_hidden_mnist_BP_like_config_5J.yaml
-
 bounds:
     H1_E_Input_E_init_weight_scale:
         - 0.01
@@ -12,7 +7,7 @@ bounds:
         - 10.
     H_E_E_learning_rate:
         - 0.0001
-        - 1.
+        - 0.25
     H1_E_H2_E_weight_scale:
         - 0.01
         - 10.
@@ -33,7 +28,7 @@ bounds:
         - 10.
     H_E_DendI_learning_rate:
         - 0.0001
-        - 1.
+        - 0.25
     H1_E_H1_DendI_init_weight_scale:
         - 0.01
         - 10.
@@ -75,7 +70,7 @@ bounds:
         - 1.
     Output_E_H2_E_learning_rate:
         - 0.0001
-        - 1.
+        - 0.25
     Output_E_Output_I_init_weight_scale:
         - 0.01
         - 10.
@@ -88,6 +83,9 @@ bounds:
     Output_I_Output_I_init_weight_scale:
         - 0.01
         - 10.
+    DendI_size_fraction:
+        - 0.25
+        - 1.
 default_params:
 rel_bounds:
 kwargs:
@@ -100,7 +98,7 @@ kwargs:
     status_bar: False
     train_steps: 5600
     epochs: 1
-    network_config_file_path: optimize/network_config/spiral/EIANN_2_hidden_spiral_BP_like_5J_fixed_bias.yaml
+    network_config_file_path: optimize/network_config/spiral/20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_fixed_bias_config.yaml
     val_interval:
         - -1000
         - -1
@@ -111,7 +109,7 @@ kwargs:
     include_equilibration_dynamics_objective: True
 update_context:
     - source: optimize.nested_optimize_EIANN_spiral_2_hidden
-      function: update_spiral_config_2_hidden_BP_like_5J
+      function: update_spiral_config_2_hidden_DTP_fixed_SomaI_fixed_bias
 param_gen: PopulationAnnealing
 stages:
     - source: optimize.nested_optimize_EIANN_spiral_2_hidden
@@ -119,7 +117,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_spiral_BP_like_5J_fixed_bias
+optimization_title: EIANN_2_hidden_spiral_DTP_fixed_SomaI_fixed_bias
 x0:
     H1_E_Input_E_init_weight_scale: 2.690303762957492
     H2_E_H1_E_init_weight_scale: 2.393859445643422
@@ -149,13 +147,4 @@ x0:
     Output_I_Output_E_init_weight_scale: 0.20024448234976977
     Output_I_H2_E_init_weight_scale: 0.4587011470780067
     Output_I_Output_I_init_weight_scale: 2.468979250006341
-
-
-# To get analysis of features based on current config (of x0 values), run this:
-# EIANN\EIANN$ python -m nested.analyze --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_fixed_bias.yaml --disp
-
-# To do optimization based on this config, run this:
-# EIANN\EIANN$ python -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_fixed_bias.yaml --disp --pop_size=1 --max_iter=10 --path_length=1
-
-# To optimize with MPI (locally), run this:
-# EIANN\EIANN$ mpiexec -n 5 python -m mpi4py.futures -m nested.optimize --config-file-path=optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_fixed_bias.yaml --disp --pop_size=1 --max_iter=3 --path_length=1 --framework=mpi --num_instances=4
+    DendI_size_fraction: 0.5
