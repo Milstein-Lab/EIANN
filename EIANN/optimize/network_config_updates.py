@@ -11243,6 +11243,35 @@ def update_spiral_config_2_hidden_van_bp_learned_bias(x, context):
     context.layer_config['Output']['E']['bias_learning_rule_kwargs']['learning_rate'] = Output_bias_learning_rate
 
 
+def update_spiral_config_2_hidden_van_bp_fixed_bias(x, context):
+    """
+
+    :param x:
+    :param context:
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    # Weight scales
+    H1_init_weight_scale = param_dict['H1_init_weight_scale']
+    H2_init_weight_scale = param_dict['H2_init_weight_scale']
+    Output_init_weight_scale = param_dict['Output_init_weight_scale']
+    
+    # Forward learning rates
+    H_learning_rate = param_dict['H_learning_rate']
+    Output_learning_rate = param_dict['Output_learning_rate']
+    
+    # Update context
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_init_weight_scale,)
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_learning_rate
+    
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_init_weight_scale,)
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H_learning_rate
+    
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_init_weight_scale,)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs'][
+        'learning_rate'] = Output_learning_rate
+
+
 def update_spiral_config_2_hidden_dend_EI_contrast_fixed_bias(x, context):
     '''
     Update the spiral configuration for a 2-hidden-layer network with dendritic EI contrast fixed bias.
