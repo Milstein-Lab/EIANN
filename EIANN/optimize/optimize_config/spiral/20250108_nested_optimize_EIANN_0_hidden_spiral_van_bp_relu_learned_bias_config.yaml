@@ -1,0 +1,42 @@
+bounds:
+    Output_learning_rate:
+        - 0.0001
+        - 1.
+    Output_bias_learning_rate:
+        - 0.0001
+        - 1.
+    Output_init_weight_scale:
+        - 0.01
+        - 10.
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 5600
+    epochs: 1
+    network_config_file_path: optimize/network_config/spiral/20250108_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: False
+update_context:
+    - source: optimize.nested_optimize_EIANN_spiral_2_hidden
+      function: update_spiral_config_0_hidden_van_bp_learned_bias
+stages:
+    - source: optimize.nested_optimize_EIANN_spiral_2_hidden
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_0_hidden_sprial_van_bp_relu_learned_bias
+x0:
+    Output_learning_rate: 0.05
+    Output_bias_learning_rate: 0.05
+    Output_init_weight_scale: 1.
