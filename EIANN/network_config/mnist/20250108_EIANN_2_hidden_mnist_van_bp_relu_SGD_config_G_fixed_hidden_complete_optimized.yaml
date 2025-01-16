@@ -1,0 +1,53 @@
+layer_config:
+    Input:
+        E:
+            size: 784
+    H1:
+        E:
+            size: 500
+            activation: relu
+    H2:
+        E:
+            size: 500
+            activation: relu
+    Output:
+        E:
+            size: 10
+            activation: relu
+projection_config:
+    H1:
+        E:
+            Input:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 5.011995913830346
+                    direction: F
+                    learning_rule: null
+    H2:
+        E:
+            H1:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.32719946303255487
+                    direction: F
+                    learning_rule: null
+    Output:
+        E:
+            H2:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.020279061698152266
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.058201439241708425
+training_kwargs:
+    tau: 1
+    forward_steps: 1
+    backward_steps: 1
+    learning_rate: 0.2
+    verbose: false
+    optimizer: SGD
