@@ -157,7 +157,13 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         param_history = network.param_history
         param_history_steps = network.param_history_steps
 
-    forward_E_params = ["H1E_InputE", "H2E_H1E", "OutputE_H2E"]
+    # forward_E_params = ["H1E_InputE", "H2E_H1E", "OutputE_H2E"]
+    forward_E_params = []
+    for proj_name in network.projections: # Create a list of all the E-to-E projections to compare
+        pre_name, post_name = proj_name.split('_')
+        if pre_name[-1]=='E' and post_name[-1]=='E':
+            forward_E_params.append(proj_name)
+
     actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if name.split('.')[1] in forward_E_params}
     actual_dParam_history_all = []
     actual_dParam_history_dict_stepaveraged = {name:[] for name,param in network.named_parameters() if name.split('.')[1] in forward_E_params}
@@ -304,7 +310,7 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
             angles[param_name].append(angle)
             if torch.isnan(angle):
                 print(f'Warning: angle is NaN at step {t}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
-                return predicted_dParam, actual_dParam
+                # return predicted_dParam, actual_dParam
 
         if plot:
             ax = axes[n_params-(i+1)]
@@ -356,8 +362,11 @@ def compute_feedback_weight_angle_history(network, plot=False, ax=None):
             angle = compute_vector_angle(forward_weights, backward_weights)
             angles[f"{layer}E_{next_layer}E"].append(angle.item())
 
-        angle = compute_vector_angle(torch.cat(forward_weights_all), torch.cat(backward_weights_all))
-        angles["all_params"].append(angle.item())
+        if len(forward_weights_all)>0 and len(backward_weights_all)>0:
+            angle = compute_vector_angle(torch.cat(forward_weights_all), torch.cat(backward_weights_all))
+            angles["all_params"].append(angle.item())
+        else: 
+            return []
 
     if plot:
         if ax is None:

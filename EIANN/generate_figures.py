@@ -859,44 +859,60 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
             plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
             plot_error_all_seeds(data_dict, model_dict, ax=ax_error_hist)
             plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
-            plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity)
-            plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity)
-            plot_structure_all_seeds(data_dict, model_dict, ax=ax_structure)
 
-            # Sparsity history
-            val_steps = data_dict[seed]['val_history_train_steps'][:]
-            sparsity_history_all_seeds = []
-            for seed in data_dict:
-                H1E_sparsity_history = data_dict[seed]['sparsity_history']['H1E'][:]
-                H2E_sparsity_history = data_dict[seed]['sparsity_history']['H2E'][:]
-                sparsity_history = np.mean(np.stack([H1E_sparsity_history, H2E_sparsity_history]), axis=0)
-                sparsity_history_all_seeds.append(sparsity_history)
-            avg_sparsity = np.mean(sparsity_history_all_seeds, axis=0)
-            std_sparsity = np.std(sparsity_history_all_seeds, axis=0)
-            ax_sparsity_hist.plot(val_steps, avg_sparsity, label=f"{model_dict['name']}", color=model_dict["color"])
-            ax_sparsity_hist.fill_between(val_steps, avg_sparsity-std_sparsity, avg_sparsity+std_sparsity, alpha=0.2, color=model_dict["color"], linewidth=0)
-            ax_sparsity_hist.set_xlabel('Training step')
-            ax_sparsity_hist.set_ylabel('Sparsity')
-            ax_sparsity_hist.set_ylim([0,1])
+            if 'H1E' in data_dict[seed]['sparsity_history'] and 'H2E' in data_dict[seed]['sparsity_history']:
+                plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity)
+                plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity)
+                plot_structure_all_seeds(data_dict, model_dict, ax=ax_structure)
 
-            # Selectivity history
-            selectivity_history_all_seeds = []
-            for seed in data_dict:
-                H1E_selectivity_history = data_dict[seed]['selectivity_history']['H1E'][:]
-                H2E_selectivity_history = data_dict[seed]['selectivity_history']['H2E'][:]
-                selectivity_history = np.mean(np.stack([H1E_selectivity_history, H2E_selectivity_history]), axis=0)
-                selectivity_history_all_seeds.append(selectivity_history)
-            avg_selectivity = np.mean(selectivity_history_all_seeds, axis=0)
-            std_selectivity = np.std(selectivity_history_all_seeds, axis=0)
-            ax_selectivity_hist.plot(val_steps, avg_selectivity, label=f"{model_dict['name']}", color=model_dict["color"])
-            ax_selectivity_hist.fill_between(val_steps, avg_selectivity-std_selectivity, avg_selectivity+std_selectivity, alpha=0.2, color=model_dict["color"], linewidth=0)
-            ax_selectivity_hist.set_xlabel('Training step')
-            ax_selectivity_hist.set_ylabel('Selectivity')
-            ax_selectivity_hist.set_ylim([0,1])
+                # Sparsity history
+                val_steps = data_dict[seed]['val_history_train_steps'][:]
+                sparsity_history_all_seeds = []
+                for seed in data_dict:
+                    H1E_sparsity_history = data_dict[seed]['sparsity_history']['H1E'][:]
+                    H2E_sparsity_history = data_dict[seed]['sparsity_history']['H2E'][:]
+                    sparsity_history = np.mean(np.stack([H1E_sparsity_history, H2E_sparsity_history]), axis=0)
+                    sparsity_history_all_seeds.append(sparsity_history)
+                avg_sparsity = np.mean(sparsity_history_all_seeds, axis=0)
+                std_sparsity = np.std(sparsity_history_all_seeds, axis=0)
+                ax_sparsity_hist.plot(val_steps, avg_sparsity, label=f"{model_dict['name']}", color=model_dict["color"])
+                ax_sparsity_hist.fill_between(val_steps, avg_sparsity-std_sparsity, avg_sparsity+std_sparsity, alpha=0.2, color=model_dict["color"], linewidth=0)
+                ax_sparsity_hist.set_xlabel('Training step')
+                ax_sparsity_hist.set_ylabel('Sparsity')
+                ax_sparsity_hist.set_ylim([0,1])
+
+                # Selectivity history
+                selectivity_history_all_seeds = []
+                for seed in data_dict:
+                    H1E_selectivity_history = data_dict[seed]['selectivity_history']['H1E'][:]
+                    H2E_selectivity_history = data_dict[seed]['selectivity_history']['H2E'][:]
+                    selectivity_history = np.mean(np.stack([H1E_selectivity_history, H2E_selectivity_history]), axis=0)
+                    selectivity_history_all_seeds.append(selectivity_history)
+                avg_selectivity = np.mean(selectivity_history_all_seeds, axis=0)
+                std_selectivity = np.std(selectivity_history_all_seeds, axis=0)
+                ax_selectivity_hist.plot(val_steps, avg_selectivity, label=f"{model_dict['name']}", color=model_dict["color"])
+                ax_selectivity_hist.fill_between(val_steps, avg_selectivity-std_selectivity, avg_selectivity+std_selectivity, alpha=0.2, color=model_dict["color"], linewidth=0)
+                ax_selectivity_hist.set_xlabel('Training step')
+                ax_selectivity_hist.set_ylabel('Selectivity')
+                ax_selectivity_hist.set_ylim([0,1])
 
     if save:
         fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
+
+
+def generate_spirals_figure(model_dict_all, model_list, config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
+    fig = plt.figure(figsize=(5.5, 9))
+    axes = gs.GridSpec(nrows=2, ncols=4,                        
+                       left=0.049,right=1,
+                       top=0.95, bottom = 0.5,
+                       wspace=0.15, hspace=0.5)
+    ax_accuracy    = fig.add_subplot(axes[1, 0])  
+    ax_dendstate    = fig.add_subplot(axes[1, 1])
+    ax_angleBP = fig.add_subplot(axes[1, 2])
+
+    all_models = list(dict.fromkeys(model_list))
+    generate_data_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
 
 
 def images_to_pdf(image_paths, output_path):
@@ -946,6 +962,15 @@ def main(figure, overwrite, generate_data, recompute):
             "vanBP":       {"config": "20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml",
                             "color":  "black",
                             "name":   "Vanilla Backprop"},
+
+            "vanBP_0hidden": {"config": "20250103_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml",
+                            "color": "black",
+                            "name": "Vanilla Backprop 0-hidden"},
+
+            
+            "vanBP_fixed_hidden": {"config": "20250108_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_fixed_hidden_complete_optimized.yaml",
+                                   "color": "black",
+                                   "name": "Vanilla Backprop fixed hidden"},
 
             "bpDale_learned":{"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml",
                             "color":  "blue",
@@ -1037,6 +1062,18 @@ def main(figure, overwrite, generate_data, recompute):
                                     "color": "cyan",
                                     "name": "BTSP_WT_hebbdend"}, 
 
+            "BTSP_5L":    {"config":"20241212_EIANN_2_hidden_mnist_BTSP_config_5L_complete_optimized.yaml",
+                                    "color": "cyan",
+                                    "name": "BTSP_5L"}, 
+
+            "BTSP_5L_TD":    {"config":"20241216_EIANN_2_hidden_mnist_BTSP_config_5L_learn_TD_HTCWN_3_complete_optimized.yaml",
+                                    "color": "cyan",
+                                    "name": "BTSP_5L_TD"},
+
+            "BTSP_5L_fixedTD":    {"config":"20241216_EIANN_2_hidden_mnist_BTSP_config_5L_fixed_TD_complete_optimized.yaml",
+                                    "color": "cyan",
+                                    "name": "BTSP_5L_fixedTD"},
+
             "BTSP_hebbTD_hebbdend": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
                                     "color": "magenta",
                                     "name": "BTSP_hebbTD_hebbdend"},
@@ -1052,7 +1089,10 @@ def main(figure, overwrite, generate_data, recompute):
             ##########################
             # Spirals dataset models
             ##########################
-            
+
+            "spirals_bpDale_nobias": {"config": "test_spiral_bpDale_learned_bias_complete_optimized.yaml",
+                                "color": "black",
+                                "name": "Backprop Dale, no bias"},
             
         }
 
@@ -1139,7 +1179,7 @@ def main(figure, overwrite, generate_data, recompute):
     elif figure in ["all", "metrics"]:
         # model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_hebbTD", "bpLike_FA"]
         # model_list = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
-        model_list = ["bpDale_learned", "bpLike_TCWN_hebbdend"]
+        # model_list = ["bpDale_learned", "bpLike_TCWN_hebbdend"]
 
         # model_list = ["bpLike_hebbTD_hebbdend_eq", "bpLike_WT_hebbdend_eq", "bpLike_hebbTD_hebbdend", "bpLike_WT_hebbdend"]
         figure_name = "metrics_all_models"
