@@ -36,7 +36,7 @@ EOT
 
 # Run with this:
 # cd $HOME/EIANN/EIANN/optimize/jobscripts/amarel
-# sh optimize_EIANN_amarel.sh optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_fixed_bias.yaml spiral_BP_like_5J_fixed_bias
+# sbatch optimize_EIANN_amarel.sh optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_fixed_bias.yaml spiral_BP_like_5J_fixed_bias
 
 # See error and output logs with this:
 # cd /scratch/$USER/logs/EIANN

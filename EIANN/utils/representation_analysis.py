@@ -993,3 +993,40 @@ def compute_dendritic_state_dynamics(network):
     for key, value in dendritic_dynamics_dict.items():
         dendritic_dynamics_dict[key] = {k: v.detach().clone().numpy() for k, v in value.items() if v is not None}
     return dendritic_dynamics_dict
+
+def compute_spiral_decisions_data(network, test_dataloader):
+    '''
+    Get the correct and wrong indices to plot the spiral loss landscape
+    '''
+    # Test batch inputs
+    inputs = network.Input.E.activity
+
+    # Predicted labels after training 
+    outputs = network.Output.E.activity
+    _, predicted_labels = torch.max(outputs, 1)
+
+    # Test labels
+    on_device = False
+    for _, _, sample_target in test_dataloader:
+        sample_target = torch.squeeze(sample_target)
+        if not on_device:
+            sample_target = sample_target.to(network.device)
+        break
+    _, test_labels = torch.max(sample_target, 1)
+
+    # Accuracy
+    accuracy = (predicted_labels == test_labels).sum().item() / len(test_labels)
+
+    # Data needed for graphing
+    correct_indices = (predicted_labels == test_labels).nonzero().squeeze()
+    wrong_indices = (predicted_labels != test_labels).nonzero().squeeze()
+
+    decision_data = {
+        "inputs": inputs,
+        "test_labels": test_labels,
+        "accuracy": accuracy,
+        "correct_indices": correct_indices,
+        "wrong_indices": wrong_indices
+    }
+
+    return decision_data
