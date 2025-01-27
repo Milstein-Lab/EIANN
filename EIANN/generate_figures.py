@@ -1139,10 +1139,30 @@ def main(figure, overwrite, generate_data, recompute):
             # Spirals dataset models
             ##########################
 
-            "spirals_bpDale_nobias": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
+            "vanBP_0_hidden_learned_bias": {"config": "20250127_EIANN_0_hidden_spiral_vanBP_learned_bias_config_complete_optimized.yaml",
+                                            "color": "black",
+                                            "name": "Vanilla Backprop 0-Hidden Learned Bias"},
+
+            "vanBP_2_hidden_learned_bias": {"config": "20250127_EIANN_2_hidden_spiral_vanBP_learned_bias_config_complete_optimized.yaml",
+                                            "color": "black",
+                                            "name": "Vanilla Backprop 2-Hidden Learned Bias"},
+
+            "vanBP_2_hidden_zero_bias": {"config": "20250127_EIANN_2_hidden_spiral_vanBP_zero_bias_config_complete_optimized.yaml",
+                                        "color": "black",
+                                        "name": "Vanilla Backprop 2-Hidden Zero Bias"},
+
+            "bpDale_learned_bias": {"config": "20250127_EIANN_2_hidden_spiral_bpDale_learned_bias_config_complete_optimized.yaml",
+                                    "color": "black",
+                                    "name": "Backprop + Dale's Law (Learned Bias)"},
+
+            "bpLike_DTC_learned_bias": {"config": "20250127_EIANN_2_hidden_spiral_BP_like_DTC_learned_bias_config_complete_optimized.yaml",
+                                        "color": "black",
+                                        "name": "Backprop Like (DTC) (Learned Bias)"},
+
+            "DTP_learned_bias": {"config": "20250127_EIANN_2_hidden_spiral_BP_like_DTC_learned_bias_config_complete_optimized.yaml",
                                 "color": "black",
-                                "name": "Backprop Dale, no bias"},
-            
+                                "name": "DTP (Learned Bias)"},
+
         }
 
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
