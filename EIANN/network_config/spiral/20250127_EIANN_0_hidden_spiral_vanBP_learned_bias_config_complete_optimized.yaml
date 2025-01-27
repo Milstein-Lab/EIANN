@@ -29,3 +29,5 @@ training_kwargs:
     learning_rate: 0.2
     verbose: false
     optimizer: SGD
+
+# srun --mpi=pmi2 -n 6 python -m mpi4py.futures -m nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config.yaml --output-dir=data/spiral --framework=mpi --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --model-key=van_bp_0_hidden_learned_bias --status_bar=True --full_analysis --label=complete --store_history --export

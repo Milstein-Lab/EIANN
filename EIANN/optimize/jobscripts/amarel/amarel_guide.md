@@ -80,3 +80,10 @@ $ cd /home/$USER
 ```bash
 $ cd /scratch/$USER
 ```
+
+## Interactive Session
+
+To just setup an interactive session to run smaller tasks, do this:
+```bash
+srun --cpus-per-task=6 --time=00:30:00 --pty bash
+```
