@@ -132,11 +132,11 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps',
                          'test_loss_history', 'test_accuracy_history', 'angle_vs_bp', 'angle_vs_bp_stochastic',
                          'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
-    variables_to_save.extend([f"metrics_dict_{population.fullname}" for population in network.populations.values()])
     if "Dend" in "".join(network.populations.keys()):
         variables_to_save.extend(["binned_mean_forward_dendritic_state", "binned_mean_forward_dendritic_state_steps"])
     if 'mnist' in config_path:
-        variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values() if population.name=='E' and population.fullname!='InputE'])
+        variables_to_save.extend([f"metrics_dict_{population.fullname}" for population in network.populations.values()])
+        # variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values() if population.name=='E' and population.fullname!='InputE'])
     if 'spiral' in config_path:
         variables_to_save.extend(["spiral_plots"])
 
@@ -193,7 +193,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
         all_dataloaders = ut.get_MNIST_dataloaders(sub_dataloader_size=1000)
         train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
     elif 'spiral' in config_path:
-        all_dataloaders = ut.get_spiral_dataloaders()
+        all_dataloaders = ut.get_spiral_dataloaders(batch_size='full_dataset')
         train_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
 
     ##################################################################
@@ -203,6 +203,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
         percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sort=False, export=True, export_path=data_file_path, overwrite=overwrite)
 
     # 2. Receptive fields and metrics
+    
     for population in network.populations.values():
         if f"metrics_dict_{population.fullname}" in variables_to_recompute:
             receptive_fields = None
@@ -210,11 +211,10 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
                 receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=data_file_path, overwrite=overwrite)
             metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=data_file_path, overwrite=overwrite)
 
-
     # Angle vs backprop
     if 'angle_vs_bp_stochastic' in variables_to_recompute:
         stored_history_step_size = torch.diff(network.param_history_steps)[-1]
-        if 'H1SomaI' in network.populations:
+        if 'H1SomaI' in network.populations and not ('spiral' in config_path):
             config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
             network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=1, constrain_params=False)
@@ -225,7 +225,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
 
     if 'angle_vs_bp' in variables_to_recompute:
         stored_history_step_size = torch.diff(network.param_history_steps)[-1]
-        if 'H1SomaI' in network.populations:
+        if 'H1SomaI' in network.populations and not ('spiral' in config_path):
             config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
             network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
@@ -914,17 +914,17 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, model_list, config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=4,                        
-                       left=0.049,right=1,
-                       top=0.95, bottom = 0.5,
-                       wspace=0.15, hspace=0.5)
-    ax_spirals =    fig.add_subplot(axes[1, 0])
-    ax_heatmaps =   fig.add_subplot(axes[1, 1])  
-    ax_accuracy =   fig.add_subplot(axes[1, 2])  
-    ax_angle =      fig.add_subplot(axes[2, 2])
-    ax_dendstate=   fig.add_subplot(axes[3, 2])
+def generate_spirals_figure(model_dict_all, model_list, config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
+    # fig = plt.figure(figsize=(5.5, 9))
+    # axes = gs.GridSpec(nrows=3, ncols=4,                        
+    #                    left=0.049,right=1,
+    #                    top=0.95, bottom = 0.5,
+    #                    wspace=0.15, hspace=0.5)
+    # ax_spirals =    fig.add_subplot(axes[1, 0])
+    # ax_heatmaps =   fig.add_subplot(axes[1, 1])  
+    # ax_accuracy =   fig.add_subplot(axes[1, 2])  
+    # ax_angle =      fig.add_subplot(axes[2, 2])
+    # ax_dendstate=   fig.add_subplot(axes[3, 2])
 
     all_models = list(dict.fromkeys(model_list))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
@@ -1139,7 +1139,7 @@ def main(figure, overwrite, generate_data, recompute):
             # Spirals dataset models
             ##########################
 
-            "spirals_bpDale_nobias": {"config": "test_spiral_bpDale_learned_bias_complete_optimized.yaml",
+            "spirals_bpDale_nobias": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                 "color": "black",
                                 "name": "Backprop Dale, no bias"},
             
@@ -1164,6 +1164,11 @@ def main(figure, overwrite, generate_data, recompute):
             model_list = generate_data
         generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite, recompute)
 
+
+    if figure == 'spirals':
+        figure_name = "spirals"
+        model_list = ["spirals_bpDale_nobias"]
+        generate_spirals_figure(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
 
     # Diagrams + example dynamics
     if figure == "fig1":
