@@ -4,6 +4,7 @@ van_bp_0_hidden_learned_bias:
     Output_learning_rate: 0.08158367762594287
     Output_bias_learning_rate: 0.000494197567654425
     Output_init_weight_scale: 5.386548065293654
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config.yaml --disp --num_instances=1 --model-key=van_bp_0_hidden_learned_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250127_EIANN_0_hidden_spiral_vanBP_learned_bias_config_complete_optimized.yaml --export
 
 van_bp_learned_bias:
     #    accuracy: 96.09666
@@ -15,6 +16,7 @@ van_bp_learned_bias:
     H1_init_weight_scale: 3.092179371471005
     H2_init_weight_scale: 1.0684801270167428
     Output_init_weight_scale: 0.5433568834277912
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config.yaml --disp --num_instances=1 --model-key=van_bp_learned_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250127_EIANN_2_hidden_spiral_vanBP_learned_bias_config_complete_optimized.yaml --export
 
 van_bp_zero_bias:
     #    accuracy: 49.113335
@@ -24,6 +26,7 @@ van_bp_zero_bias:
     H1_init_weight_scale: 0.7661562722497335
     H2_init_weight_scale: 0.1340356807870724
     Output_init_weight_scale: 3.5188437031669753
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config.yaml --disp --num_instances=1 --model-key=van_bp_zero_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250127_EIANN_2_hidden_spiral_vanBP_zero_bias_config_complete_optimized.yaml --export 
 
 van_bp_fixed_bias:
     #    accuracy: 96.225
@@ -57,6 +60,7 @@ bpDale_learned_bias:
     Output_I_H2_E_init_weight_scale: 2.2899382496765948
     Output_I_Output_E_init_weight_scale: 1.4600401572902482
     Output_I_Output_I_init_weight_scale: 1.5591878259608454
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config.yaml --disp --num_instances=1 --model-key=bpDale_learned_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250127_EIANN_2_hidden_spiral_bpDale_learned_bias_config_complete_optimized.yaml --export 
 
 bpDale_fixed_bias:
     #    accuracy: 95.5133285522461
@@ -104,7 +108,7 @@ BP_like_1_fixed_SomaI_fixed_bias:
     Output_I_Output_E_init_weight_scale: 1.30590466091905
     Output_I_Output_I_init_weight_scale: 0.9434504578968321
 
-BP_like_1_fixed_SomaI_learned_bias:
+BP_like_1_fixed_SomaI_learned_bias: # DTC
     #    accuracy: 93.8616714477539
     #    dynamics_residuals: 0.0
     #    loss: 0.035082150250673294
@@ -129,6 +133,8 @@ BP_like_1_fixed_SomaI_learned_bias:
     Output_I_H2_E_init_weight_scale: 0.8034586815384319
     Output_I_Output_E_init_weight_scale: 1.9418302101083587
     Output_I_Output_I_init_weight_scale: 3.8106824133364743
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias_config.yaml --disp --num_instances=1 --model-key=BP_like_1_fixed_SomaI_learned_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250127_EIANN_2_hidden_spiral_BP_like_DTC_learned_bias_config_complete_optimized.yaml --export 
+
 DTP_fixed_SomaI_fixed_bias:
     #    accuracy: 88.836669921875
     #    dynamics_residuals: 0.0
@@ -200,4 +206,4 @@ DTP_fixed_SomaI_learned_bias:
     Output_I_H2_E_init_weight_scale: 1.9823693413208623
     Output_I_Output_I_init_weight_scale: 3.924537045484193
     DendI_size_fraction: 0.4285589156097181
-
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config.yaml --disp --num_instances=1 --model-key=DTP_fixed_SomaI_learned_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250127_EIANN_2_hidden_spiral_DTP_learned_bias_config_complete_optimized.yaml --export

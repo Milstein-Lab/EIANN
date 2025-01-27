@@ -1,0 +1,71 @@
+layer_config:
+    Input:
+        E:
+            size: 2
+    H1:
+        E:
+            size: 128
+            activation: relu
+            include_bias: true
+            bias_learning_rule: BackpropBias
+            bias_learning_rule_kwargs:
+                learning_rate: 0.09062365730598693
+    H2:
+        E:
+            size: 32
+            activation: relu
+            include_bias: true
+            bias_learning_rule: BackpropBias
+            bias_learning_rule_kwargs:
+                learning_rate: 0.09062365730598693
+    Output:
+        E:
+            size: 4
+            activation: relu
+            include_bias: true
+            bias_learning_rule: BackpropBias
+            bias_learning_rule_kwargs:
+                learning_rate: 0.06332269100152069
+projection_config:
+    H1:
+        E:
+            Input:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 3.092179371471005
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.2344242206840233
+    H2:
+        E:
+            H1:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 1.0684801270167428
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.2344242206840233
+    Output:
+        E:
+            H2:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.5433568834277912
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.010809269605442658
+training_kwargs:
+    tau: 1
+    forward_steps: 1
+    backward_steps: 1
+    learning_rate: 0.2
+    verbose: false
+    optimizer: SGD
+
+# srun --mpi=pmi2 -n 6 python -m mpi4py.futures -m nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config.yaml --output-dir=data/spiral --framework=mpi --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --model-key=van_bp_learned_bias --status_bar=True --full_analysis --label=complete --store_history --export

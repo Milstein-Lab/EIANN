@@ -371,7 +371,7 @@ def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0):
         return all_data
 
     
-def get_spiral_dataloaders(batch_size=1, N=2000, seed=0):
+def get_spiral_dataloaders(batch_size=1, points_per_spiral_arm=2000, seed=0):
     """
     Generate and load spiral dataset into train, validation, and test dataloaders.
     - batch_size: number of samples in each batch
@@ -379,12 +379,13 @@ def get_spiral_dataloaders(batch_size=1, N=2000, seed=0):
     """
     
     # Split data into train, validation, and test sets
-    train_data = generate_spiral_data(arm_size=int(0.7*N), seed=seed)
-    val_data = generate_spiral_data(arm_size=int(0.15*N), seed=seed+1)
-    test_data = generate_spiral_data(arm_size=int(0.15*N), seed=seed+2)
+    train_data = generate_spiral_data(arm_size=int(0.7*points_per_spiral_arm), seed=seed)
+    val_data = generate_spiral_data(arm_size=int(0.15*points_per_spiral_arm), seed=seed+1)
+    test_data = generate_spiral_data(arm_size=int(0.15*points_per_spiral_arm), seed=seed+2)
 
     data_generator = torch.Generator().manual_seed(seed)
-    batch_size = 1
+    if batch_size == 'full_dataset':
+        batch_size = len(train_data)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, generator=data_generator)
     val_loader = DataLoader(val_data, batch_size=len(val_data), shuffle=False, num_workers=0)

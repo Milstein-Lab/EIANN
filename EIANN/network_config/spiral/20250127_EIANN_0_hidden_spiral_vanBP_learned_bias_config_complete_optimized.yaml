@@ -1,0 +1,33 @@
+layer_config:
+    Input:
+        E:
+            size: 2
+    Output:
+        E:
+            size: 4
+            activation: relu
+            include_bias: true
+            bias_learning_rule: BackpropBias
+            bias_learning_rule_kwargs:
+                learning_rate: 0.000494197567654425
+projection_config:
+    Output:
+        E:
+            Input:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 5.386548065293654
+                    direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.08158367762594287
+training_kwargs:
+    tau: 1
+    forward_steps: 1
+    backward_steps: 1
+    learning_rate: 0.2
+    verbose: false
+    optimizer: SGD
+
+# srun --mpi=pmi2 -n 6 python -m mpi4py.futures -m nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config.yaml --output-dir=data/spiral --framework=mpi --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --model-key=van_bp_0_hidden_learned_bias --status_bar=True --full_analysis --label=complete --store_history --export
