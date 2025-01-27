@@ -112,19 +112,21 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
         plot_train_loss_history(network)
         plot_validate_loss_history(network)
     
-    if context.compute_receptive_fields:
-        # Compute receptive fields
-        population = network.H1.E
-        receptive_fields = utils.compute_maxact_receptive_fields(population)
-    else:
-        receptive_fields = network.H1.E.Input.E.weight.detach()
-    
-    if plot:
-        plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
+    if 'H1' in network.layers:
+        if context.compute_receptive_fields:
+            # Compute receptive fields
+            population = network.H1.E
+            receptive_fields = utils.compute_maxact_receptive_fields(population)
+        else:
+            receptive_fields = network.H1.E.Input.E.weight.detach()
+        
+        if plot:
+            plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
     
     if context.full_analysis:
-        metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
-        plot_representation_metrics(metrics_dict)
+        if 'H1' in network.layers:
+            metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
+            plot_representation_metrics(metrics_dict)
         test_loss_history, test_accuracy_history = \
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
                                                    plot=plot, status_bar=context.status_bar)
