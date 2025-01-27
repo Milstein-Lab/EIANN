@@ -1,7 +1,7 @@
 #!/bin/bash -l
-#SBATCH -J simulate_EIANN_mnist
-#SBATCH -o /scratch1/06441/aaronmil/logs/EIANN/simulate_EIANN_mnist.%j.o
-#SBATCH -e /scratch1/06441/aaronmil/logs/EIANN/simulate_EIANN_mnist.%j.e
+#SBATCH -J simulate_EIANN_mnist_dev
+#SBATCH -o /scratch1/06441/aaronmil/logs/EIANN/simulate_EIANN_mnist_dev.%j.o
+#SBATCH -e /scratch1/06441/aaronmil/logs/EIANN/simulate_EIANN_mnist_dev.%j.e
 #SBATCH -p development
 #SBATCH -N 1
 #SBATCH -n 12
