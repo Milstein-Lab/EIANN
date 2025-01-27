@@ -6,10 +6,10 @@ sbatch <<EOT
 #SBATCH -J $JOB_NAME
 #SBATCH -o /scratch1/06441/aaronmil/logs/EIANN/$JOB_NAME.%j.o
 #SBATCH -e /scratch1/06441/aaronmil/logs/EIANN/$JOB_NAME.%j.e
-#SBATCH -p normal
-#SBATCH -N 2
-#SBATCH -n 102
-#SBATCH -t 6:00:00
+#SBATCH -p development
+#SBATCH -N 1
+#SBATCH -n 12
+#SBATCH -t 1:00:00
 #SBATCH --mail-user=milstein@cabm.rutgers.edu
 #SBATCH --mail-type=ALL
 
@@ -31,7 +31,7 @@ arraylength=${#config_files[@]}
 declare o=0
 for ((i=0; i<${arraylength}; i++))
 do
-  echo ibrun -n 6 -o $o python -m mpi4py.futures simulate_EIANN_2_hidden_mnist.py \
+  echo ibrun -n 6 -o $o python -m mpi4py.futures simulate/simulate_EIANN_2_hidden_mnist.py \
     --config-file-path=simulate_EIANN_1_hidden_mnist_supervised_config.yaml \
     --network-config-file-path=$CONFIG_DIR/${config_files[$i]} \
     --output-dir=$SCRATCH/data/EIANN/extended --disp --label=extended --export \
