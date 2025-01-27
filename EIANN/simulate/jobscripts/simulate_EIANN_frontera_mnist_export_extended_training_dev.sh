@@ -35,7 +35,7 @@ do
     --config-file-path=simulate/config/mnist/simulate_EIANN_1_hidden_mnist_supervised_config.yaml \
     --network-config-file-path=$CONFIG_DIR/${config_files[$i]} \
     --output-dir=$SCRATCH/data/EIANN/extended --disp --label=extended --export \
-    --framework=mpi &
+    --framework=mpi&
   ((o++))
 done
 wait

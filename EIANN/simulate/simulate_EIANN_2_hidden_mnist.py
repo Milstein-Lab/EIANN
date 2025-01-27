@@ -159,7 +159,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
               type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.option("--output-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), default='../data')
 @click.option("--export", is_flag=True)
-@click.option("--retrain", is_flag=True)
+@click.option("--retrain", type=bool, default=True)
 @click.option("--label", type=str, default=None)
 @click.option("--plot", is_flag=True)
 @click.option("--interactive", is_flag=True)
