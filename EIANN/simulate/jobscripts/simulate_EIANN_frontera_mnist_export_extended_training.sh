@@ -32,7 +32,7 @@ declare o=0
 for ((i=0; i<${arraylength}; i++))
 do
   echo ibrun -n 6 -o $o python -m mpi4py.futures simulate/simulate_EIANN_2_hidden_mnist.py \
-    --config-file-path=simulate_EIANN_1_hidden_mnist_supervised_config.yaml \
+    --config-file-path=simulate/config/mnist/simulate_EIANN_1_hidden_mnist_supervised_config.yaml \
     --network-config-file-path=$CONFIG_DIR/${config_files[$i]} \
     --output-dir=$SCRATCH/data/EIANN/extended --disp --label=extended --export \
     --framework=mpi &
