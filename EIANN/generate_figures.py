@@ -109,14 +109,14 @@ Figure 4: BTSP(weight transpose + HebbWN dendI) vs sup-HebbWN
 
 ########################################################################################################
 
-def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite=False, recompute=None):
+def generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite=False, recompute=None):
     '''
     Loads a network and saves plot-ready processed data into an hdf5 file.
 
     :param config_path_prefix: Path to config file directory
     :param saved_network_path_prefix: Path to directory containing pickled network
     :param model_dict: Dictionary containing model information for a single model
-    :param data_file_path: Path to hdf5 file to save data to
+    :param hdf5_path: Path to hdf5 file to save data to
     '''
 
     # Build network
@@ -129,39 +129,40 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
 
     # Define which variables to compute
     variables_to_save = ['percent_correct', 'average_pop_activity_dict', 
-                         'val_loss_history', 'val_accuracy_history', 'val_history_train_steps',
-                         'test_loss_history', 'test_accuracy_history', 'angle_vs_bp', 'angle_vs_bp_stochastic',
-                         'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
+                         'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
+                         'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
         variables_to_save.extend(["binned_mean_forward_dendritic_state", "binned_mean_forward_dendritic_state_steps"])
+    if 'extended' in saved_network_path:
+        variables_to_save.append('test_accuracy_history_extended')
     if 'mnist' in config_path:
         variables_to_save.extend([f"metrics_dict_{population.fullname}" for population in network.populations.values()])
         # variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values() if population.name=='E' and population.fullname!='InputE'])
     if 'spiral' in config_path:
-        variables_to_save.extend(["spiral_plots"])
+        variables_to_save.extend(['spiral_decision_data_dict'])
 
     # Open hdf5 and check if the relevant network data already exists       
     variables_to_recompute = []  
-    if os.path.exists(data_file_path): # If the file exists, check if the network data already exists or needs to be recomputed
-        with h5py.File(data_file_path, 'r') as file:
+    if os.path.exists(hdf5_path): # If the file exists, check if the network data already exists or needs to be recomputed
+        with h5py.File(hdf5_path, 'r') as file:
             if network_name in file.keys():
                 if seed in file[network_name].keys():
                     if overwrite:
-                        print(f"Overwriting {network_name} {seed} in {data_file_path}")
+                        print(f"Overwriting {network_name} {seed} in {hdf5_path}")
                         variables_to_recompute = variables_to_save                        
                     elif set(variables_to_save).issubset(file[network_name][seed].keys()) and recompute is None:
                         return
                     else:
-                        print(f"Recomputing {network_name} {seed} in {data_file_path}")
+                        print(f"Recomputing {network_name} {seed} in {hdf5_path}")
                         variables_to_recompute = [var for var in variables_to_save if var not in file[network_name][seed].keys()]
                 else:
-                    print(f"Computing data for {network_name} {seed} in {data_file_path}")
+                    print(f"Computing data for {network_name} {seed} in {hdf5_path}")
                     variables_to_recompute = variables_to_save     
             else:
-                print(f"Computing data for {network_name} {seed} in {data_file_path}")
+                print(f"Computing data for {network_name} {seed} in {hdf5_path}")
                 variables_to_recompute = variables_to_save     
     else:
-        print(f"Creating new data file {data_file_path}")
+        print(f"Creating new data file {hdf5_path}")
         variables_to_recompute = variables_to_save
     
     if recompute is not None and recompute not in variables_to_recompute:
@@ -173,7 +174,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     if len(variables_to_recompute) > 0:
         overwrite = True
     else:
-        print(f"No variables to recompute for {network_name} {seed} in {data_file_path}")
+        print(f"No variables to recompute for {network_name} {seed} in {hdf5_path}")
         return        
 
     # Load the saved network pickle
@@ -200,16 +201,15 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     ## Generate plot data
     # 1. Class-averaged activity
     if 'percent_correct' in variables_to_recompute:
-        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sort=False, export=True, export_path=data_file_path, overwrite=overwrite)
+        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sort=False, export=True, export_path=hdf5_path, overwrite=overwrite)
 
     # 2. Receptive fields and metrics
-    
     for population in network.populations.values():
         if f"metrics_dict_{population.fullname}" in variables_to_recompute:
             receptive_fields = None
             if population.name == "E" and population.fullname != "InputE":
-                receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=data_file_path, overwrite=overwrite)
-            metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=data_file_path, overwrite=overwrite)
+                receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=hdf5_path, overwrite=overwrite)
+            metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=hdf5_path, overwrite=overwrite)
 
     # Angle vs backprop
     if 'angle_vs_bp_stochastic' in variables_to_recompute:
@@ -221,7 +221,7 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
         else:
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=1, constrain_params=False)
         angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history)
-        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=hdf5_path, overwrite=overwrite)
 
     if 'angle_vs_bp' in variables_to_recompute:
         stored_history_step_size = torch.diff(network.param_history_steps)[-1]
@@ -232,40 +232,43 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
         else:
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
         angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
-        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=hdf5_path, overwrite=overwrite)
 
     # Forward vs Backward weight angle (weight symmetry)
     if 'feedback_weight_angle_history' in variables_to_recompute:
         FF_FB_angles = ut.compute_feedback_weight_angle_history(network)
-        ut.save_plot_data(network.name, network.seed, data_key='feedback_weight_angle_history', data=FF_FB_angles, file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='feedback_weight_angle_history', data=FF_FB_angles, file_path=hdf5_path, overwrite=overwrite)
 
     # Binned dendritic state (local loss)
     if 'binned_mean_forward_dendritic_state' in variables_to_recompute:
         steps, binned_mean_forward_dendritic_state = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
         if binned_mean_forward_dendritic_state is not None:
-            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state', data=binned_mean_forward_dendritic_state, file_path=data_file_path, overwrite=overwrite)
-            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state_steps', data=steps, file_path=data_file_path, overwrite=overwrite)
+            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state', data=binned_mean_forward_dendritic_state, file_path=hdf5_path, overwrite=overwrite)
+            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state_steps', data=steps, file_path=hdf5_path, overwrite=overwrite)
 
     # Sparsity and selectivity
     if 'sparsity_history' in variables_to_recompute or 'selectivity_history' in variables_to_recompute:
         sparsity_history_dict, selectivity_history_dict = ut.compute_sparsity_selectivity_history(network, test_dataloader)
-        ut.save_plot_data(network.name, network.seed, data_key='sparsity_history', data=sparsity_history_dict, file_path=data_file_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='selectivity_history', data=selectivity_history_dict, file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='sparsity_history', data=sparsity_history_dict, file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='selectivity_history', data=selectivity_history_dict, file_path=hdf5_path, overwrite=overwrite)
 
     # Loss and accuracy
     if any([var in variables_to_recompute for var in ['val_loss_history', 'val_accuracy_history', 'val_history_train_steps']]):
-        ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=data_file_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=data_file_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=hdf5_path, overwrite=overwrite)
     
     if any([var in variables_to_recompute for var in ['test_loss_history', 'test_accuracy_history']]):
-        ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=data_file_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=hdf5_path, overwrite=overwrite)
+
+    if 'test_accuracy_history_extended' in variables_to_recompute and 'extended' in saved_network_path:
+        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history_extended', data=network.test_accuracy_history, file_path=hdf5_path, overwrite=overwrite)
 
     # Spiral decision boundary plots
-    if 'spiral_plots' in variables_to_recompute:
+    if 'spiral_decision_data_dict' in variables_to_recompute:
         spiral_decision_data_dict = ut.compute_spiral_decisions_data(network, test_dataloader)
-        ut.save_plot_data(network.name, network.seed, data_key='spiral_decision_data_dict', data=spiral_decision_data_dict, file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='spiral_decision_data_dict', data=spiral_decision_data_dict, file_path=hdf5_path, overwrite=overwrite)
 
 
 def generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=False, recompute=None):
@@ -274,10 +277,10 @@ def generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, save
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
-        data_file_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/plot_data_{network_name}.h5"
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
-            generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite, recompute)
+            generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite, recompute)
             gc.collect()
 
 ########################################################################################################
@@ -483,13 +486,13 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
     model_key = "bpLike_WT_hebbdend_eq"
     model_dict = model_dict_all[model_key]
     network_name = model_dict['config'].split('.')[0] + "_dynamics"
-    data_file_path = f"data/plot_data_{network_name}.h5"
+    hdf5_path = f"data/plot_data_{network_name}.h5"
 
-    # data_file_path = "notebooks/saved_networks/test.h5"
+    # hdf5_path = "notebooks/saved_networks/test.h5"
 
     # Open hdf5 and check if the dynamics data already exists      
     recompute = False
-    if not os.path.exists(data_file_path) or overwrite:
+    if not os.path.exists(hdf5_path) or overwrite:
         recompute = True
 
     if recompute:
@@ -512,8 +515,8 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
         else:
             network = ut.load_network(saved_network_path)
         dendritic_dynamics_dict = ut.compute_dendritic_state_dynamics(network)
-        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='dendritic_dynamics_dict', data=dendritic_dynamics_dict, file_path=data_file_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='param_history_steps', data=network.param_history_steps, file_path=data_file_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='dendritic_dynamics_dict', data=dendritic_dynamics_dict, file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='param_history_steps', data=network.param_history_steps, file_path=hdf5_path, overwrite=overwrite)
 
     print("Generating figure...")
 
@@ -523,7 +526,7 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
                        top=0.86, bottom = 0.65,
                        wspace=0.3, hspace=0.5)
     axes = [fig.add_subplot(gs_axes[i,0]) for i in range(2)]
-    with h5py.File(data_file_path, 'r') as f:
+    with h5py.File(hdf5_path, 'r') as f:
         data_dict = f[network_name]['retrained_with_dynamics']
         dendritic_dynamics_dict  = data_dict['dendritic_dynamics_dict']
         param_history_steps = data_dict['param_history_steps'][:]
@@ -564,8 +567,8 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        data_file_path = f"data/plot_data_{network_name}.h5"
-        with h5py.File(data_file_path, 'r') as f:
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['name']}")
 
@@ -646,9 +649,9 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
-        data_file_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/plot_data_{network_name}.h5"
 
-        with h5py.File(data_file_path, 'r') as f:
+        with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             
             print(f"Generating plots for {model_dict['name']}")
@@ -708,8 +711,8 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        data_file_path = f"data/plot_data_{network_name}.h5"
-        with h5py.File(data_file_path, 'r') as f:
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['name']}")
             seed = model_dict['seeds'][0] # example seed to plot
@@ -767,8 +770,8 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
     for i, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        data_file_path = f"data/plot_data_{network_name}.h5"
-        with h5py.File(data_file_path, 'r') as f:
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['name']}")
             if model_key in model_list1:
@@ -795,14 +798,18 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
 
 
 def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
-    fig = plt.figure(figsize=(5.5, 3))
+    fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=2, ncols=3,                        
                        left=0.1,right=0.9,
-                       top=0.9, bottom = 0.1,
-                       wspace=0.4, hspace=0.5)
+                       top=0.9, bottom = 0.6,
+                       wspace=0.4, hspace=0.6)
     ax_accuracy = fig.add_subplot(axes[1,0])
     ax_dendstate = fig.add_subplot(axes[1,1])
     ax_angle_vs_BP = fig.add_subplot(axes[1,2])
+    axes = gs.GridSpecFromSubplotSpec(nrows=1, ncols=4, subplot_spec=axes[0,0:3], wspace=0.2, hspace=0)
+    diagram_axes = [fig.add_subplot(axes[0,i]) for i in range(4)]
+
+    pt.plot_learning_rule_diagram(axes_list=diagram_axes)
 
     all_models = list(dict.fromkeys(model_list))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
@@ -812,15 +819,15 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="netwo
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
-        data_file_path = f"data/plot_data_{network_name}.h5"
-        with h5py.File(data_file_path, 'r') as f:
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['name']}")
             plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
             plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
             plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP)
 
-    legend = ax_accuracy.legend(ncol=4, bbox_to_anchor=(-0.1, 1.4), loc='upper left')
+    legend = ax_accuracy.legend(ncol=4, bbox_to_anchor=(-0.1, 1.2), loc='upper left')
     for line in legend.get_lines():
         line.set_linewidth(1.5)
 
@@ -852,18 +859,18 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
-        data_file_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/plot_data_{network_name}.h5"
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
-            generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrite)
+            generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite)
             gc.collect()
 
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        data_file_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/plot_data_{network_name}.h5"
 
-        with h5py.File(data_file_path, 'r') as f:
+        with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
 
             plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angles)
@@ -914,6 +921,23 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
+def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+    fig, ax = plt.subplots(figsize=(5.5, 3))
+
+    all_models = list(dict.fromkeys(model_list))
+    for model_key in all_models:
+        model_dict = model_dict_all[model_key]
+        config_path = config_path_prefix + model_dict['config']
+        network_name = model_dict['config'].split('.')[0]
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        for seed in model_dict['seeds']:
+            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}_extended.pkl"
+            generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite)
+            gc.collect()
+            return
+
+
+
 def generate_spirals_figure(model_dict_all, model_list, config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
     # fig = plt.figure(figsize=(5.5, 9))
     # axes = gs.GridSpec(nrows=3, ncols=4,                        
@@ -932,8 +956,8 @@ def generate_spirals_figure(model_dict_all, model_list, config_path_prefix="netw
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        data_file_path = f"data/plot_data_{network_name}.h5"
-        with h5py.File(data_file_path, 'r') as f:
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['name']}")
             seed = model_dict['seeds'][0] # example seed to plot
@@ -1035,11 +1059,11 @@ def main(figure, overwrite, generate_data, recompute):
 
             "bpDale_learned":{"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml",
                             "color":  "blue",
-                            "name":   "Backprop + Dale's Law (learned somaI)"},
+                            "name":   "bpDale(learned somaI)"},
 
             "bpDale_fixed":{"config": "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml",
                             "color":  "cyan",
-                            "name":   "Backprop + Dale's Law (fixed somaI)"},
+                            "name":   "bpDale(fixed somaI)"},
 
             "bpDale_noI":  {"config": "20240919_EIANN_2_hidden_mnist_bpDale_noI_relu_SGD_config_G_complete_optimized.yaml",
                             "color": "blue",
@@ -1184,6 +1208,10 @@ def main(figure, overwrite, generate_data, recompute):
             model_list = generate_data
         generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite, recompute)
 
+    if figure == 'table':
+        figure_name = "table"
+        model_list = ["vanBP"]
+        generate_extended_accuracy_summary_table(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
 
     if figure == 'spirals':
         figure_name = "spirals"

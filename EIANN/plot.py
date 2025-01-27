@@ -1210,6 +1210,81 @@ def plot_correlations(network, test_dataloader):
         print(txt_I)
 
 
+def plot_learning_rule_diagram(axes_list=None):
+    if axes_list is None:
+        fig, axes_list = plt.subplots(1, 4, figsize=[8, 2])
+
+    a_pre = 1                   # presynaptic activation
+    d = np.linspace(-1, 1, 100) # dendritic state
+
+    # Backprop
+    dW_BP = d*a_pre
+    ax = axes_list[0]
+    ax.plot(d, dW_BP, label='BP-like', color='black', linewidth=1.5)
+    ax.hlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
+    ax.vlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
+    ax.set_xlabel('$\hat{d}$', math_fontfamily='cm', fontsize=10)
+    ax.set_ylabel(r'$\Delta W$', math_fontfamily='cm', fontsize=10, rotation=0, labelpad=10, y=0.45)
+    ax.set_xticks([0])
+    ax.set_yticks([-1, 0, 1])
+    ax.set_title('Backprop', fontsize=8)
+
+    # Hebb Temporal Contrast
+    delta_a = np.linspace(-1, 1, 100)
+    dW_HTC = delta_a * a_pre
+    ax = axes_list[1]
+    ax.hlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
+    ax.vlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
+    ax.plot(delta_a, dW_HTC, label='BP-like', color='black', linewidth=1.5)
+    ax.set_xlabel('$\Delta a = \hat{a} - a$', math_fontfamily='cm', fontsize=10)
+    ax.set_xticks([0])
+    ax.set_yticks([-1, 0, 1])
+    ax.set_title('Hebb Temp. Contrast', fontsize=8)
+
+    # BCM
+    a_post = np.linspace(0, 1, 100)
+    theta = 0.5
+    dW_BCM = a_pre * a_post * (a_post - theta)
+    ax = axes_list[2]
+    ax.hlines(0, -0.2, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
+    ax.vlines(0, -0.2, 0.4, linestyle='--', color='gray', linewidth=1, alpha=0.5)
+    ax.plot(a_post, dW_BCM, label='BP-like', color='black', linewidth=1.5)
+    ax.text(theta-0.06, 0.015, r'$\theta$', fontsize=8, ha='center')
+    ax.vlines(theta, -0.05, 0.06, linestyle='--', color='k', linewidth=0.8, alpha=1)
+    theta2 = 0.8
+    ax.annotate('', xy=(theta+0.05, 0.015), xytext=(theta2, 0.015), arrowprops=dict(arrowstyle='<|-', color='red'), fontsize=8, ha='center')
+    dW_BCM2 = a_pre * a_post * (a_post - theta2)
+    ax.plot(a_post, dW_BCM2, label='BP-like', color='gray', linewidth=1.5)
+    ax.set_ylim(-0.2, 0.3)
+    ax.set_xticks([0])
+    ax.set_yticks([0])
+    ax.set_xlabel('$\hat{a}$', math_fontfamily='cm', fontsize=10)
+    ax.set_title('BCM', fontsize=8)
+
+    # BTSP
+    w_max = 2
+    temporal_discount=0.1
+    dep_th=0.01
+    dep_width=0.01
+    q_dep = ut.get_scaled_rectified_sigmoid(dep_th, dep_th + dep_width)
+    colors = ['deepskyblue', 'royalblue', 'darkblue']
+    ax = axes_list[3]
+    ax.hlines(0, 0, 3, linestyle='--', color='gray', linewidth=1, alpha=0.5)
+    for i,w in enumerate(torch.tensor([0.,0.5,1])):
+        dW_prev = (w_max-w)*a_pre*temporal_discount - w*q_dep(torch.tensor(a_pre*temporal_discount))
+        dW_curr = (w_max-w)*a_pre - w*q_dep(torch.tensor(a_pre))
+        dW_next = (w_max-w)*a_pre*temporal_discount - w*q_dep(torch.tensor(a_pre*temporal_discount))
+        ax.plot([0,0.9, 1.05,1.95, 2.1,3], [dW_prev,dW_prev, dW_curr,dW_curr, dW_next,dW_next], color=colors[i], linewidth=1.5)
+        ax.text(1.05, dW_curr+0.1, f'$w={w}$', fontsize=6, color=colors[i], math_fontfamily='cm')
+    ax.set_ylim(-1.5,3)
+    ax.set_yticks([0])
+    ax.set_xticklabels([])    
+    ax.set_xlabel('$Relative~time~(samples)$', math_fontfamily='cm', fontsize=8, labelpad=8)
+    ax.set_title('BTSP', fontsize=8)
+
+    # plt.show()
+    # fig.savefig('figures/learning_rules.svg', bbox_inches='tight', transparent=True, dpi=300)
+
 
 # *******************************************************************
 # Loss landscape functions
@@ -1764,6 +1839,7 @@ def plot_spiral_accuracy(net, test_dataloader):
 
     fig.tight_layout(rect=[0, 0, 1, 0.95]) 
     fig.show()
+
 
 def plot_spiral_decisons(decision_data, ax=None):
     '''
