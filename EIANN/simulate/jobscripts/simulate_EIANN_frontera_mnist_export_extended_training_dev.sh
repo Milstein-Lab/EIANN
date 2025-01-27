@@ -1,11 +1,7 @@
 #!/bin/bash -l
-export DATE=$(date +%Y%m%d_%H%M%S)
-export JOB_NAME=simulate_EIANN_mnist_"$DATE"
-sbatch <<EOT
-#!/bin/bash -l
-#SBATCH -J $JOB_NAME
-#SBATCH -o /scratch1/06441/aaronmil/logs/EIANN/$JOB_NAME.%j.o
-#SBATCH -e /scratch1/06441/aaronmil/logs/EIANN/$JOB_NAME.%j.e
+#SBATCH -J simulate_EIANN_mnist
+#SBATCH -o /scratch1/06441/aaronmil/logs/EIANN/simulate_EIANN_mnist.%j.o
+#SBATCH -e /scratch1/06441/aaronmil/logs/EIANN/simulate_EIANN_mnist.%j.e
 #SBATCH -p development
 #SBATCH -N 1
 #SBATCH -n 12
@@ -39,4 +35,3 @@ do
   ((o++))
 done
 wait
-EOT
