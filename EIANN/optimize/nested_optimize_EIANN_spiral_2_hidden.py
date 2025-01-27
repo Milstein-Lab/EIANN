@@ -104,6 +104,10 @@ def config_worker():
         context.retrain = True
     else:
         context.retrain = str_to_bool(context.retrain)
+    if not context.retrain:
+        if 'data_file_path' not in context() or not os.path.exists(context.data_file_path):
+            raise Exception('nested_optimize_EIANN_spiral_2_hidden: missing valid data_file_path to load network from '
+                            'file')
     if 'plot_initial' not in context():
         context.plot_initial = False
     else:
@@ -130,6 +134,12 @@ def config_worker():
         context.store_params_interval = (0, -1, 100)
         context.store_params = True
         context.store_num_steps = None
+    
+    if 'data_file_path' in context():
+        context.base_data_file_path = context.data_file_path
+    else:
+        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+        context.base_data_file_path = f"{context.output_dir}/{network_name}.pkl"
     
     network_config = read_from_yaml(context.network_config_file_path)
     network_config = utils.convert_config_dict(network_config)
@@ -193,6 +203,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     :param data_seed: int
     :param model_id: str
     :param export: bool
+    :param plot: bool
     :return: dict
     """
     update_source_contexts(x, context)
@@ -225,17 +236,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.plot_initial:
             plot_batch_accuracy(network, test_dataloader, population='all', title='Initial')
     
-    if 'data_file_path' not in context():
-        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-        if context.label is None:
-            context.data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}.pkl"
-        else:
-            context.data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}_{context.label}.pkl"
-    
-    if os.path.exists(context.data_file_path) and not context.retrain:
+    if not context.retrain:
         network = utils.load_network(context.data_file_path)
         if context.disp:
-            print(f'nested_optimize_EIANN_spiral_1_hidden: pid: {os.getpid()} loaded network history from {context.data_file_path}')
+            print(f'nested_optimize_EIANN_spiral_2_hidden: pid: {os.getpid()} loaded network history from '
+                  f'{context.data_file_path}')
     else:
         data_generator.manual_seed(data_seed)
         if context.debug:
@@ -263,7 +268,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         elif context.eval_accuracy == 'best':
             min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_dataloader, plot=plot)
         else:
-            raise Exception(f'nested_optimize_EIANN_spiral_1_hidden: eval_accuracy must be final or best, not {context.eval_accuracy}')
+            raise Exception(f'nested_optimize_EIANN_spiral_2_hidden: eval_accuracy must be final or best, not {context.eval_accuracy}')
         sorted_val_loss_history, sorted_val_accuracy_history = \
             recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx=sorted_output_idx,
                                                    store=True)
@@ -348,9 +353,16 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             return dict()
     
     if export:
-        utils.save_network(network, path=context.data_file_path, disp=False)
+        base_data_file_path_prefix = context.base_data_file_path.split('.')[0]
+        if context.label is None:
+            this_data_file_path = f"{base_data_file_path_prefix}_{seed}_{data_seed}.pkl"
+        else:
+            this_data_file_path = f"{base_data_file_path_prefix}_{seed}_{data_seed}_{context.label}.pkl"
+        
+        utils.save_network(network, path=this_data_file_path, disp=False)
         if context.disp:
-            print(f'nested_optimize_EIANN_spiral_1_hidden: pid: {os.getpid()} exported network history to {context.data_file_path}')
+            print(f'nested_optimize_EIANN_spiral_2_hidden: pid: {os.getpid()} exported network history to '
+                  f'{this_data_file_path}')
     
     if not context.interactive:
         del network

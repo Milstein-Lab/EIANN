@@ -122,6 +122,10 @@ def config_worker():
         context.retrain = True
     else:
         context.retrain = str_to_bool(context.retrain)
+    if not context.retrain:
+        if 'data_file_path' not in context() or not os.path.exists(context.data_file_path):
+            raise Exception('nested_optimize_EIANN_spiral_2_hidden: missing valid data_file_path to load network from '
+                            'file')
     if 'plot_initial' not in context():
         context.plot_initial = False
     else:
@@ -157,6 +161,12 @@ def config_worker():
             context.store_history = True
             if context.store_history_interval is None:
                 context.store_history_interval = context.val_interval
+    
+    if 'data_file_path' in context():
+        context.base_data_file_path = context.data_file_path
+    else:
+        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+        context.base_data_file_path = f"{context.output_dir}/{network_name}.pkl"
     
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
@@ -273,14 +283,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             title = 'Initial (%i, %i)' % (seed, data_seed)
             plot_batch_accuracy(network, test_dataloader, population='all', title=title)
     
-    if 'data_file_path' not in context():
-        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-        if context.label is None:
-            context.data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}.pkl"
-        else:
-            context.data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}_{context.label}.pkl"
-    
-    if os.path.exists(context.data_file_path) and not context.retrain:
+    if not context.retrain:
         network = utils.load_network(context.data_file_path)
         if context.disp:
             print('nested_optimize_EIANN_1_hidden_mnist: pid: %i loaded network history from %s' %
@@ -405,10 +408,16 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             return dict()
     
     if export:
-        utils.save_network(network, path=context.data_file_path, disp=False)
+        base_data_file_path_prefix = context.base_data_file_path.split('.')[0]
+        if context.label is None:
+            this_data_file_path = f"{base_data_file_path_prefix}_{seed}_{data_seed}.pkl"
+        else:
+            this_data_file_path = f"{base_data_file_path_prefix}_{seed}_{data_seed}_{context.label}.pkl"
+        
+        utils.save_network(network, path=this_data_file_path, disp=False)
         if context.disp:
             print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network history to %s' %
-                  (os.getpid(), context.data_file_path))
+                  (os.getpid(), this_data_file_path))
     
     if not context.interactive:
         del network
