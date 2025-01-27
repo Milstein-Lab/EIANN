@@ -1,0 +1,42 @@
+#!/bin/bash -l
+export DATE=$(date +%Y%m%d_%H%M%S)
+export JOB_NAME=simulate_EIANN_mnist_"$DATE"
+sbatch <<EOT
+#!/bin/bash -l
+#SBATCH -J $JOB_NAME
+#SBATCH -o /scratch1/06441/aaronmil/logs/EIANN/$JOB_NAME.%j.o
+#SBATCH -e /scratch1/06441/aaronmil/logs/EIANN/$JOB_NAME.%j.e
+#SBATCH -p normal
+#SBATCH -N 2
+#SBATCH -n 102
+#SBATCH -t 6:00:00
+#SBATCH --mail-user=milstein@cabm.rutgers.edu
+#SBATCH --mail-type=ALL
+
+set -x
+
+cd $WORK/EIANN/EIANN
+
+export CONFIG_DIR=network_config/mnist/
+
+export MPI4PY_RC_RECV_MPROBE=false
+
+declare -a config_files=(
+  20250103_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml
+  20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml
+)
+
+arraylength=${#config_files[@]}
+
+declare o=0
+for ((i=0; i<${arraylength}; i++))
+do
+  echo ibrun -n 6 -o $o python -m mpi4py.futures simulate_EIANN_2_hidden_mnist.py \
+    --config-file-path=simulate_EIANN_1_hidden_mnist_supervised_config.yaml \
+    --network-config-file-path=$CONFIG_DIR/${config_files[$i]} \
+    --output-dir=$SCRATCH/data/EIANN/extended --disp --label=extended --export \
+    --framework=mpi &
+  ((o++))
+done
+wait
+EOT

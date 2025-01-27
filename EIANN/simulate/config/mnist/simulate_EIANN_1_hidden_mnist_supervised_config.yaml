@@ -6,6 +6,9 @@ data_seed_start: 1
 supervised: True
 status_bar: False
 train_steps: 50000
+full_analysis: True
+store_history: True
+store_params: True
 epochs: 1
 val_interval:
     - 0
