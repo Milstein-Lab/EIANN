@@ -127,14 +127,18 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
     network = ut.build_EIANN_from_config(config_path, network_seed=network_seed)    
     seed = f"{network_seed}_{data_seed}"
 
+    # Define which variables to compute
     variables_to_save = ['percent_correct', 'average_pop_activity_dict', 
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps',
                          'test_loss_history', 'test_accuracy_history', 'angle_vs_bp', 'angle_vs_bp_stochastic',
                          'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     variables_to_save.extend([f"metrics_dict_{population.fullname}" for population in network.populations.values()])
-    variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values() if population.name=='E' and population.fullname!='InputE'])
     if "Dend" in "".join(network.populations.keys()):
         variables_to_save.extend(["binned_mean_forward_dendritic_state", "binned_mean_forward_dendritic_state_steps"])
+    if 'mnist' in config_path:
+        variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values() if population.name=='E' and population.fullname!='InputE'])
+    if 'spiral' in config_path:
+        variables_to_save.extend(["spiral_plots"])
 
     # Open hdf5 and check if the relevant network data already exists       
     variables_to_recompute = []  
@@ -185,8 +189,12 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
         network.input_pop = next(iter(input_layer))
 
     # Load dataset
-    all_dataloaders = ut.get_MNIST_dataloaders(sub_dataloader_size=1000)
-    train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
+    if 'mnist' in config_path:
+        all_dataloaders = ut.get_MNIST_dataloaders(sub_dataloader_size=1000)
+        train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
+    elif 'spiral' in config_path:
+        all_dataloaders = ut.get_spiral_dataloaders()
+        train_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
 
     ##################################################################
     ## Generate plot data
@@ -254,8 +262,13 @@ def generate_data_hdf5(config_path, saved_network_path, data_file_path, overwrit
         ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=data_file_path, overwrite=overwrite)
         ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=data_file_path, overwrite=overwrite)
 
+    # Spiral decision boundary plots
+    if 'spiral_plots' in variables_to_recompute:
+        spiral_decision_data_dict = ut.compute_spiral_decisions_data(network, test_dataloader)
+        ut.save_plot_data(network.name, network.seed, data_key='spiral_decision_data_dict', data=spiral_decision_data_dict, file_path=data_file_path, overwrite=overwrite)
 
-def generate_data_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=False, recompute=None):
+
+def generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=False, recompute=None):
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
@@ -545,7 +558,7 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
     ax_structure   = fig.add_subplot(metrics_axes[3, 3])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_data_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
 
     col = 0
     for model_key in all_models:
@@ -626,7 +639,7 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
     col = 0
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_data_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
 
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
@@ -690,7 +703,7 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
     col = 0
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_data_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
 
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
@@ -749,7 +762,7 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
     ax_FB_angle2 = fig.add_subplot(axes[2,1])
 
     all_models = list(dict.fromkeys(model_list1 + model_list2))
-    generate_data_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
 
     for i, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
@@ -792,7 +805,7 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="netwo
     ax_angle_vs_BP = fig.add_subplot(axes[1,2])
 
     all_models = list(dict.fromkeys(model_list))
-    generate_data_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
 
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
@@ -912,7 +925,7 @@ def generate_spirals_figure(model_dict_all, model_list, config_path_prefix="netw
     ax_angleBP = fig.add_subplot(axes[1, 2])
 
     all_models = list(dict.fromkeys(model_list))
-    generate_data_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
 
 
 def images_to_pdf(image_paths, output_path):
@@ -1058,31 +1071,19 @@ def main(figure, overwrite, generate_data, recompute):
                                             "color": "deeppink",
                                             "name": "Supervised BCM"},
 
-            "BTSP_WT_hebbdend":    {"config":"20240604_EIANN_2_hidden_mnist_BTSP_config_3L_complete_optimized.yaml",
+            "BTSP_WT_hebbdend":    {"config":"20241212_EIANN_2_hidden_mnist_BTSP_config_5L_complete_optimized.yaml",
                                     "color": "cyan",
                                     "name": "BTSP_WT_hebbdend"}, 
 
-            "BTSP_5L":    {"config":"20241212_EIANN_2_hidden_mnist_BTSP_config_5L_complete_optimized.yaml",
-                                    "color": "cyan",
-                                    "name": "BTSP_5L"}, 
+            # "BTSP_hebbTD_hebbdend": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
+            #                         "color": "magenta",
+            #                         "name": "BTSP_hebbTD_hebbdend"},
 
-            "BTSP_5L_TD":    {"config":"20241216_EIANN_2_hidden_mnist_BTSP_config_5L_learn_TD_HTCWN_3_complete_optimized.yaml",
-                                    "color": "cyan",
-                                    "name": "BTSP_5L_TD"},
-
-            "BTSP_5L_fixedTD":    {"config":"20241216_EIANN_2_hidden_mnist_BTSP_config_5L_fixed_TD_complete_optimized.yaml",
-                                    "color": "cyan",
-                                    "name": "BTSP_5L_fixedTD"},
-
-            "BTSP_hebbTD_hebbdend": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
-                                    "color": "magenta",
-                                    "name": "BTSP_hebbTD_hebbdend"},
-
-            "BTSP_fixedTD_hebbdend":{"config": "20240923_EIANN_2_hidden_mnist_BTSP_config_3L_fixed_TD_complete_optimized.yaml",
+            "BTSP_fixedTD_hebbdend":{"config": "20241216_EIANN_2_hidden_mnist_BTSP_config_5L_fixed_TD_complete_optimized.yaml",
                                     "color": "black",
                                     "name": "BTSP_fixedTD_hebbdend"},
 
-            "BTSP_TCWN_hebbdend": {"config": "20241126_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HTCWN_3_complete_optimized.yaml",
+            "BTSP_TCWN_hebbdend": {"config": "20241216_EIANN_2_hidden_mnist_BTSP_config_5L_learn_TD_HTCWN_3_complete_optimized.yaml",
                                     "color": "green",
                                     "name": "BTSP_TCWN_hebbdend"}, # top-down learning with TempContrast+weight norm
 
@@ -1113,7 +1114,7 @@ def main(figure, overwrite, generate_data, recompute):
             model_list = [generate_data]
         else:
             model_list = generate_data
-        generate_data_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite, recompute)
+        generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite, recompute)
 
 
     # Diagrams + example dynamics
@@ -1171,7 +1172,7 @@ def main(figure, overwrite, generate_data, recompute):
     elif figure in ["all", "fig5"]:
         model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_hebbTD_hebbdend", "bpLike_TCWN_hebbdend"]
         # model_list2 = ["bpLike_WT_hebbdend_eq", "bpLike_fixedTD_hebbdend_eq", "bpLike_hebbTD_hebbdend_eq"]
-        model_list2 = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
+        model_list2 = ["BTSP_WT_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
         figure_name = "Fig5_WB_alignment_FA_bpLike_BTSP"
         compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, overwrite=overwrite)
         # add dendstate
