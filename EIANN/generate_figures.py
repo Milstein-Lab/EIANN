@@ -901,18 +901,66 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_spirals_figure(model_dict_all, model_list, config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
+def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, model_list, config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=2, ncols=4,                        
+    axes = gs.GridSpec(nrows=3, ncols=4,                        
                        left=0.049,right=1,
                        top=0.95, bottom = 0.5,
                        wspace=0.15, hspace=0.5)
-    ax_accuracy    = fig.add_subplot(axes[1, 0])  
-    ax_dendstate    = fig.add_subplot(axes[1, 1])
-    ax_angleBP = fig.add_subplot(axes[1, 2])
+    ax_spirals =    fig.add_subplot(axes[1, 0])
+    ax_heatmaps =   fig.add_subplot(axes[1, 1])  
+    ax_accuracy =   fig.add_subplot(axes[1, 2])  
+    ax_angle =      fig.add_subplot(axes[2, 2])
+    ax_dendstate=   fig.add_subplot(axes[3, 2])
 
     all_models = list(dict.fromkeys(model_list))
     generate_data_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+
+    for model_key in all_models:
+        model_dict = model_dict_all[model_key]
+        network_name = model_dict['config'].split('.')[0]
+        data_file_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(data_file_path, 'r') as f:
+            data_dict = f[network_name]
+            print(f"Generating plots for {model_dict['name']}")
+            seed = model_dict['seeds'][0] # example seed to plot
+            # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict']]
+
+            # Plot heatmaps and spirals
+            if model_key in model_list_heatmaps:
+                ax = ax_heatmaps
+                population = 'H1E'
+                # Activity plots: batch accuracy of each population to the test dataset
+                average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
+                pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=False)
+                ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
+                ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
+                ax.set_ylabel(f'{population} unit', labelpad=-8)
+                ax.set_title(model_dict["name"], pad=3)
+
+            # Plot spirals
+            if model_key in model_list_heatmaps: # we want spirals for anythig we want a heatmap for
+                ax = ax_spirals
+                decision_data = data_dict[seed]['spiral_decision_data_dict']
+                pt.plot_spiral_decisons(decision_data, ax=ax)
+                ax.set_title(f'{network_name} Decisions', labelpad=-8)
+                ax.set_xlabel('x1')
+                ax.set_ylabel('x2')
+
+            # Plot metrics
+            if model_key in model_list_metrics:                
+                plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
+                # plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity)
+                # plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity)
+                plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
+                plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle)
+            legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-2., 1.3), loc='upper left', fontsize=6)
+            for line in legend.get_lines():
+                line.set_linewidth(1.5)
+
+    if save:
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
 def images_to_pdf(image_paths, output_path):
@@ -1188,6 +1236,7 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Combine figures into one PDF
     directory = "figures/"
+    os.makedirs(directory, exist_ok=True)
     image_paths = [os.path.join(directory, figure) for figure in os.listdir(directory) if figure.endswith('.png') and figure.startswith('Fig')]
     image_paths.sort()
     images_to_pdf(image_paths=image_paths, output_path= directory+"all_figures.pdf")
