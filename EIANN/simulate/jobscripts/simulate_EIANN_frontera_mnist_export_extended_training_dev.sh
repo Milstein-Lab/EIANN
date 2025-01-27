@@ -32,6 +32,6 @@ do
     --network-config-file-path=$CONFIG_DIR/${config_files[$i]} \
     --output-dir=$SCRATCH/data/EIANN --disp --label=extended --export \
     --framework=mpi&
-  ((o++))
+  ((o+=6))
 done
 wait
