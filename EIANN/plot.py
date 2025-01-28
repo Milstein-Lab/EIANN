@@ -1281,10 +1281,7 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.set_xticklabels([])    
     ax.set_xlabel('$Relative~time~(samples)$', math_fontfamily='cm', fontsize=8, labelpad=8)
     ax.set_title('BTSP', fontsize=8)
-
-    # plt.show()
-    # fig.savefig('figures/learning_rules.svg', bbox_inches='tight', transparent=True, dpi=300)
-
+    
 
 # *******************************************************************
 # Loss landscape functions

@@ -326,6 +326,9 @@ def plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot, ax, plot
             sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
         sparsity_all_seeds.append(sparsity_one_seed)
 
+    if sum([len(sublist) for sublist in sparsity_all_seeds]) == 0:
+        return
+    
     if plot_type == 'cdf':
         pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax, label=model_dict["name"], color=model_dict["color"])
         ax.set_ylabel('Fraction of patterns')
@@ -355,6 +358,9 @@ def plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot, ax, p
             selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
         selectivity_all_seeds.append(selectivity_one_seed)
 
+    if sum([len(sublist) for sublist in selectivity_all_seeds]) == 0:
+        return
+    
     if plot_type == 'cdf':
         pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax, label=model_dict["name"], color=model_dict["color"])
         ax.set_ylabel('Fraction of units')
@@ -384,6 +390,9 @@ def plot_structure_all_seeds(data_dict, model_dict, ax, plot_type='cdf'):
         for population in ['H1E', 'H2E']:
             structure_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['structure'])
         structure_all_seeds.append(structure_one_seed)
+
+    if sum([len(sublist) for sublist in structure_all_seeds]) == 0:
+        return
 
     if plot_type == 'cdf':
         pt.plot_cumulative_distribution(structure_all_seeds, ax=ax, label=model_dict["name"], color=model_dict["color"])
@@ -738,8 +747,8 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
             # Plot metrics
             if model_key in model_list_metrics:                
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                # plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity)
-                # plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity)
+                plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity)
+                plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity)
                 plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
                 plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle)
             legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-2., 1.3), loc='upper left', fontsize=6)
@@ -799,15 +808,18 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
 
 def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=2, ncols=3,                        
+    axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                       
                        left=0.1,right=0.9,
                        top=0.9, bottom = 0.6,
                        wspace=0.4, hspace=0.6)
     ax_accuracy = fig.add_subplot(axes[1,0])
     ax_dendstate = fig.add_subplot(axes[1,1])
     ax_angle_vs_BP = fig.add_subplot(axes[1,2])
-    axes = gs.GridSpecFromSubplotSpec(nrows=1, ncols=4, subplot_spec=axes[0,0:3], wspace=0.2, hspace=0)
+
+    axes = gs.GridSpecFromSubplotSpec(nrows=1, ncols=4, subplot_spec=axes[0,0:3], wspace=0.2)
     diagram_axes = [fig.add_subplot(axes[0,i]) for i in range(4)]
+    for ax in diagram_axes: # decrease the height of the diagram axes
+        ax.set_position([ax.get_position().x0, ax.get_position().y0, ax.get_position().width, ax.get_position().height*0.7])
 
     pt.plot_learning_rule_diagram(axes_list=diagram_axes)
 
@@ -827,7 +839,7 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="netwo
             plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
             plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP)
 
-    legend = ax_accuracy.legend(ncol=4, bbox_to_anchor=(-0.1, 1.2), loc='upper left')
+    legend = ax_accuracy.legend(ncol=4, bbox_to_anchor=(-0.1, 1.25), loc='upper left')
     for line in legend.get_lines():
         line.set_linewidth(1.5)
 
@@ -1242,8 +1254,8 @@ def main(figure, overwrite, generate_data, recompute):
     # Analyze DendI
     elif figure in ["all", "fig3"]:
         model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
-        model_list_metrics = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
-        # model_list_metrics = model_list_heatmaps #+ ["bpDale_fixed"]
+        # model_list_metrics = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
+        model_list_metrics = model_list_heatmaps + ["bpDale_fixed"]
         figure_name = "Fig3_dendI"
         compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
@@ -1271,8 +1283,9 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Forward (W) vs backward (B) alignment angle
     elif figure in ["all", "fig5"]:
-        model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_hebbTD_hebbdend", "bpLike_TCWN_hebbdend"]
+        model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend"]
         # model_list2 = ["bpLike_WT_hebbdend_eq", "bpLike_fixedTD_hebbdend_eq", "bpLike_hebbTD_hebbdend_eq"]
+
         model_list2 = ["BTSP_WT_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
         figure_name = "Fig5_WB_alignment_FA_bpLike_BTSP"
         compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, overwrite=overwrite)
