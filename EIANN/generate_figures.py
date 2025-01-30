@@ -264,6 +264,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite=Fal
 
     if 'test_accuracy_history_extended' in variables_to_recompute and 'extended' in saved_network_path:
         ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history_extended', data=network.test_accuracy_history, file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps_extended', data=network.val_history_train_steps, file_path=hdf5_path, overwrite=overwrite)
 
     # Spiral decision boundary plots
     if 'spiral_decision_data_dict' in variables_to_recompute:
@@ -934,7 +935,8 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
 
 
 def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
-    fig, ax = plt.subplots(figsize=(5.5, 3))
+    fig, ax = plt.subplots(figsize=(5.5, 9))
+    ax.axis('off')
 
     all_models = list(dict.fromkeys(model_list))
     for model_key in all_models:
@@ -946,7 +948,62 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
             saved_network_path = saved_network_path_prefix + network_name + f"_{seed}_extended.pkl"
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite)
             gc.collect()
-            return
+
+    networks = {}
+
+    for i,model_key in enumerate(all_models):
+        model_dict = model_dict_all[model_key]
+        network_name = model_dict['config'].split('.')[0]
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+
+        with h5py.File(hdf5_path, 'r') as f:
+            data_dict = f[network_name]
+
+            # Get the accuracy for each seed
+            accuracy_all_seeds_20k = []
+            for seed in model_dict['seeds']:
+                accuracy_all_seeds_20k.append(data_dict[seed]['test_accuracy_history'][-1])
+            avg_accuracy_20k = np.mean(accuracy_all_seeds_20k)
+            std_accuracy_20k = np.std(accuracy_all_seeds_20k)
+            sem_accuracy_20k = std_accuracy_20k / np.sqrt(len(accuracy_all_seeds_20k))
+
+            accuracy_all_seeds_50k = []
+            for seed in model_dict['seeds']:
+                accuracy_all_seeds_50k.append(data_dict[seed]['test_accuracy_history_extended'][-1])
+            avg_accuracy_50k = np.mean(accuracy_all_seeds_50k)
+            std_accuracy_50k = np.std(accuracy_all_seeds_50k)
+            sem_accuracy_50k = std_accuracy_50k / np.sqrt(len(accuracy_all_seeds_50k))
+
+            networks[model_dict['name']] = {'Attributes': "add network info here",
+                                            'MNIST Accuracy (20k samples)': f"{avg_accuracy_20k:.2f} \u00b1 {sem_accuracy_20k:.2f}",
+                                            'MNIST Accuracy (50k samples)': f"{avg_accuracy_50k:.2f} \u00b1 {sem_accuracy_50k:.2f}"}
+
+    # Create a table from the networks dictionary
+    table_vals = []
+    column_labels = [header for header in list(networks.values())[0]]
+    column_labels.insert(0, "")
+    for network_name in networks:
+        network_vals = [network_name]
+        for col in networks[network_name]:
+            network_vals.append(networks[network_name][col])
+        table_vals.append(network_vals)
+
+    table = ax.table(cellText=table_vals, colLabels=column_labels, cellLoc="center", loc="center")
+    for key, cell in table.get_celld().items():
+        cell.set_linewidth(0)
+        if key[0] % 2 == 0:
+            cell.set_facecolor([0.95 for i in range(3)])
+        if key[0] == 0:
+            cell.set_facecolor([0.9 for i in range(3)])
+            cell.set_text_props(weight='bold')
+        # cell.set_fontsize(20)
+        # cell.set_height(cell.get_height() * 1.1)
+        cell.set_text_props(fontname='Arial', fontsize=12)
+
+    if save:
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
+
 
 
 
@@ -1201,6 +1258,8 @@ def main(figure, overwrite, generate_data, recompute):
 
         }
 
+    saved_network_path_prefix = "/Users/ag1880/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/MNIST/"
+    
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
     for model_key in model_dict_all:
         model_dict_all[model_key]["seeds"] = seeds
@@ -1221,9 +1280,9 @@ def main(figure, overwrite, generate_data, recompute):
         generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite, recompute)
 
     if figure == 'table':
-        figure_name = "table"
-        model_list = ["vanBP"]
-        generate_extended_accuracy_summary_table(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
+        figure_name = "FigS3_table"
+        model_list = ["vanBP", "bpDale_fixed"]
+        generate_extended_accuracy_summary_table(model_dict_all, model_list, save=figure_name, overwrite=overwrite, saved_network_path_prefix=saved_network_path_prefix+"extended/")
 
     if figure == 'spirals':
         figure_name = "spirals"

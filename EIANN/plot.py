@@ -1212,7 +1212,7 @@ def plot_correlations(network, test_dataloader):
 
 def plot_learning_rule_diagram(axes_list=None):
     if axes_list is None:
-        fig, axes_list = plt.subplots(1, 4, figsize=[8, 2])
+        fig, axes_list = plt.subplots(1, 4, figsize=[10, 2])
 
     a_pre = 1                   # presynaptic activation
     d = np.linspace(-1, 1, 100) # dendritic state
@@ -1281,7 +1281,7 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.set_xticklabels([])    
     ax.set_xlabel('$Relative~time~(samples)$', math_fontfamily='cm', fontsize=8, labelpad=8)
     ax.set_title('BTSP', fontsize=8)
-    
+
 
 # *******************************************************************
 # Loss landscape functions
