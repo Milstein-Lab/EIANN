@@ -9,7 +9,7 @@ import numpy as np
 import time
 import gc
 
-from EIANN import Network
+from EIANN._network import Network
 from EIANN.utils import read_from_yaml, write_to_yaml, \
             sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
             recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, generate_spiral_data, \

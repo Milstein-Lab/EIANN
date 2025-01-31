@@ -31,7 +31,7 @@ set -x
 
 cd $HOME/EIANN/EIANN
 
-srun --mpi=pmi2 -n 6 python -m mpi4py.futures -m nested.analyze --config-file-path=$CONFIG_FILE_PATH \
+mpirun -np 6 python -m mpi4py.futures -m nested.analyze --config-file-path=$CONFIG_FILE_PATH \
   --param-file-path=$PARAM_FILE_PATH --output-dir=data/${TASK} --model-key=$MODEL_KEY \
   --framework=mpi --status_bar=True --full_analysis --label=complete --store_history --export
 EOT
@@ -40,24 +40,30 @@ EOT
 # cd $HOME/EIANN/EIANN/optimize/jobscripts/amarel
 
 
-# EIANN_0_hidden_spiral_vanBP_learned_bias
+# EIANN_0_hidden_spiral_van_bp_relu_learned_bias
 # sbatch generate_pkl_EIANN.sh optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config.yaml optimize/optimize_params/spiral/20250112_spiral_params.yaml spiral van_bp_0_hidden_learned_bias
 
-# EIANN_2_hidden_spiral_vanBP_learned_bias
+# EIANN_2_hidden_spiral_van_bp_relu_learned_bias
 # sbatch generate_pkl_EIANN.sh optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config.yaml optimize/optimize_params/spiral/20250112_spiral_params.yaml spiral van_bp_learned_bias
 
-# EIANN_2_hidden_spiral_vanBP_zero_bias
+# EIANN_2_hidden_spiral_van_bp_relu_zero_bias
 # sbatch generate_pkl_EIANN.sh optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config.yaml optimize/optimize_params/spiral/20250112_spiral_params.yaml spiral van_bp_zero_bias
 
-# EIANN_2_hidden_spiral_bpDale_learned_bias
+# EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias
 # sbatch generate_pkl_EIANN.sh optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config.yaml optimize/optimize_params/spiral/20250112_spiral_params.yaml spiral bpDale_learned_bias
 
-# EIANN_2_hidden_spiral_BP_like_DTC_learned_bias
+# EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias (DTC)
 # sbatch generate_pkl_EIANN.sh optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias_config.yaml optimize/optimize_params/spiral/20250112_spiral_params.yaml spiral BP_like_1_fixed_SomaI_learned_bias
 
-# EIANN_2_hidden_spiral_DTP_learned_bias
+# EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias
 # sbatch generate_pkl_EIANN.sh optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config.yaml optimize/optimize_params/spiral/20250112_spiral_params.yaml spiral DTP_fixed_SomaI_learned_bias
 
 
 # See error and output logs with this:
 # cd /scratch/$USER/logs/EIANN
+
+
+
+# srun --mpi=pmi2 -n 6 python -m mpi4py.futures -m nested.analyze --config-file-path=$CONFIG_FILE_PATH \
+#   --param-file-path=$PARAM_FILE_PATH --output-dir=data/${TASK} --model-key=$MODEL_KEY \
+#   --framework=mpi --status_bar=True --full_analysis --label=complete --store_history --export
