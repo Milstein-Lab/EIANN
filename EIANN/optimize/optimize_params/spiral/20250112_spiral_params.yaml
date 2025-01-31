@@ -4,7 +4,7 @@ van_bp_0_hidden_learned_bias:
     Output_learning_rate: 0.08158367762594287
     Output_bias_learning_rate: 0.000494197567654425
     Output_init_weight_scale: 5.386548065293654
-# python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config.yaml --disp --num_instances=1 --model-key=van_bp_0_hidden_learned_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250127_EIANN_0_hidden_spiral_vanBP_learned_bias_config_complete_optimized.yaml --export
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config.yaml --disp --num_instances=1 --model-key=van_bp_0_hidden_learned_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250108_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml --export
 
 van_bp_learned_bias:
     #    accuracy: 96.09666
