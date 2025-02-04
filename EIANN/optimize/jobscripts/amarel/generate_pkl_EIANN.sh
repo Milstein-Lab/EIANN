@@ -20,12 +20,12 @@ sbatch <<EOT
 #SBATCH -J $JOB_NAME
 #SBATCH -o /scratch/${USER}/logs/EIANN/$JOB_NAME.%j.o
 #SBATCH -e /scratch/${USER}/logs/EIANN/$JOB_NAME.%j.e
-#SBATCH --partition=nonpre,p_am2820_1,genetics_1,main                 # Choose the appropriate partition (options: main, gpu, mem, cmain, cgpu, nonpre, graphical)
-#SBATCH --requeue                                                     # Keep the job in the queue if it is preempted                   
-#SBATCH --ntasks=6                                                    # Total number of cores/tasks across all nodes
-#SBATCH --time=2:00:00                                                # Time limit for the job
-#SBATCH --mail-user=yc1376@scarletmail.rutgers.edu                    # Email notifications
-#SBATCH --mail-type=ALL                                               # Get email notifications on job start, end, and failure
+#SBATCH --partition=nonpre,p_am2820_1,genetics_1,main
+#SBATCH --requeue                
+#SBATCH --ntasks=6
+#SBATCH --time=1:00:00
+#SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
+#SBATCH --mail-type=ALL
 
 set -x
 
@@ -35,6 +35,8 @@ mpirun -np 6 python -m mpi4py.futures -m nested.analyze --config-file-path=$CONF
   --param-file-path=$PARAM_FILE_PATH --output-dir=data/${TASK} --model-key=$MODEL_KEY \
   --framework=mpi --status_bar=True --full_analysis --label=complete --store_history --export
 EOT
+
+# Use for generating .pkl and .yaml files for configurations
 
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts/amarel
