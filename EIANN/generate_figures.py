@@ -36,7 +36,7 @@ plt.rcParams.update({'font.size': 6,
                     'legend.columnspacing': 1.2,
                     'lines.linewidth': 0.5,
                     'figure.figsize': [10.0, 3.0],
-                    'font.sans-serif': 'Helvetica',
+                    'font.sans-serif': 'DejaVu Sans', # Helvetica
                     'svg.fonttype': 'none',
                     'text.usetex': False})
 
@@ -448,13 +448,13 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True):
         train_steps = train_steps[1:]
     ax.plot(train_steps, avg_angle, label=model_dict["name"], color=model_dict["color"])
     ax.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
-    ax.hlines(30, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
-    ax.hlines(60, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
-    ax.hlines(90, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
+    ax.hlines(30, -len(train_steps)/20, len(train_steps), color='gray', linewidth=0.5, alpha=0.1)
+    ax.hlines(60, -len(train_steps)/20, len(train_steps), color='gray', linewidth=0.5, alpha=0.1)
+    ax.hlines(90, -len(train_steps)/20, len(train_steps), color='gray', linewidth=0.5, alpha=0.1)
     ax.set_xlabel('Training step')
     ax.set_ylabel('Angle vs BP')
-    ax.set_ylim([0,100])
-    ax.set_xlim([-1000,20000])
+    ax.set_ylim([0,max(100, np.nanmax(avg_angle+error))])
+    # ax.set_xlim([-len(train_steps)/20, len(train_steps)])
     ax.set_yticks(np.arange(0, 101, 30))
 
 
@@ -1005,24 +1005,23 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
+def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
+    fig = plt.figure(figsize=(15, 9))
+    axes = gs.GridSpec(nrows=3, ncols=7,                        
+                       left=0.049,right=1,
+                       top=0.95, bottom = 0.5,
+                       wspace=0.9, hspace=0.7)
 
+    spirals_row =   0
+    heatmaps_row =  1 
+    ax_accuracy =   fig.add_subplot(axes[2, 0])  
+    ax_angle =      fig.add_subplot(axes[2, 1])
+    ax_dendstate =  fig.add_subplot(axes[2, 2])
 
-def generate_spirals_figure(model_dict_all, model_list, config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
-    # fig = plt.figure(figsize=(5.5, 9))
-    # axes = gs.GridSpec(nrows=3, ncols=4,                        
-    #                    left=0.049,right=1,
-    #                    top=0.95, bottom = 0.5,
-    #                    wspace=0.15, hspace=0.5)
-    # ax_spirals =    fig.add_subplot(axes[1, 0])
-    # ax_heatmaps =   fig.add_subplot(axes[1, 1])  
-    # ax_accuracy =   fig.add_subplot(axes[1, 2])  
-    # ax_angle =      fig.add_subplot(axes[2, 2])
-    # ax_dendstate=   fig.add_subplot(axes[3, 2])
-
-    all_models = list(dict.fromkeys(model_list))
+    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
 
-    for model_key in all_models:
+    for model_idx, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
         hdf5_path = f"data/plot_data_{network_name}.h5"
@@ -1030,39 +1029,34 @@ def generate_spirals_figure(model_dict_all, model_list, config_path_prefix="netw
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['name']}")
             seed = model_dict['seeds'][0] # example seed to plot
-            # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict']]
 
             # Plot heatmaps and spirals
             if model_key in model_list_heatmaps:
-                ax = ax_heatmaps
-                population = 'H1E'
-                # Activity plots: batch accuracy of each population to the test dataset
-                average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=False)
-                ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
-                ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
-                ax.set_ylabel(f'{population} unit', labelpad=-8)
-                ax.set_title(model_dict["name"], pad=3)
+                ax = fig.add_subplot(axes[heatmaps_row, model_idx])
+                if model_key != "vanBP_0_hidden_learned_bias":
+                    population = 'H1E'
+                    # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict']]
+                    # Activity plots: batch accuracy of each population to the test dataset
+                    average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
+                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=False)
+                    ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
+                    ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
+                    ax.set_ylabel(f'{population} unit', labelpad=-8)
+                    ax.set_title(model_dict["name"], pad=3)
 
-            # Plot spirals
-            if model_key in model_list_heatmaps: # we want spirals for anythig we want a heatmap for
-                ax = ax_spirals
+                # Plot spirals
+                ax = fig.add_subplot(axes[spirals_row, model_idx])
                 decision_data = data_dict[seed]['spiral_decision_data_dict']
-                pt.plot_spiral_decisons(decision_data, ax=ax)
-                ax.set_title(f'{network_name} Decisions', labelpad=-8)
+                pt.plot_spiral_decisions(decision_data, ax=ax)
+                ax.set_title(model_dict["name"], pad=4)
                 ax.set_xlabel('x1')
                 ax.set_ylabel('x2')
 
             # Plot metrics
             if model_key in model_list_metrics:                
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                # plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity)
-                # plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity)
                 plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
                 plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle)
-            legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-2., 1.3), loc='upper left', fontsize=6)
-            for line in legend.get_lines():
-                line.set_linewidth(1.5)
 
     if save:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -1231,29 +1225,28 @@ def main(figure, overwrite, generate_data, recompute):
             ##########################
             # Spirals dataset models
             ##########################
-
-            "vanBP_0_hidden_learned_bias": {"config": "20250127_EIANN_0_hidden_spiral_vanBP_learned_bias_config_complete_optimized.yaml",
+            "vanBP_0_hidden_learned_bias": {"config": "20250108_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
                                             "color": "black",
-                                            "name": "Vanilla Backprop 0-Hidden Learned Bias"},
+                                            "name": "Vanilla Backprop 0-Hidden (Learned Bias)"},
 
-            "vanBP_2_hidden_learned_bias": {"config": "20250127_EIANN_2_hidden_spiral_vanBP_learned_bias_config_complete_optimized.yaml",
-                                            "color": "black",
-                                            "name": "Vanilla Backprop 2-Hidden Learned Bias"},
+            "vanBP_2_hidden_learned_bias": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
+                                            "color": "red",
+                                            "name": "Vanilla Backprop 2-Hidden (Learned Bias)"},
 
-            "vanBP_2_hidden_zero_bias": {"config": "20250127_EIANN_2_hidden_spiral_vanBP_zero_bias_config_complete_optimized.yaml",
-                                        "color": "black",
-                                        "name": "Vanilla Backprop 2-Hidden Zero Bias"},
+            "vanBP_2_hidden_zero_bias": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config_complete_optimized.yaml",
+                                        "color": "green",
+                                        "name": "Vanilla Backprop 2-Hidden (Zero Bias)"},
 
-            "bpDale_learned_bias": {"config": "20250127_EIANN_2_hidden_spiral_bpDale_learned_bias_config_complete_optimized.yaml",
-                                    "color": "black",
+            "bpDale_learned_bias": {"config": "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
+                                    "color": "orange",
                                     "name": "Backprop + Dale's Law (Learned Bias)"},
 
-            "bpLike_DTC_learned_bias": {"config": "20250127_EIANN_2_hidden_spiral_BP_like_DTC_learned_bias_config_complete_optimized.yaml",
-                                        "color": "black",
+            "bpLike_DTC_learned_bias": {"config": "20250108_EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
+                                        "color": "purple",
                                         "name": "Backprop Like (DTC) (Learned Bias)"},
 
-            "DTP_learned_bias": {"config": "20250127_EIANN_2_hidden_spiral_BP_like_DTC_learned_bias_config_complete_optimized.yaml",
-                                "color": "black",
+            "DTP_learned_bias": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
+                                "color": "brown",
                                 "name": "DTP (Learned Bias)"},
 
         }
@@ -1283,11 +1276,6 @@ def main(figure, overwrite, generate_data, recompute):
         figure_name = "FigS3_table"
         model_list = ["vanBP", "bpDale_fixed"]
         generate_extended_accuracy_summary_table(model_dict_all, model_list, save=figure_name, overwrite=overwrite, saved_network_path_prefix=saved_network_path_prefix+"extended/")
-
-    if figure == 'spirals':
-        figure_name = "spirals"
-        model_list = ["spirals_bpDale_nobias"]
-        generate_spirals_figure(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
 
     # Diagrams + example dynamics
     if figure == "fig1":
@@ -1349,6 +1337,20 @@ def main(figure, overwrite, generate_data, recompute):
         figure_name = "Fig5_WB_alignment_FA_bpLike_BTSP"
         compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, overwrite=overwrite)
         # add dendstate
+
+    # Supplementary Spirals Figure
+    elif figure in ["all", "suppl-spiral"]:
+        model_list_heatmaps = ["vanBP_0_hidden_learned_bias", "vanBP_2_hidden_learned_bias", "vanBP_2_hidden_zero_bias", 
+                        "bpDale_learned_bias", "bpLike_DTC_learned_bias", "DTP_learned_bias"]
+        model_list_metrics = model_list_heatmaps
+        figure_name = "Suppl1_Spirals"
+
+        saved_network_path_prefix = "/Users/ag1880/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/spiral/"
+        if not os.path.exists(saved_network_path_prefix):
+            saved_network_path_prefix = "C:/Users/bchen/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/spiral/"
+
+        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, 
+                                saved_network_path_prefix=saved_network_path_prefix, save=figure_name, overwrite=overwrite)
 
     elif figure in ["all", "metrics"]:
         # model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_hebbTD", "bpLike_FA"]
