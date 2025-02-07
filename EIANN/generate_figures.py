@@ -384,11 +384,11 @@ def plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot, ax, p
         ax.set_xticklabels(xtick_labels, rotation=45, ha='right')
 
 
-def plot_structure_all_seeds(data_dict, model_dict, ax, plot_type='cdf'):
+def plot_structure_all_seeds(data_dict, model_dict, populations_to_plot, ax, plot_type='cdf'):
     structure_all_seeds = []
     for seed in data_dict:
         structure_one_seed = []
-        for population in ['H1E', 'H2E']:
+        for population in populations_to_plot:
             structure_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['structure'])
         structure_all_seeds.append(structure_one_seed)
 
@@ -414,7 +414,7 @@ def plot_structure_all_seeds(data_dict, model_dict, ax, plot_type='cdf'):
         ax.set_xticklabels(xtick_labels, rotation=45, ha='right')
 
 
-def plot_dendritic_state_all_seeds(data_dict, model_dict, ax):
+def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
     if 'binned_mean_forward_dendritic_state_steps' not in data_dict[next(iter(data_dict.keys()))]:
         return
     dendstate_all_seeds = []
@@ -428,7 +428,7 @@ def plot_dendritic_state_all_seeds(data_dict, model_dict, ax):
     ax.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.5, color=model_dict["color"], linewidth=0)
     ax.set_xlabel('Training step')
     ax.set_ylabel('Dendritic state')
-    ax.set_yscale('log')
+    ax.set_yscale(scale)
     # ax.set_ylim(bottom=-0., top=0.3)
 
 
@@ -442,7 +442,7 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True):
         else:
             angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
     avg_angle = np.nanmean(angle_all_seeds, axis=0)
-    error = np.nanstd(angle_all_seeds, axis=0)
+    error = np.nanstd(angle_all_seeds, axis=0) / np.sqrt(len(model_dict['seeds']))
     train_steps = data_dict[seed]['val_history_train_steps'][:]
     if not stochastic:
         train_steps = train_steps[1:]
@@ -574,7 +574,8 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
 
     col = 0
-    for model_key in all_models:
+    labels = ['A', 'B', 'C', 'D']
+    for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
         hdf5_path = f"data/plot_data_{network_name}.h5"
@@ -598,6 +599,9 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
                     if col>0:
                         ax.set_ylabel('')
                         ax.set_yticklabels([])
+
+                    # if row==0:
+                    #     ax.annotate(labels[i], xy=(-0.3, 1.1), xycoords='axes fraction', fontsize=12, weight='bold')
 
                     # Receptive field plots
                     receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
@@ -628,7 +632,9 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
                 plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity)
                 plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity)
-                plot_structure_all_seeds(data_dict, model_dict, ax=ax_structure)
+                plot_structure_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure)
+
+            ax.annotate(label, xy=(0.5, 0.5), xycoords='figure fraction', fontsize=12, weight='bold')
 
     if save is not None:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -699,19 +705,19 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
 
 def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=4, ncols=6,                        
-                       left=0.049,right=0.98,
+    axes = gs.GridSpec(nrows=4, ncols=3,                        
+                       left=0.249,right=0.78,
                        top=0.95, bottom = 0.5,
-                       wspace=0.15, hspace=0.5)
+                       wspace=0.45, hspace=0.5)
     
     metrics_axes = gs.GridSpec(nrows=4, ncols=3,
                        left=0.049,right=0.8,
                        top=0.95, bottom = 0.5,
-                       wspace=0.3, hspace=0.6)
-    ax_sparsity    = fig.add_subplot(metrics_axes[0, 0])
-    ax_selectivity = fig.add_subplot(metrics_axes[0, 1])
-    ax_accuracy    = fig.add_subplot(metrics_axes[0, 2])
-    ax_dendstate   = fig.add_subplot(metrics_axes[1, 2])
+                       wspace=0.5, hspace=0.6)
+    # ax_sparsity    = fig.add_subplot(metrics_axes[0, 0])
+    # ax_selectivity = fig.add_subplot(metrics_axes[0, 1])
+    ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])
+    ax_dendstate   = fig.add_subplot(metrics_axes[2, 1])
     ax_angle       = fig.add_subplot(metrics_axes[2, 2])
     col = 0
 
@@ -726,7 +732,9 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['name']}")
             seed = model_dict['seeds'][0] # example seed to plot
-            populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
+            # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
+            populations_to_plot = ['H2DendI']
+            populations_to_plot = ['OutputE']
 
             # Plot heatmaps
             if model_key in model_list_heatmaps:
@@ -748,15 +756,89 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
             # Plot metrics
             if model_key in model_list_metrics:                
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity)
-                plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity)
+                # plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity)
+                # plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity)
                 plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
                 plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle)
-            legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-2., 1.3), loc='upper left', fontsize=6)
+            legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0., 1.3), loc='upper left', fontsize=6)
             for line in legend.get_lines():
                 line.set_linewidth(1.5)
 
     if save:
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
+
+
+
+def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+    '''
+    Figure 1: Van_BP vs bpDale(learnedI)
+        -> bpDale is more structured/sparse (focus on H1E metrics)
+
+    Compare vanilla Backprop to networks with 'cortical' architecures (i.e. with somatic feedback inhibition). 
+    '''
+
+    fig = plt.figure(figsize=(5.5, 9))
+    axes = gs.GridSpec(nrows=2, ncols=4,                        
+                       left=0.049,right=0.9,
+                       top=0.9, bottom = 0.6,
+                       wspace=0.15, hspace=0.5)
+    axes_metrics = gs.GridSpec(nrows=2, ncols=3,                        
+                        left=0.15,right=1,
+                        top=0.9, bottom = 0.65,
+                        wspace=0.15, hspace=0.5)    
+    ax_structure   = fig.add_subplot(axes_metrics[0, 2])
+
+    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+
+    col = 0
+    for model_key in all_models:
+        model_dict = model_dict_all[model_key]
+        network_name = model_dict['config'].split('.')[0]
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
+            data_dict = f[network_name]
+            print(f"Generating plots for {model_dict['name']}")
+            populations_to_plot = ['H2E']
+
+            if model_key in model_list_heatmaps:
+                seed = model_dict['seeds'][0] # example seed to plot
+                # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'E' in population and population!='InputE']
+                
+                for row,population in enumerate(populations_to_plot):
+                    # Receptive field plots
+                    receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
+                    num_units = 10
+                    ax = fig.add_subplot(axes[row, col])
+                    ax.axis('off')
+                    if row==0:
+                        ax.set_title(model_dict["name"])
+                    pos = ax.get_position()
+                    new_left = pos.x0 - 0.01  # Move left boundary to the left
+                    new_bottom = pos.y0 # Move bottom boundary up
+                    new_height = pos.height  # Decrease height
+                    new_width = pos.width - 0.036  # Decrease width 
+                    ax.set_position([new_left, new_bottom, new_width, new_height])
+                    rf_axes = gs.GridSpecFromSubplotSpec(4, 3, subplot_spec=ax, wspace=0., hspace=0.1)
+                    ax_list = [fig.add_subplot(rf_axes[3,1])]
+                    for j in range(num_units-1):
+                        ax = fig.add_subplot(rf_axes[j])
+                        ax_list.append(ax)
+                        # box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
+                        # ax.add_patch(box)
+                    preferred_classes = torch.argmax(torch.tensor(np.array(data_dict[seed]['average_pop_activity_dict'][population])), dim=1)
+                    im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
+                    fig_width, fig_height = fig.get_size_inches()
+                    cax = fig.add_axes([ax_list[0].get_position().x0-0.32/fig_width, ax.get_position().y0-0.2/fig_height, 0.04, 0.03/fig_height])
+                    fig.colorbar(im, cax=cax, orientation='horizontal')
+
+                col += 1
+
+            if model_key in model_list_metrics:
+                plot_structure_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_structure)
+
+    if save is not None:
         fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
@@ -1142,8 +1224,8 @@ def main(figure, overwrite, generate_data, recompute):
             # bpLike models
             ##########################
             "bpLike_WT_hebbdend":  {"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_complete_optimized.yaml",
-                                    "color": "black",
-                                    "name": "bpLike_WT_hebbdend"},
+                                    "color": "red",
+                                    "name": "BP-like (dend. gating)"},
 
             "bpLike_WT_hebbdend_eq":  {"config": "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml",
                                     "color":  "red",
@@ -1202,19 +1284,19 @@ def main(figure, overwrite, generate_data, recompute):
 
             "SupHebbTempCont_WT_hebbdend": {"config": "20241125_EIANN_2_hidden_mnist_Hebb_Temp_Contrast_config_2_complete_optimized.yaml",
                                             "color": "purple",
-                                            "name": "Supervised Hebb Temp Contrast WT"}, # Like target propagation / temporal contrast on forward dW
+                                            "name": "Hebb Temp. Contrast"}, # Like target propagation / temporal contrast on forward dW
 
             "Supervised_HebbWN_learned_somaI":{"config": "20240919_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_learn_somaI_config_4_complete_optimized.yaml",
                                                 "color": "lime",
                                                 "name": "Supervised HebbWN learned somaI"},
 
             "Supervised_BCM_WT_hebbdend":  {"config": "20240723_EIANN_2_hidden_mnist_Supervised_BCM_config_4_complete_optimized.yaml",
-                                            "color": "deeppink",
-                                            "name": "Supervised BCM"},
+                                            "color": "lightgray",
+                                            "name": "BCM"},
 
             "BTSP_WT_hebbdend":    {"config":"20241212_EIANN_2_hidden_mnist_BTSP_config_5L_complete_optimized.yaml",
-                                    "color": "cyan",
-                                    "name": "BTSP_WT_hebbdend"}, 
+                                    "color": "orange",
+                                    "name": "BTSP"}, 
 
             # "BTSP_hebbTD_hebbdend": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
             #                         "color": "magenta",
@@ -1281,13 +1363,21 @@ def main(figure, overwrite, generate_data, recompute):
 
     if figure == 'table':
         figure_name = "FigS3_table"
-        model_list = ["vanBP", "bpDale_fixed"]
+        model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
+                      "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
+                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
         generate_extended_accuracy_summary_table(model_dict_all, model_list, save=figure_name, overwrite=overwrite, saved_network_path_prefix=saved_network_path_prefix+"extended/")
 
     if figure == 'spirals':
         figure_name = "spirals"
         model_list = ["spirals_bpDale_nobias"]
         generate_spirals_figure(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
+
+    if figure == 'structure':
+        figure_name = "structure"
+        model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
+        model_list_metrics = model_list_heatmaps
+        compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
     # Diagrams + example dynamics
     if figure == "fig1":
@@ -1299,6 +1389,9 @@ def main(figure, overwrite, generate_data, recompute):
         model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
         # model_list_heatmaps = ["bpLike_fixedTD_hebbdend", "bpLike_WT_hebbdend", "bpLike_TCWN_hebbdend"]
         # model_list_heatmaps = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
+
+        # model_list_heatmaps = ["vanBP", "bpDale_learned", "bpLike_WT_hebbdend"]
+
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
         compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
@@ -1315,6 +1408,9 @@ def main(figure, overwrite, generate_data, recompute):
         model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
         # model_list_metrics = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps + ["bpDale_fixed"]
+
+        model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
+        model_list_metrics = model_list_heatmaps
         figure_name = "Fig3_dendI"
         compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
 
@@ -1330,8 +1426,6 @@ def main(figure, overwrite, generate_data, recompute):
         model_list = ["bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
         figure_name = "Fig4_BTSP_BCM_HebbWN"
         compare_metrics_simple(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
-
-        # add diagrams (BCM, temp cont, btsp)
 
     # Supplement to Fig.4: "Supervised_HebbWN_WT_hebbdend" -> Performs badly because HWN is potentiation-only
         

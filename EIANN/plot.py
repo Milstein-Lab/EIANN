@@ -1227,7 +1227,7 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.set_ylabel(r'$\Delta W$', math_fontfamily='cm', fontsize=10, rotation=0, labelpad=10, y=0.45)
     ax.set_xticks([0])
     ax.set_yticks([-1, 0, 1])
-    ax.set_title('Backprop', fontsize=8)
+    ax.set_title('BP-like (dend. gating)', fontsize=8)
 
     # Hebb Temporal Contrast
     delta_a = np.linspace(-1, 1, 100)

@@ -159,9 +159,9 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
 
     # forward_E_params = ["H1E_InputE", "H2E_H1E", "OutputE_H2E"]
     forward_E_params = []
-    for proj_name in network.projections: # Create a list of all the E-to-E projections to compare
+    for proj_name, param in network.projections.items(): # Create a list of all the E-to-E projections to compare
         pre_name, post_name = proj_name.split('_')
-        if pre_name[-1]=='E' and post_name[-1]=='E':
+        if pre_name[-1]=='E' and post_name[-1]=='E' and param.weight.is_learned:
             forward_E_params.append(proj_name)
 
     actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if name.split('.')[1] in forward_E_params}
@@ -309,7 +309,7 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
             angle = compute_vector_angle(predicted_dParam, actual_dParam)
             angles[param_name].append(angle)
             if torch.isnan(angle):
-                print(f'Warning: angle is NaN at step {t}, {param_name}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
+                print(f'Warning: angle is NaN at step {t}, {param_name}, t={t}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
                 # return predicted_dParam, actual_dParam
 
         if plot:
