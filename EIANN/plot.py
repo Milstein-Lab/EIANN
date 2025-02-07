@@ -1838,7 +1838,7 @@ def plot_spiral_accuracy(net, test_dataloader):
     fig.show()
 
 
-def plot_spiral_decisons(decision_data, ax=None):
+def plot_spiral_decisions(decision_data, ax=None):
     '''
     Using data from utils/representational_analysis, plot the data to generate the spiral decisions with colored points.
     '''
@@ -1858,9 +1858,8 @@ def plot_spiral_decisons(decision_data, ax=None):
     axes.set_xlabel('x1')
     axes.set_ylabel('x2')
     axes.set_title('Predictions')
-    axes.text(0.02, 0.95, f'Accuracy: {accuracy:.2%}', verticalalignment='top', horizontalalignment='left', transform=axes.transAxes, color='black', fontsize=11)
-
-    fig.tight_layout(rect=[0, 0, 1, 0.95]) 
+    # axes.text(0.02, 0.95, f'Accuracy: {accuracy:.2%}', verticalalignment='top', horizontalalignment='left', transform=axes.transAxes, color='black', fontsize=11)
 
     if ax is None:
+        fig.tight_layout(rect=[0, 0, 1, 0.95]) 
         fig.show()
