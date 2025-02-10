@@ -996,23 +996,18 @@ def compute_dendritic_state_dynamics(network):
 
 def compute_spiral_decisions_data(network, test_dataloader):
     '''
-    Get the correct and wrong indices to plot the spiral loss landscape
+    Get the correct and wrong indices to plot the spiral loss landscape (both ways)
     '''
     # Test batch inputs
-    inputs = network.Input.E.activity
+    idx, data, target = next(iter(test_dataloader))
 
     # Predicted labels after training 
-    outputs = network.Output.E.activity
-    _, predicted_labels = torch.max(outputs, 1)
+    test_outputs = network.forward(data).detach().cpu()
+    _, predicted_labels = torch.max(test_outputs, 1)
 
     # Test labels
-    on_device = False
-    for _, _, sample_target in test_dataloader:
-        sample_target = torch.squeeze(sample_target)
-        if not on_device:
-            sample_target = sample_target.to(network.device)
-        break
-    _, test_labels = torch.max(sample_target, 1)
+    target = torch.squeeze(target)
+    _, test_labels = torch.max(target, 1)
 
     # Accuracy
     accuracy = (predicted_labels == test_labels).sum().item() / len(test_labels)
@@ -1021,12 +1016,73 @@ def compute_spiral_decisions_data(network, test_dataloader):
     correct_indices = (predicted_labels == test_labels).nonzero().squeeze()
     wrong_indices = (predicted_labels != test_labels).nonzero().squeeze()
 
+    # For decision map boundary plot
+    meshgrid_size = 500
+    x_max = 2.0
+    arms = 4
+    eps=1e-3
+
+    ii, jj = torch.meshgrid(torch.linspace(-x_max, x_max, meshgrid_size),
+							torch.linspace(-x_max, x_max, meshgrid_size),
+							indexing="ij")
+    X_all = torch.cat([ii.unsqueeze(-1),
+					   jj.unsqueeze(-1)],
+					   dim=-1).view(-1, 2)
+    
+    y_pred = network.forward(X_all)
+    decision_map = torch.argmax(y_pred, dim=1)
+
+    for i in range(len(data)):
+        indices = (X_all[:, 0] - data[i, 0])**2 + (X_all[:, 1] - data[i, 1])**2 < eps
+        decision_map[indices] = (arms + predicted_labels[i]).long()
+    decision_map = decision_map.view(meshgrid_size, meshgrid_size).detach().cpu()
+    decision_map = decision_map.T
+
+    # Return data for plotting
     decision_data = {
-        "inputs": inputs,
+        "inputs": data,
         "test_labels": test_labels,
         "accuracy": accuracy,
         "correct_indices": correct_indices,
-        "wrong_indices": wrong_indices
+        "wrong_indices": wrong_indices,
+        "decision_map": decision_map
     }
 
     return decision_data
+
+# def compute_spiral_decisions_data(network, test_dataloader):
+#     '''
+#     Get the correct and wrong indices to plot the spiral loss landscape
+#     '''
+#     # Test batch inputs
+#     inputs = network.Input.E.activity
+
+#     # Predicted labels after training 
+#     outputs = network.Output.E.activity
+#     _, predicted_labels = torch.max(outputs, 1)
+
+#     # Test labels
+#     on_device = False
+#     for _, _, sample_target in test_dataloader:
+#         sample_target = torch.squeeze(sample_target)
+#         if not on_device:
+#             sample_target = sample_target.to(network.device)
+#         break
+#     _, test_labels = torch.max(sample_target, 1)
+
+#     # Accuracy
+#     accuracy = (predicted_labels == test_labels).sum().item() / len(test_labels)
+
+#     # Data needed for graphing
+#     correct_indices = (predicted_labels == test_labels).nonzero().squeeze()
+#     wrong_indices = (predicted_labels != test_labels).nonzero().squeeze()
+
+#     decision_data = {
+#         "inputs": inputs,
+#         "test_labels": test_labels,
+#         "accuracy": accuracy,
+#         "correct_indices": correct_indices,
+#         "wrong_indices": wrong_indices
+#     }
+
+#     return decision_data

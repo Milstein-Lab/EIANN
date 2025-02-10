@@ -1838,27 +1838,37 @@ def plot_spiral_accuracy(net, test_dataloader):
     fig.show()
 
 
-def plot_spiral_decisions(decision_data, ax=None):
+def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
     '''
-    Using data from utils/representational_analysis, plot the data to generate the spiral decisions with colored points.
-    '''
-    inputs = decision_data['inputs']
-    test_labels = decision_data['test_labels']
-    accuracy = decision_data['accuracy']
-    correct_indices = decision_data['correct_indices']
-    wrong_indices = decision_data['wrong_indices']
+    Using data from utils/representational_analysis, plot the data to generate the spiral decisions with colored points or 
+    decision boundary graph. 
 
+    graph option can be either 'scatter' or 'decision'
+    '''
     if ax is None:
         fig, axes = plt.subplots(1, 1, figsize=(5, 5))
     else:
         axes = ax
-    
-    axes.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
-    axes.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
-    axes.set_xlabel('x1')
-    axes.set_ylabel('x2')
-    axes.set_title('Predictions')
-    # axes.text(0.02, 0.95, f'Accuracy: {accuracy:.2%}', verticalalignment='top', horizontalalignment='left', transform=axes.transAxes, color='black', fontsize=11)
+
+    if graph == 'scatter':
+        inputs = decision_data['inputs']
+        test_labels = decision_data['test_labels']
+        correct_indices = decision_data['correct_indices']
+        wrong_indices = decision_data['wrong_indices']
+        
+        axes.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
+        axes.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
+        axes.set_xlabel('x1')
+        axes.set_ylabel('x2')
+        axes.set_title('Predictions')
+
+    elif graph == 'decision':
+        decision_map = decision_data['decision_map']
+
+        axes.imshow(decision_map, extent=[-2, 2, -2, 2], cmap='jet', origin='lower')
+        axes.set_xlabel('x1')
+        axes.set_ylabel('x2')
+        axes.set_title('Predictions')
 
     if ax is None:
         fig.tight_layout(rect=[0, 0, 1, 0.95]) 

@@ -1087,7 +1087,7 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
+def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
     fig = plt.figure(figsize=(15, 9))
     axes = gs.GridSpec(nrows=3, ncols=7,                        
                        left=0.049,right=1,
@@ -1129,7 +1129,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
                 # Plot spirals
                 ax = fig.add_subplot(axes[spirals_row, model_idx])
                 decision_data = data_dict[seed]['spiral_decision_data_dict']
-                pt.plot_spiral_decisions(decision_data, ax=ax)
+                pt.plot_spiral_decisions(decision_data, graph=spiral_type, ax=ax)
                 ax.set_title(model_dict["name"], pad=4)
                 ax.set_xlabel('x1')
                 ax.set_ylabel('x2')
@@ -1443,7 +1443,8 @@ def main(figure, overwrite, generate_data, recompute):
         if not os.path.exists(saved_network_path_prefix):
             saved_network_path_prefix = "C:/Users/bchen/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/spiral/"
 
-        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, 
+        # Choose spiral_type='scatter' or 'decision'
+        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter',
                                 saved_network_path_prefix=saved_network_path_prefix, save=figure_name, overwrite=overwrite)
 
     elif figure in ["all", "metrics"]:
