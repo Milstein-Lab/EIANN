@@ -109,7 +109,7 @@ Figure 4: BTSP(weight transpose + HebbWN dendI) vs sup-HebbWN
 
 ########################################################################################################
 
-def generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite=False, recompute=None):
+def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=None):
     '''
     Loads a network and saves plot-ready processed data into an hdf5 file.
 
@@ -147,10 +147,11 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite=Fal
         with h5py.File(hdf5_path, 'r') as file:
             if network_name in file.keys():
                 if seed in file[network_name].keys():
-                    if overwrite:
+                    if recompute == 'all':
                         print(f"Overwriting {network_name} {seed} in {hdf5_path}")
                         variables_to_recompute = variables_to_save                        
                     elif set(variables_to_save).issubset(file[network_name][seed].keys()) and recompute is None:
+                        print(f"Data for {network_name} {seed} exists in {hdf5_path}")
                         return
                     else:
                         print(f"Recomputing {network_name} {seed} in {hdf5_path}")
@@ -171,9 +172,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite=Fal
     print("-----------------------------------------------------------------------------")
 
     print(variables_to_recompute)
-    if len(variables_to_recompute) > 0:
-        overwrite = True
-    else:
+    if not variables_to_recompute:
         print(f"No variables to recompute for {network_name} {seed} in {hdf5_path}")
         return        
 
@@ -201,15 +200,17 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite=Fal
     ## Generate plot data
     # 1. Class-averaged activity
     if 'percent_correct' in variables_to_recompute:
-        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sort=False, export=True, export_path=hdf5_path, overwrite=overwrite)
+        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sort=False, export=True, export_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
 
     # 2. Receptive fields and metrics
     for population in network.populations.values():
         if f"metrics_dict_{population.fullname}" in variables_to_recompute:
             receptive_fields = None
             if population.name == "E" and population.fullname != "InputE":
-                receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=hdf5_path, overwrite=overwrite)
-            metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=hdf5_path, overwrite=overwrite)
+                receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=hdf5_path, overwrite=True)
+            metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=hdf5_path, overwrite=True)
 
     # Angle vs backprop
     if 'angle_vs_bp_stochastic' in variables_to_recompute:
@@ -221,7 +222,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite=Fal
         else:
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=1, constrain_params=False)
         angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history)
-        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=hdf5_path, overwrite=True)
 
     if 'angle_vs_bp' in variables_to_recompute:
         stored_history_step_size = torch.diff(network.param_history_steps)[-1]
@@ -232,48 +233,48 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite=Fal
         else:
             bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
         angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
-        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=hdf5_path, overwrite=True)
 
     # Forward vs Backward weight angle (weight symmetry)
     if 'feedback_weight_angle_history' in variables_to_recompute:
         FF_FB_angles = ut.compute_feedback_weight_angle_history(network)
-        ut.save_plot_data(network.name, network.seed, data_key='feedback_weight_angle_history', data=FF_FB_angles, file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='feedback_weight_angle_history', data=FF_FB_angles, file_path=hdf5_path, overwrite=True)
 
     # Binned dendritic state (local loss)
     if 'binned_mean_forward_dendritic_state' in variables_to_recompute:
         steps, binned_mean_forward_dendritic_state = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
         if binned_mean_forward_dendritic_state is not None:
-            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state', data=binned_mean_forward_dendritic_state, file_path=hdf5_path, overwrite=overwrite)
-            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state_steps', data=steps, file_path=hdf5_path, overwrite=overwrite)
+            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state', data=binned_mean_forward_dendritic_state, file_path=hdf5_path, overwrite=True)
+            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state_steps', data=steps, file_path=hdf5_path, overwrite=True)
 
     # Sparsity and selectivity
     if 'sparsity_history' in variables_to_recompute or 'selectivity_history' in variables_to_recompute:
         sparsity_history_dict, selectivity_history_dict = ut.compute_sparsity_selectivity_history(network, test_dataloader)
-        ut.save_plot_data(network.name, network.seed, data_key='sparsity_history', data=sparsity_history_dict, file_path=hdf5_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='selectivity_history', data=selectivity_history_dict, file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='sparsity_history', data=sparsity_history_dict, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='selectivity_history', data=selectivity_history_dict, file_path=hdf5_path, overwrite=True)
 
     # Loss and accuracy
     if any([var in variables_to_recompute for var in ['val_loss_history', 'val_accuracy_history', 'val_history_train_steps']]):
-        ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=hdf5_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=hdf5_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=hdf5_path, overwrite=True)
     
     if any([var in variables_to_recompute for var in ['test_loss_history', 'test_accuracy_history']]):
-        ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=hdf5_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=hdf5_path, overwrite=True)
 
     if 'test_accuracy_history_extended' in variables_to_recompute and 'extended' in saved_network_path:
-        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history_extended', data=network.test_accuracy_history, file_path=hdf5_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps_extended', data=network.val_history_train_steps, file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history_extended', data=network.test_accuracy_history, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps_extended', data=network.val_history_train_steps, file_path=hdf5_path, overwrite=True)
 
     # Spiral decision boundary plots
     if 'spiral_decision_data_dict' in variables_to_recompute:
         spiral_decision_data_dict = ut.compute_spiral_decisions_data(network, test_dataloader)
-        ut.save_plot_data(network.name, network.seed, data_key='spiral_decision_data_dict', data=spiral_decision_data_dict, file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, network.seed, data_key='spiral_decision_data_dict', data=spiral_decision_data_dict, file_path=hdf5_path, overwrite=True)
 
 
-def generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=False, recompute=None):
-    for model_key in all_models:
+def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=None):
+    for model_key in model_list:
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
@@ -281,7 +282,7 @@ def generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, save
         hdf5_path = f"data/plot_data_{network_name}.h5"
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
-            generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite, recompute)
+            generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute)
             gc.collect()
 
 ########################################################################################################
@@ -492,17 +493,14 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax):
 
 ########################################################################################################
 
-def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+def plot_dynamics_example(model_dict_all, config_path_prefix, saved_network_path_prefix, save=None, recompute=False):
     model_key = "bpLike_WT_hebbdend_eq"
     model_dict = model_dict_all[model_key]
     network_name = model_dict['config'].split('.')[0] + "_dynamics"
     hdf5_path = f"data/plot_data_{network_name}.h5"
 
-    # hdf5_path = "notebooks/saved_networks/test.h5"
-
     # Open hdf5 and check if the dynamics data already exists      
-    recompute = False
-    if not os.path.exists(hdf5_path) or overwrite:
+    if not os.path.exists(hdf5_path):
         recompute = True
 
     if recompute:
@@ -525,8 +523,8 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
         else:
             network = ut.load_network(saved_network_path)
         dendritic_dynamics_dict = ut.compute_dendritic_state_dynamics(network)
-        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='dendritic_dynamics_dict', data=dendritic_dynamics_dict, file_path=hdf5_path, overwrite=overwrite)
-        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='param_history_steps', data=network.param_history_steps, file_path=hdf5_path, overwrite=overwrite)
+        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='dendritic_dynamics_dict', data=dendritic_dynamics_dict, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='param_history_steps', data=network.param_history_steps, file_path=hdf5_path, overwrite=True)
 
     print("Generating figure...")
 
@@ -548,7 +546,7 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
     '''
     Figure 1: Van_BP vs bpDale(learnedI)
         -> bpDale is more structured/sparse (focus on H1E metrics)
@@ -571,7 +569,7 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
     ax_structure   = fig.add_subplot(metrics_axes[3, 3])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
     col = 0
     labels = ['A', 'B', 'C', 'D']
@@ -641,7 +639,7 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=6,                        
                        left=0.049,right=0.98,
@@ -658,7 +656,7 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
     col = 0
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
@@ -703,7 +701,7 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=3,                        
                        left=0.249,right=0.78,
@@ -722,7 +720,7 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
     col = 0
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
@@ -769,8 +767,7 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-
-def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
     '''
     Figure 1: Van_BP vs bpDale(learnedI)
         -> bpDale is more structured/sparse (focus on H1E metrics)
@@ -790,7 +787,7 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
     ax_structure   = fig.add_subplot(axes_metrics[0, 2])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
     col = 0
     for model_key in all_models:
@@ -843,7 +840,7 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=3, ncols=3,                        
                        left=0.1,right=0.9,
@@ -857,7 +854,7 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
     ax_FB_angle2 = fig.add_subplot(axes[2,1])
 
     all_models = list(dict.fromkeys(model_list1 + model_list2))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
     for i, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
@@ -889,7 +886,7 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+def compare_metrics_simple(model_dict_all, model_list, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                       
                        left=0.1,right=0.9,
@@ -907,7 +904,7 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="netwo
     pt.plot_learning_rule_diagram(axes_list=diagram_axes)
 
     all_models = list(dict.fromkeys(model_list))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
@@ -931,7 +928,7 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="netwo
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False): 
+def generate_metrics_plot(model_dict_all, model_list, config_path_prefix, saved_network_path_prefix, save=None, recompute=None): 
     # fig = plt.figure(figsize=(5.5, 4))
     fig = plt.figure(figsize=(7, 4))
 
@@ -957,7 +954,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
         hdf5_path = f"data/plot_data_{network_name}.h5"
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
-            generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite)
+            generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
             gc.collect()
 
     for i,model_key in enumerate(all_models):
@@ -1016,7 +1013,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, overwrite=False):
+def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
     fig, ax = plt.subplots(figsize=(5.5, 9))
     ax.axis('off')
 
@@ -1028,7 +1025,7 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
         hdf5_path = f"data/plot_data_{network_name}.h5"
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + network_name + f"_{seed}_extended.pkl"
-            generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite)
+            generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
             gc.collect()
 
     networks = {}
@@ -1087,7 +1084,7 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, overwrite=False):
+def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, recompute=None):
     fig = plt.figure(figsize=(15, 9))
     axes = gs.GridSpec(nrows=3, ncols=7,                        
                        left=0.049,right=1,
@@ -1101,7 +1098,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
     ax_dendstate =  fig.add_subplot(axes[2, 2])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite=overwrite)
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
     for model_idx, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
@@ -1181,7 +1178,6 @@ def images_to_pdf(image_paths, output_path):
 @click.command()
 @click.option('--figure', default=None, help='Figure to generate')
 @click.option('--overwrite', is_flag=True, default=False, help='Overwrite existing network data in plot_data.hdf5 file')
-@click.option('--generate-data', default=None, help='Generate HDF5 data files for plots')
 @click.option('--recompute', default=None, help='Recompute plot data for a particular parameter')
 
 def main(figure, overwrite, generate_data, recompute):
@@ -1334,43 +1330,16 @@ def main(figure, overwrite, generate_data, recompute):
         }
 
     saved_network_path_prefix = "/Users/ag1880/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/MNIST/"
+    config_path_prefix="network_config/mnist/"
     
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
     for model_key in model_dict_all:
         model_dict_all[model_key]["seeds"] = seeds
 
-    if recompute is not None and generate_data is None:
-        generate_data = 'all'
-        print(f"Recomputing data for {generate_data}")
-
-    if generate_data is not None:
-        config_path_prefix="network_config/mnist/"
-        saved_network_path_prefix="data/mnist/"
-        if generate_data == 'all':
-            model_list = model_dict_all.keys()
-        elif isinstance(generate_data, str):
-            model_list = [generate_data]
-        else:
-            model_list = generate_data
-        generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, overwrite, recompute)
-
-    if figure == 'table':
-        figure_name = "FigS3_table"
-        model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
-                      "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
-                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
-        generate_extended_accuracy_summary_table(model_dict_all, model_list, save=figure_name, overwrite=overwrite, saved_network_path_prefix=saved_network_path_prefix+"extended/")
-
-    if figure == 'structure':
-        figure_name = "structure"
-        model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
-        model_list_metrics = model_list_heatmaps
-        compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
-
     # Diagrams + example dynamics
     if figure == "fig1":
         figure_name = "dynamics_example_plots"
-        plot_dynamics_example(model_dict_all, save=figure_name, overwrite=overwrite)
+        plot_dynamics_example(model_dict_all, save=figure_name, recompute=recompute)
 
     # Backprop models
     if figure in ["all", "fig2"]:
@@ -1382,14 +1351,14 @@ def main(figure, overwrite, generate_data, recompute):
 
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
-        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
 
     # Analyze somaI selectivity (supplement to Fig.2)
     elif figure in ["all", "S1"]:
         model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS1_somaI"
-        compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+        compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
 
     # Analyze DendI
     elif figure in ["all", "fig3"]:
@@ -1400,20 +1369,20 @@ def main(figure, overwrite, generate_data, recompute):
         model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig3_dendI"
-        compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+        compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
 
     # S2 (Supplement to Fig.3)
     elif figure in ["all", "S2"]:
         model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS2_Ecells_bpLike"
-        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, overwrite=overwrite)
+        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
 
     # Biological learning rules (with WT/good gradients)
     elif figure in ["all","fig4"]:
         model_list = ["bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
         figure_name = "Fig4_BTSP_BCM_HebbWN"
-        compare_metrics_simple(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
+        compare_metrics_simple(model_dict_all, model_list, save=figure_name, recompute=recompute)
 
     # Supplement to Fig.4: "Supervised_HebbWN_WT_hebbdend" -> Performs badly because HWN is potentiation-only
         
@@ -1429,7 +1398,7 @@ def main(figure, overwrite, generate_data, recompute):
 
         model_list2 = ["BTSP_WT_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
         figure_name = "Fig5_WB_alignment_FA_bpLike_BTSP"
-        compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, overwrite=overwrite)
+        compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, recompute=recompute)
         # add dendstate
 
     # Supplementary Spirals Figure
@@ -1445,16 +1414,27 @@ def main(figure, overwrite, generate_data, recompute):
 
         # Choose spiral_type='scatter' or 'decision'
         generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter',
-                                saved_network_path_prefix=saved_network_path_prefix, save=figure_name, overwrite=overwrite)
+                                saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
+
+    if figure == 'table':
+        figure_name = "FigS3_table"
+        model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
+                      "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
+                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
+        generate_extended_accuracy_summary_table(model_dict_all, model_list, save=figure_name, overwrite=overwrite, saved_network_path_prefix=saved_network_path_prefix+"extended/")
+
+    if figure == 'structure':
+        figure_name = "structure"
+        model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
+        model_list_metrics = model_list_heatmaps
+        compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
 
     elif figure in ["all", "metrics"]:
         # model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_hebbTD", "bpLike_FA"]
         # model_list = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
-        # model_list = ["bpDale_learned", "bpLike_TCWN_hebbdend"]
-
         # model_list = ["bpLike_hebbTD_hebbdend_eq", "bpLike_WT_hebbdend_eq", "bpLike_hebbTD_hebbdend", "bpLike_WT_hebbdend"]
         figure_name = "metrics_all_models"
-        generate_metrics_plot(model_dict_all, model_list, save=figure_name, overwrite=overwrite)
+        generate_metrics_plot(model_dict_all, model_list, save=figure_name, recompute=recompute)
 
 
     # Combine figures into one PDF
