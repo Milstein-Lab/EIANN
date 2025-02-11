@@ -223,14 +223,24 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite=Fal
         angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history)
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=hdf5_path, overwrite=overwrite)
 
+    # Angle vs Backprop
     if 'angle_vs_bp' in variables_to_recompute:
-        stored_history_step_size = torch.diff(network.param_history_steps)[-1]
-        if 'H1SomaI' in network.populations and not ('spiral' in config_path):
-            config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
-            network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
-            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
+        stored_history_step_size = torch.diff(network.param_history_steps)[-1] # 'network' is the net in question
+
+        mnist_comparison_config_path = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
+        mnist_comparison_network = ut.build_EIANN_from_config(mnist_comparison_config_path, network_seed=network_seed)
+
+        spiral_comparison_config_path = os.path.join(os.path.dirname(config_path), "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml")
+        spiral_comparison_network = ut.build_EIANN_from_config(spiral_comparison_config_path, network_seed=network_seed)
+
+        if compare_networks(network, mnist_comparison_network):
+            network2 = mnist_comparison_network
+        elif compare_networks(network, spiral_comparison_network):
+            network2 = spiral_comparison_network
         else:
-            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=stored_history_step_size, constrain_params=False)
+            network2 = None
+        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
+        
         angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=hdf5_path, overwrite=overwrite)
 
@@ -283,6 +293,22 @@ def generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, save
             saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, overwrite, recompute)
             gc.collect()
+
+def compare_networks(net1, net2):
+    '''
+    Compare architecture of 2 networks. Assume net1 is the network in question and net2 is the comparison base.
+    '''
+    net2_state_dict = net2.state_dict()
+    net1_state_dict = {name:param for name, param in net2_state_dict.items() if name in net1.state_dict()}
+
+    if list(net1_state_dict.keys()) != list(net2_state_dict.keys()):
+        return False
+    else:
+        for param in net1_state_dict:
+            if net1_state_dict[param].shape != net2_state_dict[param].shape:
+                return False
+
+    return True
 
 ########################################################################################################
 
