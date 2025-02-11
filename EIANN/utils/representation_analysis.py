@@ -24,7 +24,7 @@ def compute_average_activity(activity, labels):
     return avg_activity
 
 
-def compute_test_activity(network, test_dataloader, sort, sorted_output_idx=None, export=False, export_path=None, overwrite=False):
+def compute_test_activity(network, test_dataloader, sort, sorted_output_idx=None):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -34,19 +34,6 @@ def compute_test_activity(network, test_dataloader, sort, sorted_output_idx=None
     :param title: str
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
-
-    if export and overwrite is False:
-        print("Loading existing activity data from file")
-
-        # Check if population activity data already exists in file
-        assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
-        percent_correct = data_utils.load_plot_data(network.name, network.seed, data_key='percent_correct', file_path=export_path)
-        average_pop_activity_dict = data_utils.load_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', file_path=export_path)
-        if percent_correct is not None and average_pop_activity_dict is not None and set(network.populations)==set(average_pop_activity_dict):
-            return percent_correct, average_pop_activity_dict    
-
-    average_pop_activity_dict = {}
-
     idx, data, targets = next(iter(test_dataloader))
     data = data.to(network.device)
     targets = targets.to(network.device)
@@ -61,6 +48,7 @@ def compute_test_activity(network, test_dataloader, sort, sorted_output_idx=None
     percent_correct = torch.round(percent_correct, decimals=2)
 
     # Compute average activity for each population
+    average_pop_activity_dict = {}
     reversed_populations = list(reversed(network.populations.values())) # start with the output population
     for population in reversed_populations:
         avg_pop_activity = torch.zeros(population.size, num_labels)
@@ -85,12 +73,6 @@ def compute_test_activity(network, test_dataloader, sort, sorted_output_idx=None
 
         average_pop_activity_dict[population.fullname] = avg_pop_activity
 
-    if export:
-        # Save data to hdf5 file
-        assert hasattr(network, 'name'), 'Network must have a name attribute to load/export data'
-        data_utils.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=export_path, overwrite=overwrite)
-        data_utils.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=export_path, overwrite=overwrite)
-    
     return percent_correct, average_pop_activity_dict
 
 
@@ -309,7 +291,7 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
             angle = compute_vector_angle(predicted_dParam, actual_dParam)
             angles[param_name].append(angle)
             if torch.isnan(angle):
-                print(f'Warning: angle is NaN at step {t}, {param_name}, t={t}, {torch.norm(predicted_dParam)}, {torch.norm(actual_dParam)}')
+                print(f'Warning: angle is NaN at step {t}, {param_name}, t={t}, Pred. norm.={torch.norm(predicted_dParam)}, Actual norm.={torch.norm(actual_dParam)}')
                 # return predicted_dParam, actual_dParam
 
         if plot:

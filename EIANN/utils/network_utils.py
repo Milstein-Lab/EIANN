@@ -210,6 +210,22 @@ def build_clone_network(network, backprop=True):
     return clone_network
 
 
+def network_architectures_match(network, comparison_network):
+    '''
+    Compare architecture of 2 networks. In order to transfer params to the comparison_network, the comparison_network must have at least the same parameters as the original network.
+    Any additional parameters in the original network will be ignored.
+
+    E.g. if the original network has a DendI population, it will be ignored in the comparison, but if the comparison network has a neuron population not present in the original 
+    network the networks don't match and the function will return False.
+    '''
+    for name, param in comparison_network.state_dict().items():
+        if name not in network.state_dict():
+            return False
+        elif network.state_dict()[name].shape != param.shape:
+            return False
+    return True
+
+
 def change_learning_rule_to_backprop(projection_config):
     '''
     Recursively update the learning rule to 'Backprop' for all projections that have a learning rule specified.

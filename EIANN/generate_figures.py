@@ -198,13 +198,14 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
     ##################################################################
     ## Generate plot data
-    # 1. Class-averaged activity
+
+    # Class-averaged activity
     if 'percent_correct' in variables_to_recompute:
-        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sort=False, export=True, export_path=hdf5_path, overwrite=True)
+        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sort=False)
         ut.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
 
-    # 2. Receptive fields and metrics
+    # Receptive fields and metrics
     for population in network.populations.values():
         if f"metrics_dict_{population.fullname}" in variables_to_recompute:
             receptive_fields = None
@@ -212,39 +213,27 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
                 receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=hdf5_path, overwrite=True)
             metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=hdf5_path, overwrite=True)
 
-    # Angle vs backprop
-    if 'angle_vs_bp_stochastic' in variables_to_recompute:
-        stored_history_step_size = torch.diff(network.param_history_steps)[-1]
-        if 'H1SomaI' in network.populations and not ('spiral' in config_path):
-            config_path2 = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
-            network2 = ut.build_EIANN_from_config(config_path2, network_seed=network_seed)
-            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=1, constrain_params=False)
-        else:
-            bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, batch_size=1, constrain_params=False)
-        angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history)
-        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=hdf5_path, overwrite=True)
-
     # Angle vs Backprop
-    if 'angle_vs_bp' in variables_to_recompute:
-        stored_history_step_size = torch.diff(network.param_history_steps)[-1] # 'network' is the net in question
+    if set(['angle_vs_bp','angle_vs_bp_stochastic']).intersection(variables_to_recompute):
+        stored_history_step_size = torch.diff(network.param_history_steps)[-1]
+        if 'mnist' in config_path:
+            comparison_config_path = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
+        elif 'spiral' in config_path:
+            comparison_config_path = os.path.join(os.path.dirname(config_path), "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml")
+        comparison_network = ut.build_EIANN_from_config(comparison_config_path, network_seed=network_seed)
+        if not ut.network_architectures_match(network, comparison_network):
+            comparison_network = None
+            print("WARNING: Network architectures do not match. Computing angle vs a default Backprop network.")
 
-        # BUG: The problem here is that config_path_prefix defaults to network_config/spiral (for spiral function) and so it cant find the mnist yaml there.
-        mnist_comparison_config_path = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
-        mnist_comparison_network = ut.build_EIANN_from_config(mnist_comparison_config_path, network_seed=network_seed)
-
-        spiral_comparison_config_path = os.path.join(os.path.dirname(config_path), "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml")
-        spiral_comparison_network = ut.build_EIANN_from_config(spiral_comparison_config_path, network_seed=network_seed)
-
-        if compare_networks(network, mnist_comparison_network):
-            network2 = mnist_comparison_network
-        elif compare_networks(network, spiral_comparison_network):
-            network2 = spiral_comparison_network
-        else:
-            network2 = None
-        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, network2, batch_size=stored_history_step_size, constrain_params=False)
-        
+        # Compare overall angle after many train steps (stored_history_step_size)
+        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, comparison_network, batch_size=stored_history_step_size, constrain_params=False)
         angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=hdf5_path, overwrite=True)
+        
+        # Compare angles for one train step (batch_size=1)
+        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, comparison_network, batch_size=1, constrain_params=False)
+        angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history)
+        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=hdf5_path, overwrite=True)
 
     # Forward vs Backward weight angle (weight symmetry)
     if 'feedback_weight_angle_history' in variables_to_recompute:
@@ -265,12 +254,12 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='selectivity_history', data=selectivity_history_dict, file_path=hdf5_path, overwrite=True)
 
     # Loss and accuracy
-    if any([var in variables_to_recompute for var in ['val_loss_history', 'val_accuracy_history', 'val_history_train_steps']]):
+    if set(['val_loss_history', 'val_accuracy_history', 'val_history_train_steps']).intersection(variables_to_recompute):
         ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=hdf5_path, overwrite=True)
     
-    if any([var in variables_to_recompute for var in ['test_loss_history', 'test_accuracy_history']]):
+    if set(['test_loss_history', 'test_accuracy_history']).intersection(variables_to_recompute):
         ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=hdf5_path, overwrite=True)
 
@@ -296,24 +285,6 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute)
             gc.collect()
 
-def compare_networks(net1, net2):
-    '''
-    Compare architecture of 2 networks. 
-    
-    :param net1: network in question
-    :param net2: base network for comparison (bpDale of mnist or spiral)
-    '''
-    net2_state_dict = net2.state_dict()
-    net1_state_dict = {name:param for name, param in net2_state_dict.items() if name in net1.state_dict()}
-
-    if list(net1_state_dict.keys()) != list(net2_state_dict.keys()):
-        return False
-    else:
-        for param in net1_state_dict:
-            if net1_state_dict[param].shape != net2_state_dict[param].shape:
-                return False
-
-    return True
 
 ########################################################################################################
 
@@ -1207,7 +1178,6 @@ def images_to_pdf(image_paths, output_path):
 
 @click.command()
 @click.option('--figure', default=None, help='Figure to generate')
-# @click.option('--overwrite', is_flag=True, default=False, help='Overwrite existing network data in plot_data.hdf5 file')
 @click.option('--recompute', default=None, help='Recompute plot data for a particular parameter')
 
 def main(figure, recompute):
@@ -1450,7 +1420,7 @@ def main(figure, recompute):
         figure_name = "Suppl1_Spirals"
 
         # Choose spiral_type='scatter' or 'decision'
-        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix='network_config/spiral',
+        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix='network_config/spiral/',
                                 saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
 
     if figure == 'table':
@@ -1459,7 +1429,7 @@ def main(figure, recompute):
         model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
                       "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
                       "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
-        generate_extended_accuracy_summary_table(model_dict_all, model_list, config_path_prefix=config_path_prefix, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
+        generate_extended_accuracy_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
 
     if figure == 'structure':
         saved_network_path_prefix += "MNIST/"
@@ -1476,6 +1446,8 @@ def main(figure, recompute):
         figure_name = "metrics_all_models"
         generate_metrics_plot(model_dict_all, model_list, save=figure_name, recompute=recompute)
 
+    else:
+        print("Figure not found!")
 
     # Combine figures into one PDF
     directory = "figures/"
