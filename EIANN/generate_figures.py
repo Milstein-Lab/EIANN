@@ -519,7 +519,7 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax):
 
 ########################################################################################################
 
-def plot_dynamics_example(model_dict_all, config_path_prefix, saved_network_path_prefix, save=None, recompute=False):
+def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=False):
     model_key = "bpLike_WT_hebbdend_eq"
     model_dict = model_dict_all[model_key]
     network_name = model_dict['config'].split('.')[0] + "_dynamics"
@@ -572,7 +572,7 @@ def plot_dynamics_example(model_dict_all, config_path_prefix, saved_network_path
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
+def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     '''
     Figure 1: Van_BP vs bpDale(learnedI)
         -> bpDale is more structured/sparse (focus on H1E metrics)
@@ -665,7 +665,7 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
+def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=6,                        
                        left=0.049,right=0.98,
@@ -727,7 +727,7 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
+def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=3,                        
                        left=0.249,right=0.78,
@@ -793,7 +793,7 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
+def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     '''
     Figure 1: Van_BP vs bpDale(learnedI)
         -> bpDale is more structured/sparse (focus on H1E metrics)
@@ -866,7 +866,7 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
+def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=3, ncols=3,                        
                        left=0.1,right=0.9,
@@ -912,7 +912,7 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_metrics_simple(model_dict_all, model_list, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
+def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                       
                        left=0.1,right=0.9,
@@ -954,7 +954,7 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix, saved
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_metrics_plot(model_dict_all, model_list, config_path_prefix, saved_network_path_prefix, save=None, recompute=None): 
+def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None): 
     # fig = plt.figure(figsize=(5.5, 4))
     fig = plt.figure(figsize=(7, 4))
 
@@ -1039,7 +1039,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix, saved_
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_path_prefix, saved_network_path_prefix, save=None, recompute=None):
+def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig, ax = plt.subplots(figsize=(5.5, 9))
     ax.axis('off')
 
@@ -1355,9 +1355,15 @@ def main(figure, overwrite, generate_data, recompute):
 
         }
 
-    saved_network_path_prefix = "/Users/ag1880/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/MNIST/"
-    config_path_prefix="network_config/mnist/"
+
+    if os.name == "posix":
+        username = os.environ.get("USER")
+        saved_network_path_prefix = f"/Users/{username}/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/"
+    elif os.name == "nt":
+        username = os.environ.get("USERNAME")
+        saved_network_path_prefix = f"C:/Users/{username}/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/MNIST/"
     
+
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
     for model_key in model_dict_all:
         model_dict_all[model_key]["seeds"] = seeds
@@ -1369,18 +1375,18 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Backprop models
     if figure in ["all", "fig2"]:
+        saved_network_path_prefix += "MNIST/"
         model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
         # model_list_heatmaps = ["bpLike_fixedTD_hebbdend", "bpLike_WT_hebbdend", "bpLike_TCWN_hebbdend"]
         # model_list_heatmaps = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
-
         # model_list_heatmaps = ["vanBP", "bpDale_learned", "bpLike_WT_hebbdend"]
-
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
         compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
 
     # Analyze somaI selectivity (supplement to Fig.2)
     elif figure in ["all", "S1"]:
+        saved_network_path_prefix += "MNIST/"
         model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS1_somaI"
@@ -1388,6 +1394,7 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Analyze DendI
     elif figure in ["all", "fig3"]:
+        saved_network_path_prefix += "MNIST/"
         model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
         # model_list_metrics = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps + ["bpDale_fixed"]
@@ -1399,6 +1406,7 @@ def main(figure, overwrite, generate_data, recompute):
 
     # S2 (Supplement to Fig.3)
     elif figure in ["all", "S2"]:
+        saved_network_path_prefix += "MNIST/"
         model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS2_Ecells_bpLike"
@@ -1406,6 +1414,7 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Biological learning rules (with WT/good gradients)
     elif figure in ["all","fig4"]:
+        saved_network_path_prefix += "MNIST/"
         model_list = ["bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
         figure_name = "Fig4_BTSP_BCM_HebbWN"
         compare_metrics_simple(model_dict_all, model_list, save=figure_name, recompute=recompute)
@@ -1419,6 +1428,7 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Forward (W) vs backward (B) alignment angle
     elif figure in ["all", "fig5"]:
+        saved_network_path_prefix += "MNIST/"
         model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend"]
         # model_list2 = ["bpLike_WT_hebbdend_eq", "bpLike_fixedTD_hebbdend_eq", "bpLike_hebbTD_hebbdend_eq"]
 
@@ -1429,33 +1439,33 @@ def main(figure, overwrite, generate_data, recompute):
 
     # Supplementary Spirals Figure
     elif figure in ["all", "suppl-spiral"]:
+        saved_network_path_prefix += "spiral/"
         model_list_heatmaps = ["vanBP_0_hidden_learned_bias", "vanBP_2_hidden_learned_bias", "vanBP_2_hidden_zero_bias", 
                         "bpDale_learned_bias", "bpLike_DTC_learned_bias", "DTP_learned_bias"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Suppl1_Spirals"
-
-        saved_network_path_prefix = "/Users/ag1880/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/spiral/"
-        if not os.path.exists(saved_network_path_prefix):
-            saved_network_path_prefix = "C:/Users/bchen/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/spiral/"
 
         # Choose spiral_type='scatter' or 'decision'
         generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter',
                                 saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
 
     if figure == 'table':
+        saved_network_path_prefix += "MNIST/"
         figure_name = "FigS3_table"
         model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
                       "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
                       "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
-        generate_extended_accuracy_summary_table(model_dict_all, model_list, save=figure_name, overwrite=overwrite, saved_network_path_prefix=saved_network_path_prefix+"extended/")
+        generate_extended_accuracy_summary_table(model_dict_all, model_list, config_path_prefix=config_path_prefix, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
 
     if figure == 'structure':
+        saved_network_path_prefix += "MNIST/"
         figure_name = "structure"
         model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
 
     elif figure in ["all", "metrics"]:
+        saved_network_path_prefix += "MNIST/"
         # model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_hebbTD", "bpLike_FA"]
         # model_list = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
         # model_list = ["bpLike_hebbTD_hebbdend_eq", "bpLike_WT_hebbdend_eq", "bpLike_hebbTD_hebbdend", "bpLike_WT_hebbdend"]
