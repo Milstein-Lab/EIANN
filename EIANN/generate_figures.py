@@ -228,6 +228,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     if 'angle_vs_bp' in variables_to_recompute:
         stored_history_step_size = torch.diff(network.param_history_steps)[-1] # 'network' is the net in question
 
+        # BUG: The problem here is that config_path_prefix defaults to network_config/spiral (for spiral function) and so it cant find the mnist yaml there.
         mnist_comparison_config_path = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
         mnist_comparison_network = ut.build_EIANN_from_config(mnist_comparison_config_path, network_seed=network_seed)
 
@@ -297,7 +298,10 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
 
 def compare_networks(net1, net2):
     '''
-    Compare architecture of 2 networks. Assume net1 is the network in question and net2 is the comparison base.
+    Compare architecture of 2 networks. 
+    
+    :param net1: network in question
+    :param net2: base network for comparison (bpDale of mnist or spiral)
     '''
     net2_state_dict = net2.state_dict()
     net1_state_dict = {name:param for name, param in net2_state_dict.items() if name in net1.state_dict()}
@@ -1203,10 +1207,10 @@ def images_to_pdf(image_paths, output_path):
 
 @click.command()
 @click.option('--figure', default=None, help='Figure to generate')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite existing network data in plot_data.hdf5 file')
+# @click.option('--overwrite', is_flag=True, default=False, help='Overwrite existing network data in plot_data.hdf5 file')
 @click.option('--recompute', default=None, help='Recompute plot data for a particular parameter')
 
-def main(figure, overwrite, generate_data, recompute):
+def main(figure, recompute):
     model_dict_all = {
             ##########################
             # Backprop models
@@ -1361,7 +1365,7 @@ def main(figure, overwrite, generate_data, recompute):
         saved_network_path_prefix = f"/Users/{username}/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/"
     elif os.name == "nt":
         username = os.environ.get("USERNAME")
-        saved_network_path_prefix = f"C:/Users/{username}/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/MNIST/"
+        saved_network_path_prefix = f"C:/Users/{username}/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/"
     
 
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
@@ -1446,7 +1450,7 @@ def main(figure, overwrite, generate_data, recompute):
         figure_name = "Suppl1_Spirals"
 
         # Choose spiral_type='scatter' or 'decision'
-        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter',
+        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix='network_config/spiral',
                                 saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
 
     if figure == 'table':
