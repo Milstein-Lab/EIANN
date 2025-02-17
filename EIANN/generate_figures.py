@@ -633,6 +633,7 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
                 plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity)
                 plot_structure_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure)
 
+            label = None
             ax.annotate(label, xy=(0.5, 0.5), xycoords='figure fraction', fontsize=12, weight='bold')
 
     if save is not None:
@@ -1086,6 +1087,12 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
 
 
 def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, recompute=None):
+    '''
+    Plotting function for spiral dataset.
+    Parameter ```spiral_type``` can be:
+    - 'scatter': datapoints with incorrect preductions marked in red
+    - 'decison': decision boundary map of the network's predictions
+    '''
     fig = plt.figure(figsize=(15, 9))
     axes = gs.GridSpec(nrows=3, ncols=7,                        
                        left=0.049,right=1,
@@ -1312,7 +1319,7 @@ def main(figure, recompute):
                                             "name": "Vanilla Backprop 2-Hidden (Learned Bias)"},
 
             "vanBP_2_hidden_zero_bias": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config_complete_optimized.yaml",
-                                        "color": "green",
+                                        "color": "olive",
                                         "name": "Vanilla Backprop 2-Hidden (Zero Bias)"},
 
             "bpDale_learned_bias": {"config": "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
@@ -1324,7 +1331,7 @@ def main(figure, recompute):
                                         "name": "Backprop Like (DTC) (Learned Bias)"},
 
             "DTP_learned_bias": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
-                                "color": "brown",
+                                "color": "blue",
                                 "name": "DTP (Learned Bias)"},
 
         }

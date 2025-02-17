@@ -11800,6 +11800,114 @@ def update_spiral_config_2_hidden_DTP_fixed_SomaI_learned_bias(x, context):
     context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = \
         (Output_I_Output_I_init_weight_scale,)
 
+def update_spiral_config_2_hidden_DTP_fixed_DendI_fixed_SomaI_learned_bias(x, context):
+    """
+    :param x:
+    :param context:
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    DendI_size_fraction = param_dict['DendI_size_fraction']
+    H1_DendI_size = int(DendI_size_fraction * context.layer_config['H1']['E']['size'])
+    H2_DendI_size = int(DendI_size_fraction * context.layer_config['H2']['E']['size'])
+    
+    context.layer_config['H1']['DendI']['size'] = H1_DendI_size
+    context.layer_config['H2']['DendI']['size'] = H2_DendI_size
+    
+    # Bias learning rates
+    H_E_bias_learning_rate = param_dict['H_E_bias_learning_rate']
+    Output_E_bias_learning_rate = param_dict['Output_E_bias_learning_rate']
+    
+    H_E_E_learning_rate = param_dict['H_E_E_learning_rate']
+    H_E_DendI_learning_rate = param_dict['H_E_DendI_learning_rate']
+    
+    H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
+    H1_E_H2_E_weight_scale = (param_dict['H1_E_H2_E_weight_scale'] *
+                              (math.sqrt(context.layer_config['H1']['E']['size']) /
+                               math.sqrt(context.layer_config['H2']['E']['size'])))
+    H1_E_H1_SomaI_init_weight_scale = param_dict['H1_E_H1_SomaI_init_weight_scale']
+    H1_SomaI_H1_E_init_weight_scale = param_dict['H1_SomaI_H1_E_init_weight_scale']
+    H1_SomaI_Input_E_init_weight_scale = param_dict['H1_SomaI_Input_E_init_weight_scale']
+    H1_SomaI_H1_SomaI_init_weight_scale = param_dict['H1_SomaI_H1_SomaI_init_weight_scale']
+    
+    # H1_DendI_H1_E_weight_scale = (param_dict['H1_DendI_H1_E_weight_scale'] *
+    #                               math.sqrt(context.layer_config['H1']['E']['size']) / 2)
+    # H1_DendI_H1_DendI_weight_scale = (param_dict['H1_DendI_H1_DendI_weight_scale'] *
+    #                                   math.sqrt(context.layer_config['H1']['DendI']['size']) / 2)
+    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale']
+    
+    H2_E_H1_E_init_weight_scale = param_dict['H2_E_H1_E_init_weight_scale']
+    H2_E_Output_E_weight_scale = (param_dict['H2_E_Output_E_weight_scale'] *
+                                  (math.sqrt(context.layer_config['H2']['E']['size']) /
+                                   math.sqrt(context.layer_config['Output']['E']['size'])))
+    H2_E_H2_SomaI_init_weight_scale = param_dict['H2_E_H2_SomaI_init_weight_scale']
+    H2_SomaI_H2_E_init_weight_scale = param_dict['H2_SomaI_H2_E_init_weight_scale']
+    H2_SomaI_H1_E_init_weight_scale = param_dict['H2_SomaI_H1_E_init_weight_scale']
+    H2_SomaI_H2_SomaI_init_weight_scale = param_dict['H2_SomaI_H2_SomaI_init_weight_scale']
+    
+    # H2_DendI_H2_E_weight_scale = (param_dict['H2_DendI_H2_E_weight_scale'] *
+    #                               math.sqrt(context.layer_config['H2']['E']['size']) / 2)
+    # H2_DendI_H2_DendI_weight_scale = (param_dict['H2_DendI_H2_DendI_weight_scale'] *
+    #                                   math.sqrt(context.layer_config['H2']['DendI']['size']) / 2)
+    H2_E_H2_DendI_init_weight_scale = param_dict['H2_E_H2_DendI_init_weight_scale']
+    
+    Output_E_H2_E_init_weight_scale = param_dict['Output_E_H2_E_init_weight_scale']
+    Output_E_H2_E_learning_rate = param_dict['Output_E_H2_E_learning_rate']
+    
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_H2_E_init_weight_scale = param_dict['Output_I_H2_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+    
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_E_learning_rate
+    
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['E']['H1']['DendI']['weight_init_args'] = (H1_E_H1_DendI_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['DendI']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_DendI_learning_rate
+    
+    context.layer_config['H1']['E']['bias_learning_rule_kwargs']['learning_rate'] = H_E_bias_learning_rate
+    context.projection_config['H1']['E']['H2']['E']['weight_constraint_kwargs']['scale'] = (
+        H1_E_H2_E_weight_scale)
+    
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_SomaI_Input_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_init_args'] = (H1_SomaI_H1_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_SomaI_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_E_H1_E_init_weight_scale,)
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_E_learning_rate
+    
+    context.projection_config['H2']['E']['H2']['SomaI']['weight_init_args'] = (H2_E_H2_SomaI_init_weight_scale,)
+    
+    context.projection_config['H2']['E']['H2']['DendI']['weight_init_args'] = (H2_E_H2_DendI_init_weight_scale,)
+    context.projection_config['H2']['E']['H2']['DendI']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_DendI_learning_rate
+    
+    context.layer_config['H2']['E']['bias_learning_rule_kwargs']['learning_rate'] = H_E_bias_learning_rate
+    context.projection_config['H2']['E']['Output']['E']['weight_constraint_kwargs']['scale'] = (
+        H2_E_Output_E_weight_scale)
+    
+    context.projection_config['H2']['SomaI']['H1']['E']['weight_init_args'] = (H2_SomaI_H1_E_init_weight_scale,)
+    context.projection_config['H2']['SomaI']['H2']['E']['weight_init_args'] = (H2_SomaI_H2_E_init_weight_scale,)
+    context.projection_config['H2']['SomaI']['H2']['SomaI']['weight_init_args'] = (H2_SomaI_H2_SomaI_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_H2_E_learning_rate
+    context.layer_config['Output']['E']['bias_learning_rule_kwargs']['learning_rate'] = Output_E_bias_learning_rate
+    
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
+        (Output_E_Output_I_init_weight_scale,)
+    
+    context.projection_config['Output']['SomaI']['H2']['E']['weight_init_args'] = (Output_I_H2_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_init_args'] = \
+        (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = \
+        (Output_I_Output_I_init_weight_scale,)
+
 
 def update_spiral_config_2_hidden_dend_EI_contrast_fixed_bias(x, context):
     '''
