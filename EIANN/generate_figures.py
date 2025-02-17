@@ -1348,7 +1348,7 @@ def main(figure, recompute):
         plot_dynamics_example(model_dict_all, save=figure_name, recompute=recompute)
 
     # Backprop models
-    if figure in ["all", "fig2"]:
+    elif figure in ["all", "fig2"]:
         saved_network_path_prefix += "MNIST/"
         model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
         # model_list_heatmaps = ["bpLike_fixedTD_hebbdend", "bpLike_WT_hebbdend", "bpLike_TCWN_hebbdend"]
@@ -1423,7 +1423,7 @@ def main(figure, recompute):
         generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix='network_config/spiral/',
                                 saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
 
-    if figure == 'table':
+    elif figure == 'table':
         saved_network_path_prefix += "MNIST/"
         figure_name = "FigS3_table"
         model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
@@ -1431,7 +1431,7 @@ def main(figure, recompute):
                       "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
         generate_extended_accuracy_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
 
-    if figure == 'structure':
+    elif figure == 'structure':
         saved_network_path_prefix += "MNIST/"
         figure_name = "structure"
         model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
