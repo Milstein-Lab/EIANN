@@ -222,16 +222,18 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
             comparison_config_path = os.path.join(os.path.dirname(config_path), "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml")
         comparison_network = ut.build_EIANN_from_config(comparison_config_path, network_seed=network_seed)
         if not ut.network_architectures_match(network, comparison_network):
+            print("WARNING: Network architectures do not match. Ignoring comparison network and computing angle vs the same network with Backprop conversion.")
+            print(f"Network 1: {config_path}")
+            print(f"Network 2: {comparison_config_path}")
             comparison_network = None
-            print("WARNING: Network architectures do not match. Computing angle vs a default Backprop network.")
 
         # Compare overall angle after many train steps (stored_history_step_size)
-        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, comparison_network, batch_size=stored_history_step_size, constrain_params=False)
+        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, comparison_network, batch_size=stored_history_step_size)
         angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=hdf5_path, overwrite=True)
         
         # Compare angles for one train step (batch_size=1)
-        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, comparison_network, batch_size=1, constrain_params=False)
+        bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, comparison_network, batch_size=1)
         angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history)
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=hdf5_path, overwrite=True)
 
@@ -455,7 +457,7 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True):
     ax.hlines(90, -len(train_steps)/20, len(train_steps), color='gray', linewidth=0.5, alpha=0.1)
     ax.set_xlabel('Training step')
     ax.set_ylabel('Angle vs BP')
-    ax.set_ylim([0,max(100, np.nanmax(avg_angle+error))])
+    ax.set_ylim([-5,max(100, np.nanmax(avg_angle+error))])
     # ax.set_xlim([-len(train_steps)/20, len(train_steps)])
     ax.set_yticks(np.arange(0, 101, 30))
 
@@ -487,7 +489,7 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax):
     # ax.set_yticks(np.arange(0, 91, 30))
     # ax.set_xlim([-1000,20000])
     ax.set_xlabel('Training step')
-    ax.set_ylim([0,100])
+    ax.set_ylim([-5,100])
     ax.set_xlim([-1000,20000])
     ax.set_yticks(np.arange(0, 101, 30))
 
@@ -504,7 +506,7 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
     if not os.path.exists(hdf5_path):
         recompute = True
 
-    if recompute:
+    if recompute in ['all', 'dendritic_dynamics_dict']:
         print(f"Computing dynamics for {network_name}...")
         saved_network_path = saved_network_path_prefix + "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_66049_257_complete_dynamics.pkl"        
         if not os.path.exists(saved_network_path):
@@ -1329,7 +1331,7 @@ def main(figure, recompute):
 
         }
 
-
+    # Set path to Box data directory (default path based on OS)
     if os.name == "posix":
         username = os.environ.get("USER")
         saved_network_path_prefix = f"/Users/{username}/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/"
@@ -1356,7 +1358,7 @@ def main(figure, recompute):
         # model_list_heatmaps = ["vanBP", "bpDale_learned", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
-        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
+        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Analyze somaI selectivity (supplement to Fig.2)
     elif figure in ["all", "S1"]:
@@ -1364,7 +1366,7 @@ def main(figure, recompute):
         model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS1_somaI"
-        compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
+        compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Analyze DendI
     elif figure in ["all", "fig3"]:
@@ -1376,7 +1378,7 @@ def main(figure, recompute):
         model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig3_dendI"
-        compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
+        compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # S2 (Supplement to Fig.3)
     elif figure in ["all", "S2"]:
@@ -1384,14 +1386,14 @@ def main(figure, recompute):
         model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS2_Ecells_bpLike"
-        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
+        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Biological learning rules (with WT/good gradients)
     elif figure in ["all","fig4"]:
         saved_network_path_prefix += "MNIST/"
         model_list = ["bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
         figure_name = "Fig4_BTSP_BCM_HebbWN"
-        compare_metrics_simple(model_dict_all, model_list, save=figure_name, recompute=recompute)
+        compare_metrics_simple(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, ecompute=recompute)
 
     # Supplement to Fig.4: "Supervised_HebbWN_WT_hebbdend" -> Performs badly because HWN is potentiation-only
         
@@ -1408,7 +1410,7 @@ def main(figure, recompute):
 
         model_list2 = ["BTSP_WT_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
         figure_name = "Fig5_WB_alignment_FA_bpLike_BTSP"
-        compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, recompute=recompute)
+        compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
         # add dendstate
 
     # Supplementary Spirals Figure
@@ -1428,7 +1430,8 @@ def main(figure, recompute):
         figure_name = "FigS3_table"
         model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
                       "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
-                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
+                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
+                      ]
         generate_extended_accuracy_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
 
     if figure == 'structure':
@@ -1436,7 +1439,7 @@ def main(figure, recompute):
         figure_name = "structure"
         model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
-        compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, recompute=recompute)
+        compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     elif figure in ["all", "metrics"]:
         saved_network_path_prefix += "MNIST/"
@@ -1444,7 +1447,7 @@ def main(figure, recompute):
         # model_list = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
         # model_list = ["bpLike_hebbTD_hebbdend_eq", "bpLike_WT_hebbdend_eq", "bpLike_hebbTD_hebbdend", "bpLike_WT_hebbdend"]
         figure_name = "metrics_all_models"
-        generate_metrics_plot(model_dict_all, model_list, save=figure_name, recompute=recompute)
+        generate_metrics_plot(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     else:
         print("Figure not found!")
