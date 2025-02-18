@@ -123,10 +123,8 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         test_network = network_utils.build_clone_network(network2, backprop=False)
         if "Backprop" in str(test_network.backward_methods):
             assert test_network.backward_steps > 0, "Backprop network must have backward_steps>0!"
-
     test_network.batch_size = batch_size
     test_network.constrain_params = constrain_params
-    # test_network.reset_history()
 
     # Align param_history and prev_param_history (exclude initial params)
     if len(network.prev_param_history)==0: # if interval step is 1
@@ -139,9 +137,9 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         param_history = network.param_history
         param_history_steps = network.param_history_steps
 
-    # forward_E_params = ["H1E_InputE", "H2E_H1E", "OutputE_H2E"]
+    # Create a list of all the E-to-E projections to compare
     forward_E_params = []
-    for proj_name, param in network.projections.items(): # Create a list of all the E-to-E projections to compare
+    for proj_name, param in network.projections.items(): 
         pre_name, post_name = proj_name.split('_')
         if pre_name[-1]=='E' and post_name[-1]=='E' and param.weight.is_learned:
             forward_E_params.append(proj_name)
@@ -156,8 +154,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     for t in tqdm(range(len(param_history))):  
         # Load params into network
         state_dict = prev_param_history[t]
-        if network2 is not None:
-            # Select only params that are in both networks
+        if network2 is not None: # Select only params that are in both networks
             state_dict = {name:param for name,param in state_dict.items() if name in test_network.state_dict()}
         test_network.load_state_dict(state_dict)
         test_network.prev_param_history.append(copy.deepcopy(state_dict))
@@ -167,17 +164,16 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
             sample_idx = network.sample_order[param_history_steps[t]:param_history_steps[t]+batch_size]            
             sample_data = data[sample_idx]
             sample_target = target[sample_idx]
-
         output = test_network.forward(sample_data)
         loss = test_network.criterion(output, sample_target)   
 
-        # Compute backward pass update
+        # Compute backward pass param update
         if network2 is None:
             # Regular backprop update
             test_network.zero_grad()
             loss.backward() 
             test_network.optimizer.step()    
-            if constrain_params==True:
+            if test_network.constrain_params==True:
                 test_network.constrain_weights_and_biases()
         else:
             # Backward update specified by learning rules in network2
@@ -191,7 +187,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
                         population.bias_learning_rule.step()
                     for projection in population:
                         projection.learning_rule.step()
-            if constrain_params is None or constrain_params==True:
+            if test_network.constrain_params is None or test_network.constrain_params==True:
                 test_network.constrain_weights_and_biases()
 
         new_state_dict = test_network.state_dict() 
@@ -244,13 +240,14 @@ def compute_vector_angle(vector1, vector2):
     '''
     Compute the angle between two vectors.
     '''
+    vector1, vector2 = vector1.double(), vector2.double() # increase the precision to reduce floating point errors
     dot_product = torch.dot(vector1, vector2)
     norm_product = torch.norm(vector1) * torch.norm(vector2)
     cos_angle = dot_product / norm_product
     cos_angle = torch.clamp(cos_angle, -1.0, 1.0)  # clamp to avoid floating point rounding errors
     angle_rad = torch.acos(cos_angle)
     angle_deg = torch.rad2deg(angle_rad)
-    return angle_deg
+    return angle_deg.type(torch.float32)
 
 
 def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plot=False, binarize=False, only_updated_params=False):
@@ -976,6 +973,7 @@ def compute_dendritic_state_dynamics(network):
         dendritic_dynamics_dict[key] = {k: v.detach().clone().numpy() for k, v in value.items() if v is not None}
     return dendritic_dynamics_dict
 
+
 def compute_spiral_decisions_data(network, test_dataloader):
     '''
     Get the correct and wrong indices to plot the spiral loss landscape (both ways)
@@ -1031,6 +1029,7 @@ def compute_spiral_decisions_data(network, test_dataloader):
     }
 
     return decision_data
+
 
 # def compute_spiral_decisions_data(network, test_dataloader):
 #     '''
