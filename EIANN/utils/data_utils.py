@@ -384,10 +384,11 @@ def get_spiral_dataloaders(batch_size=1, points_per_spiral_arm=2000, seed=0):
     test_data = generate_spiral_data(arm_size=int(0.15*points_per_spiral_arm), seed=seed+2)
 
     data_generator = torch.Generator().manual_seed(seed)
-    if batch_size == 'full_dataset':
+    if batch_size in ['all', 'full_dataset']:
         batch_size = len(train_data)
-
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, generator=data_generator)
+        train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=False, generator=data_generator)
+    else:
+        train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, generator=data_generator)
     val_loader = DataLoader(val_data, batch_size=len(val_data), shuffle=False, num_workers=0)
     test_loader = DataLoader(test_data, batch_size=len(test_data), shuffle=False, num_workers=0)
 

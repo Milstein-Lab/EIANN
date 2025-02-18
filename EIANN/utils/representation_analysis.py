@@ -162,7 +162,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
         test_network.load_state_dict(state_dict)
         test_network.prev_param_history.append(copy.deepcopy(state_dict))
  
-        # Compute forward pass
+        # Compute forward pass (using the same data sample order stored in the original network)
         if batch_size is not None:
             sample_idx = network.sample_order[param_history_steps[t]:param_history_steps[t]+batch_size]            
             sample_data = data[sample_idx]
