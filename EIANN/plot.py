@@ -848,8 +848,16 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, population=None, ax=None, cbar=True):
-
+def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, population=None, title=None, ax=None, cbar=True):
+    """
+    Plot the average population activity from a data dict.
+    :param average_pop_activity_dict: dict of average population activity
+    :param sort: whether to sort the data by population name
+    :param population: (optional) population to plot. Defaults to the first population in the data dict
+    :param title: (optional) title of the plot
+    :param ax: (optional) matplotlib axis to plot on
+    :param cbar: (optional) whether to include a colorbar
+    """
     if population is None:
         # Include only last population in the data dict
         population = list(average_pop_activity_dict.keys())[0]
@@ -888,14 +896,19 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
         _ax.set_xlabel('Labels')
         _ax.set_ylabel(f'{pop_name} unit')
 
+        if title is not None:
+            if type(title) == str and title != '':
+                _ax.set_title(f'Average activity - {pop_name}\n{title}')
+            else:
+                _ax.set_title(f'Average activity - {pop_name}')
+
         if ax is None:
             fig.show()
         elif isinstance(population, list) and len(population)>1:
             raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
-            
 
-def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_output_idx=None, title=None,
-                        export=False, overwrite=False, ax=None):
+
+def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_output_idx=None, title=None, ax=None):
     """
     Compute total accuracy (% correct) on given dataset
     :param network:
@@ -904,48 +917,12 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     :param sorted_output_idx: tensor of int
     :param title: str
     """
-
     percent_correct, average_pop_activity_dict = (
-        ut.compute_test_activity(network, test_dataloader, sort=True, sorted_output_idx=sorted_output_idx, export=export,
-                                 overwrite=overwrite))
+        ut.compute_test_activity(network, test_dataloader, sort=True, sorted_output_idx=sorted_output_idx))
     print(f'Batch accuracy = {percent_correct}%')
 
-    plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax)
+    plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, title=title, ax=ax)
 
-    # if population is None:
-    #     # Include only last population in the data dict
-    #     population = list(average_pop_activity_dict.keys())[0]
-    #     average_pop_activity_dict = {population: average_pop_activity_dict[population]}
-    # elif isinstance(population, str):
-    #     if population != 'all':
-    #         average_pop_activity_dict = {population: average_pop_activity_dict[population]}
-    # elif isinstance(population, list):
-    #     average_pop_activity_dict = {pop: average_pop_activity_dict[pop] for pop in population}
-    # else:
-    #     assert hasattr(population, 'fullname'), 'Population must be a string, list of strings, or EIANN.Population object'
-    #     average_pop_activity_dict = {population.fullname: average_pop_activity_dict[population.fullname]}
-
-    # for pop_name, avg_pop_activity in average_pop_activity_dict.items():
-    #     if ax is None:
-    #         fig, _ax = plt.subplots()
-    #     else:
-    #         _ax = ax
-
-    #     im = _ax.imshow(avg_pop_activity, aspect='auto', interpolation='none')
-    #     cbar = plt.colorbar(im, ax=_ax)
-    #     _ax.set_xticks(range(avg_pop_activity.shape[1]))
-    #     _ax.set_xlabel('Labels')
-    #     _ax.set_ylabel(f'{pop_name} unit')
-    #     if title is not None:
-    #         _ax.set_title(f'Average activity - {pop_name}\n{title}')
-    #     else:
-    #         _ax.set_title(f'Average activity - {pop_name}')
-
-    #     if ax is None:
-    #         fig.show()
-    #     elif isinstance(population, list) and len(population)>1:
-    #         raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
-            
 
 def plot_rsm(network, test_dataloader):
 
