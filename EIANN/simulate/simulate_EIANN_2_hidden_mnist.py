@@ -32,7 +32,148 @@ context.test = 'test'
 
 def config_worker():
     EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist.context = context
-    EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist.config_worker()
+    context.seed_start = int(context.seed_start)
+    context.num_instances = int(context.num_instances)
+    context.network_id = int(context.network_id)
+    context.task_id = int(context.task_id)
+    context.data_seed_start = int(context.data_seed_start)
+    context.epochs = int(context.epochs)
+    context.status_bar = str_to_bool(context.status_bar)
+    if 'debug' not in context():
+        context.debug = False
+    else:
+        context.debug = str_to_bool(context.debug)
+    if 'verbose' not in context():
+        context.verbose = False
+    else:
+        context.verbose = str_to_bool(context.verbose)
+    if 'interactive' not in context():
+        context.interactive = False
+    else:
+        context.interactive = str_to_bool(context.interactive)
+    if 'eval_accuracy' not in context():
+        context.eval_accuracy = 'final'
+    else:
+        context.eval_accuracy = str(context.eval_accuracy)
+    if 'store_history' not in context():
+        context.store_history = False
+    else:
+        context.store_history = str_to_bool(context.store_history)
+    if 'store_dynamics' not in context():
+        context.store_dynamics = False
+    else:
+        context.store_dynamics = str_to_bool(context.store_dynamics)
+    
+    if 'store_params' not in context():
+        context.store_params = False
+    else:
+        context.store_params = str_to_bool(context.store_params)
+    if context.debug:
+        context.store_num_steps = None
+    elif 'store_num_steps' not in context():
+        if context.store_dynamics:
+            context.store_num_steps = None
+        else:
+            context.store_num_steps = 2
+    else:
+        context.store_num_steps = int(context.store_num_steps)
+    if 'full_analysis' not in context():
+        context.full_analysis = False
+    else:
+        context.full_analysis = str_to_bool(context.full_analysis)
+    if 'equilibration_activity_tolerance' not in context():
+        context.equilibration_activity_tolerance = 0.2
+    else:
+        context.equilibration_activity_tolerance = float(context.equilibration_activity_tolerance)
+    if 'compute_receptive_fields' not in context():
+        context.compute_receptive_fields = False
+    else:
+        context.compute_receptive_fields = str_to_bool(context.compute_receptive_fields)
+    if 'constrain_equilibration_dynamics' not in context():
+        context.constrain_equilibration_dynamics = True
+    else:
+        context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
+    if 'export_network_config_file_path' not in context():
+        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+        if context.label is None:
+            context.export_network_config_file_path = f"{context.output_dir}/{network_name}_optimized.yaml"
+        else:
+            context.export_network_config_file_path = f"{context.output_dir}/{network_name}_{context.label}_optimized.yaml"
+    if 'retrain' not in context():
+        context.retrain = True
+    else:
+        context.retrain = str_to_bool(context.retrain)
+    if 'plot_initial' not in context():
+        context.plot_initial = False
+    else:
+        context.plot_initial - str_to_bool(context.plot_initial)
+    if 'include_dend_loss_objective' not in context():
+        context.include_dend_loss_objective = False
+    else:
+        context.include_dend_loss_objective = str_to_bool(context.include_dend_loss_objective)
+    if 'include_equilibration_dynamics_objective' not in context():
+        context.include_equilibration_dynamics_objective = False
+    else:
+        context.include_equilibration_dynamics_objective = str_to_bool(context.include_equilibration_dynamics_objective)
+    
+    if 'store_history_interval' not in context():
+        context.store_history_interval = None
+    
+    context.train_steps = int(context.train_steps)
+    
+    history_interval = max(min(250, int(context.train_steps / 200)), 100)
+    if 'store_params_interval' not in context():
+        context.store_params_interval = (0, -1, history_interval)
+    
+    if context.full_analysis:
+        context.val_interval = (0, -1, history_interval)
+        context.store_params_interval = context.val_interval
+        context.store_params = True
+        context.store_num_steps = None
+        if context.store_history_interval is not None:
+            context.store_history_interval = context.val_interval
+    
+    if context.include_dend_loss_objective:
+        if not context.store_history:
+            context.store_history = True
+            if context.store_history_interval is None:
+                context.store_history_interval = context.val_interval
+    
+    network_config = read_from_yaml(context.network_config_file_path)
+    context.layer_config = network_config['layer_config']
+    context.projection_config = network_config['projection_config']
+    context.training_kwargs = network_config['training_kwargs']
+    
+    # Load dataset
+    if context.interactive:
+        download = True
+    else:
+        download = False
+    tensor_flatten = T.Compose([
+        T.ToTensor(),
+        T.Lambda(torch.flatten)])
+    MNIST_train_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=True,
+                                                     download=download, transform=tensor_flatten)
+    MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=False,
+                                                    download=download, transform=tensor_flatten)
+    
+    # Add index to train & test data
+    MNIST_train = []
+    for idx, (data, target) in enumerate(MNIST_train_dataset):
+        target = torch.eye(len(MNIST_train_dataset.classes))[target]
+        MNIST_train.append((idx, data, target))
+    
+    MNIST_test = []
+    for idx, (data, target) in enumerate(MNIST_test_dataset):
+        target = torch.eye(len(MNIST_test_dataset.classes))[target]
+        MNIST_test.append((idx, data, target))
+    
+    # Put data in dataloader
+    context.data_generator = torch.Generator()
+    context.train_sub_dataloader = \
+        torch.utils.data.DataLoader(MNIST_train[0:-10000], shuffle=True, generator=context.data_generator)
+    context.val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
+    context.test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
     
 
 def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
@@ -82,28 +223,28 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar, debug=context.debug)
         
-        # reorder output units if using unsupervised learning rule
-        if not context.supervised:
-            if context.eval_accuracy == 'final':
-                min_loss_idx = len(network.val_loss_history) - 1
-                sorted_output_idx = sort_by_class_averaged_val_output(network, val_dataloader)
-            elif context.eval_accuracy == 'best':
-                min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_dataloader, plot=plot)
-            else:
-                raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
-                                context.eval_accuracy)
-            sorted_val_loss_history, sorted_val_accuracy_history = \
-                recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx=sorted_output_idx,
-                                                       store=True)
+    # reorder output units if using unsupervised learning rule
+    if not context.supervised:
+        if context.eval_accuracy == 'final':
+            min_loss_idx = len(network.val_loss_history) - 1
+            sorted_output_idx = sort_by_class_averaged_val_output(network, val_dataloader)
+        elif context.eval_accuracy == 'best':
+            min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_dataloader, plot=plot)
         else:
-            min_loss_idx = torch.argmin(network.val_loss_history)
-            sorted_output_idx = None
-            sorted_val_loss_history = network.val_loss_history
-            sorted_val_accuracy_history = network.val_accuracy_history
-        
-        if context.store_history and (context.store_history_interval is None):
-            binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
-                recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
+            raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
+                            context.eval_accuracy)
+        sorted_val_loss_history, sorted_val_accuracy_history = \
+            recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx=sorted_output_idx,
+                                                   store=True)
+    else:
+        min_loss_idx = torch.argmin(network.val_loss_history)
+        sorted_output_idx = None
+        sorted_val_loss_history = network.val_loss_history
+        sorted_val_accuracy_history = network.val_accuracy_history
+    
+    if context.store_history and (context.store_history_interval is None):
+        binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
+            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
     
     if plot:
         title = 'Final (%i, %i)' % (seed, data_seed)
