@@ -151,6 +151,7 @@ projection_config:
                         - null
                         - 0
                     weight_constraint: no_autapses
+                    update_phase: A
                     direction: R
                     learning_rule: null
     H2:
@@ -258,6 +259,7 @@ projection_config:
                         - null
                         - 0
                     weight_constraint: no_autapses
+                    update_phase: A
                     direction: R
                     learning_rule: null
     Output:
