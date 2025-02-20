@@ -141,7 +141,7 @@ def compute_alternate_dParam_history(dataloader, network, network2=None, save_pa
     forward_E_params = []
     for proj_name, param in network.projections.items(): 
         pre_name, post_name = proj_name.split('_')
-        if pre_name[-1]=='E' and post_name[-1]=='E' and param.weight.is_learned:
+        if pre_name[-1]=='E' and post_name[-1]=='E' and param.weight.is_learned and not param.update_phase=='B':
             forward_E_params.append(proj_name)
 
     actual_dParam_history_dict = {name:[] for name,param in network.named_parameters() if name.split('.')[1] in forward_E_params}
