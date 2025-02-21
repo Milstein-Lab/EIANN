@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 
 import os
+import pathlib
 import h5py
 import click
 import gc
@@ -151,7 +152,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
                         print(f"Overwriting {network_name} {seed} in {hdf5_path}")
                         variables_to_recompute = variables_to_save                        
                     elif set(variables_to_save).issubset(file[network_name][seed].keys()) and recompute is None:
-                        print(f"Data for {network_name} {seed} exists in {hdf5_path}")
+                        # print(f"Data for {network_name} {seed} exists in {hdf5_path}")
                         return
                     else:
                         print(f"Recomputing {network_name} {seed} in {hdf5_path}")
@@ -282,6 +283,15 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
         hdf5_path = f"data/plot_data_{network_name}.h5"
+
+        if not os.path.exists(hdf5_path):
+            # If the hdf5 is not available in local data directory, check in Box drive
+            box_hdf5_dir = pathlib.Path(saved_network_path_prefix).parents[1] / "2024 Figure data HDF5 files"
+            box_hdf5_path = box_hdf5_dir / f"plot_data_{network_name}.h5"
+            if box_hdf5_path.exists():
+                print(f"Loading hdf5 from Box drive: {box_hdf5_path}")
+                hdf5_path = str(box_hdf5_path)
+
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute)
@@ -432,8 +442,10 @@ def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
     ax.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.5, color=model_dict["color"], linewidth=0)
     ax.set_xlabel('Training step')
     ax.set_ylabel('Dendritic state')
-    ax.set_yscale(scale)
-    # ax.set_ylim(bottom=-0., top=0.3)
+    ax.set_ylim(bottom=-0.005, top=0.3)
+    # ax.set_yscale(scale)
+    # ax.hlines(0, *ax.get_xlim(), color='black', linestyle='--', linewidth=1)
+    
 
 
 def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True):
@@ -446,7 +458,7 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True):
         else:
             angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
     avg_angle = np.nanmean(angle_all_seeds, axis=0)
-    error = np.nanstd(angle_all_seeds, axis=0) / np.sqrt(len(model_dict['seeds']))
+    error = np.nanstd(angle_all_seeds, axis=0) #/ np.sqrt(len(model_dict['seeds']))
     train_steps = data_dict[seed]['val_history_train_steps'][:]
     if not stochastic:
         train_steps = train_steps[1:]
@@ -472,8 +484,8 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax):
     if len(fb_angles_all_seeds) == 0:
         print(f"No feedback weight angles found for {model_dict['name']}")
         return
-    avg_angles = np.mean(fb_angles_all_seeds, axis=0)
-    std_angles = np.std(fb_angles_all_seeds, axis=0)
+    avg_angles = np.nanmean(fb_angles_all_seeds, axis=0)
+    error = np.nanstd(fb_angles_all_seeds, axis=0)
     train_steps = data_dict[seed]['val_history_train_steps'][:]
     ax.hlines(30, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
     ax.hlines(60, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
@@ -482,7 +494,7 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax):
         print(f"Warning: NaN values found in avg W vs B angle.")
     else:
         ax.plot(train_steps, avg_angles, color=model_dict['color'], label=model_dict['name'])
-        ax.fill_between(train_steps, avg_angles-std_angles, avg_angles+std_angles, alpha=0.5, color=model_dict['color'], linewidth=0)
+        ax.fill_between(train_steps, avg_angles-error, avg_angles+error, alpha=0.5, color=model_dict['color'], linewidth=0)
     ax.set_xlabel('Training step')
     ax.set_ylabel('Angle \n(F vs B weights)')
     # ax.set_ylim(bottom=-2, top=90)
@@ -736,7 +748,6 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
             seed = model_dict['seeds'][0] # example seed to plot
             # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
             populations_to_plot = ['H2DendI']
-            populations_to_plot = ['OutputE']
 
             # Plot heatmaps
             if model_key in model_list_heatmaps:
@@ -1312,27 +1323,27 @@ def main(figure, recompute):
             ##########################
             # Spirals dataset models
             ##########################
-            "vanBP_0_hidden_learned_bias": {"config": "20250108_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
+            "vanBP_0_hidden_learned_bias_spiral": {"config": "20250108_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
                                             "color": "black",
                                             "name": "Vanilla Backprop 0-Hidden (Learned Bias)"},
 
-            "vanBP_2_hidden_learned_bias": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
+            "vanBP_2_hidden_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
                                             "color": "red",
                                             "name": "Vanilla Backprop 2-Hidden (Learned Bias)"},
 
-            "vanBP_2_hidden_zero_bias": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config_complete_optimized.yaml",
+            "vanBP_2_hidden_zero_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config_complete_optimized.yaml",
                                         "color": "olive",
                                         "name": "Vanilla Backprop 2-Hidden (Zero Bias)"},
 
-            "bpDale_learned_bias": {"config": "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
+            "bpDale_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                     "color": "orange",
                                     "name": "Backprop + Dale's Law (Learned Bias)"},
 
-            "bpLike_DTC_learned_bias": {"config": "20250108_EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
+            "bpLike_DTC_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                         "color": "purple",
                                         "name": "Backprop Like (DTC) (Learned Bias)"},
 
-            "DTP_learned_bias": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
+            "DTP_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                 "color": "blue",
                                 "name": "DTP (Learned Bias)"},
 
@@ -1346,10 +1357,18 @@ def main(figure, recompute):
         username = os.environ.get("USERNAME")
         saved_network_path_prefix = f"C:/Users/{username}/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/"
     
-
     seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
     for model_key in model_dict_all:
         model_dict_all[model_key]["seeds"] = seeds
+
+    if figure == "all":
+        # Generate HDF5 files for all models
+        all_models = list(model_dict_all.keys())[9:]
+        all_mnist_models = [model_key for model_key in all_models if "spiral" not in model_key]
+        generate_hdf5_all_seeds(all_mnist_models, model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix=saved_network_path_prefix+"MNIST/", recompute=recompute)
+        all_spiral_models = [model_key for model_key in all_models if "spiral" in model_key]
+        generate_hdf5_all_seeds(all_spiral_models, model_dict_all, config_path_prefix="network_config/spiral/", saved_network_path_prefix=saved_network_path_prefix+"spiral/", recompute=recompute)
+        recompute = None
 
     # Diagrams + example dynamics
     if figure == "fig1":
@@ -1381,8 +1400,6 @@ def main(figure, recompute):
         model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
         # model_list_metrics = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps + ["bpDale_fixed"]
-
-        model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig3_dendI"
         compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
@@ -1400,7 +1417,7 @@ def main(figure, recompute):
         saved_network_path_prefix += "MNIST/"
         model_list = ["bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
         figure_name = "Fig4_BTSP_BCM_HebbWN"
-        compare_metrics_simple(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, ecompute=recompute)
+        compare_metrics_simple(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Supplement to Fig.4: "Supervised_HebbWN_WT_hebbdend" -> Performs badly because HWN is potentiation-only
         
@@ -1423,8 +1440,8 @@ def main(figure, recompute):
     # Supplementary Spirals Figure
     elif figure in ["all", "suppl-spiral"]:
         saved_network_path_prefix += "spiral/"
-        model_list_heatmaps = ["vanBP_0_hidden_learned_bias", "vanBP_2_hidden_learned_bias", "vanBP_2_hidden_zero_bias", 
-                        "bpDale_learned_bias", "bpLike_DTC_learned_bias", "DTP_learned_bias"]
+        model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
+        # model_list_heatmaps = ["vanBP_0_hidden_learned_bias", "vanBP_2_hidden_learned_bias", "vanBP_2_hidden_zero_bias", "bpDale_learned_bias", "bpLike_DTC_learned_bias", "DTP_learned_bias"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Suppl1_Spirals"
 
