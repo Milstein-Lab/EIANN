@@ -206,4 +206,42 @@ DTP_fixed_SomaI_learned_bias:
     Output_I_H2_E_init_weight_scale: 1.9823693413208623
     Output_I_Output_I_init_weight_scale: 3.924537045484193
     DendI_size_fraction: 0.4285589156097181
+
+DTP_fixed_SomaI_fixed_DendI_learned_bias:
+    # DendI <- E and DendI <- DendI random and fixed
+    #    features:
+    #    accuracy: 89.84000396728516
+    #    dynamics_residuals: 0.0
+    #    loss: 0.05937293916940689
+    #    mean_forward_dend_loss: 0.029157764837145807
+    H1_E_Input_E_init_weight_scale: 2.736823535422809
+    H2_E_H1_E_init_weight_scale: 2.7779222358498483
+    H_E_E_learning_rate: 0.05327875175636194
+    H_E_bias_learning_rate: 0.00818500616114165
+    H1_E_H2_E_weight_scale: 0.13175713670551448
+    H2_E_Output_E_weight_scale: 0.13254446726063304
+    H1_E_H1_SomaI_init_weight_scale: 2.7410410256071875
+    H1_SomaI_H1_E_init_weight_scale: 0.6503401730365627
+    H1_SomaI_Input_E_init_weight_scale: 2.90023575004578
+    H1_SomaI_H1_SomaI_init_weight_scale: 2.265240921250929
+    H_E_DendI_learning_rate: 0.6559584961776347
+    H1_E_H1_DendI_init_weight_scale: 4.293858555211995
+    H1_DendI_H1_E_init_weight_scale: 6.758798400298661
+    H1_DendI_H1_DendI_init_weight_scale: 1.9074849062045103
+    H2_E_H2_SomaI_init_weight_scale: 3.298585330448161
+    H2_SomaI_H2_E_init_weight_scale: 0.4985172962333756
+    H2_SomaI_H1_E_init_weight_scale: 3.5480284185071915
+    H2_SomaI_H2_SomaI_init_weight_scale: 4.90905645065306
+    H2_E_H2_DendI_init_weight_scale: 2.4533569211594224
+    H2_DendI_H2_E_init_weight_scale: 6.14539771279971
+    H2_DendI_H2_DendI_init_weight_scale: 3.097024527282496
+    Output_E_H2_E_init_weight_scale: 6.168743675537413
+    Output_E_H2_E_learning_rate: 0.29977910377365447
+    Output_E_bias_learning_rate: 0.013709742432060574
+    Output_E_Output_I_init_weight_scale: 0.23008175397953526
+    Output_I_Output_E_init_weight_scale: 0.7705414317908433
+    Output_I_H2_E_init_weight_scale: 2.5409846173543578
+    Output_I_Output_I_init_weight_scale: 3.9064211856004705
+    DendI_size_fraction: 0.5209563703136668
+
 # python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config.yaml --disp --num_instances=1 --model-key=DTP_fixed_SomaI_learned_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250127_EIANN_2_hidden_spiral_DTP_learned_bias_config_complete_optimized.yaml --export
