@@ -448,7 +448,7 @@ def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
     
 
 
-def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True):
+def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True, error='std'):
     angle_all_seeds = []
     for seed in model_dict['seeds']:
         if stochastic:
@@ -458,23 +458,26 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True):
         else:
             angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
     avg_angle = np.nanmean(angle_all_seeds, axis=0)
-    error = np.nanstd(angle_all_seeds, axis=0) #/ np.sqrt(len(model_dict['seeds']))
+    if error == 'std':
+        error = np.nanstd(angle_all_seeds, axis=0)
+    elif error == 'sem':
+        error = np.nanstd(angle_all_seeds, axis=0) / np.sqrt(len(model_dict['seeds']))
     train_steps = data_dict[seed]['val_history_train_steps'][:]
     if not stochastic:
         train_steps = train_steps[1:]
     ax.plot(train_steps, avg_angle, label=model_dict["name"], color=model_dict["color"])
     ax.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
-    ax.hlines(30, -len(train_steps)/20, len(train_steps), color='gray', linewidth=0.5, alpha=0.1)
-    ax.hlines(60, -len(train_steps)/20, len(train_steps), color='gray', linewidth=0.5, alpha=0.1)
-    ax.hlines(90, -len(train_steps)/20, len(train_steps), color='gray', linewidth=0.5, alpha=0.1)
+    ax.hlines(30, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
+    ax.hlines(60, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
+    ax.hlines(90, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
     ax.set_xlabel('Training step')
     ax.set_ylabel('Angle vs BP')
     ax.set_ylim([-5,max(100, np.nanmax(avg_angle+error))])
-    # ax.set_xlim([-len(train_steps)/20, len(train_steps)])
+    ax.set_xlim([-train_steps[-1]/20, train_steps[-1]+1])
     ax.set_yticks(np.arange(0, 101, 30))
 
 
-def plot_angle_FB_all_seeds(data_dict, model_dict, ax):
+def plot_angle_FB_all_seeds(data_dict, model_dict, ax, error='std'):
     # Plot angles between forward weights W vs backward weights B
     fb_angles_all_seeds = []
     for seed in model_dict['seeds']:
@@ -484,25 +487,28 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax):
     if len(fb_angles_all_seeds) == 0:
         print(f"No feedback weight angles found for {model_dict['name']}")
         return
-    avg_angles = np.nanmean(fb_angles_all_seeds, axis=0)
-    error = np.nanstd(fb_angles_all_seeds, axis=0)
+    avg_angle = np.nanmean(fb_angles_all_seeds, axis=0)
+    if error == 'std':
+        error = np.nanstd(fb_angles_all_seeds, axis=0)
+    elif error == 'sem':
+        error = np.nanstd(fb_angles_all_seeds, axis=0) / np.sqrt(len(model_dict['seeds']))
     train_steps = data_dict[seed]['val_history_train_steps'][:]
     ax.hlines(30, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
     ax.hlines(60, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
     ax.hlines(90, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
-    if np.isnan(avg_angles).any():
+    if np.isnan(avg_angle).any():
         print(f"Warning: NaN values found in avg W vs B angle.")
     else:
-        ax.plot(train_steps, avg_angles, color=model_dict['color'], label=model_dict['name'])
-        ax.fill_between(train_steps, avg_angles-error, avg_angles+error, alpha=0.5, color=model_dict['color'], linewidth=0)
+        ax.plot(train_steps, avg_angle, color=model_dict['color'], label=model_dict['name'])
+        ax.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict['color'], linewidth=0)
     ax.set_xlabel('Training step')
     ax.set_ylabel('Angle \n(F vs B weights)')
     # ax.set_ylim(bottom=-2, top=90)
     # ax.set_yticks(np.arange(0, 91, 30))
     # ax.set_xlim([-1000,20000])
     ax.set_xlabel('Training step')
-    ax.set_ylim([-5,100])
-    ax.set_xlim([-1000,20000])
+    ax.set_ylim([-5,max(100, np.nanmax(avg_angle+error))])
+    ax.set_xlim([-train_steps[-1]/20, train_steps[-1]+1])
     ax.set_yticks(np.arange(0, 101, 30))
 
 
@@ -860,13 +866,13 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
     axes = gs.GridSpec(nrows=3, ncols=3,                        
                        left=0.1,right=0.9,
                        top=0.9, bottom = 0.6,
-                       wspace=0.4, hspace=0.5)
+                       wspace=0.4, hspace=0.6)
     ax_accuracy1 = fig.add_subplot(axes[0,0])
-    ax_angle_vs_BP1 = fig.add_subplot(axes[1,0])
-    ax_FB_angle1 = fig.add_subplot(axes[2,0])
-    ax_accuracy2 = fig.add_subplot(axes[0,1])
+    ax_angle_vs_BP1 = fig.add_subplot(axes[0,1])
+    ax_FB_angle1 = fig.add_subplot(axes[0,2])
+    ax_accuracy2 = fig.add_subplot(axes[1,0])
     ax_angle_vs_BP2 = fig.add_subplot(axes[1,1])
-    ax_FB_angle2 = fig.add_subplot(axes[2,1])
+    ax_FB_angle2 = fig.add_subplot(axes[1,2])
 
     all_models = list(dict.fromkeys(model_list1 + model_list2))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -887,12 +893,13 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
                 ax_angle_vs_BP = ax_angle_vs_BP2
                 ax_FB_angle = ax_FB_angle2
             plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP)
-            plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angle)
-    legend = ax_accuracy1.legend(ncol=1, bbox_to_anchor=(-0.1, 1.6), loc='upper left')
+            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP, error='std')
+            plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angle, error='std')
+
+    legend = ax_accuracy1.legend(ncol=3, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
     for line in legend.get_lines():
         line.set_linewidth(1.5)
-    legend = ax_accuracy2.legend(ncol=1, bbox_to_anchor=(-0.1, 1.6), loc='upper left')
+    legend = ax_accuracy2.legend(ncol=3, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
     for line in legend.get_lines():
         line.set_linewidth(1.5)
 
