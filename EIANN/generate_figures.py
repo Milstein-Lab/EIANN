@@ -300,7 +300,7 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
 
 ########################################################################################################
 
-def plot_accuracy_all_seeds(data_dict, model_dict, ax):
+def plot_accuracy_all_seeds(data_dict, model_dict, ax, legend=True):
     """
     Plot test accuracy for all seeds with shaded error bars
     """
@@ -309,13 +309,14 @@ def plot_accuracy_all_seeds(data_dict, model_dict, ax):
     error = np.std(accuracy_all_seeds, axis=0)
     val_steps = data_dict[next(iter(data_dict))]['val_history_train_steps'][:]
     ax.plot(val_steps, avg_accuracy, label=model_dict["name"], color=model_dict["color"])
-    ax.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.2, color=model_dict["color"], linewidth=0)
+    ax.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.3, color=model_dict["color"], linewidth=0)
     ax.set_ylim([0,100])
     ax.set_xlabel('Training step')
     ax.set_ylabel('Test accuracy (%)', labelpad=-2)
-    legend = ax.legend(ncol=3, bbox_to_anchor=(-0.3, 1.4), loc='upper left', fontsize=6)
-    for line in legend.get_lines():
-        line.set_linewidth(1.5)
+    if legend:
+        legend = ax.legend(ncol=3, bbox_to_anchor=(-0.3, 1.4), loc='upper left', fontsize=6)
+        for line in legend.get_lines():
+            line.set_linewidth(1.5)
 
 
 def plot_error_all_seeds(data_dict, model_dict, ax):
@@ -333,101 +334,79 @@ def plot_error_all_seeds(data_dict, model_dict, ax):
     ax.set_yticks([10, 100], labels=['10%', '100%'])
 
 
-def plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot, ax, plot_type='cdf'):
-    sparsity_all_seeds = []
+def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf'):
+    """
+    Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
+
+    Parameters:
+        data_dict (dict): Dictionary containing data for different seeds.
+        model_dict (dict): Dictionary containing model metadata (e.g., name, color).
+        populations_to_plot (list): List of population names to extract the metric from.
+        ax (matplotlib.axes.Axes): Matplotlib axis to plot on.
+        metric_name (str): Name of the metric to plot ('sparsity', 'selectivity', or 'structure').
+        plot_type (str): Type of plot ('cdf' or 'bar').
+    """
+    metric_all_seeds = []
     for seed in data_dict:
-        sparsity_one_seed = []
+        metric_one_seed = []
         for population in populations_to_plot:
-            sparsity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['sparsity'])
-        sparsity_all_seeds.append(sparsity_one_seed)
+            metric_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"][metric_name])
+        metric_all_seeds.append(metric_one_seed)
 
-    if sum([len(sublist) for sublist in sparsity_all_seeds]) == 0:
-        return
-    
-    if plot_type == 'cdf':
-        pt.plot_cumulative_distribution(sparsity_all_seeds, ax=ax, label=model_dict["name"], color=model_dict["color"])
-        ax.set_ylabel('Fraction of patterns')
-        ax.set_xlabel('Sparsity') # \n(1 - fraction of units active)')
-        ax.set_xlim([0,1])
-        ax.set_ylim([0,1])
-        ax.set_yticks([0,1])
-    elif plot_type == 'bar':
-        avg_sparsity_per_seed = [np.mean(x) for x in sparsity_all_seeds]
-        avg_sparsity = np.mean(avg_sparsity_per_seed)
-        error = np.std(avg_sparsity_per_seed)
-        x = len(ax.patches)
-        bar = ax.bar(x, avg_sparsity, yerr=error, color=model_dict["color"], width=0.4, ecolor='red')
-        bar[0].set_label(model_dict["name"])
-        ax.set_ylabel('Sparsity')
-        ax.set_ylim([0,1])
-        ax.set_xticks(range(x+1))
-        xtick_labels = [patch.get_label() for patch in ax.patches]
-        ax.set_xticklabels(xtick_labels, rotation=45, ha='right')
-
-
-def plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot, ax, plot_type='cdf'):
-    selectivity_all_seeds = []
-    for seed in data_dict:
-        selectivity_one_seed = []
-        for population in populations_to_plot:
-            selectivity_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['selectivity'])
-        selectivity_all_seeds.append(selectivity_one_seed)
-
-    if sum([len(sublist) for sublist in selectivity_all_seeds]) == 0:
-        return
-    
-    if plot_type == 'cdf':
-        pt.plot_cumulative_distribution(selectivity_all_seeds, ax=ax, label=model_dict["name"], color=model_dict["color"])
-        ax.set_ylabel('Fraction of units')
-        ax.set_xlabel('Selectivity') # \n(1 - fraction of active patterns)')
-        ax.set_xlim([0,1])
-        ax.set_ylim([0,1])
-        ax.set_yticks([0,1])
-
-    elif plot_type == 'bar':
-        avg_selectivity_per_seed = [np.mean(x) for x in selectivity_all_seeds]
-        avg_selectivity = np.mean(avg_selectivity_per_seed)
-        error = np.std(avg_selectivity_per_seed)
-        x = len(ax.patches)
-        bar = ax.bar(x, avg_selectivity, yerr=error, color=model_dict["color"], width=0.4, ecolor='red')
-        bar[0].set_label(model_dict["name"])
-        ax.set_ylabel('Selectivity')
-        ax.set_ylim([0,1])
-        ax.set_xticks(range(x+1))
-        xtick_labels = [patch.get_label() for patch in ax.patches]
-        ax.set_xticklabels(xtick_labels, rotation=45, ha='right')
-
-
-def plot_structure_all_seeds(data_dict, model_dict, populations_to_plot, ax, plot_type='cdf'):
-    structure_all_seeds = []
-    for seed in data_dict:
-        structure_one_seed = []
-        for population in populations_to_plot:
-            structure_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"]['structure'])
-        structure_all_seeds.append(structure_one_seed)
-
-    if sum([len(sublist) for sublist in structure_all_seeds]) == 0:
+    if sum(len(sublist) for sublist in metric_all_seeds) == 0:
         return
 
     if plot_type == 'cdf':
-        pt.plot_cumulative_distribution(structure_all_seeds, ax=ax, label=model_dict["name"], color=model_dict["color"])
-        ax.set_ylabel('Fraction of units')
-        ax.set_xlabel("Structure (Moran's I)") # \n(Moran's I spatial autocorrelation)")
-        ax.set_xlim([0,1])
+        pt.plot_cumulative_distribution(metric_all_seeds, ax=ax, label=model_dict["name"], color=model_dict["color"])
+        ax.set_ylabel('Fraction of units' if metric_name in ['selectivity', 'structure'] else 'Fraction of patterns')
+        ax.set_xlabel(metric_name.capitalize()) 
+        ax.set_xlim([0, 1])
+        ax.set_ylim([0, 1])
+        ax.set_yticks([0, 1])
+
     elif plot_type == 'bar':
-        avg_structure_per_seed = [np.mean(x) for x in structure_all_seeds]
-        avg_structure = np.mean(avg_structure_per_seed)
-        error = np.std(avg_structure_per_seed)
+        avg_metric_per_seed = [np.mean(x) for x in metric_all_seeds]
+        avg_metric = np.mean(avg_metric_per_seed)
+        error = np.std(avg_metric_per_seed)
         x = len(ax.patches)
-        bar = ax.bar(x, avg_structure, yerr=error, color=model_dict["color"], width=0.4, ecolor='red')
+        print(x)
+
+        bar = ax.bar(x, avg_metric, yerr=error, color=model_dict["color"], width=0.6, ecolor='red', alpha=0.8)
         bar[0].set_label(model_dict["name"])
-        ax.set_ylabel('Structure (Moran\'s I)')
-        ax.set_ylim([0,1])
-        ax.set_xticks(range(x+1))
+        ax.set_ylabel(metric_name.capitalize())
+        ax.set_ylim([0, 1])
+        ax.set_xticks(range(x + 1))
         xtick_labels = [patch.get_label() for patch in ax.patches]
         ax.set_xticklabels(xtick_labels, rotation=45, ha='right')
 
+    elif plot_type == 'violin':
+        # Pool all data into one list
+        pooled_data = [value for sublist in metric_all_seeds for value in sublist]
 
+        # Get existing labels (excluding default numerical labels) to set the x-axis positions
+        existing_labels = [t.get_text() for t in ax.get_xticklabels()]
+        existing_labels = [label for label in existing_labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
+        x = len(existing_labels)
+
+        # Create the violin plot
+        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9)
+        parts['bodies'][0].set_alpha(0.55)
+        parts['bodies'][0].set_facecolor(model_dict["color"])
+
+        # Scatter on a point with the mean and error bar
+        mean_value = np.mean(pooled_data)
+        error = np.std(pooled_data)
+        ax.scatter(x, mean_value, color='red', marker='o', s=10, zorder=5)
+        # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=3, zorder=5)
+
+        # Update x-axis labels
+        new_labels = existing_labels + [model_dict["name"]]
+        ax.set_xticks(range(len(new_labels)))  # Set ticks explicitly
+        ax.set_xticklabels(new_labels, rotation=45, ha='right')
+        ax.set_ylabel(metric_name.capitalize())
+        ax.set_ylim([-0.03, 1.03])
+
+        
 def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
     if 'binned_mean_forward_dendritic_state_steps' not in data_dict[next(iter(data_dict.keys()))]:
         return
@@ -446,7 +425,6 @@ def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
     # ax.set_yscale(scale)
     # ax.hlines(0, *ax.get_xlim(), color='black', linestyle='--', linewidth=1)
     
-
 
 def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True, error='std'):
     angle_all_seeds = []
@@ -567,7 +545,96 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+    # fig = plt.figure(figsize=(5.5, 9))
+    fig = plt.figure(figsize=(5.5, 4))
+    axes = gs.GridSpec(nrows=3, ncols=3,                        
+                       left=0.049,right=0.95,
+                       top=0.95, bottom=0.08,
+                       wspace=0.2, hspace=0.35)
+    metrics_axes = gs.GridSpec(nrows=3, ncols=4,                        
+                       left=0.049,right=0.95,
+                       top=0.95, bottom=0.25,
+                       wspace=0.5, hspace=0.3,
+                       width_ratios=[1.5, 1, 1, 1])
+
+    ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
+    ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
+    ax_sparsity    = fig.add_subplot(metrics_axes[2, 2])
+    ax_structure   = fig.add_subplot(metrics_axes[2, 3])
+
+    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+
+    labels = ['a', 'b', 'c', 'd']
+    for i,model_key in enumerate(all_models):
+        model_dict = model_dict_all[model_key]
+        network_name = model_dict['config'].split('.')[0]
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
+            data_dict = f[network_name]
+            print(f"Generating plots for {model_dict['name']}")
+
+            if model_key in model_list_heatmaps:
+                seed = model_dict['seeds'][0] # example seed to plot
+                population = 'H2E'
+
+                # Activity plots: batch accuracy of each population to the test dataset
+                ax = fig.add_subplot(axes[0, i])
+                average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
+                pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=True)
+                ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
+                ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
+                ax.set_ylabel(f'{population} unit', labelpad=-8)
+                ax.set_title(model_dict["name"])
+                if i>0:
+                    ax.set_ylabel('')
+                    ax.set_yticklabels([])
+
+                ax.annotate(labels[i], xy=(-0.2, 1.08), xycoords='axes fraction', fontsize=12, weight='bold')
+
+                # Receptive field plots
+                receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
+                num_units = 10
+                ax = fig.add_subplot(axes[1, i])
+                ax.axis('off')
+                pos = ax.get_position()
+                ax.set_position([pos.x0+0.0, pos.y0-0.02, pos.width-0.04, pos.height+0.03])
+                rf_axes = gs.GridSpecFromSubplotSpec(5, 5, subplot_spec=ax, wspace=0., hspace=0.1)
+                ax_list = []
+                for j in range(num_units):
+                    ax = fig.add_subplot(rf_axes[j])
+                    ax_list.append(ax)
+                preferred_classes = torch.argmax(torch.tensor(np.array(data_dict[seed]['average_pop_activity_dict'][population])), dim=1)
+                im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
+                fig_width, fig_height = fig.get_size_inches()
+                cax = fig.add_axes([ax_list[0].get_position().x0, ax.get_position().y0-0.08/fig_height, 0.05, 0.03/fig_height])
+                fig.colorbar(im, cax=cax, orientation='horizontal')
+
+            if model_key in model_list_metrics:
+                plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy, legend=False)
+
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
+
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='bar')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='bar')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='bar')
+
+            label = None
+            ax.annotate(label, xy=(0.5, 0.5), xycoords='figure fraction', fontsize=12, weight='bold')
+
+    legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0., 1.25), loc='upper left', fontsize=6)
+    for line in legend.get_lines():
+        line.set_linewidth(1.5)
+
+    if save is not None:
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
+
+
+def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     '''
     Figure 1: Van_BP vs bpDale(learnedI)
         -> bpDale is more structured/sparse (focus on H1E metrics)
@@ -619,8 +686,8 @@ def compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics
                         ax.set_ylabel('')
                         ax.set_yticklabels([])
 
-                    # if row==0:
-                    #     ax.annotate(labels[i], xy=(-0.3, 1.1), xycoords='axes fraction', fontsize=12, weight='bold')
+                    if row==0:
+                        ax.annotate(labels[i], xy=(-0.4, 1.1), xycoords='axes fraction', fontsize=12, weight='bold')
 
                     # Receptive field plots
                     receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
@@ -1391,7 +1458,7 @@ def main(figure, recompute):
         # model_list_heatmaps = ["vanBP", "bpDale_learned", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
-        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Analyze somaI selectivity (supplement to Fig.2)
     elif figure in ["all", "S1"]:
