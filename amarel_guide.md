@@ -39,7 +39,7 @@ vim ~/.bashrc
 i
 ```
 
-Then, add this to the end of the file:
+Then, add this to the end of the file (loading modules and adding directories to PYTHONPATH):
 ```bash
 # Load OpenMPI and activate conda environment when in EIANN directory
 if [[ "$PWD" == *"/EIANN" ]]; then
@@ -53,6 +53,9 @@ else
         conda deactivate
     fi
 fi
+
+# Add EIANN and nested directories to PYTHONPATH
+export PYTHONPATH=$PYTHONPATH:/home/yc1376
 ```
 Where ```<user>``` is the Amarel username (found with ```echo $USER```).
 
