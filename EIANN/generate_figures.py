@@ -613,14 +613,9 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
 
             if model_key in model_list_metrics:
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy, legend=False)
-
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
-
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='bar')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='bar')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='bar')
 
             label = None
             ax.annotate(label, xy=(0.5, 0.5), xycoords='figure fraction', fontsize=12, weight='bold')
@@ -716,9 +711,9 @@ def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_me
 
             if model_key in model_list_metrics:
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity)
-                plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity)
-                plot_structure_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure)
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
 
             label = None
             ax.annotate(label, xy=(0.5, 0.5), xycoords='figure fraction', fontsize=12, weight='bold')
@@ -782,8 +777,8 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
                 legend = ax_accuracy.legend(ncol=1, bbox_to_anchor=(1., 1.), loc='upper left', fontsize=6)
                 for line in legend.get_lines():
                     line.set_linewidth(1.5)
-                plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity)
-                plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity)
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
 
     if save:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -842,8 +837,8 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
             # Plot metrics
             if model_key in model_list_metrics:                
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                # plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity)
-                # plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity)
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
                 plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
                 plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle)
             legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0., 1.3), loc='upper left', fontsize=6)
@@ -1062,9 +1057,9 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
             plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
 
             if 'H1E' in data_dict[seed]['sparsity_history'] and 'H2E' in data_dict[seed]['sparsity_history']:
-                plot_sparsity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity)
-                plot_selectivity_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity)
-                plot_structure_all_seeds(data_dict, model_dict, ax=ax_structure)
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
 
                 # Sparsity history
                 val_steps = data_dict[seed]['val_history_train_steps'][:]
@@ -1431,7 +1426,7 @@ def main(figure, recompute):
 
             "DTP_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                 "color": "blue",
-                                "name": "DTP (Learned Bias)"},
+                                "name": "DTP (Learned Bias)",},
 
         }
 
@@ -1539,7 +1534,7 @@ def main(figure, recompute):
 
     elif figure == 'table':
         saved_network_path_prefix += "MNIST/"
-        figure_name = "FigS3_table"
+        figure_name = "FigS3_mnist_table"
         model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
                       "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
                       "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
