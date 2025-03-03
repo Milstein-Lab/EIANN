@@ -1127,24 +1127,36 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
 
-            # Get the accuracy for each seed
-            accuracy_all_seeds_20k = []
-            for seed in model_dict['seeds']:
-                accuracy_all_seeds_20k.append(data_dict[seed]['test_accuracy_history'][-1])
-            avg_accuracy_20k = np.mean(accuracy_all_seeds_20k)
-            std_accuracy_20k = np.std(accuracy_all_seeds_20k)
-            sem_accuracy_20k = std_accuracy_20k / np.sqrt(len(accuracy_all_seeds_20k))
+            if 'mnist' in saved_network_path:
+                # Get the accuracy for each seed
+                accuracy_all_seeds_20k = []
+                for seed in model_dict['seeds']:
+                    accuracy_all_seeds_20k.append(data_dict[seed]['test_accuracy_history'][-1])
+                avg_accuracy_20k = np.mean(accuracy_all_seeds_20k)
+                std_accuracy_20k = np.std(accuracy_all_seeds_20k)
+                sem_accuracy_20k = std_accuracy_20k / np.sqrt(len(accuracy_all_seeds_20k))
 
-            accuracy_all_seeds_50k = []
-            for seed in model_dict['seeds']:
-                accuracy_all_seeds_50k.append(data_dict[seed]['test_accuracy_history_extended'][-1])
-            avg_accuracy_50k = np.mean(accuracy_all_seeds_50k)
-            std_accuracy_50k = np.std(accuracy_all_seeds_50k)
-            sem_accuracy_50k = std_accuracy_50k / np.sqrt(len(accuracy_all_seeds_50k))
+                accuracy_all_seeds_50k = []
+                for seed in model_dict['seeds']:
+                    accuracy_all_seeds_50k.append(data_dict[seed]['test_accuracy_history_extended'][-1])
+                avg_accuracy_50k = np.mean(accuracy_all_seeds_50k)
+                std_accuracy_50k = np.std(accuracy_all_seeds_50k)
+                sem_accuracy_50k = std_accuracy_50k / np.sqrt(len(accuracy_all_seeds_50k))
 
-            networks[model_dict['name']] = {'Attributes': "add network info here",
-                                            'MNIST Accuracy (20k samples)': f"{avg_accuracy_20k:.2f} \u00b1 {sem_accuracy_20k:.2f}",
-                                            'MNIST Accuracy (50k samples)': f"{avg_accuracy_50k:.2f} \u00b1 {sem_accuracy_50k:.2f}"}
+                networks[model_dict['name']] = {'Attributes': "add network info here",
+                                                'MNIST Accuracy (20k samples)': f"{avg_accuracy_20k:.2f} \u00b1 {sem_accuracy_20k:.2f}",
+                                                'MNIST Accuracy (50k samples)': f"{avg_accuracy_50k:.2f} \u00b1 {sem_accuracy_50k:.2f}"}
+
+            elif 'spiral' in saved_network_path:
+                accuracy_all_seeds_1_epoch = []
+                for seed in model_dict['seeds']:
+                    accuracy_all_seeds_1_epoch.append(data_dict[seed]['test_accuracy_history'][-1])
+                avg_accuracy_1_epoch = np.mean(accuracy_all_seeds_1_epoch)
+                std_accuracy_1_epoch = np.std(accuracy_all_seeds_1_epoch)
+                sem_accuracy_1_epoch = std_accuracy_1_epoch / np.sqrt(len(accuracy_all_seeds_1_epoch))
+
+                networks[model_dict['name']] = {'Attributes': "add network info here",
+                                                'Spiral Accuracy (1 epoch)': f"{avg_accuracy_1_epoch:.2f} \u00b1 {sem_accuracy_1_epoch:.2f}"}
 
     # Create a table from the networks dictionary
     table_vals = []
@@ -1207,7 +1219,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
             # Plot heatmaps and spirals
             if model_key in model_list_heatmaps:
                 ax = fig.add_subplot(axes[heatmaps_row, model_idx])
-                if model_key != "vanBP_0_hidden_learned_bias":
+                if model_key != "vanBP_0_hidden_learned_bias_spiral":
                     population = 'H1E'
                     # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict']]
                     # Activity plots: batch accuracy of each population to the test dataset
@@ -1514,8 +1526,10 @@ def main(figure, recompute):
     # Supplementary Spirals Figure
     elif figure in ["all", "suppl-spiral"]:
         saved_network_path_prefix += "spiral/"
-        model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
-        # model_list_heatmaps = ["vanBP_0_hidden_learned_bias", "vanBP_2_hidden_learned_bias", "vanBP_2_hidden_zero_bias", "bpDale_learned_bias", "bpLike_DTC_learned_bias", "DTP_learned_bias"]
+        # model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
+        model_list_heatmaps = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
+                                "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
+                                "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Suppl1_Spirals"
 
@@ -1531,6 +1545,13 @@ def main(figure, recompute):
                       "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
                       ]
         generate_extended_accuracy_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
+    
+    elif figure == 'spiral-table':
+        saved_network_path_prefix += "spiral/"
+        figure_name = "spiral-table"
+        model_list = ["vanBP_2_hidden_learned_bias_spiral"]
+        generate_extended_accuracy_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
+        # TODO i think its trying to use the simplified config to decode the yaml but it doesnt have to do that
 
     elif figure == 'structure':
         saved_network_path_prefix += "MNIST/"
