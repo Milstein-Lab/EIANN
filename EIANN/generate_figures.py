@@ -41,72 +41,7 @@ plt.rcParams.update({'font.size': 6,
                     'svg.fonttype': 'none',
                     'text.usetex': False})
 
-'''
-Figure 1: Diagram - How Dendritic Target Propagation (DendTP) works
-    -> DendTP is a biologically plausible way to pass gradients to hidden layers
-    -> Compute local loss with top-down nudges and dendI subtraction
-    -> Diagram of nudges (+a+D) over time 
 
-Figure 2: Dale's Law architecture is able to learn good representations (even with random somaI). Is self-organization enough? (No)
-    -> vanBP vs bpDale(onlyE) vs bpDale(fixedI) vs Hebb(top-sup)
-    -> (bpDale is more structured/sparse [H1E/H2E metrics])
-
-Supplementary 1: learning somaI is not necessary
-    -> bpDale(learned) vs bpDale(fixed) [somaI representations + accuracy/selectivity/sparsity]
-
-How to compute accurate gradients with bio-plausible rule?
-Figure 3: Hebbian learning rule enables dendritic cancellation of forward activity
-    -> DendI representation: Random vs LocalBP vs HebbWN
-    -> Plot Dend State over time
-    -> Plot angle vs BP
-
-Supplementary 2: E cell representations for dendritic models
-
-Figure 4: Given good bio-gradients, what do different bio-motivated learning rules give?
-    -> BTSP vs BCM vs HebbWN
-    -> Representations/RFs for HiddenE + metrics plots
-
-Supplement: Dend state + soma/dendI representations + angle vs BP for bio learning rule (+ RFs?)
-
-Figure 5: Hebbian learning rule enables W/B alignment
-    -> FA vs BTSP vs bpLike
-    -> Plot W/B angle over time
-    -> Plot angle vs BP + accuracy
-    -> (Diagram + equations)
-
-Supplementary: Alternate/Different approaches to W/B alignment
-    -> If only consider postsynaptic D (not forward activity): perfect alignment (cf Burstprop)
-    -> If only consider forward activity: alignment only if cov(a)=I (eg. Gaussian noise or one-hot)
-    -> 'Coincidental' alignment: some alignment remains if cov(a)!=I, because of similarities in learned structure between PCA and BP
-
-Supplementary: DendTP performs well across different tasks (cf Burstprop Fig6)
-    -> Spirals requires biases (random fixed)
-    -> Plot train accuracy in Spirals
-    -> Plot test accuracy in Spirals
-    
-
-    
---------------------------------------------------------------------------------------
-    
-Figure 2: somaI representations in bpDale(learnedI) vs top-sup HebbWN(learnedI) vs unsup-HebbWN(learnedI)
-    (top: OutputE + H1E, activity and receptive fields and metrics)
-    (bottom: OutputSomaI + H1SomaI, activity and metrics)
-    -> bpDale SomaI is unselective/unstructured, biological learning rule is not (focus on SomaI metrics)
-    -> sup HebbWN performance is mediocre (representational collapse), we need a biological way to pass gradients to hidden layers
-
-(switched to fixed somaI)
--> bpDale still performs with fixedI, HebbWN does not, but BCM does (focus on H1E metrics)
-(Supp: bpDale(fixedI) vs top-sup HebbWN(fixedI) vs top-sup BCM(fixedI) vs unsup BCM(fixedI))
-
-Passing gradients with apical dendrites:
-Figure 3: dendritic_gating(bpLike) vs dendritic_gating w/ HebbWN dendritic learning
-        -> Can compute local loss with top-down nudges and dendI subtraction
-        -> dendritic subtraction is effective even with HebbWN
-
-Figure 4: BTSP(weight transpose + HebbWN dendI) vs sup-HebbWN
-        -> Local loss allows learning with a biological rule
-        -> BTSP does better than Hebbian (Hebb too simple)
-'''
 
 ########################################################################################################
 
@@ -431,7 +366,7 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True, error
     for seed in model_dict['seeds']:
         if stochastic:
             angle = data_dict[seed]['angle_vs_bp_stochastic']['all_params'][:]
-            angle = scipy.ndimage.uniform_filter1d(angle, size=3) # Smooth with 3-point boxcar average
+            # angle = scipy.ndimage.uniform_filter1d(angle, size=3) # Smooth with 3-point boxcar average
             angle_all_seeds.append(angle)
         else:
             angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
@@ -546,17 +481,26 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
 
 
 def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
-    # fig = plt.figure(figsize=(5.5, 9))
-    fig = plt.figure(figsize=(5.5, 4))
+    fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=3, ncols=3,                        
                        left=0.049,right=0.95,
-                       top=0.95, bottom=0.08,
-                       wspace=0.2, hspace=0.35)
+                       top=0.95, bottom=0.52,
+                       wspace=0.2, hspace=0.4)
     metrics_axes = gs.GridSpec(nrows=3, ncols=4,                        
                        left=0.049,right=0.95,
-                       top=0.95, bottom=0.25,
-                       wspace=0.5, hspace=0.3,
+                       top=0.95, bottom=0.6,
+                       wspace=0.5, hspace=0.35,
                        width_ratios=[1.5, 1, 1, 1])
+    # fig = plt.figure(figsize=(5.5, 4))
+    # axes = gs.GridSpec(nrows=3, ncols=3,                        
+    #                    left=0.049,right=0.95,
+    #                    top=0.95, bottom=0.08,
+    #                    wspace=0.2, hspace=0.35)
+    # metrics_axes = gs.GridSpec(nrows=3, ncols=4,                        
+    #                    left=0.049,right=0.95,
+    #                    top=0.95, bottom=0.25,
+    #                    wspace=0.5, hspace=0.3,
+    #                    width_ratios=[1.5, 1, 1, 1])
 
     ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
     ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
@@ -578,6 +522,7 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
             if model_key in model_list_heatmaps:
                 seed = model_dict['seeds'][0] # example seed to plot
                 population = 'H2E'
+                # population = 'OutputE'
 
                 # Activity plots: batch accuracy of each population to the test dataset
                 ax = fig.add_subplot(axes[0, i])
@@ -787,41 +732,42 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
 
 def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=4, ncols=3,                        
-                       left=0.249,right=0.78,
+    axes = gs.GridSpec(nrows=3, ncols=3,                        
+                       left=0.049,right=0.8,
                        top=0.95, bottom = 0.5,
                        wspace=0.45, hspace=0.5)
     
-    metrics_axes = gs.GridSpec(nrows=4, ncols=3,
+    metrics_axes = gs.GridSpec(nrows=3, ncols=5,
                        left=0.049,right=0.8,
                        top=0.95, bottom = 0.5,
-                       wspace=0.5, hspace=0.6)
-    # ax_sparsity    = fig.add_subplot(metrics_axes[0, 0])
-    # ax_selectivity = fig.add_subplot(metrics_axes[0, 1])
-    ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])
-    ax_dendstate   = fig.add_subplot(metrics_axes[2, 1])
-    ax_angle       = fig.add_subplot(metrics_axes[2, 2])
-    col = 0
+                       wspace=0.8, hspace=0.6,
+                       width_ratios=[1, 1, 1, 0.4, 0.4])
+
+    ax_accuracy    = fig.add_subplot(metrics_axes[1, 0])
+    ax_dendstate   = fig.add_subplot(metrics_axes[1, 1])
+    ax_angle       = fig.add_subplot(metrics_axes[1, 2])
+    ax_selectivity = fig.add_subplot(metrics_axes[1, 3])
+    ax_sparsity    = fig.add_subplot(metrics_axes[1, 4])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
-    for model_key in all_models:
+    for col, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
         hdf5_path = f"data/plot_data_{network_name}.h5"
+
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['name']}")
-            seed = model_dict['seeds'][0] # example seed to plot
-            # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
             populations_to_plot = ['H2DendI']
 
             # Plot heatmaps
             if model_key in model_list_heatmaps:
                 for row,population in enumerate(populations_to_plot):
-                    ## Activity plots: batch accuracy of each population to the test dataset
-                    ax = fig.add_subplot(axes[row+1, col])
+                    # Activity plots: batch accuracy of each population to the test dataset
+                    ax = fig.add_subplot(axes[row, col])
+                    seed = model_dict['seeds'][0] # example seed to plot
                     average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
                     pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=False)
                     ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
@@ -832,15 +778,17 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
                     if col>0:
                         ax.set_ylabel('')
                         ax.set_yticklabels([])
-                col += 1
 
             # Plot metrics
-            if model_key in model_list_metrics:                
+            if model_key in model_list_metrics:  
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
                 plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
                 plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle)
+
+                populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
+
             legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0., 1.3), loc='upper left', fontsize=6)
             for line in legend.get_lines():
                 line.set_linewidth(1.5)
@@ -1430,6 +1378,9 @@ def main(figure, recompute):
     for model_key in model_dict_all:
         model_dict_all[model_key]["seeds"] = seeds
 
+
+    #-------------- Main Figures --------------
+
     if figure == "all":
         # Generate HDF5 files for all models
         all_models = list(model_dict_all.keys())[9:]
@@ -1440,74 +1391,67 @@ def main(figure, recompute):
         recompute = None
 
     # Diagrams + example dynamics
-    if figure == "fig1":
+    if figure in ["all", "fig1"]:
         figure_name = "dynamics_example_plots"
         plot_dynamics_example(model_dict_all, save=figure_name, recompute=recompute)
 
     # Backprop models
-    elif figure in ["all", "fig2"]:
+    if figure in ["all", "fig2"]:
         saved_network_path_prefix += "MNIST/"
         model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
-        # model_list_heatmaps = ["bpLike_fixedTD_hebbdend", "bpLike_WT_hebbdend", "bpLike_TCWN_hebbdend"]
-        # model_list_heatmaps = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
-        # model_list_heatmaps = ["vanBP", "bpDale_learned", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
         compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
+    # Analyze DendI
+    if figure in ["all", "fig3"]:
+        saved_network_path_prefix += "MNIST/"
+        model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
+        # model_list_metrics = model_list_heatmaps + ["bpDale_fixed"]
+        model_list_metrics = model_list_heatmaps
+        figure_name = "Fig3_dendI"
+        compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+
+    # Analyze E properties of main models
+    if figure in ["all", "fig4"]:
+        saved_network_path_prefix += "MNIST/"
+        # model_list_heatmaps = ["bpDale_fixed", "bpLike_WT_hebbdend"]
+        model_list_heatmaps = ["bpDale_fixed", "bpLike_WT_hebbdend", "HebbWN_topsup"]
+
+        model_list_metrics = model_list_heatmaps
+        figure_name = "Fig4_bpDale_bpLike"
+        compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+
+    # Biological learning rules (with WT/good gradients)
+    if figure in ["all","fig5"]:
+        saved_network_path_prefix += "MNIST/"
+        model_list = ["bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
+        figure_name = "Fig5_BTSP_BCM_HebbWN"
+        compare_metrics_simple(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        
+    # Forward (W) vs backward (B) alignment angle
+    if figure in ["all", "fig6"]:
+        saved_network_path_prefix += "MNIST/"
+        model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend"]
+        # model_list2 = ["bpLike_WT_hebbdend_eq", "bpLike_fixedTD_hebbdend_eq", "bpLike_hebbTD_hebbdend_eq"]
+
+        model_list2 = ["BTSP_WT_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
+        figure_name = "Fig6_WB_alignment_FA_bpLike_BTSP"
+        compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        # add dendstate
+
+    #-------------- Supplementary Figures --------------
+
     # Analyze somaI selectivity (supplement to Fig.2)
-    elif figure in ["all", "S1"]:
+    if figure in ["all", "S1"]:
         saved_network_path_prefix += "MNIST/"
         model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS1_somaI"
         compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
-    # Analyze DendI
-    elif figure in ["all", "fig3"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
-        # model_list_metrics = ["bpDale_fixed", "bpDale_learned", "bpLike_WT_hebbdend"]
-        model_list_metrics = model_list_heatmaps + ["bpDale_fixed"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "Fig3_dendI"
-        compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-    # S2 (Supplement to Fig.3)
-    elif figure in ["all", "S2"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "FigS2_Ecells_bpLike"
-        compare_E_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-    # Biological learning rules (with WT/good gradients)
-    elif figure in ["all","fig4"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list = ["bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
-        figure_name = "Fig4_BTSP_BCM_HebbWN"
-        compare_metrics_simple(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-    # Supplement to Fig.4: "Supervised_HebbWN_WT_hebbdend" -> Performs badly because HWN is potentiation-only
-        
-        
-    # Representations in bio-learning rules (Supplement to Fig.4)
-    elif figure in ["all", "S3"]:
-        pass
-
-    # Forward (W) vs backward (B) alignment angle
-    elif figure in ["all", "fig5"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend"]
-        # model_list2 = ["bpLike_WT_hebbdend_eq", "bpLike_fixedTD_hebbdend_eq", "bpLike_hebbTD_hebbdend_eq"]
-
-        model_list2 = ["BTSP_WT_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-        figure_name = "Fig5_WB_alignment_FA_bpLike_BTSP"
-        compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-        # add dendstate
-
     # Supplementary Spirals Figure
-    elif figure in ["all", "suppl-spiral"]:
+    if figure in ["all", "suppl-spiral"]:
         saved_network_path_prefix += "spiral/"
         model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
         # model_list_heatmaps = ["vanBP_0_hidden_learned_bias", "vanBP_2_hidden_learned_bias", "vanBP_2_hidden_zero_bias", "bpDale_learned_bias", "bpLike_DTC_learned_bias", "DTP_learned_bias"]
@@ -1518,23 +1462,22 @@ def main(figure, recompute):
         generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix='network_config/spiral/',
                                 saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
 
-    elif figure == 'table':
+    if figure == 'table':
         saved_network_path_prefix += "MNIST/"
         figure_name = "FigS3_mnist_table"
         model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
                       "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
-                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
-                      ]
+                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
         generate_extended_accuracy_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
 
-    elif figure == 'structure':
+    if figure == 'structure':
         saved_network_path_prefix += "MNIST/"
         figure_name = "structure"
         model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
-    elif figure in ["all", "metrics"]:
+    if figure in ["all", "metrics"]:
         saved_network_path_prefix += "MNIST/"
         # model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_hebbTD", "bpLike_FA"]
         # model_list = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
@@ -1542,8 +1485,6 @@ def main(figure, recompute):
         figure_name = "metrics_all_models"
         generate_metrics_plot(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
-    else:
-        print("Figure not found!")
 
     # Combine figures into one PDF
     directory = "figures/"
