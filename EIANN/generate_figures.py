@@ -366,7 +366,11 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True, error
     for seed in model_dict['seeds']:
         if stochastic:
             angle = data_dict[seed]['angle_vs_bp_stochastic']['all_params'][:]
-            # angle = scipy.ndimage.uniform_filter1d(angle, size=3) # Smooth with 3-point boxcar average
+            # check if there are any NaNs in the array
+            if np.isnan(angle).any():
+                print(f"Warning: NaN values found in angle array for seed {seed}")
+            angle = np.where(np.isnan(angle), 0, angle) # replace NaNs with 0
+            angle = scipy.ndimage.uniform_filter1d(angle, size=3) # Smooth with 3-point boxcar average
             angle_all_seeds.append(angle)
         else:
             angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
@@ -486,11 +490,11 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
                        left=0.049,right=0.95,
                        top=0.95, bottom=0.52,
                        wspace=0.2, hspace=0.4)
-    metrics_axes = gs.GridSpec(nrows=3, ncols=4,                        
-                       left=0.049,right=0.95,
+    metrics_axes = gs.GridSpec(nrows=3, ncols=3,                        
+                       left=0.049,right=0.7,
                        top=0.95, bottom=0.6,
                        wspace=0.5, hspace=0.35,
-                       width_ratios=[1.5, 1, 1, 1])
+                       width_ratios=[2, 1, 1])
     # fig = plt.figure(figsize=(5.5, 4))
     # axes = gs.GridSpec(nrows=3, ncols=3,                        
     #                    left=0.049,right=0.95,
@@ -504,8 +508,7 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
 
     ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
     ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
-    ax_sparsity    = fig.add_subplot(metrics_axes[2, 2])
-    ax_structure   = fig.add_subplot(metrics_axes[2, 3])
+    ax_structure   = fig.add_subplot(metrics_axes[2, 2])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -559,7 +562,6 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
             if model_key in model_list_metrics:
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy, legend=False)
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
 
             label = None
@@ -732,22 +734,22 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
 
 def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=3,                        
-                       left=0.049,right=0.8,
+    axes = gs.GridSpec(nrows=3, ncols=4,                        
+                       left=0.049,right=0.95,
                        top=0.95, bottom = 0.5,
-                       wspace=0.45, hspace=0.5)
+                       wspace=0.3, hspace=0.5,
+                       width_ratios=[1, 1, 1, 0.5])
     
-    metrics_axes = gs.GridSpec(nrows=3, ncols=5,
-                       left=0.049,right=0.8,
+    metrics_axes = gs.GridSpec(nrows=3, ncols=4,
+                       left=0.049,right=0.95,
                        top=0.95, bottom = 0.5,
-                       wspace=0.8, hspace=0.6,
-                       width_ratios=[1, 1, 1, 0.4, 0.4])
+                       wspace=0.3, hspace=0.6,
+                       width_ratios=[1, 1, 1, 0.5])
 
     ax_accuracy    = fig.add_subplot(metrics_axes[1, 0])
     ax_dendstate   = fig.add_subplot(metrics_axes[1, 1])
     ax_angle       = fig.add_subplot(metrics_axes[1, 2])
     ax_selectivity = fig.add_subplot(metrics_axes[1, 3])
-    ax_sparsity    = fig.add_subplot(metrics_axes[1, 4])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -787,7 +789,6 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
 
                 populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
 
             legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0., 1.3), loc='upper left', fontsize=6)
             for line in legend.get_lines():
@@ -1427,8 +1428,8 @@ def main(figure, recompute):
     # Analyze E properties of main models
     if figure in ["all", "fig4"]:
         saved_network_path_prefix += "MNIST/"
-        # model_list_heatmaps = ["bpDale_fixed", "bpLike_WT_hebbdend"]
-        model_list_heatmaps = ["bpDale_fixed", "bpLike_WT_hebbdend", "HebbWN_topsup"]
+        model_list_heatmaps = ["bpDale_fixed", "bpLike_WT_hebbdend"]
+        # model_list_heatmaps = ["bpDale_fixed", "bpLike_WT_hebbdend", "HebbWN_topsup"]
 
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig4_bpDale_bpLike"
