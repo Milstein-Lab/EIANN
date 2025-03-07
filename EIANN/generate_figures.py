@@ -57,9 +57,11 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
     # Build network
     network_name = os.path.basename(config_path).split('.')[0]
-    pickle_filename = os.path.basename(saved_network_path)
-    network_seed, data_seed = pickle_filename.split('_')[-3:-1]
-                                                                                 
+    pickle_filename = os.path.basename(saved_network_path).split('.')[0]
+    network_seed, data_seed = pickle_filename.split('_')[-2:]
+    if 'extended' in saved_network_path:
+        network_seed, data_seed = pickle_filename.split('_')[-3:-1]
+    assert network_seed.isdigit() and data_seed.isdigit(), f"network_seed and data_seed must be numbers, but got {network_seed} and {data_seed}"
     network = ut.build_EIANN_from_config(config_path, network_seed=network_seed)    
     seed = f"{network_seed}_{data_seed}"
 
@@ -215,7 +217,6 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
     for model_key in model_list:
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
-        pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
         hdf5_path = f"data/plot_data_{network_name}.h5"
 
@@ -228,7 +229,7 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
                 hdf5_path = str(box_hdf5_path)
 
         for seed in model_dict['seeds']:
-            saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
+            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}.pkl"
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute)
             gc.collect()
 
@@ -982,11 +983,10 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
-        pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
         hdf5_path = f"data/plot_data_{network_name}.h5"
         for seed in model_dict['seeds']:
-            saved_network_path = saved_network_path_prefix + pickle_basename + f"_{seed}_complete.pkl"
+            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}.pkl"
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
             gc.collect()
 
@@ -1062,7 +1062,6 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
                 saved_network_path += '_extended.pkl'
             else:
                 saved_network_path += '.pkl'
-
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
             gc.collect()
 
@@ -1074,6 +1073,7 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
         hdf5_path = f"data/plot_data_{network_name}.h5"
 
         with h5py.File(hdf5_path, 'r') as f:
+            print(f"Generating table for {network_name}")
             data_dict = f[network_name]
 
             if 'mnist' in saved_network_path:
