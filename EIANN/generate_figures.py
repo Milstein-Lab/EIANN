@@ -358,6 +358,7 @@ def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
     ax.set_xlabel('Training step')
     ax.set_ylabel('Dendritic state')
     ax.set_ylim(bottom=-0.005, top=0.3)
+    ax.set_yticks([0, 0.1, 0.2, 0.3])
     # ax.set_yscale(scale)
     # ax.hlines(0, *ax.get_xlim(), color='black', linestyle='--', linewidth=1)
     
@@ -385,6 +386,7 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True, error
         train_steps = train_steps[1:]
     ax.plot(train_steps, avg_angle, label=model_dict["name"], color=model_dict["color"])
     ax.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
+    ax.hlines(0, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
     ax.hlines(30, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
     ax.hlines(60, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
     ax.hlines(90, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
@@ -399,9 +401,8 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax, error='std'):
     # Plot angles between forward weights W vs backward weights B
     fb_angles_all_seeds = []
     for seed in model_dict['seeds']:
-        for projection in data_dict[seed]["feedback_weight_angle_history"]:
-            fb_angles_all_seeds.append(data_dict[seed]["feedback_weight_angle_history"][projection][:])
-
+        angle = data_dict[seed]['feedback_weight_angle_history']['all_params'][:]
+        fb_angles_all_seeds.append(angle)
     if len(fb_angles_all_seeds) == 0:
         print(f"No feedback weight angles found for {model_dict['name']}")
         return
@@ -421,9 +422,6 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax, error='std'):
         ax.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict['color'], linewidth=0)
     ax.set_xlabel('Training step')
     ax.set_ylabel('Angle \n(F vs B weights)')
-    # ax.set_ylim(bottom=-2, top=90)
-    # ax.set_yticks(np.arange(0, 91, 30))
-    # ax.set_xlim([-1000,20000])
     ax.set_xlabel('Training step')
     ax.set_ylim([-5,max(100, np.nanmax(avg_angle+error))])
     ax.set_xlim([-train_steps[-1]/20, train_steps[-1]+1])
@@ -875,16 +873,18 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
 
 def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=3,                        
-                       left=0.1,right=0.9,
-                       top=0.9, bottom = 0.6,
-                       wspace=0.4, hspace=0.6)
+    axes = gs.GridSpec(nrows=3, ncols=4,                        
+                       left=0.049,right=0.95,
+                       top=0.95, bottom = 0.6,
+                       wspace=0.5, hspace=0.7)
     ax_accuracy1 = fig.add_subplot(axes[0,0])
     ax_angle_vs_BP1 = fig.add_subplot(axes[0,1])
     ax_FB_angle1 = fig.add_subplot(axes[0,2])
     ax_accuracy2 = fig.add_subplot(axes[1,0])
     ax_angle_vs_BP2 = fig.add_subplot(axes[1,1])
     ax_FB_angle2 = fig.add_subplot(axes[1,2])
+    ax_dend_state1 = fig.add_subplot(axes[0,3])
+    ax_dend_state2 = fig.add_subplot(axes[1,3])
 
     all_models = list(dict.fromkeys(model_list1 + model_list2))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -900,18 +900,21 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
                 ax_accuracy = ax_accuracy1
                 ax_angle_vs_BP = ax_angle_vs_BP1
                 ax_FB_angle = ax_FB_angle1
+                ax_dend_state = ax_dend_state1
             if model_key in model_list2:
                 ax_accuracy = ax_accuracy2
                 ax_angle_vs_BP = ax_angle_vs_BP2
                 ax_FB_angle = ax_FB_angle2
+                ax_dend_state = ax_dend_state2
             plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
             plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP, error='std')
             plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angle, error='std')
+            plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dend_state)
 
-    legend = ax_accuracy1.legend(ncol=3, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
+    legend = ax_accuracy1.legend(ncol=3, bbox_to_anchor=(-0.1, 1.25), loc='upper left')
     for line in legend.get_lines():
         line.set_linewidth(1.5)
-    legend = ax_accuracy2.legend(ncol=3, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
+    legend = ax_accuracy2.legend(ncol=3, bbox_to_anchor=(-0.1, 1.25), loc='upper left')
     for line in legend.get_lines():
         line.set_linewidth(1.5)
 
@@ -925,7 +928,8 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="netwo
     axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                       
                        left=0.1,right=0.9,
                        top=0.9, bottom = 0.6,
-                       wspace=0.4, hspace=0.6)
+                       wspace=0.4, hspace=0.6,
+                       height_ratios=[1, 0.7])
     ax_accuracy = fig.add_subplot(axes[1,0])
     ax_dendstate = fig.add_subplot(axes[1,1])
     ax_angle_vs_BP = fig.add_subplot(axes[1,2])
@@ -1198,10 +1202,16 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def images_to_pdf(image_paths, output_path):
+from reportlab.pdfgen import canvas
+import os
+
+def images_to_pdf(image_paths, output_path, dpi=300):
     # Define US Letter page size in points
     letter_size = [8.5 * 72, 11 * 72]  # 612 x 792 points
-    fig_size = [5.5 * 72, 9 * 72]  # 5.5 x 9 inches in points
+    
+    # Scale figure size based on dpi
+    scale_factor = dpi / 300  # Reference is 300 dpi
+    fig_size = [5.5 * 72 * scale_factor, 9 * 72 * scale_factor]
     
     fig_width = fig_size[0]
     fig_height = fig_size[1]
@@ -1221,13 +1231,14 @@ def images_to_pdf(image_paths, output_path):
         # Add a caption with the image filename
         caption = os.path.basename(img_path)
         c.setFont("Helvetica", 12)
-        caption_x = letter_size[0]*0.35
-        caption_y = letter_size[1] - margin_y*0.7
+        caption_x = letter_size[0] * 0.35
+        caption_y = letter_size[1] - margin_y * 0.7
         c.drawString(caption_x, caption_y, caption)
         
         c.showPage()  # Add a new page in the PDF for the next image
     
     c.save()
+
 
 
 
