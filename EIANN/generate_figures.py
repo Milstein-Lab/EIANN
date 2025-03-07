@@ -865,7 +865,7 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
                 col += 1
 
             if model_key in model_list_metrics:
-                plot_structure_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_structure)
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_structure, metric_name='structure')
 
     if save is not None:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -1057,7 +1057,12 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
         network_name = model_dict['config'].split('.')[0]
         hdf5_path = f"data/plot_data_{network_name}.h5"
         for seed in model_dict['seeds']:
-            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}_extended.pkl"
+            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}"
+            if 'mnist' in saved_network_path:
+                saved_network_path += '_extended.pkl'
+            else:
+                saved_network_path += '.pkl'
+
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
             gc.collect()
 
@@ -1136,11 +1141,11 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
     - 'scatter': datapoints with incorrect preductions marked in red
     - 'decison': decision boundary map of the network's predictions
     '''
-    fig = plt.figure(figsize=(15, 9))
+    fig = plt.figure(figsize=(18, 9))
     axes = gs.GridSpec(nrows=3, ncols=7,                        
-                       left=0.049,right=1,
-                       top=0.95, bottom = 0.5,
-                       wspace=0.9, hspace=0.7)
+                       left=0.03, right=0.97,
+                       top=0.95, bottom=0.5,
+                       wspace=0.5, hspace=0.7)
 
     spirals_row =   0
     heatmaps_row =  1 
@@ -1377,6 +1382,10 @@ def main(figure, recompute):
                                 "color": "blue",
                                 "name": "DTP (Learned Bias)",},
 
+            "DTP_fixed_DendI_learned_bias_1_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_1_config_complete_optimized.yaml",
+                                "color": "green",
+                                "name": "DTP Fixed DendI and SomaI (Learned Bias) 1",}, # optimized DendI fraction
+
         }
 
     # Set path to Box data directory (default path based on OS)
@@ -1469,7 +1478,7 @@ def main(figure, recompute):
         # model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
         model_list_heatmaps = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
                                 "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
-                                "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral"]
+                                "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Suppl1_Spirals"
 
@@ -1489,7 +1498,7 @@ def main(figure, recompute):
         saved_network_path_prefix += "spiral/"
         figure_name = "spiral-table"
         model_list = ["vanBP_2_hidden_learned_bias_spiral"]
-        generate_extended_accuracy_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
+        generate_extended_accuracy_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix, config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
         # TODO i think its trying to use the simplified config to decode the yaml but it doesnt have to do that
 
     if figure == 'structure':
