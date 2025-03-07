@@ -14,9 +14,11 @@ def rename_files(directory):
                 base_name = match.group(1)
                 net_seed_number = match.group(2)
                 data_seed_number = match.group(3)
+
+                extended_tag = '_extended' if 'extended' in directory.lower() else ''
                 
                 # Construct the new filename with 'complete_optimized'
-                new_filename = f"{base_name}_complete_optimized_{net_seed_number}_{data_seed_number}.pkl"
+                new_filename = f"{base_name}_complete_optimized_{net_seed_number}_{data_seed_number}{extended_tag}.pkl"
                 old_path = os.path.join(directory, filename)
                 new_path = os.path.join(directory, new_filename)
 
@@ -27,7 +29,8 @@ def rename_files(directory):
 
 @click.command()
 @click.option('--dir', default=None, help='spiral or MNIST')
-def main(dir):
+@click.option('--extended', is_flag=True, help='extended or not')
+def main(dir, extended):
     # Set the directory to where files are located
     if os.name == "posix":
         username = os.environ.get("USER")
@@ -36,7 +39,10 @@ def main(dir):
         username = os.environ.get("USERNAME")
         saved_network_path = f"C:/Users/{username}/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/"
 
-    saved_network_path += dir
+    saved_network_path += dir + '/'
+
+    if extended:
+        saved_network_path += 'extended/'
 
     rename_files(saved_network_path)
 
