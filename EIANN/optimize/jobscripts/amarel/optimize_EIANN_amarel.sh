@@ -41,7 +41,7 @@ EOT
 
 # Run with this:
 # cd $HOME/EIANN/EIANN/optimize/jobscripts/amarel
-# sbatch optimize_EIANN_amarel.sh optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_fixed_bias.yaml spiral_BP_like_5J_fixed_bias
+# sbatch optimize_EIANN_amarel.sh optimize/optimize_config/spiral/20250217_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_config.yaml spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_2
 
 # See error and output logs with this:
 # cd /scratch/$USER/logs/EIANN
@@ -51,6 +51,8 @@ EOT
 
 
 
+# See the progress
+# watch -n 1 squeue -u yc1376
 
 # If you want to specify the number of nodes to run on, add this:
 # #SBATCH --nodes=10

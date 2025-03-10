@@ -87,6 +87,7 @@ bounds:
         - 0.25
         - 1.
 default_params:
+    DendI_size_fraction: 0.25
 rel_bounds:
 kwargs:
     network_id: 1

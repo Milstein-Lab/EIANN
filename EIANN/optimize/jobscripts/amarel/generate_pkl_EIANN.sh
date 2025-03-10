@@ -20,7 +20,7 @@ sbatch <<EOT
 #SBATCH -J $JOB_NAME
 #SBATCH -o /scratch/${USER}/logs/EIANN/$JOB_NAME.%j.o
 #SBATCH -e /scratch/${USER}/logs/EIANN/$JOB_NAME.%j.e
-#SBATCH --partition=nonpre,p_am2820_1,genetics_1,main
+#SBATCH --partition=nonpre,main,mem
 #SBATCH --requeue                
 #SBATCH --ntasks=6
 #SBATCH --time=1:00:00
@@ -30,6 +30,11 @@ sbatch <<EOT
 set -x
 
 cd $HOME/EIANN/EIANN
+
+eval "$(conda shell.bash hook)"
+conda activate eiann
+export OMPI_MCA_btl_tcp_if_include=ib0
+module load openmpi/4.1.6
 
 mpirun -np 6 python -m mpi4py.futures -m nested.analyze --config-file-path=$CONFIG_FILE_PATH \
   --param-file-path=$PARAM_FILE_PATH --output-dir=data/${TASK} --model-key=$MODEL_KEY \
@@ -59,6 +64,12 @@ EOT
 
 # EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias
 # sbatch generate_pkl_EIANN.sh optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config.yaml optimize/optimize_params/spiral/20250112_spiral_params.yaml spiral DTP_fixed_SomaI_learned_bias
+
+# DTP_fixed_DendI_fixed_SomaI_learned_bias_1
+# sbatch generate_pkl_EIANN.sh optimize/optimize_config/spiral/20250217_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_config.yaml optimize/optimize_params/spiral/20250112_spiral_params.yaml spiral DTP_fixed_DendI_fixed_SomaI_learned_bias_1
+
+# DTP_fixed_DendI_fixed_SomaI_learned_bias_2
+# sbatch generate_pkl_EIANN.sh optimize/optimize_config/spiral/20250217_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_config.yaml optimize/optimize_params/spiral/20250112_spiral_params.yaml spiral DTP_fixed_DendI_fixed_SomaI_learned_bias_2
 
 
 # See error and output logs with this:
