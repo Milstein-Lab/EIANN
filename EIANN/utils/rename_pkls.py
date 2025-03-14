@@ -26,6 +26,8 @@ def rename_files(directory):
                 os.rename(old_path, new_path)
                 print(f"Renamed: {filename} → {new_filename}")
 
+# TODO fix for extended
+
 
 @click.command()
 @click.option('--dir', default=None, help='spiral or MNIST')
