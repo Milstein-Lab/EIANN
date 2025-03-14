@@ -95,7 +95,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
                         print(f"Recomputing {network_name} {seed} in {hdf5_path}")
                         variables_to_recompute = [var for var in variables_to_save if var not in file[network_name][seed].keys()]
                 else:
-                    print(f"Computing data for {network_name} {seed} in {hdf5_path}")
+                    print(f"Computing data for name:{network_name}, seed:{seed} in {hdf5_path}")
                     variables_to_recompute = variables_to_save     
             else:
                 print(f"Computing data for {network_name} {seed} in {hdf5_path}")
@@ -222,14 +222,19 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
 
         if not os.path.exists(hdf5_path):
             # If the hdf5 is not available in local data directory, check in Box drive
-            box_hdf5_dir = pathlib.Path(saved_network_path_prefix).parents[1] / "2024 Figure data HDF5 files"
+            print("Local hdf5 not found, loading data from Box drive")
+            num_parent_dirs = 2 if "extended" in saved_network_path_prefix else 1
+            box_hdf5_dir = pathlib.Path(saved_network_path_prefix).parents[num_parent_dirs] / "2024 Figure data HDF5 files"
             box_hdf5_path = box_hdf5_dir / f"plot_data_{network_name}.h5"
             if box_hdf5_path.exists():
                 print(f"Loading hdf5 from Box drive: {box_hdf5_path}")
                 hdf5_path = str(box_hdf5_path)
+            else:
+                print("hdf5 not found in Box drive")
 
         for seed in model_dict['seeds']:
-            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}.pkl"
+            extended_flag = '_extended' if "extended" in saved_network_path_prefix else ""
+            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}{extended_flag}.pkl"
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute)
             gc.collect()
 
@@ -1048,23 +1053,27 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
 
 
 def generate_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
-    fig, ax = plt.subplots(figsize=(5.5, 9))
+    mm = 1/25.4 #convert mm to inches
+    fig, ax = plt.subplots(figsize=(180*mm,170*mm))
+    # fig, ax = plt.subplots(figsize=(5.5, 9))
     ax.axis('off')
 
     all_models = list(dict.fromkeys(model_list))
-    for model_key in all_models:
-        model_dict = model_dict_all[model_key]
-        config_path = config_path_prefix + model_dict['config']
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
-        for seed in model_dict['seeds']:
-            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}"
-            if 'mnist' in saved_network_path:
-                saved_network_path += '_extended.pkl'
-            else:
-                saved_network_path += '_extended.pkl'
-            generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
-            gc.collect()
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+
+    # for model_key in all_models:
+    #     model_dict = model_dict_all[model_key]
+    #     config_path = config_path_prefix + model_dict['config']
+    #     network_name = model_dict['config'].split('.')[0]
+    #     hdf5_path = f"data/plot_data_{network_name}.h5"
+    #     for seed in model_dict['seeds']:
+    #         saved_network_path = saved_network_path_prefix + network_name + f"_{seed}"
+    #         if 'mnist' in saved_network_path:
+    #             saved_network_path += '_extended.pkl'
+    #         else:
+    #             saved_network_path += '_extended.pkl'
+    #         generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
+    #         gc.collect()
 
     networks = {}
     columns = []
@@ -1078,7 +1087,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
             print(f"Generating table for {network_name}")
             data_dict = f[network_name]
 
-            if 'mnist' in saved_network_path:
+            if 'mnist' in saved_network_path_prefix:
                 # Get the accuracy for each seed
                 accuracy_all_seeds_20k = []
                 for seed in model_dict['seeds']:
@@ -1097,7 +1106,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 networks[model_dict['name']] = {'MNIST Accuracy (20k samples)': f"{avg_accuracy_20k:.2f} \u00b1 {sem_accuracy_20k:.2f}",
                                                 'MNIST Accuracy (50k samples)': f"{avg_accuracy_50k:.2f} \u00b1 {sem_accuracy_50k:.2f}"}
 
-            elif 'spiral' in saved_network_path:
+            elif 'spiral' in saved_network_path_prefix:
                 accuracy_all_seeds_1_epoch = []
                 for seed in model_dict['seeds']:
                     accuracy_all_seeds_1_epoch.append(data_dict[seed]['test_accuracy_history'][-1])
@@ -1115,7 +1124,6 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 networks[model_dict['name']] = {'Spiral Accuracy (1 epoch)': f"{avg_accuracy_1_epoch:.2f} \u00b1 {sem_accuracy_1_epoch:.2f}"}
                 networks[model_dict['name']] = {'Spiral Accuracy (10 epochs)': f"{avg_accuracy_10_epochs:.2f} \u00b1 {sem_accuracy_10_epochs:.2f}"}
                 
-
         columns = list(model_dict.keys())
         columns.remove('config')
         columns.remove('color')
@@ -1144,7 +1152,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
             cell.set_text_props(weight='bold')
         # cell.set_fontsize(20)
         # cell.set_height(cell.get_height() * 1.1)
-        cell.set_text_props(fontname='Arial', fontsize=12)
+        cell.set_text_props(fontname='Arial', fontsize=2)
 
     if save:
         fig.savefig(f"figures/{save}.png", dpi=300)
