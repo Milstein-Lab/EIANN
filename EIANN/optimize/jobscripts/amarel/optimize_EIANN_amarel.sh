@@ -41,7 +41,7 @@ EOT
 
 # Run with this:
 # cd $HOME/EIANN/EIANN/optimize/jobscripts/amarel
-# sbatch optimize_EIANN_amarel.sh optimize/optimize_config/spiral/20250217_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_config.yaml spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_2
+# sbatch optimize_EIANN_amarel.sh optimize/optimize_config/spiral/20250217_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_config.yaml spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_3
 
 # See error and output logs with this:
 # cd /scratch/$USER/logs/EIANN

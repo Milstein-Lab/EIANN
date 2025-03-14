@@ -1047,7 +1047,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig, ax = plt.subplots(figsize=(5.5, 9))
     ax.axis('off')
 
@@ -1062,11 +1062,12 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
             if 'mnist' in saved_network_path:
                 saved_network_path += '_extended.pkl'
             else:
-                saved_network_path += '.pkl'
+                saved_network_path += '_extended.pkl'
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
             gc.collect()
 
     networks = {}
+    columns = []
 
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
@@ -1093,8 +1094,7 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
                 std_accuracy_50k = np.std(accuracy_all_seeds_50k)
                 sem_accuracy_50k = std_accuracy_50k / np.sqrt(len(accuracy_all_seeds_50k))
 
-                networks[model_dict['name']] = {'Attributes': "add network info here",
-                                                'MNIST Accuracy (20k samples)': f"{avg_accuracy_20k:.2f} \u00b1 {sem_accuracy_20k:.2f}",
+                networks[model_dict['name']] = {'MNIST Accuracy (20k samples)': f"{avg_accuracy_20k:.2f} \u00b1 {sem_accuracy_20k:.2f}",
                                                 'MNIST Accuracy (50k samples)': f"{avg_accuracy_50k:.2f} \u00b1 {sem_accuracy_50k:.2f}"}
 
             elif 'spiral' in saved_network_path:
@@ -1105,8 +1105,24 @@ def generate_extended_accuracy_summary_table(model_dict_all, model_list, config_
                 std_accuracy_1_epoch = np.std(accuracy_all_seeds_1_epoch)
                 sem_accuracy_1_epoch = std_accuracy_1_epoch / np.sqrt(len(accuracy_all_seeds_1_epoch))
 
-                networks[model_dict['name']] = {'Attributes': "add network info here",
-                                                'Spiral Accuracy (1 epoch)': f"{avg_accuracy_1_epoch:.2f} \u00b1 {sem_accuracy_1_epoch:.2f}"}
+                accuracy_all_seeds_10_epochs = []
+                for seed in model_dict['seeds']:
+                    accuracy_all_seeds_10_epochs.append(data_dict[seed]['test_accuracy_history_extended'][-1])
+                avg_accuracy_10_epochs = np.mean(accuracy_all_seeds_10_epochs)
+                std_accuracy_10_epochs = np.std(accuracy_all_seeds_10_epochs)
+                sem_accuracy_10_epochs = std_accuracy_10_epochs / np.sqrt(len(accuracy_all_seeds_10_epochs))
+
+                networks[model_dict['name']] = {'Spiral Accuracy (1 epoch)': f"{avg_accuracy_1_epoch:.2f} \u00b1 {sem_accuracy_1_epoch:.2f}"}
+                networks[model_dict['name']] = {'Spiral Accuracy (10 epochs)': f"{avg_accuracy_10_epochs:.2f} \u00b1 {sem_accuracy_10_epochs:.2f}"}
+                
+
+        columns = list(model_dict.keys())
+        columns.remove('config')
+        columns.remove('color')
+        columns.remove('seeds')
+
+        for col in columns:
+            networks[model_dict['name']].update({col: model_dict[col]})
 
     # Create a table from the networks dictionary
     table_vals = []
@@ -1142,11 +1158,13 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
     - 'scatter': datapoints with incorrect preductions marked in red
     - 'decison': decision boundary map of the network's predictions
     '''
-    fig = plt.figure(figsize=(18, 9))
-    axes = gs.GridSpec(nrows=3, ncols=7,                        
+    cols = max(len(model_list_heatmaps), 3)
+
+    fig = plt.figure(figsize=(cols * 2.5, cols * 2.5))
+    axes = gs.GridSpec(nrows=3, ncols=cols,                        
                        left=0.03, right=0.97,
                        top=0.95, bottom=0.5,
-                       wspace=0.5, hspace=0.7)
+                       wspace=0.4, hspace=0.7)
 
     spirals_row =   0
     heatmaps_row =  1 
@@ -1184,6 +1202,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
                 ax = fig.add_subplot(axes[spirals_row, model_idx])
                 decision_data = data_dict[seed]['spiral_decision_data_dict']
                 pt.plot_spiral_decisions(decision_data, graph=spiral_type, ax=ax)
+                ax.set_aspect('equal')
                 ax.set_title(model_dict["name"], pad=4)
                 ax.set_xlabel('x1')
                 ax.set_ylabel('x2')
@@ -1258,31 +1277,48 @@ def main(figure, recompute):
 
             "vanBP_0hidden": {"config": "20250103_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml",
                             "color": "black",
-                            "name": "Vanilla Backprop 0-hidden"},
-
+                            "name": "Vanilla Backprop 0-hidden",
+                            "Architecture": "",
+                            "Algorithm": "",
+                            "Learning Rule": ""},
             
             "vanBP_fixed_hidden": {"config": "20250108_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_fixed_hidden_complete_optimized.yaml",
                                    "color": "black",
-                                   "name": "Vanilla Backprop fixed hidden"},
+                                   "name": "Vanilla Backprop fixed hidden",
+                                   "Architecture": "",
+                                   "Algorithm": "",
+                                   "Learning Rule": ""},
 
             "bpDale_learned":{"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml",
                             "color":  "blue",
-                            "name":   "bpDale(learned somaI)"},
+                            "name":   "bpDale(learned somaI)",
+                            "Architecture": "",
+                            "Algorithm": "",
+                            "Learning Rule": ""},
 
             "bpDale_fixed":{"config": "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml",
                             "color":  "cyan",
-                            "name":   "bpDale(fixed somaI)"},
+                            "name":   "bpDale(fixed somaI)",
+                            "Architecture": "",
+                            "Algorithm": "",
+                            "Learning Rule": ""},
 
             "bpDale_noI":  {"config": "20240919_EIANN_2_hidden_mnist_bpDale_noI_relu_SGD_config_G_complete_optimized.yaml",
                             "color": "blue",
-                            "name": "Dale's Law (no somaI)"},
+                            "name": "Dale's Law (no somaI)",
+                            "Architecture": "",
+                            "Algorithm": "",
+                            "Learning Rule": ""},
 
             ##########################
             # bpLike models
             ##########################
             "bpLike_WT_hebbdend":  {"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_complete_optimized.yaml",
                                     "color": "red",
-                                    "name": "BP-like (dend. gating)"},
+                                    "name": "BP-like (dend. gating)",
+                                    "Architecture": "",
+                                    "Algorithm": "",
+                                    "Learning Rule": ""},
 
             "bpLike_WT_hebbdend_eq":  {"config": "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml",
                                     "color":  "red",
@@ -1372,31 +1408,67 @@ def main(figure, recompute):
             ##########################
             "vanBP_0_hidden_learned_bias_spiral": {"config": "20250108_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
                                             "color": "black",
-                                            "name": "Vanilla Backprop 0-Hidden (Learned Bias)"},
+                                            "name": "Vanilla Backprop 0-Hidden (Learned Bias)",
+                                            "Architecture": "", 
+                                            "Algorithm": "", 
+                                            "Learning Rule": "",
+                                            "Bias": ""},
 
             "vanBP_2_hidden_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
                                             "color": "red",
-                                            "name": "Vanilla Backprop 2-Hidden (Learned Bias)"},
+                                            "name": "Vanilla Backprop 2-Hidden (Learned Bias)",
+                                            "Architecture": "", 
+                                            "Algorithm": "", 
+                                            "Learning Rule": "",
+                                            "Bias": ""},
 
             "vanBP_2_hidden_zero_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config_complete_optimized.yaml",
                                         "color": "olive",
-                                        "name": "Vanilla Backprop 2-Hidden (Zero Bias)"},
+                                        "name": "Vanilla Backprop 2-Hidden (Zero Bias)",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": "",
+                                        "Bias": ""},
 
             "bpDale_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
-                                    "color": "orange",
-                                    "name": "Backprop + Dale's Law (Learned Bias)"},
+                                        "color": "orange",
+                                        "name": "Backprop + Dale's Law (Learned Bias)",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": "",
+                                        "Bias": ""},
 
             "bpLike_DTC_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                         "color": "purple",
-                                        "name": "Backprop Like (DTC) (Learned Bias)"},
+                                        "name": "Backprop Like (DTC) (Learned Bias)",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": "",
+                                        "Bias": ""},
 
             "DTP_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
-                                "color": "blue",
-                                "name": "DTP (Learned Bias)",},
+                                        "color": "blue",
+                                        "name": "DTP (Learned Bias)",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": "",
+                                        "Bias": ""},
 
             "DTP_fixed_DendI_learned_bias_1_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_1_config_complete_optimized.yaml",
-                                "color": "green",
-                                "name": "DTP Fixed DendI and SomaI (Learned Bias) 1",}, # optimized DendI fraction
+                                        "color": "green",
+                                        "name": "DTP Fixed DendI and SomaI (Learned Bias) 1",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": "",
+                                        "Bias": ""}, # optimized DendI fraction
+
+            "DTP_fixed_DendI_learned_bias_2_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_2_config_complete_optimized.yaml",
+                                        "color": "pink",
+                                        "name": "DTP Fixed DendI and SomaI (Learned Bias) 2",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": "",
+                                        "Bias": ""}, # fixed DendI fraction to 25%
 
         }
 
@@ -1485,12 +1557,13 @@ def main(figure, recompute):
         compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Supplementary Spirals Figure
-    if figure in ["all", "suppl-spiral"]:
+    if figure in ["all", "spiral-suppl"]:
         saved_network_path_prefix += "spiral/"
         # model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
         model_list_heatmaps = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
                                 "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
-                                "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral"]
+                                "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral",
+                                "DTP_fixed_DendI_learned_bias_2_spiral"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Suppl1_Spirals"
 
@@ -1504,14 +1577,13 @@ def main(figure, recompute):
         model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
                       "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
                       "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
-        generate_extended_accuracy_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
+        generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
     
     elif figure == 'spiral-table':
         saved_network_path_prefix += "spiral/"
         figure_name = "spiral-table"
-        model_list = ["vanBP_2_hidden_learned_bias_spiral"]
-        generate_extended_accuracy_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix, config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
-        # TODO i think its trying to use the simplified config to decode the yaml but it doesnt have to do that
+        model_list = ["vanBP_0_hidden_learned_bias_spiral"]
+        generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
     if figure == 'structure':
         saved_network_path_prefix += "MNIST/"

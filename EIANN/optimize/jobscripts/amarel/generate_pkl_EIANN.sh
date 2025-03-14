@@ -37,11 +37,13 @@ export OMPI_MCA_btl_tcp_if_include=ib0
 module load openmpi/4.1.6
 
 mpirun -np 6 python -m mpi4py.futures -m nested.analyze --config-file-path=$CONFIG_FILE_PATH \
-  --param-file-path=$PARAM_FILE_PATH --output-dir=data/${TASK} --model-key=$MODEL_KEY \
+  --param-file-path=$PARAM_FILE_PATH --output-dir=data/${TASK} --model-key=$MODEL_KEY --epochs=10 \
   --framework=mpi --status_bar=True --full_analysis --label=complete --store_history --export
 EOT
 
 # Use for generating .pkl and .yaml files for configurations
+
+# add --epochs=10 for epochs to the mpirun
 
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts/amarel
