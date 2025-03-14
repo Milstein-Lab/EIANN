@@ -523,8 +523,8 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
 
             if model_key in model_list_heatmaps:
                 seed = model_dict['seeds'][0] # example seed to plot
-                population = 'H2E'
-                # population = 'OutputE'
+                # population = 'H2E'
+                population = 'OutputE'
 
                 # Activity plots: batch accuracy of each population to the test dataset
                 ax = fig.add_subplot(axes[0, i])
@@ -749,6 +749,7 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
     ax_dendstate   = fig.add_subplot(metrics_axes[1, 1])
     ax_angle       = fig.add_subplot(metrics_axes[1, 2])
     ax_selectivity = fig.add_subplot(metrics_axes[1, 3])
+    ax_sparsity    = fig.add_subplot(metrics_axes[0, 3])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -788,6 +789,7 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
 
                 populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
 
             legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0., 1.3), loc='upper left', fontsize=6)
             for line in legend.get_lines():
