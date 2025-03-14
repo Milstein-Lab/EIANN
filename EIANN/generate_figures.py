@@ -1438,11 +1438,11 @@ def main(figure, recompute):
 
             "bpLike_DTC_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                         "color": "purple",
-                                        "name": "Backprop Like (DTC) (Learned Bias)"},
+                                        "name": "Backprop Like (DTC) (Learned Bias)",
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                        "Bias": "",
+                                        "Bias": ""},
 
             "DTP_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                         "color": "blue",
@@ -1582,7 +1582,6 @@ def main(figure, recompute):
         figure_name = "spiral-table"
         model_list = ["vanBP_0_hidden_learned_bias_spiral"]
         generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
-    # TODO weird behavior when other models are not commented
 
     if figure == 'structure':
         saved_network_path_prefix += "MNIST/"
