@@ -9,7 +9,7 @@ def rename_files(directory):
             continue
 
         if filename.endswith('.pkl'):
-            match = re.match(r'(.*?)_(\d{5})_(\d{3})_complete\.pkl', filename)
+            match = re.match(r'(.*?)_(\d{5})_(\d{3})_complete(.*)\.pkl', filename)
             if match:
                 base_name = match.group(1)
                 net_seed_number = match.group(2)
@@ -25,9 +25,6 @@ def rename_files(directory):
                 # Rename the file
                 os.rename(old_path, new_path)
                 print(f"Renamed: {filename} → {new_filename}")
-
-# TODO fix for extended
-
 
 @click.command()
 @click.option('--dir', default=None, help='spiral or MNIST')
