@@ -37,7 +37,7 @@ plt.rcParams.update({'font.size': 6,
                     'legend.columnspacing': 1.2,
                     'lines.linewidth': 0.5,
                     'figure.figsize': [10.0, 3.0],
-                    'font.sans-serif': 'DejaVu Sans', # Helvetica
+                    'font.sans-serif': 'Avenir',
                     'svg.fonttype': 'none',
                     'text.usetex': False})
 
@@ -794,7 +794,7 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
                 line.set_linewidth(1.5)
 
     if save:
-        fig.savefig(f"figures/{save}.png", dpi=300)
+        # fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
@@ -873,9 +873,9 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
 
 def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=4,                        
-                       left=0.049,right=0.95,
-                       top=0.95, bottom = 0.6,
+    axes = gs.GridSpec(nrows=2, ncols=3,                        
+                       left=0.25,right=0.95,
+                       top=0.98, bottom = 0.78,
                        wspace=0.5, hspace=0.7)
     ax_accuracy1 = fig.add_subplot(axes[0,0])
     ax_angle_vs_BP1 = fig.add_subplot(axes[0,1])
@@ -883,8 +883,6 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
     ax_accuracy2 = fig.add_subplot(axes[1,0])
     ax_angle_vs_BP2 = fig.add_subplot(axes[1,1])
     ax_FB_angle2 = fig.add_subplot(axes[1,2])
-    ax_dend_state1 = fig.add_subplot(axes[0,3])
-    ax_dend_state2 = fig.add_subplot(axes[1,3])
 
     all_models = list(dict.fromkeys(model_list1 + model_list2))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -900,16 +898,13 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
                 ax_accuracy = ax_accuracy1
                 ax_angle_vs_BP = ax_angle_vs_BP1
                 ax_FB_angle = ax_FB_angle1
-                ax_dend_state = ax_dend_state1
             if model_key in model_list2:
                 ax_accuracy = ax_accuracy2
                 ax_angle_vs_BP = ax_angle_vs_BP2
                 ax_FB_angle = ax_FB_angle2
-                ax_dend_state = ax_dend_state2
             plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
             plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP, error='std')
             plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angle, error='std')
-            plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dend_state)
 
     legend = ax_accuracy1.legend(ncol=3, bbox_to_anchor=(-0.1, 1.25), loc='upper left')
     for line in legend.get_lines():
@@ -919,7 +914,7 @@ def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_
         line.set_linewidth(1.5)
 
     if save is not None:
-        fig.savefig(f"figures/{save}.png", dpi=300)
+        # fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
@@ -1273,9 +1268,10 @@ def main(figure, recompute):
             "vanBP":       {"config": "20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml",
                             "color":  "black",
                             "name":   "Vanilla Backprop",
-                            "Architecture": "", 
-                            "Algorithm": "", 
-                            "Learning Rule": ""},
+                            "Architecture": "2-hidden",
+                            "Algorithm": "Backprop", # Error propagation scheme
+                            "Learning rule": "Gradient descent",
+                            },
 
             "vanBP_0hidden": {"config": "20250103_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml",
                             "color": "black",
