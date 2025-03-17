@@ -929,32 +929,54 @@ def plot_rsm(network, test_dataloader):
     idx, data, target = next(iter(test_dataloader))
     data.to(network.device)
     network.forward(data, no_grad=True)
-    pop_activity = network.H1.E.activity
+    pop_activity = network.H2.E.activity
 
-    # Sort rows of pop_activity by label
+    # Sort patterns (rows) of pop_activity by label
     _, sort_idx = torch.sort(torch.argmax(target, dim=1))
     pop_activity = pop_activity[sort_idx]
 
-    similarity_matrix = cosine_similarity(pop_activity)
+    # Sort neurons (columns) by argmax of activity
+    silent_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
+    active_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
+    preferred_input_active = torch.argmax(pop_activity[:,active_unit_indexes], dim=0)
+    _, idx = torch.sort(preferred_input_active)
+    sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+    pop_activity = pop_activity[:, sort_idx]
 
-    fig, ax = plt.subplots()
-    im = plt.imshow(similarity_matrix, interpolation='none')
-    cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
-    cbar = plt.colorbar(im, cax=cax)
-    cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+    pattern_similarity_matrix = cosine_similarity(pop_activity)
+    neuron_similarity_matrix = cosine_similarity(pop_activity.T)
 
+    fig = plt.figure(figsize=(8, 4))
+    axes = gs.GridSpec(nrows=1, ncols=2, wspace=0.4)
+
+    ax = fig.add_subplot(axes[0])
+    im = ax.imshow(pattern_similarity_matrix, interpolation='none')
+    # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
+    # cbar = plt.colorbar(im, cax=cax)
+    # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
     num_samples = target.shape[0]
     num_labels = target.shape[1]
     samples_per_label = num_samples // num_labels
     x_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
     y_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
-    ax.set_xticklabels(range(0, num_labels))
-    ax.set_yticklabels(range(0, num_labels))
     ax.set_xticks(x_ticks)
     ax.set_yticks(y_ticks)
+    ax.set_xticklabels(range(0, num_labels))
+    ax.set_yticklabels(range(0, num_labels))
     ax.set_xlabel('Patterns (sorted by label)')
     ax.set_ylabel('Patterns (sorted by label)')
-    ax.set_title('Representational Similarity Matrix')
+    ax.set_title('Pattern cosine similarity')
+
+    ax = fig.add_subplot(axes[1])
+    im = ax.imshow(neuron_similarity_matrix, interpolation='none')
+    # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
+    # cbar = plt.colorbar(im, cax=cax)
+    # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+    ax.set_xlabel('Neurons (sorted by argmax)')
+    ax.set_ylabel('Neurons (sorted by argmax)')
+    ax.set_title('Neuron cosine similarity')
+
+    return pattern_similarity_matrix, neuron_similarity_matrix, fig
 
 
 def plot_plateaus(population, start=0, end=-1):
