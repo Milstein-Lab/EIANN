@@ -597,6 +597,9 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
     :param ax_list:
     :param dimensions: tuple of int
     """
+    if not isinstance(receptive_fields, torch.Tensor):
+        receptive_fields = torch.tensor(receptive_fields)
+
     if isinstance(scale, torch.Tensor):
         scale = scale.diagonal()
         print(f'Min activity: {torch.min(scale)}, Max activity: {torch.max(scale)}')
@@ -623,7 +626,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
             preferred_classes = torch.argmax(torch.tensor(average_pop_activity), dim=1)
 
     # Filter by class activity preference to sample units across all classes
-    if sort==True and preferred_classes is not None:
+    if sort and preferred_classes is not None:
         assert isinstance(preferred_classes, torch.Tensor), 'sort_by_activities must be a tensor of maxact class labels'
         class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
         preferred_classes = preferred_classes[class_sorted_idx]
@@ -732,7 +735,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         ax.axis('off')
 
         if preferred_classes is not None:
-            ax.text(0, 8, f'{preferred_classes[i]}', color='k', fontsize=4)        
+            ax.text(0, 8, f'{preferred_classes[i]}', color='k', fontsize=5)        
 
     if ax_list is None:
         fig.tight_layout(pad=0.2)
@@ -924,12 +927,13 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, title=title, ax=ax)
 
 
-def plot_rsm(network, test_dataloader):
+def plot_rsm(population, test_dataloader):
 
+    network = population.network
     idx, data, target = next(iter(test_dataloader))
     data.to(network.device)
     network.forward(data, no_grad=True)
-    pop_activity = network.H2.E.activity
+    pop_activity = population.activity
 
     # Sort patterns (rows) of pop_activity by label
     _, sort_idx = torch.sort(torch.argmax(target, dim=1))

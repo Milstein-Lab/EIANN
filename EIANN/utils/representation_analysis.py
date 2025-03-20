@@ -508,7 +508,7 @@ def compute_class_similarity(population, test_dataloader):
 
     # Sort neurons (columns) by argmax of activity
     percent_correct, average_pop_activity_dict = compute_test_activity(network, test_dataloader, sort=False)
-    avg_pop_activity = average_pop_activity_dict['H2E']
+    avg_pop_activity = average_pop_activity_dict[population.fullname]
 
     silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
     active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]

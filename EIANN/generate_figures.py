@@ -322,7 +322,12 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
 
     elif plot_type == 'violin':
         # Pool all data into one list
-        pooled_data = [value for sublist in metric_all_seeds for value in sublist]
+        # pooled_data = [value for sublist in metric_all_seeds for value in sublist]
+        pooled_data = []
+        seed_means = []
+        for metric_one_seed in metric_all_seeds:
+            seed_means.append(np.mean(metric_one_seed))
+            pooled_data.extend(metric_one_seed)
 
         # Get existing labels (excluding default numerical labels) to set the x-axis positions
         existing_labels = [t.get_text() for t in ax.get_xticklabels()]
@@ -335,10 +340,10 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
         parts['bodies'][0].set_facecolor(model_dict["color"])
 
         # Scatter on a point with the mean and error bar
-        mean_value = np.mean(pooled_data)
-        error = np.std(pooled_data)
-        ax.scatter(x, mean_value, color='red', marker='o', s=10, zorder=5)
-        # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=3, zorder=5)
+        mean_value = np.mean(seed_means)
+        error = np.std(seed_means) #/ np.sqrt(len(seed_means))
+        ax.scatter(x, mean_value, color='red', marker='o', s=5, zorder=5)
+        # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=2, capthick=1, zorder=5)
 
         # Update x-axis labels
         new_labels = existing_labels + [model_dict["name"]]
@@ -528,8 +533,9 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
 
             if model_key in model_list_heatmaps:
                 seed = model_dict['seeds'][0] # example seed to plot
-                # population = 'H2E'
-                population = 'OutputE'
+                population = 'H2E'
+                # population = 'H1E'
+                # population = 'OutputE'
 
                 # Activity plots: batch accuracy of each population to the test dataset
                 ax = fig.add_subplot(axes[0, i])
@@ -1347,6 +1353,13 @@ def main(figure, recompute):
             # "bpLike_TC_hebbdend": {"config": "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTC_2_complete_optimized.yaml",
             #                        "color": "green",
             #                        "name": "bpLike_TC_hebbdend"},  # TC applied to activity of wrong (bottom-up) unit instead of top-down unit
+
+            "bpLike_WT_tempcont":  {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_1J_complete_optimized.yaml",
+                                    "color": "red",
+                                    "name": "BP-like (temp. cont.)",
+                                    "Architecture": "",
+                                    "Algorithm": "",
+                                    "Learning Rule": ""},
 
             "bpLike_WT_localBP":   {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5M_complete_optimized.yaml",
                                     "color": "orange",
