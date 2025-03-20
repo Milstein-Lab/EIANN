@@ -1202,7 +1202,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
             if model_key in model_list_heatmaps:
                 ax = fig.add_subplot(axes[heatmaps_row, model_idx])
                 if model_key != "vanBP_0_hidden_learned_bias_spiral":
-                    population = 'H1E'
+                    population = 'H2E'
                     # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict']]
                     # Activity plots: batch accuracy of each population to the test dataset
                     average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
@@ -1589,7 +1589,7 @@ def main(figure, recompute):
         figure_name = "Suppl1_Spirals"
 
         # Choose spiral_type='scatter' or 'decision'
-        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix='network_config/spiral/',
+        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='decision', config_path_prefix='network_config/spiral/',
                                 saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
 
     if figure == 'table':

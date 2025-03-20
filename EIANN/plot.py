@@ -1849,9 +1849,7 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
     graph option can be either 'scatter' or 'decision'
     '''
     if ax is None:
-        fig, axes = plt.subplots(1, 1, figsize=(5, 5))
-    else:
-        axes = ax
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
     if graph == 'scatter':
         inputs = decision_data['inputs']
@@ -1859,19 +1857,30 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
         correct_indices = decision_data['correct_indices']
         wrong_indices = decision_data['wrong_indices']
         
-        axes.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
-        axes.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
-        axes.set_xlabel('x1')
-        axes.set_ylabel('x2')
-        axes.set_title('Predictions')
+        ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
+        ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
+        ax.set_xlabel('x1')
+        ax.set_ylabel('x2')
+        ax.set_title('Predictions')
 
     elif graph == 'decision':
-        decision_map = decision_data['decision_map']
-
-        axes.imshow(decision_map, extent=[-2, 2, -2, 2], cmap='jet', origin='lower')
-        axes.set_xlabel('x1')
-        axes.set_ylabel('x2')
-        axes.set_title('Predictions')
+        inputs = decision_data['inputs'][:]
+        test_labels = decision_data['test_labels'][:]
+        correct_indices = decision_data['correct_indices'][:]
+        wrong_indices = decision_data['wrong_indices'][:]
+        decision_map = decision_data['decision_map'][:]
+        x_range = np.linspace(-2, 2, decision_map.shape[1])
+        y_range = np.linspace(-2, 2, decision_map.shape[0])
+        X, Y = np.meshgrid(x_range, y_range)
+        contour = ax.contourf(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 50), cmap='jet', alpha=0.3)
+        # ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c='gray', s=4, alpha=0.6, linewidth=0)
+        # ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=4, alpha=0.6, linewidth=0)
+        # ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4, alpha=1, linewidth=0)
+        ax.scatter(inputs[:,0], inputs[:,1], c=test_labels[:], s=4, alpha=0.6, linewidth=0, cmap='jet')
+        
+        ax.set_xlabel('x1')
+        ax.set_ylabel('x2')
+        ax.set_title('Predictions')
 
     if ax is None:
         fig.tight_layout(rect=[0, 0, 1, 0.95]) 
