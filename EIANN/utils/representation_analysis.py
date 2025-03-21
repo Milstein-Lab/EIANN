@@ -1054,7 +1054,7 @@ def compute_spiral_decisions_data(network, test_dataloader):
     wrong_indices = (predicted_labels != test_labels).nonzero().squeeze()
 
     # For decision map boundary plot
-    meshgrid_size = 500
+    meshgrid_size = 1000
     x_max = 2.0
     arms = 4
     eps=1e-3
@@ -1065,15 +1065,17 @@ def compute_spiral_decisions_data(network, test_dataloader):
     X_all = torch.cat([ii.unsqueeze(-1),
 					   jj.unsqueeze(-1)],
 					   dim=-1).view(-1, 2)
-    
     y_pred = network.forward(X_all)
-    decision_map = torch.argmax(y_pred, dim=1)
 
-    for i in range(len(data)):
-        indices = (X_all[:, 0] - data[i, 0])**2 + (X_all[:, 1] - data[i, 1])**2 < eps
-        decision_map[indices] = (arms + predicted_labels[i]).long()
+    decision_map = torch.argmax(y_pred, dim=1)
+    # decision_value, decision_map = torch.max(y_pred, dim=1)
+    y_prob = torch.nn.functional.softmax(y_pred, dim=1)
+    decision_value, _ = torch.max(y_prob, dim=1)
+
     decision_map = decision_map.view(meshgrid_size, meshgrid_size).detach().cpu()
     decision_map = decision_map.T
+    decision_value = decision_value.view(meshgrid_size, meshgrid_size).detach().cpu()
+    decision_value = decision_value.T
 
     # Return data for plotting
     decision_data = {
@@ -1082,7 +1084,8 @@ def compute_spiral_decisions_data(network, test_dataloader):
         "accuracy": accuracy,
         "correct_indices": correct_indices,
         "wrong_indices": wrong_indices,
-        "decision_map": decision_map
+        "decision_map": decision_map,
+        "decision_value": decision_value
     }
 
     return decision_data

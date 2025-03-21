@@ -1869,14 +1869,19 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
         correct_indices = decision_data['correct_indices'][:]
         wrong_indices = decision_data['wrong_indices'][:]
         decision_map = decision_data['decision_map'][:]
-        x_range = np.linspace(-2, 2, decision_map.shape[1])
-        y_range = np.linspace(-2, 2, decision_map.shape[0])
-        X, Y = np.meshgrid(x_range, y_range)
-        contour = ax.contourf(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 50), cmap='jet', alpha=0.3)
-        # ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c='gray', s=4, alpha=0.6, linewidth=0)
+        decision_value = decision_data['decision_value'][:]
+
+        cmap = 'tab10'
+        ax.imshow(decision_map, extent=[-2, 2, -2, 2], cmap=cmap, origin='lower', alpha=decision_value)
+
+        # x_range = np.linspace(-2, 2, decision_map.shape[1])
+        # y_range = np.linspace(-2, 2, decision_map.shape[0])
+        # X, Y = np.meshgrid(x_range, y_range)                
+        # contour = ax.contourf(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 50), cmap=cmap, alpha=0.3)
+        
+        ax.scatter(inputs[:,0], inputs[:,1], c=test_labels[:], s=4, alpha=0.8, linewidth=0, cmap=cmap)
         # ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=4, alpha=0.6, linewidth=0)
         # ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4, alpha=1, linewidth=0)
-        ax.scatter(inputs[:,0], inputs[:,1], c=test_labels[:], s=4, alpha=0.6, linewidth=0, cmap='jet')
         
         ax.set_xlabel('x1')
         ax.set_ylabel('x2')

@@ -1473,7 +1473,7 @@ def main(figure, recompute):
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                        "Bias": ""},
+                                        "Bias": ""}, # optimized DendI fraction (~50%)
 
             "DTP_fixed_DendI_learned_bias_1_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_1_config_complete_optimized.yaml",
                                         "color": "green",
@@ -1585,6 +1585,7 @@ def main(figure, recompute):
                                 "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
                                 "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral",
                                 "DTP_fixed_DendI_learned_bias_2_spiral"]
+        # model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Suppl1_Spirals"
 
