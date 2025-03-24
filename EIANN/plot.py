@@ -597,6 +597,9 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
     :param ax_list:
     :param dimensions: tuple of int
     """
+    if not isinstance(receptive_fields, torch.Tensor):
+        receptive_fields = torch.tensor(receptive_fields)
+
     if isinstance(scale, torch.Tensor):
         scale = scale.diagonal()
         print(f'Min activity: {torch.min(scale)}, Max activity: {torch.max(scale)}')
@@ -623,7 +626,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
             preferred_classes = torch.argmax(torch.tensor(average_pop_activity), dim=1)
 
     # Filter by class activity preference to sample units across all classes
-    if sort==True and preferred_classes is not None:
+    if sort and preferred_classes is not None:
         assert isinstance(preferred_classes, torch.Tensor), 'sort_by_activities must be a tensor of maxact class labels'
         class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
         preferred_classes = preferred_classes[class_sorted_idx]
@@ -732,7 +735,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         ax.axis('off')
 
         if preferred_classes is not None:
-            ax.text(0, 8, f'{preferred_classes[i]}', color='k', fontsize=4)        
+            ax.text(0, 8, f'{preferred_classes[i]}', color='k', fontsize=5)        
 
     if ax_list is None:
         fig.tight_layout(pad=0.2)
@@ -924,37 +927,60 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, title=title, ax=ax)
 
 
-def plot_rsm(network, test_dataloader):
+def plot_rsm(population, test_dataloader):
 
+    network = population.network
     idx, data, target = next(iter(test_dataloader))
     data.to(network.device)
     network.forward(data, no_grad=True)
-    pop_activity = network.H1.E.activity
+    pop_activity = population.activity
 
-    # Sort rows of pop_activity by label
+    # Sort patterns (rows) of pop_activity by label
     _, sort_idx = torch.sort(torch.argmax(target, dim=1))
     pop_activity = pop_activity[sort_idx]
 
-    similarity_matrix = cosine_similarity(pop_activity)
+    # Sort neurons (columns) by argmax of activity
+    silent_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
+    active_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
+    preferred_input_active = torch.argmax(pop_activity[:,active_unit_indexes], dim=0)
+    _, idx = torch.sort(preferred_input_active)
+    sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+    pop_activity = pop_activity[:, sort_idx]
 
-    fig, ax = plt.subplots()
-    im = plt.imshow(similarity_matrix, interpolation='none')
-    cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
-    cbar = plt.colorbar(im, cax=cax)
-    cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+    pattern_similarity_matrix = cosine_similarity(pop_activity)
+    neuron_similarity_matrix = cosine_similarity(pop_activity.T)
 
+    fig = plt.figure(figsize=(8, 4))
+    axes = gs.GridSpec(nrows=1, ncols=2, wspace=0.4)
+
+    ax = fig.add_subplot(axes[0])
+    im = ax.imshow(pattern_similarity_matrix, interpolation='none')
+    # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
+    # cbar = plt.colorbar(im, cax=cax)
+    # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
     num_samples = target.shape[0]
     num_labels = target.shape[1]
     samples_per_label = num_samples // num_labels
     x_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
     y_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
-    ax.set_xticklabels(range(0, num_labels))
-    ax.set_yticklabels(range(0, num_labels))
     ax.set_xticks(x_ticks)
     ax.set_yticks(y_ticks)
+    ax.set_xticklabels(range(0, num_labels))
+    ax.set_yticklabels(range(0, num_labels))
     ax.set_xlabel('Patterns (sorted by label)')
     ax.set_ylabel('Patterns (sorted by label)')
-    ax.set_title('Representational Similarity Matrix')
+    ax.set_title('Pattern cosine similarity')
+
+    ax = fig.add_subplot(axes[1])
+    im = ax.imshow(neuron_similarity_matrix, interpolation='none')
+    # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
+    # cbar = plt.colorbar(im, cax=cax)
+    # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+    ax.set_xlabel('Neurons (sorted by argmax)')
+    ax.set_ylabel('Neurons (sorted by argmax)')
+    ax.set_title('Neuron cosine similarity')
+
+    return pattern_similarity_matrix, neuron_similarity_matrix, fig
 
 
 def plot_plateaus(population, start=0, end=-1):
@@ -1823,9 +1849,7 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
     graph option can be either 'scatter' or 'decision'
     '''
     if ax is None:
-        fig, axes = plt.subplots(1, 1, figsize=(5, 5))
-    else:
-        axes = ax
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
     if graph == 'scatter':
         inputs = decision_data['inputs']
@@ -1833,19 +1857,35 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
         correct_indices = decision_data['correct_indices']
         wrong_indices = decision_data['wrong_indices']
         
-        axes.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
-        axes.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
-        axes.set_xlabel('x1')
-        axes.set_ylabel('x2')
-        axes.set_title('Predictions')
+        ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
+        ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
+        ax.set_xlabel('x1')
+        ax.set_ylabel('x2')
+        ax.set_title('Predictions')
 
     elif graph == 'decision':
-        decision_map = decision_data['decision_map']
+        inputs = decision_data['inputs'][:]
+        test_labels = decision_data['test_labels'][:]
+        correct_indices = decision_data['correct_indices'][:]
+        wrong_indices = decision_data['wrong_indices'][:]
+        decision_map = decision_data['decision_map'][:]
+        decision_value = decision_data['decision_value'][:]
 
-        axes.imshow(decision_map, extent=[-2, 2, -2, 2], cmap='jet', origin='lower')
-        axes.set_xlabel('x1')
-        axes.set_ylabel('x2')
-        axes.set_title('Predictions')
+        cmap = 'tab10'
+        ax.imshow(decision_map, extent=[-2, 2, -2, 2], cmap=cmap, origin='lower', alpha=decision_value)
+
+        # x_range = np.linspace(-2, 2, decision_map.shape[1])
+        # y_range = np.linspace(-2, 2, decision_map.shape[0])
+        # X, Y = np.meshgrid(x_range, y_range)                
+        # contour = ax.contourf(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 50), cmap=cmap, alpha=0.3)
+        
+        ax.scatter(inputs[:,0], inputs[:,1], c=test_labels[:], s=4, alpha=0.8, linewidth=0, cmap=cmap)
+        # ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=4, alpha=0.6, linewidth=0)
+        # ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4, alpha=1, linewidth=0)
+        
+        ax.set_xlabel('x1')
+        ax.set_ylabel('x2')
+        ax.set_title('Predictions')
 
     if ax is None:
         fig.tight_layout(rect=[0, 0, 1, 0.95]) 

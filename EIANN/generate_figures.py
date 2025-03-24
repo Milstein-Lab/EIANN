@@ -95,7 +95,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
                         print(f"Recomputing {network_name} {seed} in {hdf5_path}")
                         variables_to_recompute = [var for var in variables_to_save if var not in file[network_name][seed].keys()]
                 else:
-                    print(f"Computing data for {network_name} {seed} in {hdf5_path}")
+                    print(f"Computing data for name:{network_name}, seed:{seed} in {hdf5_path}")
                     variables_to_recompute = variables_to_save     
             else:
                 print(f"Computing data for {network_name} {seed} in {hdf5_path}")
@@ -222,14 +222,19 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
 
         if not os.path.exists(hdf5_path):
             # If the hdf5 is not available in local data directory, check in Box drive
-            box_hdf5_dir = pathlib.Path(saved_network_path_prefix).parents[1] / "2024 Figure data HDF5 files"
+            print("Local hdf5 not found, loading data from Box drive")
+            num_parent_dirs = 2 if "extended" in saved_network_path_prefix else 1
+            box_hdf5_dir = pathlib.Path(saved_network_path_prefix).parents[num_parent_dirs] / "2024 Figure data HDF5 files"
             box_hdf5_path = box_hdf5_dir / f"plot_data_{network_name}.h5"
             if box_hdf5_path.exists():
                 print(f"Loading hdf5 from Box drive: {box_hdf5_path}")
                 hdf5_path = str(box_hdf5_path)
+            else:
+                print("hdf5 not found in Box drive")
 
         for seed in model_dict['seeds']:
-            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}.pkl"
+            extended_flag = '_extended' if "extended" in saved_network_path_prefix else ""
+            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}{extended_flag}.pkl"
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute)
             gc.collect()
 
@@ -317,7 +322,12 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
 
     elif plot_type == 'violin':
         # Pool all data into one list
-        pooled_data = [value for sublist in metric_all_seeds for value in sublist]
+        # pooled_data = [value for sublist in metric_all_seeds for value in sublist]
+        pooled_data = []
+        seed_means = []
+        for metric_one_seed in metric_all_seeds:
+            seed_means.append(np.mean(metric_one_seed))
+            pooled_data.extend(metric_one_seed)
 
         # Get existing labels (excluding default numerical labels) to set the x-axis positions
         existing_labels = [t.get_text() for t in ax.get_xticklabels()]
@@ -330,10 +340,10 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
         parts['bodies'][0].set_facecolor(model_dict["color"])
 
         # Scatter on a point with the mean and error bar
-        mean_value = np.mean(pooled_data)
-        error = np.std(pooled_data)
-        ax.scatter(x, mean_value, color='red', marker='o', s=10, zorder=5)
-        # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=3, zorder=5)
+        mean_value = np.mean(seed_means)
+        error = np.std(seed_means) #/ np.sqrt(len(seed_means))
+        ax.scatter(x, mean_value, color='red', marker='o', s=5, zorder=5)
+        # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=2, capthick=1, zorder=5)
 
         # Update x-axis labels
         new_labels = existing_labels + [model_dict["name"]]
@@ -524,6 +534,7 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
             if model_key in model_list_heatmaps:
                 seed = model_dict['seeds'][0] # example seed to plot
                 population = 'H2E'
+                # population = 'H1E'
                 # population = 'OutputE'
 
                 # Activity plots: batch accuracy of each population to the test dataset
@@ -749,6 +760,7 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
     ax_dendstate   = fig.add_subplot(metrics_axes[1, 1])
     ax_angle       = fig.add_subplot(metrics_axes[1, 2])
     ax_selectivity = fig.add_subplot(metrics_axes[1, 3])
+    ax_sparsity    = fig.add_subplot(metrics_axes[0, 3])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -788,6 +800,7 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
 
                 populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
+                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
 
             legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0., 1.3), loc='upper left', fontsize=6)
             for line in legend.get_lines():
@@ -1046,23 +1059,27 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
 
 
 def generate_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
-    fig, ax = plt.subplots(figsize=(5.5, 9))
+    mm = 1/25.4 #convert mm to inches
+    fig, ax = plt.subplots(figsize=(180*mm,170*mm))
+    # fig, ax = plt.subplots(figsize=(5.5, 9))
     ax.axis('off')
 
     all_models = list(dict.fromkeys(model_list))
-    for model_key in all_models:
-        model_dict = model_dict_all[model_key]
-        config_path = config_path_prefix + model_dict['config']
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
-        for seed in model_dict['seeds']:
-            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}"
-            if 'mnist' in saved_network_path:
-                saved_network_path += '_extended.pkl'
-            # else:
-            #     saved_network_path += '_extended.pkl'
-            generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
-            gc.collect()
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+
+    # for model_key in all_models:
+    #     model_dict = model_dict_all[model_key]
+    #     config_path = config_path_prefix + model_dict['config']
+    #     network_name = model_dict['config'].split('.')[0]
+    #     hdf5_path = f"data/plot_data_{network_name}.h5"
+    #     for seed in model_dict['seeds']:
+    #         saved_network_path = saved_network_path_prefix + network_name + f"_{seed}"
+    #         if 'mnist' in saved_network_path:
+    #             saved_network_path += '_extended.pkl'
+    #         else:
+    #             saved_network_path += '_extended.pkl'
+    #         generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
+    #         gc.collect()
 
     networks = {}
     columns = []
@@ -1076,7 +1093,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
             print(f"Generating table for {network_name}")
             data_dict = f[network_name]
 
-            if 'mnist' in saved_network_path:
+            if 'mnist' in saved_network_path_prefix:
                 # Get the accuracy for each seed
                 accuracy_all_seeds_20k = []
                 for seed in model_dict['seeds']:
@@ -1095,7 +1112,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 networks[model_dict['name']] = {'MNIST Accuracy (20k samples)': f"{avg_accuracy_20k:.2f} \u00b1 {sem_accuracy_20k:.2f}",
                                                 'MNIST Accuracy (50k samples)': f"{avg_accuracy_50k:.2f} \u00b1 {sem_accuracy_50k:.2f}"}
 
-            elif 'spiral' in saved_network_path:
+            elif 'spiral' in saved_network_path_prefix:
                 accuracy_all_seeds_1_epoch = []
                 for seed in model_dict['seeds']:
                     accuracy_all_seeds_1_epoch.append(data_dict[seed]['test_accuracy_history'][-1])
@@ -1113,9 +1130,8 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 # sem_accuracy_10_epochs = std_accuracy_10_epochs / np.sqrt(len(accuracy_all_seeds_10_epochs))
 
                 networks[model_dict['name']] = {'Spiral Accuracy (1 epoch)': f"{avg_accuracy_1_epoch:.2f} \u00b1 {sem_accuracy_1_epoch:.2f}"}
-                # networks[model_dict['name']] = {'Spiral Accuracy (10 epochs)': f"{avg_accuracy_10_epochs:.2f} \u00b1 {sem_accuracy_10_epochs:.2f}"}
+                networks[model_dict['name']] = {'Spiral Accuracy (10 epochs)': f"{avg_accuracy_10_epochs:.2f} \u00b1 {sem_accuracy_10_epochs:.2f}"}
                 
-
         columns = list(model_dict.keys())
         columns.remove('config')
         columns.remove('color')
@@ -1145,7 +1161,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
             cell.set_text_props(weight='bold')
         # cell.set_fontsize(20)
         # cell.set_height(cell.get_height() * 1.1)
-        cell.set_text_props(fontname='Arial', fontsize=12)
+        cell.set_text_props(fontname='Arial', fontsize=2)
 
     if save:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -1189,7 +1205,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
             if model_key in model_list_heatmaps:
                 ax = fig.add_subplot(axes[heatmaps_row, model_idx])
                 if model_key != "vanBP_0_hidden_learned_bias_spiral":
-                    population = 'H1E'
+                    population = 'H2E'
                     # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict']]
                     # Activity plots: batch accuracy of each population to the test dataset
                     average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
@@ -1353,6 +1369,13 @@ def main(figure, recompute):
             #                        "color": "green",
             #                        "name": "bpLike_TC_hebbdend"},  # TC applied to activity of wrong (bottom-up) unit instead of top-down unit
 
+            "bpLike_WT_tempcont":  {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_1J_complete_optimized.yaml",
+                                    "color": "red",
+                                    "name": "BP-like (temp. cont.)",
+                                    "Architecture": "",
+                                    "Algorithm": "",
+                                    "Learning Rule": ""},
+
             "bpLike_WT_localBP":   {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5M_complete_optimized.yaml",
                                     "color": "orange",
                                     "name": "bpLike_WT_localBP",
@@ -1507,7 +1530,7 @@ def main(figure, recompute):
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                        "Bias": ""},
+                                        "Bias": ""}, # optimized DendI fraction (~50%)
 
             "DTP_fixed_DendI_learned_bias_1_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_1_config_complete_optimized.yaml",
                                         "color": "green",
@@ -1619,11 +1642,12 @@ def main(figure, recompute):
                                 "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
                                 "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral",
                                 "DTP_fixed_DendI_learned_bias_2_spiral"]
+        # model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Suppl1_Spirals"
 
         # Choose spiral_type='scatter' or 'decision'
-        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix='network_config/spiral/',
+        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='decision', config_path_prefix='network_config/spiral/',
                                 saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
 
     if figure == 'table':
