@@ -318,5 +318,42 @@ DTP_fixed_DendI_fixed_SomaI_learned_bias_2:
     Output_I_Output_I_init_weight_scale: 7.120834526267678
     DendI_size_fraction: 0.25
 
+DTP_fixed_DendI_fixed_SomaI_learned_bias_3:
+    # Fixed DendI fraction to 0.1
+    # features:
+    # accuracy: 79.19499206542969
+    # dynamics_residuals: 0.0
+    # loss: 0.09708720445632935
+    # mean_forward_dend_loss: 0.06029167026281357
+    H1_E_Input_E_init_weight_scale: 1.8829819612879488
+    H2_E_H1_E_init_weight_scale: 3.261203907780513
+    H_E_E_learning_rate: 0.057580076666942114
+    H_E_bias_learning_rate: 0.002162292076272787
+    H1_E_H2_E_weight_scale: 0.031568782243576
+    H2_E_Output_E_weight_scale: 0.46923794485869286
+    H1_E_H1_SomaI_init_weight_scale: 2.730613834262601
+    H1_SomaI_H1_E_init_weight_scale: 0.40650334867863813
+    H1_SomaI_Input_E_init_weight_scale: 2.2695669855628813
+    H1_SomaI_H1_SomaI_init_weight_scale: 3.1470368337967787
+    H_E_DendI_learning_rate: 0.6778374699917455
+    H1_E_H1_DendI_init_weight_scale: 0.7678375242662413
+    H1_DendI_H1_E_init_weight_scale: 2.310942824251812
+    H1_DendI_H1_DendI_init_weight_scale: 0.48270180872468116
+    H2_E_H2_SomaI_init_weight_scale: 2.6049645668122237
+    H2_SomaI_H2_E_init_weight_scale: 0.9572269259496745
+    H2_SomaI_H1_E_init_weight_scale: 3.567713677242284
+    H2_SomaI_H2_SomaI_init_weight_scale: 3.5703324581308964
+    H2_E_H2_DendI_init_weight_scale: 1.9419913709895082
+    H2_DendI_H2_E_init_weight_scale: 1.4801523953616273
+    H2_DendI_H2_DendI_init_weight_scale: 1.3935404592522618
+    Output_E_H2_E_init_weight_scale: 7.557969824707322
+    Output_E_H2_E_learning_rate: 0.005563617515296804
+    Output_E_bias_learning_rate: 0.00022276706917650514
+    Output_E_Output_I_init_weight_scale: 0.8584674594495051
+    Output_I_Output_E_init_weight_scale: 3.00007738745513
+    Output_I_H2_E_init_weight_scale: 1.1415665296871536
+    Output_I_Output_I_init_weight_scale: 1.3282540182681728
+    DendI_size_fraction: 0.1
+
 # python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config.yaml --disp --num_instances=1 --model-key=DTP_fixed_SomaI_learned_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250127_EIANN_2_hidden_spiral_DTP_learned_bias_config_complete_optimized.yaml --export
 # Generate .pkl files and network config with generate_pkl_EIANN.sh

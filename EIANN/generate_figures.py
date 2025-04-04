@@ -1071,20 +1071,6 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
     all_models = list(dict.fromkeys(model_list))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
-    # for model_key in all_models:
-    #     model_dict = model_dict_all[model_key]
-    #     config_path = config_path_prefix + model_dict['config']
-    #     network_name = model_dict['config'].split('.')[0]
-    #     hdf5_path = f"data/plot_data_{network_name}.h5"
-    #     for seed in model_dict['seeds']:
-    #         saved_network_path = saved_network_path_prefix + network_name + f"_{seed}"
-    #         if 'mnist' in saved_network_path:
-    #             saved_network_path += '_extended.pkl'
-    #         else:
-    #             saved_network_path += '_extended.pkl'
-    #         generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
-    #         gc.collect()
-
     networks = {}
     columns = []
 
@@ -1121,6 +1107,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 for seed in model_dict['seeds']:
                     accuracy_all_seeds_1_epoch.append(data_dict[seed]['test_accuracy_history'][-1])
                 avg_accuracy_1_epoch = np.mean(accuracy_all_seeds_1_epoch)
+                print(avg_accuracy_1_epoch)
                 std_accuracy_1_epoch = np.std(accuracy_all_seeds_1_epoch)
                 sem_accuracy_1_epoch = std_accuracy_1_epoch / np.sqrt(len(accuracy_all_seeds_1_epoch))
 
@@ -1128,11 +1115,12 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 for seed in model_dict['seeds']:
                     accuracy_all_seeds_10_epochs.append(data_dict[seed]['test_accuracy_history_extended'][-1])
                 avg_accuracy_10_epochs = np.mean(accuracy_all_seeds_10_epochs)
+                print(avg_accuracy_10_epochs)
                 std_accuracy_10_epochs = np.std(accuracy_all_seeds_10_epochs)
                 sem_accuracy_10_epochs = std_accuracy_10_epochs / np.sqrt(len(accuracy_all_seeds_10_epochs))
 
-                networks[model_dict['name']] = {'Spiral Accuracy (1 epoch)': f"{avg_accuracy_1_epoch:.2f} \u00b1 {sem_accuracy_1_epoch:.2f}"}
-                networks[model_dict['name']] = {'Spiral Accuracy (10 epochs)': f"{avg_accuracy_10_epochs:.2f} \u00b1 {sem_accuracy_10_epochs:.2f}"}
+                networks[model_dict['name']] = {'Spiral Accuracy (1 epoch)': f"{avg_accuracy_1_epoch:.2f} \u00b1 {sem_accuracy_1_epoch:.2f}",
+                                                'Spiral Accuracy (10 epochs)': f"{avg_accuracy_10_epochs:.2f} \u00b1 {sem_accuracy_10_epochs:.2f}"}
                 
         columns = list(model_dict.keys())
         columns.remove('config')
@@ -1153,6 +1141,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
         table_vals.append(network_vals)
 
     table = ax.table(cellText=table_vals, colLabels=column_labels, cellLoc="center", loc="center")
+
     for key, cell in table.get_celld().items():
         cell.set_linewidth(0)
         if key[0] % 2 == 0:
@@ -1178,11 +1167,11 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
     '''
     cols = max(len(model_list_heatmaps), 3)
 
-    fig = plt.figure(figsize=(cols * 2.5, cols * 2.5))
+    fig = plt.figure(figsize=(cols * 3, cols * 2.5))
     axes = gs.GridSpec(nrows=3, ncols=cols,                        
                        left=0.03, right=0.97,
                        top=0.95, bottom=0.5,
-                       wspace=0.4, hspace=0.7)
+                       wspace=0.5, hspace=0.7)
 
     spirals_row =   0
     heatmaps_row =  1 
@@ -1211,6 +1200,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
                     # Activity plots: batch accuracy of each population to the test dataset
                     average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
                     pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=False)
+                    ax.set_aspect('auto')
                     ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
                     ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
                     ax.set_ylabel(f'{population} unit', labelpad=-8)
@@ -1230,6 +1220,8 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
                 plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
                 plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle)
+
+    plt.tight_layout(rect=[0, 0.5, 1, 0.95])
 
     if save:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -1340,19 +1332,31 @@ def main(figure, recompute):
 
             "bpLike_WT_hebbdend_eq":  {"config": "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml",
                                     "color":  "red",
-                                    "name":   "bpLike_WT_hebbdend_eq"},
+                                    "name":   "bpLike_WT_hebbdend_eq",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",},
 
             "bpLike_hebbTD_hebbdend":{"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HWN_1_complete_optimized.yaml",
                                     "color": "blue",
-                                    "name": "bpLike_hebbTD_hebbdend"},
+                                    "name": "bpLike_hebbTD_hebbdend",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",},
 
             "bpLike_hebbTD_hebbdend_eq":{"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_3_complete_optimized.yaml",
                                         "color": "magenta",
-                                        "name": "bpLike_hebbTD_hebbdend_eq"},
+                                        "name": "bpLike_hebbTD_hebbdend_eq",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": "",},
 
             "bpLike_TCWN_hebbdend": {"config": "20241120_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTCWN_2_complete_optimized.yaml",
                                    "color": "green",
-                                   "name": "bpLike_TCWN_hebbdend"}, # TC with weight norm
+                                   "name": "bpLike_TCWN_hebbdend",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",}, # TC with weight norm
 
             # "bpLike_TC_hebbdend": {"config": "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTC_2_complete_optimized.yaml",
             #                        "color": "green",
@@ -1367,54 +1371,90 @@ def main(figure, recompute):
 
             "bpLike_WT_localBP":   {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5M_complete_optimized.yaml",
                                     "color": "orange",
-                                    "name": "bpLike_WT_localBP"},
+                                    "name": "bpLike_WT_localBP",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",},
 
             "bpLike_WT_localBP_eq":{"config": "20240628_EIANN_2_hidden_mnist_BP_like_config_3M_complete_optimized.yaml",
                                     "color":  "black",
-                                    "name":   "bpLike_WT_localBP_eq"},
+                                    "name":   "bpLike_WT_localBP_eq",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",},
 
             "bpLike_WT_fixedDend": {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5K_complete_optimized.yaml",
                                     "color":  "gray",
-                                    "name":   "bpLike_WT_fixedDend"},
+                                    "name":   "bpLike_WT_fixedDend",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",},
 
             "bpLike_WT_fixedDend_eq":  {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
                                         "color":  "gray",
-                                        "name":   "bpLike_WT_fixedDend_eq"},
+                                        "name":   "bpLike_WT_fixedDend_eq",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": "",},
 
             "bpLike_fixedTD_hebbdend": {"config": "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_fixed_TD_complete_optimized.yaml",
                                         "color": "lightblue",
-                                        "name": "bpLike_fixedTD_hebbdend"},
+                                        "name": "bpLike_fixedTD_hebbdend",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": "",},
 
             "bpLike_fixedTD_hebbdend_eq":  {"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml",
                                             "color": "lightgray",
-                                            "name": "bpLike_fixedTD_hebbdend_eq"},
+                                            "name": "bpLike_fixedTD_hebbdend_eq",
+                                            "Architecture": "", 
+                                            "Algorithm": "", 
+                                            "Learning Rule": "",},
 
             ##########################
             # Biological models
             ##########################
             "HebbWN_topsup":       {"config": "20241105_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_7_complete_optimized.yaml",
                                     "color":  "green",
-                                    "name":   "Top-supervised HebbWN"}, # bpLike in the top layer
+                                    "name":   "Top-supervised HebbWN",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",}, # bpLike in the top layer
 
             "Supervised_HebbWN_WT_hebbdend":{"config": "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml",
                                     "color": "olive",
-                                    "name": "Supervised_HebbWN_WT_hebbdend"}, 
+                                    "name": "Supervised_HebbWN_WT_hebbdend",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",}, 
 
             "SupHebbTempCont_WT_hebbdend": {"config": "20241125_EIANN_2_hidden_mnist_Hebb_Temp_Contrast_config_2_complete_optimized.yaml",
                                             "color": "purple",
-                                            "name": "Hebb Temp. Contrast"}, # Like target propagation / temporal contrast on forward dW
+                                            "name": "Hebb Temp. Contrast",
+                                            "Architecture": "", 
+                                            "Algorithm": "", 
+                                            "Learning Rule": "",}, # Like target propagation / temporal contrast on forward dW
 
             "Supervised_HebbWN_learned_somaI":{"config": "20240919_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_learn_somaI_config_4_complete_optimized.yaml",
                                                 "color": "lime",
-                                                "name": "Supervised HebbWN learned somaI"},
+                                                "name": "Supervised HebbWN learned somaI",
+                                                "Architecture": "", 
+                                                "Algorithm": "", 
+                                                "Learning Rule": "",},
 
             "Supervised_BCM_WT_hebbdend":  {"config": "20240723_EIANN_2_hidden_mnist_Supervised_BCM_config_4_complete_optimized.yaml",
                                             "color": "lightgray",
-                                            "name": "BCM"},
+                                            "name": "BCM",
+                                            "Architecture": "", 
+                                            "Algorithm": "", 
+                                            "Learning Rule": "",},
 
             "BTSP_WT_hebbdend":    {"config":"20241212_EIANN_2_hidden_mnist_BTSP_config_5L_complete_optimized.yaml",
                                     "color": "orange",
-                                    "name": "BTSP"}, 
+                                    "name": "BTSP",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",}, 
 
             # "BTSP_hebbTD_hebbdend": {"config": "20240905_EIANN_2_hidden_mnist_BTSP_config_3L_learn_TD_HWN_3_complete_optimized.yaml",
             #                         "color": "magenta",
@@ -1422,11 +1462,17 @@ def main(figure, recompute):
 
             "BTSP_fixedTD_hebbdend":{"config": "20241216_EIANN_2_hidden_mnist_BTSP_config_5L_fixed_TD_complete_optimized.yaml",
                                     "color": "black",
-                                    "name": "BTSP_fixedTD_hebbdend"},
+                                    "name": "BTSP_fixedTD_hebbdend",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",},
 
             "BTSP_TCWN_hebbdend": {"config": "20241216_EIANN_2_hidden_mnist_BTSP_config_5L_learn_TD_HTCWN_3_complete_optimized.yaml",
                                     "color": "green",
-                                    "name": "BTSP_TCWN_hebbdend"}, # top-down learning with TempContrast+weight norm
+                                    "name": "BTSP_TCWN_hebbdend",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",}, # top-down learning with TempContrast+weight norm
 
             ##########################
             # Spirals dataset models
@@ -1434,26 +1480,26 @@ def main(figure, recompute):
             "vanBP_0_hidden_learned_bias_spiral": {"config": "20250108_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
                                             "color": "black",
                                             "name": "Vanilla Backprop 0-Hidden (Learned Bias)",
-                                            "Architecture": "", 
-                                            "Algorithm": "", 
-                                            "Learning Rule": "",
-                                            "Bias": ""},
+                                            "Architecture": "0-hidden", 
+                                            "Algorithm": "Backprop", 
+                                            "Learning Rule": "Gradient Descent",
+                                            "Bias": "Learned"},
 
             "vanBP_2_hidden_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
                                             "color": "red",
                                             "name": "Vanilla Backprop 2-Hidden (Learned Bias)",
-                                            "Architecture": "", 
-                                            "Algorithm": "", 
-                                            "Learning Rule": "",
-                                            "Bias": ""},
+                                            "Architecture": "2-hidden", 
+                                            "Algorithm": "Backprop", 
+                                            "Learning Rule": "Gradient Descent",
+                                            "Bias": "Learned"},
 
             "vanBP_2_hidden_zero_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config_complete_optimized.yaml",
                                         "color": "olive",
                                         "name": "Vanilla Backprop 2-Hidden (Zero Bias)",
-                                        "Architecture": "", 
-                                        "Algorithm": "", 
-                                        "Learning Rule": "",
-                                        "Bias": ""},
+                                        "Architecture": "2-hidden", 
+                                        "Algorithm": "Backprop", 
+                                        "Learning Rule": "Gradient Descent",
+                                        "Bias": "Zero"},
 
             "bpDale_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                         "color": "orange",
@@ -1461,7 +1507,7 @@ def main(figure, recompute):
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                        "Bias": ""},
+                                        "Bias": "Learned"},
 
             "bpLike_DTC_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                         "color": "purple",
@@ -1469,7 +1515,7 @@ def main(figure, recompute):
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                        "Bias": ""},
+                                          "Bias": "Learned"},
 
             "DTP_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
                                         "color": "blue",
@@ -1477,7 +1523,7 @@ def main(figure, recompute):
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                        "Bias": ""}, # optimized DendI fraction (~50%)
+                                        "Bias": "Learned"}, # optimized DendI fraction (~50%)
 
             "DTP_fixed_DendI_learned_bias_1_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_1_config_complete_optimized.yaml",
                                         "color": "green",
@@ -1485,7 +1531,7 @@ def main(figure, recompute):
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                        "Bias": ""}, # optimized DendI fraction
+                                        "Bias": "Learned"}, # optimized DendI fraction
 
             "DTP_fixed_DendI_learned_bias_2_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_2_config_complete_optimized.yaml",
                                         "color": "pink",
@@ -1493,9 +1539,18 @@ def main(figure, recompute):
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                        "Bias": ""}, # fixed DendI fraction to 25%
+                                        "Bias": "Learned"}, # fixed DendI fraction to 25%
 
-        }
+            "DTP_fixed_DendI_learned_bias_3_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_3_config_complete_optimized.yaml",
+                                        "color": "crimson",
+                                        "name": "DTP Fixed DendI and SomaI (Learned Bias) 3",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": "",
+                                        "Bias": "Learned"}, # fixed DendI fraction to 10%
+
+        } # TODO finished generating extended pkls, need to download whatever is on amarel to local, and then push all from local to box
+
 
     # Set path to Box data directory (default path based on OS)
     if os.name == "posix":
@@ -1588,7 +1643,7 @@ def main(figure, recompute):
         model_list_heatmaps = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
                                 "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
                                 "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral",
-                                "DTP_fixed_DendI_learned_bias_2_spiral"]
+                                "DTP_fixed_DendI_learned_bias_2_spiral", "DTP_fixed_DendI_learned_bias_3_spiral"]
         # model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Suppl1_Spirals"
@@ -1608,7 +1663,10 @@ def main(figure, recompute):
     elif figure == 'spiral-table':
         saved_network_path_prefix += "spiral/"
         figure_name = "spiral-table"
-        model_list = ["vanBP_0_hidden_learned_bias_spiral"]
+        model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
+                    "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
+                    "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral",
+                    "DTP_fixed_DendI_learned_bias_2_spiral", "DTP_fixed_DendI_learned_bias_3_spiral"]
         generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
     if figure == 'structure':
