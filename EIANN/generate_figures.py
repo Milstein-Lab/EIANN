@@ -260,7 +260,7 @@ def plot_accuracy_all_seeds(data_dict, model_dict, ax, legend=True):
             line.set_linewidth(1.5)
 
 
-def plot_error_all_seeds(data_dict, model_dict, ax):
+def plot_error_all_seeds(data_dict, model_dict, ax, scale='log'):
     accuracy_all_seeds = [data_dict[seed]['test_accuracy_history'] for seed in data_dict]
     error_rate_all_seeds = [(100 - np.array(acc)) for acc in accuracy_all_seeds]
     avg_error_rate = np.mean(error_rate_all_seeds, axis=0)
@@ -270,9 +270,13 @@ def plot_error_all_seeds(data_dict, model_dict, ax):
     ax.fill_between(val_steps, avg_error_rate-error, avg_error_rate+error, alpha=0.2, color=model_dict["color"], linewidth=0)
     ax.set_xlabel('Training step')
     ax.set_ylabel('Error Rate (%)', labelpad=0)
-    ax.set_yscale('log')
-    ax.set_ylim(5, 100)
-    ax.set_yticks([10, 100], labels=['10%', '100%'])
+    if scale == 'log':
+        ax.set_yscale('log')
+        ax.set_ylim(0, 100)
+        ax.set_yticks([10, 100], labels=['10%', '100%'])
+    # elif scale == 'linear':
+    #     ax.set_ylim(0, 10)
+    #     ax.set_yticks([0, 5, 10], labels=['0%', '5%', '10%'])
 
 
 def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf'):
