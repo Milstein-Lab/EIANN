@@ -1103,7 +1103,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 for seed in model_dict['seeds']:
                     accuracy_all_seeds_1_epoch.append(data_dict[seed]['test_accuracy_history'][-1])
                 avg_accuracy_1_epoch = np.mean(accuracy_all_seeds_1_epoch)
-                print(avg_accuracy_1_epoch)
+                # print(avg_accuracy_1_epoch)
                 std_accuracy_1_epoch = np.std(accuracy_all_seeds_1_epoch)
                 sem_accuracy_1_epoch = std_accuracy_1_epoch / np.sqrt(len(accuracy_all_seeds_1_epoch))
 
@@ -1111,7 +1111,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 for seed in model_dict['seeds']:
                     accuracy_all_seeds_10_epochs.append(data_dict[seed]['test_accuracy_history_extended'][-1])
                 avg_accuracy_10_epochs = np.mean(accuracy_all_seeds_10_epochs)
-                print(avg_accuracy_10_epochs)
+                # print(avg_accuracy_10_epochs)
                 std_accuracy_10_epochs = np.std(accuracy_all_seeds_10_epochs)
                 sem_accuracy_10_epochs = std_accuracy_10_epochs / np.sqrt(len(accuracy_all_seeds_10_epochs))
 
@@ -1545,7 +1545,7 @@ def main(figure, recompute):
                                         "Learning Rule": "",
                                         "Bias": "Learned"}, # fixed DendI fraction to 10%
 
-        } # TODO finished generating extended pkls, need to download whatever is on amarel to local, and then push all from local to box
+        }
 
 
     # Set path to Box data directory (default path based on OS)
@@ -1635,12 +1635,9 @@ def main(figure, recompute):
     # Supplementary Spirals Figure
     if figure in ["all", "spiral-suppl"]:
         saved_network_path_prefix += "spiral/"
-        # model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
         model_list_heatmaps = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
                                 "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
-                                "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral",
-                                "DTP_fixed_DendI_learned_bias_2_spiral", "DTP_fixed_DendI_learned_bias_3_spiral"]
-        # model_list_heatmaps = ["vanBP_2_hidden_learned_bias_spiral"]
+                                "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Suppl1_Spirals"
 
@@ -1661,8 +1658,7 @@ def main(figure, recompute):
         figure_name = "spiral-table"
         model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
                     "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
-                    "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral",
-                    "DTP_fixed_DendI_learned_bias_2_spiral", "DTP_fixed_DendI_learned_bias_3_spiral"]
+                    "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral"]
         generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
     if figure == 'structure':
