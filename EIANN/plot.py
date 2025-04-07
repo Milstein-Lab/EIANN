@@ -1286,6 +1286,35 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.set_title('BTSP', fontsize=8)
 
 
+def plot_dynamics(dynamics_dict, ax=None):
+    avg_SomaI_dynamics = []
+    avg_DendI_dynamics = []
+    avg_E_dynamics = []
+
+    for pop in dynamics_dict:
+        avg_pop_dynamics = dynamics_dict[pop].mean(dim=(1))
+        if 'SomaI' in pop:
+            avg_SomaI_dynamics.append(avg_pop_dynamics)
+        elif 'DendI' in pop:
+            avg_DendI_dynamics.append(avg_pop_dynamics)
+        elif 'E' in pop and 'Input' not in pop:
+            avg_E_dynamics.append(avg_pop_dynamics)
+
+    avg_SomaI_dynamics = np.concatenate(avg_SomaI_dynamics, axis=1)
+    avg_DendI_dynamics = np.concatenate(avg_DendI_dynamics, axis=1)
+    avg_E_dynamics = np.concatenate(avg_E_dynamics, axis=1)
+
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=[10, 2])
+
+    ax.plot(avg_SomaI_dynamics.T, color='steelblue', alpha=0.5)
+    ax.plot(avg_DendI_dynamics.T, color='lightblue', alpha=0.5)
+    ax.plot(avg_E_dynamics.T, color='red', alpha=0.5)
+    ax.set_xlabel('Forward timestep')
+    ax.set_ylabel('Average activity')
+    ax.legend()
+
+
 # *******************************************************************
 # Loss landscape functions
 # *******************************************************************
@@ -1872,20 +1901,22 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
         decision_value = decision_data['decision_value'][:]
 
         cmap = 'tab10'
-        ax.imshow(decision_map, extent=[-2, 2, -2, 2], cmap=cmap, origin='lower', alpha=decision_value)
+        ax.imshow(decision_map, extent=[-2, 2, -2, 2], cmap=cmap, origin='lower', alpha=decision_value*0.7)
 
-        # x_range = np.linspace(-2, 2, decision_map.shape[1])
-        # y_range = np.linspace(-2, 2, decision_map.shape[0])
-        # X, Y = np.meshgrid(x_range, y_range)                
-        # contour = ax.contourf(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 50), cmap=cmap, alpha=0.3)
-        
+        x_range = np.linspace(-2, 2, decision_map.shape[1])
+        y_range = np.linspace(-2, 2, decision_map.shape[0])
+        X, Y = np.meshgrid(x_range, y_range)                
+        # contour = ax.contourf(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 50), cmap=cmap, alpha=0., linewidths=0.5)
+        contour = ax.contour(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 4), colors='black', linewidths=0.5, zorder=1)
+
         ax.scatter(inputs[:,0], inputs[:,1], c=test_labels[:], s=4, alpha=0.8, linewidth=0, cmap=cmap)
         # ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=4, alpha=0.6, linewidth=0)
         # ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4, alpha=1, linewidth=0)
         
+        ax.set_xticks([-2, -1, 0, 1, 2])
+        ax.set_yticks([-2, -1, 0, 1, 2])
         ax.set_xlabel('x1')
         ax.set_ylabel('x2')
-        ax.set_title('Predictions')
 
     if ax is None:
         fig.tight_layout(rect=[0, 0, 1, 0.95]) 

@@ -66,7 +66,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     seed = f"{network_seed}_{data_seed}"
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', #'representational_similarity',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
@@ -143,6 +143,10 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
 
+    # # Unit similarity
+    # if 'representational_similarity' in variables_to_recompute:
+    #     within_class_pattern_similarity, between_class_pattern_similarity, within_class_unit_similarity, between_class_unit_similarity = ut.compute_class_similarity(hebb_network.H1.E, test_dataloader)
+
     # Receptive fields and metrics
     for population in network.populations.values():
         if f"metrics_dict_{population.fullname}" in variables_to_recompute:
@@ -211,6 +215,13 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     if 'spiral_decision_data_dict' in variables_to_recompute:
         spiral_decision_data_dict = ut.compute_spiral_decisions_data(network, test_dataloader)
         ut.save_plot_data(network.name, network.seed, data_key='spiral_decision_data_dict', data=spiral_decision_data_dict, file_path=hdf5_path, overwrite=True)
+
+    # Network forward dynamics
+    if 'activity_dynamics' in variables_to_recompute:
+        idx, data, target = next(iter(test_dataloader))
+        network.forward(data, store_dynamics=True)
+        dynamics_dict = {pop_name: torch.stack(population.forward_steps_activity) for pop_name, population in network.populations.items()}
+        ut.save_plot_data(network.name, network.seed, data_key='activity_dynamics', data=dynamics_dict, file_path=hdf5_path, overwrite=True)
 
 
 def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=None):
@@ -497,6 +508,29 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
+def plot_average_dynamics(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=False):
+    fig = plt.figure(figsize=(5.5, 9))
+    axes = gs.GridSpec(nrows=3, ncols=3,                        
+                       left=0.049,right=0.95,
+                       top=0.95, bottom=0.52,
+                       wspace=0.2, hspace=0.4)
+    
+    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+
+    labels = ['a', 'b', 'c', 'd']
+    for i,model_key in enumerate(all_models):
+        model_dict = model_dict_all[model_key]
+        network_name = model_dict['config'].split('.')[0]
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
+            data_dict = f[network_name]
+            print(f"Generating plots for {model_dict['name']}")
+            
+            dynamics_dict = data_dict['activity_dynamics']
+            pt.plot_average_dynamics(dynamics_dict, ax=axes[i])
+
+
 def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=3, ncols=3,                        
@@ -522,11 +556,15 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
     ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
     ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
     ax_structure   = fig.add_subplot(metrics_axes[2, 2])
+    ax_unit_similarity = fig.add_subplot(metrics_axes[2, 3])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
-    labels = ['a', 'b', 'c', 'd']
+    # labels = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+    import string
+    labels = list(string.ascii_lowercase)
+    label_counter = 0
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
@@ -554,11 +592,14 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
                     ax.set_yticklabels([])
 
                 ax.annotate(labels[i], xy=(-0.2, 1.08), xycoords='axes fraction', fontsize=12, weight='bold')
+                label_counter += 1
 
                 # Receptive field plots
                 receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
                 num_units = 10
                 ax = fig.add_subplot(axes[1, i])
+                ax.annotate(labels[i+3], xy=(-0.2, 1.08), xycoords='axes fraction', fontsize=12, weight='bold')
+                label_counter += 1
                 ax.axis('off')
                 pos = ax.get_position()
                 ax.set_position([pos.x0+0.0, pos.y0-0.02, pos.width-0.04, pos.height+0.03])
@@ -573,13 +614,20 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
                 cax = fig.add_axes([ax_list[0].get_position().x0, ax.get_position().y0-0.08/fig_height, 0.05, 0.03/fig_height])
                 fig.colorbar(im, cax=cax, orientation='horizontal')
 
+
             if model_key in model_list_metrics:
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy, legend=False)
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
 
-            label = None
-            ax.annotate(label, xy=(0.5, 0.5), xycoords='figure fraction', fontsize=12, weight='bold')
+
+                ax_unit_similarity
+
+            # label = None
+            # ax.annotate(label, xy=(0.5, 0.5), xycoords='figure fraction', fontsize=12, weight='bold')
+    ax_accuracy.annotate(labels[label_counter], xy=(-0.2, 1.08), xycoords='axes fraction', fontsize=12, weight='bold')
+    ax_selectivity.annotate(labels[label_counter+1], xy=(-0.2, 1.08), xycoords='axes fraction', fontsize=12, weight='bold')
+    ax_structure.annotate(labels[label_counter+2], xy=(-0.2, 1.08), xycoords='axes fraction', fontsize=12, weight='bold')
 
     legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0., 1.25), loc='upper left', fontsize=6)
     for line in legend.get_lines():
