@@ -928,27 +928,11 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
 
 
 def plot_rsm(population, test_dataloader):
+    """
+    Plot the representational similarity matrix (RSM) and related unit similarity matrix for a given population.
+    """
 
-    network = population.network
-    idx, data, target = next(iter(test_dataloader))
-    data.to(network.device)
-    network.forward(data, no_grad=True)
-    pop_activity = population.activity
-
-    # Sort patterns (rows) of pop_activity by label
-    _, sort_idx = torch.sort(torch.argmax(target, dim=1))
-    pop_activity = pop_activity[sort_idx]
-
-    # Sort neurons (columns) by argmax of activity
-    silent_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
-    active_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
-    preferred_input_active = torch.argmax(pop_activity[:,active_unit_indexes], dim=0)
-    _, idx = torch.sort(preferred_input_active)
-    sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
-    pop_activity = pop_activity[:, sort_idx]
-
-    pattern_similarity_matrix = cosine_similarity(pop_activity)
-    neuron_similarity_matrix = cosine_similarity(pop_activity.T)
+    pattern_similarity_matrix, neuron_similarity_matrix, pattern_labels, unit_labels = ut.compute_representational_similarity_matrix(population, test_dataloader)
 
     fig = plt.figure(figsize=(8, 4))
     axes = gs.GridSpec(nrows=1, ncols=2, wspace=0.4)
@@ -958,8 +942,8 @@ def plot_rsm(population, test_dataloader):
     # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
     # cbar = plt.colorbar(im, cax=cax)
     # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
-    num_samples = target.shape[0]
-    num_labels = target.shape[1]
+    num_samples = pattern_labels.shape[0]
+    num_labels = len(np.unique(pattern_labels))
     samples_per_label = num_samples // num_labels
     x_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
     y_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)

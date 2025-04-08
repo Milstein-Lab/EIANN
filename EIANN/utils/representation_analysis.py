@@ -493,59 +493,71 @@ def compute_discriminability(population_activity):
     return discriminability
 
 
-def compute_class_similarity(population, test_dataloader):
+def compute_representational_similarity_matrix(population, test_dataloader):
     """
-    Compute cosine similarity between patterns and between units
+    Compute the representational similarity matrix for a given population.
     """
     network = population.network
     idx, data, target = next(iter(test_dataloader))
     network.forward(data, no_grad=True)
     pop_activity = population.activity
 
-    # Sort rows of pop_activity by label
+    # Sort patterns (rows) of pop_activity by label
     pattern_labels, pattern_sort_idx = torch.sort(torch.argmax(target, dim=1))
     pop_activity = pop_activity[pattern_sort_idx]
 
     # Sort neurons (columns) by argmax of activity
-    percent_correct, average_pop_activity_dict = compute_test_activity(network, test_dataloader, sort=False)
-    avg_pop_activity = average_pop_activity_dict[population.fullname]
+    silent_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
+    active_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
+    preferred_input_active = torch.argmax(pop_activity[:,active_unit_indexes], dim=0)
+    preferred_input_active = pattern_labels[preferred_input_active.int()]
 
-    silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-    active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-    preferred_input_active = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
     unit_labels, idx = torch.sort(preferred_input_active)
     unit_sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
     unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_indexes))*torch.nan])
     pop_activity = pop_activity[:,unit_sort_idx]
+
+    pattern_similarity_matrix = cosine_similarity(pop_activity)
+    neuron_similarity_matrix = cosine_similarity(pop_activity.T)
+
+    return pattern_similarity_matrix, neuron_similarity_matrix, pattern_labels, unit_labels
+
+
+def compute_within_class_representational_similarity(population, test_dataloader):
+    """
+    Compute cosine similarity between patterns and between units
+    """
+    pattern_similarity_matrix, neuron_similarity_matrix, pattern_labels, unit_labels = compute_representational_similarity_matrix(population, test_dataloader)
 
     within_class_pattern_similarity = []
     between_class_pattern_similarity = []
     within_class_unit_similarity = []
     between_class_unit_similarity = []
     
-    num_classes = target.shape[1]
+    num_classes = len(np.unique(pattern_labels))
     for class_label in range(num_classes):
-        within_similarity_matrix = cosine_similarity(pop_activity[pattern_labels == class_label, :])
-        lower_idx = np.tril_indices_from(within_similarity_matrix, -1) 
-        # within_class_pattern_similarity.append(within_similarity_matrix[lower_idx])
-        within_class_pattern_similarity.extend(within_similarity_matrix[lower_idx].tolist())
-
-        between_similarity_matrix = cosine_similarity(pop_activity[pattern_labels == class_label, :], pop_activity[pattern_labels != class_label, :])
-        lower_idx = np.tril_indices_from(between_similarity_matrix, -1)
-        # between_class_pattern_similarity.append(between_similarity_matrix[lower_idx])
-        between_class_pattern_similarity.extend(between_similarity_matrix[lower_idx].tolist())
-
-        within_similarity_matrix = cosine_similarity(pop_activity[:,unit_labels == class_label].T)
+        within_similarity_matrix = pattern_similarity_matrix[pattern_labels == class_label, :][:, pattern_labels == class_label]
         lower_idx = np.tril_indices_from(within_similarity_matrix, -1)
-        # within_class_unit_similarity.append(within_similarity_matrix[lower_idx])
-        within_class_unit_similarity.extend(within_similarity_matrix[lower_idx].tolist())
+        within_class_pattern_similarity.append(within_similarity_matrix[lower_idx])
 
-        between_similarity_matrix = cosine_similarity(pop_activity[:,unit_labels == class_label].T, pop_activity[:,unit_labels != class_label].T)
-        lower_idx = np.tril_indices_from(between_similarity_matrix, -1)
-        # between_class_unit_similarity.append(between_similarity_matrix[lower_idx])
-        between_class_unit_similarity.extend(between_similarity_matrix[lower_idx].tolist())
+        between_similarity_matrix = pattern_similarity_matrix[pattern_labels != class_label, :][:, pattern_labels == class_label]
+        between_class_pattern_similarity.append(between_similarity_matrix)
+
+        within_similarity_matrix = neuron_similarity_matrix[unit_labels == class_label, :][:, unit_labels == class_label]
+        lower_idx = np.tril_indices_from(within_similarity_matrix, -1)
+        within_class_unit_similarity.append(within_similarity_matrix[lower_idx])
+
+        between_similarity_matrix = neuron_similarity_matrix[unit_labels != class_label, :][:, unit_labels == class_label]
+        between_class_unit_similarity.append(between_similarity_matrix)
 
     return within_class_pattern_similarity, between_class_pattern_similarity, within_class_unit_similarity, between_class_unit_similarity
+
+
+# def compute_representational_similarity_dict(network, test_dataloader):
+#     unit_similarity_dict, pattern_similarity_dict = {}, {}
+
+#     for pop_name, population in network.populations.items():
+#         within_class_pattern_similarity, between_class_pattern_similarity, within_class_unit_similarity, between_class_unit_similarity = compute_within_class_representational_similarity(population, test_dataloader)
 
 
 
