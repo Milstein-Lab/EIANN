@@ -66,7 +66,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     seed = f"{network_seed}_{data_seed}"
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', #'representational_similarity',
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'dimensionality',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
@@ -139,13 +139,15 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
     # Class-averaged activity
     if 'percent_correct' in variables_to_recompute:
-        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, sort=False)
+        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=False)
         ut.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
 
-    # # Unit similarity
-    # if 'representational_similarity' in variables_to_recompute:
-    #     within_class_pattern_similarity, between_class_pattern_similarity, within_class_unit_similarity, between_class_unit_similarity = ut.compute_class_similarity(hebb_network.H1.E, test_dataloader)
+    # Representational dimensionality of neural manifold (participation ratio of eigenvalues)
+    if 'dimensionality' in variables_to_recompute:
+        percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
+        neural_dimensionality_dict = ut.compute_dimensionality_from_activity(pop_activity_dict)
+        ut.save_plot_data(network.name, network.seed, data_key='neural_dimensionality', data=neural_dimensionality_dict, file_path=hdf5_path, overwrite=True)
 
     # Receptive fields and metrics
     for population in network.populations.values():

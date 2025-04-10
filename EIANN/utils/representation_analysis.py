@@ -11,70 +11,66 @@ from scipy import signal
 from EIANN.utils import data_utils, network_utils
 import EIANN.plot as pt
 
-
-
-def compute_average_activity(activity, labels):
-    '''
-    Compute the average activity for each unit, grouped by the class labels
-    '''
-    num_units = activity.shape[1]
-    num_labels = labels.shape[1]
-    avg_activity = torch.zeros(num_units, num_labels)
-    for label in range(num_labels):
-        label_idx = torch.where(labels == label)
-        avg_activity[:, label] = torch.mean(activity[label_idx], dim=0)
-    return avg_activity
-
-
-def compute_test_activity(network, test_dataloader, sort, sorted_output_idx=None):
+    
+def compute_test_activity(network, test_dataloader, class_average:bool, sort:bool, sorted_output_idx=None):
     """
-    Compute total accuracy (% correct) on given dataset
-    :param network:
-    :param test_dataloader:
-    :param population: :class:'Population' or str 'all'
-    :param sorted_output_idx: tensor of int
-    :param title: str
+    Compute activity for all populations in the network on the test dataloader, as well as total accuracy (% correct).
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
-    idx, data, targets = next(iter(test_dataloader))
-    data = data.to(network.device)
-    targets = targets.to(network.device)
-    labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
+    idx, data, target = next(iter(test_dataloader))
     output = network.forward(data, no_grad=True)
-    num_labels = targets.shape[1]
+    pattern_labels = torch.argmax(target, dim=1)
 
     if sorted_output_idx is not None:
         output = output[:, sorted_output_idx]
-    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
-    percent_correct = torch.round(percent_correct, decimals=2)
+    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == pattern_labels) / data.shape[0]
+    percent_correct = torch.round(percent_correct, decimals=2)        
 
-    # Compute average activity for each population
-    average_pop_activity_dict = {}
+    # Compute sorted/averaged test activity for each population
     reversed_populations = list(reversed(network.populations.values())) # start with the output population
-    for population in reversed_populations:
-        avg_pop_activity = torch.zeros(population.size, num_labels)
-        for label in range(num_labels):
-            label_idx = torch.where(labels == label)
-            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
-            
-        # Sort units by their preferred input
-        if sort:
+    pop_activity_dict = {}
+    if sort:
+        pattern_labels, pattern_sort_idx = torch.sort(pattern_labels)
+        unit_labels_dict = {}
+        for population in reversed_populations: 
+            pop_activity = population.activity
+
+            # Sort patterns (rows) of pop_activity by label
+            pop_activity = pop_activity[pattern_sort_idx]
+
+            # Sort neurons (columns) by argmax of activity
             if population is network.output_pop:
                 if sorted_output_idx is None:
-                    sort_idx = torch.arange(0, network.output_pop.size)
+                    unit_sort_idx = torch.arange(0, network.output_pop.size)
                 else:
-                    sort_idx = sorted_output_idx
+                    unit_sort_idx = sorted_output_idx
             else:
-                silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-                active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-                preferred_input_active = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-                _, idx = torch.sort(preferred_input_active)
-                sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
-            avg_pop_activity = avg_pop_activity[sort_idx]
+                silent_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
+                active_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
+                preferred_input_active = torch.argmax(pop_activity[:,active_unit_indexes], dim=0)
+                preferred_input_active = pattern_labels[preferred_input_active.int()] # convert from index to class label
+                unit_labels, idx = torch.sort(preferred_input_active)
+                unit_sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+                unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_indexes))*torch.nan])
+                unit_labels_dict[population.fullname] = unit_labels
+            pop_activity = pop_activity[:,unit_sort_idx]
 
-        average_pop_activity_dict[population.fullname] = avg_pop_activity
+            pop_activity_dict[population.fullname] = pop_activity
 
-    return percent_correct, average_pop_activity_dict
+    if class_average: 
+        # Average activity across the patterns (rows) for each class label
+        num_labels = target.shape[1]
+        for population in reversed_populations:
+            if population.fullname not in pop_activity_dict:
+                pop_activity_dict[population.fullname] = population.activity
+
+            avg_pop_activity = torch.zeros_like(population.activity)
+            for label in range(num_labels):
+                label_idx = torch.where(pattern_labels == label)
+                avg_pop_activity[label] = torch.mean(pop_activity_dict[population.fullname][label_idx], dim=0)
+            pop_activity_dict[population.fullname] = avg_pop_activity.T
+
+    return percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict
 
 
 def compute_dParam_history(network):
@@ -493,72 +489,166 @@ def compute_discriminability(population_activity):
     return discriminability
 
 
-def compute_representational_similarity_matrix(population, test_dataloader):
+def compute_representational_similarity_matrix(pop_activity_dict, population='all'):
     """
-    Compute the representational similarity matrix for a given population.
+    Compute the representational similarity matrix between patterns and between units.
     """
-    network = population.network
-    idx, data, target = next(iter(test_dataloader))
-    network.forward(data, no_grad=True)
-    pop_activity = population.activity
+    pattern_similarity_matrix_dict = {}
+    neuron_similarity_matrix_dict = {}
 
-    # Sort patterns (rows) of pop_activity by label
-    pattern_labels, pattern_sort_idx = torch.sort(torch.argmax(target, dim=1))
-    pop_activity = pop_activity[pattern_sort_idx]
+    if population == 'all':
+        pop_activity_dict = pop_activity_dict
+    else:
+        pop_activity_dict = {population: pop_activity_dict[population]}
 
-    # Sort neurons (columns) by argmax of activity
-    silent_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
-    active_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
-    preferred_input_active = torch.argmax(pop_activity[:,active_unit_indexes], dim=0)
-    preferred_input_active = pattern_labels[preferred_input_active.int()]
+    for pop_name, pop_activity in pop_activity_dict.items():
+        pattern_similarity_matrix_dict[pop_name] = cosine_similarity(pop_activity)
+        neuron_similarity_matrix_dict[pop_name] = cosine_similarity(pop_activity.T)
 
-    unit_labels, idx = torch.sort(preferred_input_active)
-    unit_sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
-    unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_indexes))*torch.nan])
-    pop_activity = pop_activity[:,unit_sort_idx]
-
-    pattern_similarity_matrix = cosine_similarity(pop_activity)
-    neuron_similarity_matrix = cosine_similarity(pop_activity.T)
-
-    return pattern_similarity_matrix, neuron_similarity_matrix, pattern_labels, unit_labels
+    return pattern_similarity_matrix_dict, neuron_similarity_matrix_dict
 
 
-def compute_within_class_representational_similarity(population, test_dataloader):
+def compute_within_class_representational_similarity(network, test_dataloader, population='all'):
     """
     Compute cosine similarity between patterns and between units
     """
-    pattern_similarity_matrix, neuron_similarity_matrix, pattern_labels, unit_labels = compute_representational_similarity_matrix(population, test_dataloader)
+    percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = compute_test_activity(network, test_dataloader, class_average=False, sort=True)
+    pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = compute_representational_similarity_matrix(pop_activity_dict, population)
 
-    within_class_pattern_similarity = []
-    between_class_pattern_similarity = []
-    within_class_unit_similarity = []
-    between_class_unit_similarity = []
-    
+    within_class_pattern_similarity_dict = {}
+    between_class_pattern_similarity_dict = {}
+    within_class_unit_similarity_dict = {}
+    between_class_unit_similarity_dict = {}
     num_classes = len(np.unique(pattern_labels))
-    for class_label in range(num_classes):
-        within_similarity_matrix = pattern_similarity_matrix[pattern_labels == class_label, :][:, pattern_labels == class_label]
-        lower_idx = np.tril_indices_from(within_similarity_matrix, -1)
-        within_class_pattern_similarity.append(within_similarity_matrix[lower_idx])
 
-        between_similarity_matrix = pattern_similarity_matrix[pattern_labels != class_label, :][:, pattern_labels == class_label]
-        between_class_pattern_similarity.append(between_similarity_matrix)
+    for pop_name in pattern_similarity_matrix_dict:
+        within_class_pattern_similarity_dict[pop_name] = []
+        between_class_pattern_similarity_dict[pop_name] = []
+        within_class_unit_similarity_dict[pop_name] = []
+        between_class_unit_similarity_dict[pop_name] = []
+        
+        for class_label in range(num_classes):
+            within_similarity_matrix = pattern_similarity_matrix_dict[pop_name][pattern_labels == class_label, :][:, pattern_labels == class_label]
+            lower_idx = np.tril_indices_from(within_similarity_matrix, -1)
+            within_class_pattern_similarity_dict[pop_name].append(within_similarity_matrix[lower_idx])
 
-        within_similarity_matrix = neuron_similarity_matrix[unit_labels == class_label, :][:, unit_labels == class_label]
-        lower_idx = np.tril_indices_from(within_similarity_matrix, -1)
-        within_class_unit_similarity.append(within_similarity_matrix[lower_idx])
+            between_similarity_matrix = pattern_similarity_matrix_dict[pop_name][pattern_labels != class_label, :][:, pattern_labels == class_label]
+            between_class_pattern_similarity_dict[pop_name].append(between_similarity_matrix)
 
-        between_similarity_matrix = neuron_similarity_matrix[unit_labels != class_label, :][:, unit_labels == class_label]
-        between_class_unit_similarity.append(between_similarity_matrix)
+            within_similarity_matrix = neuron_similarity_matrix_dict[pop_name][unit_labels_dict[pop_name] == class_label, :][:, unit_labels_dict[pop_name] == class_label]
+            lower_idx = np.tril_indices_from(within_similarity_matrix, -1)
+            within_class_unit_similarity_dict[pop_name].append(within_similarity_matrix[lower_idx])
 
-    return within_class_pattern_similarity, between_class_pattern_similarity, within_class_unit_similarity, between_class_unit_similarity
+            between_similarity_matrix = neuron_similarity_matrix_dict[pop_name][unit_labels_dict[pop_name] != class_label, :][:, unit_labels_dict[pop_name] == class_label]
+            between_class_unit_similarity_dict[pop_name].append(between_similarity_matrix)
+
+    return within_class_pattern_similarity_dict, between_class_pattern_similarity_dict, within_class_unit_similarity_dict, between_class_unit_similarity_dict
 
 
-# def compute_representational_similarity_dict(network, test_dataloader):
-#     unit_similarity_dict, pattern_similarity_dict = {}, {}
+def compute_dimensionality_from_RSM(representational_similarity_matrix):
+    """
+    Estimate the effective intrinsic dimensionality of a neural population
+    using the participation ratio (PR) of the eigenvalue spectrum of a 
+    representational similarity matrix (RSM).
 
-#     for pop_name, population in network.populations.items():
-#         within_class_pattern_similarity, between_class_pattern_similarity, within_class_unit_similarity, between_class_unit_similarity = compute_within_class_representational_similarity(population, test_dataloader)
+    Parameters
+    ----------
+    RSM : np.ndarray
+        A square representational similarity matrix (RSM),
+        where each entry RSM[i, j] indicates the similarity between the tuning
+        vectors of neurons (or stimulus patterns) i and j. Typically computed using cosine 
+        similarity or correlation between neural response vectors.
 
+    Returns
+    -------
+    float
+        The participation ratio, defined as:
+
+            PR = (sum_i λ_i)^2 / sum_i (λ_i^2)
+
+        where λ_i are the eigenvalues of the RSM. This quantity estimates the 
+        effective number of orthogonal dimensions required to describe the 
+        representational space encoded by the population.
+
+        A value of:
+        - ~1 indicates complete redundancy or representational collapse 
+          (all neurons behave identically),
+        - ~n_neurons indicates complete decorrelation (each neuron codes 
+          independently).
+
+    Notes
+    -----
+    This approach is based on methods for characterizing the 
+    representational capacity or dimensionality of neural population codes.
+
+    See:
+    - Kriegeskorte, N., Mur, M., & Bandettini, P. A. (2008). Representational similarity analysis—connecting the branches of systems neuroscience. *Frontiers in Systems Neuroscience*, 2, 4. https://doi.org/10.3389/neuro.06.004.2008
+    - Yamins, D. L., et al. (2014). Performance-optimized hierarchical models predict neural responses in higher visual cortex. *PNAS*, 111(23), 8619–8624. https://doi.org/10.1073/pnas.1403112111
+    """
+    representational_similarity_matrix = 0.5 * (representational_similarity_matrix + representational_similarity_matrix.T) # Ensure symmetry for numerical stability (to avoid floating point rounding errors)
+
+    # Compute eigenvalues
+    eigenvalues = np.linalg.eigvalsh(representational_similarity_matrix)
+
+    # Remove small negative eigenvalues due to numerical precision
+    eigenvalues = eigenvalues[eigenvalues > 1e-10]
+
+    # Compute participation ratio
+    pr = (np.sum(eigenvalues) ** 2) / np.sum(eigenvalues ** 2)
+    return pr
+
+
+def compute_dimensionality_from_activity(pop_activity_dict):
+    """
+    Compute the intrinsic dimensionality (participation ratio) of neural representations across layers.
+
+    For each population (e.g., layer) in the provided dictionary, the function performs PCA on the
+    (pattern x neuron) activity matrix and calculates the participation ratio of the eigenvalue spectrum.
+
+    This metric estimates the effective number of dimensions used to encode stimulus representations to assess representational capacity or collapse.
+
+    The participation ratio is defined as:
+        (sum_i λ_i)^2 / sum_i (λ_i^2)
+    where λ_i are the eigenvalues of the covariance matrix of the activity.
+
+    Parameters
+    ----------
+    pop_activity_dict : dict[str, np.ndarray]
+        Dictionary where each key is a layer name and each value is a 2D numpy array of shape 
+        (n_patterns, n_neurons), representing the activation of that population across inputs.
+
+    Returns
+    -------
+    dim_dict : dict[str, float]
+        Dictionary mapping each layer name to its estimated intrinsic dimensionality (participation ratio).
+
+    Reference
+    ---------
+    - Gao, P. et al. (2017). A theory of multineuronal dimensionality, dynamics and measurement. bioRxiv.
+      https://doi.org/10.1101/214262
+    - Stringer, C. et al. (2019). High-dimensional geometry of population responses in visual cortex. Nature.
+      https://doi.org/10.1038/s41586-019-1346-5
+    """
+    dim_dict = {}
+    for population_name, X in pop_activity_dict.items():
+        # Center the data across patterns (rows)
+        X = np.array(X)
+        X_centered = X - np.mean(X, axis=0, keepdims=True)
+        
+        # Compute covariance matrix
+        cov = np.cov(X_centered, rowvar=False)  # shape: (n_neurons, n_neurons)
+
+        # Compute eigenvalues
+        eigvals = np.linalg.eigvalsh(cov)  # sorted ascending
+        eigvals = np.clip(eigvals, 0, None) # clip to avoid tiny negatives due to numerical error
+
+        # Compute participation ratio
+        numerator = np.sum(eigvals) ** 2
+        denominator = np.sum(eigvals ** 2)
+        dim = numerator / denominator if denominator > 0 else 0.0
+        dim_dict[population_name] = dim
+
+    return dim_dict
 
 
 def spatial_structure_similarity_fft(img1, img2):

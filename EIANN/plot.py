@@ -920,51 +920,79 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     :param sorted_output_idx: tensor of int
     :param title: str
     """
-    percent_correct, average_pop_activity_dict = (
-        ut.compute_test_activity(network, test_dataloader, sort=True, sorted_output_idx=sorted_output_idx))
+    percent_correct, average_pop_activity_dict,_,_ = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True, sorted_output_idx=sorted_output_idx)
     print(f'Batch accuracy = {percent_correct}%')
-
     plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, title=title, ax=ax)
 
 
-def plot_rsm(population, test_dataloader):
+def plot_rsm(network, test_dataloader, population='all'):
     """
     Plot the representational similarity matrix (RSM) and related unit similarity matrix for a given population.
     """
 
-    pattern_similarity_matrix, neuron_similarity_matrix, pattern_labels, unit_labels = ut.compute_representational_similarity_matrix(population, test_dataloader)
+    percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
+    pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population)
 
-    fig = plt.figure(figsize=(8, 4))
-    axes = gs.GridSpec(nrows=1, ncols=2, wspace=0.4)
+    if population != 'all':
+        pattern_similarity_matrix_dict = {population: pattern_similarity_matrix_dict[population]}
+        neuron_similarity_matrix_dict = {population: neuron_similarity_matrix_dict[population]}
 
-    ax = fig.add_subplot(axes[0])
-    im = ax.imshow(pattern_similarity_matrix, interpolation='none')
-    # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
-    # cbar = plt.colorbar(im, cax=cax)
-    # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
-    num_samples = pattern_labels.shape[0]
-    num_labels = len(np.unique(pattern_labels))
-    samples_per_label = num_samples // num_labels
-    x_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
-    y_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
-    ax.set_xticks(x_ticks)
-    ax.set_yticks(y_ticks)
-    ax.set_xticklabels(range(0, num_labels))
-    ax.set_yticklabels(range(0, num_labels))
-    ax.set_xlabel('Patterns (sorted by label)')
-    ax.set_ylabel('Patterns (sorted by label)')
-    ax.set_title('Pattern cosine similarity')
+    pop_neuron_dimensionality = {}
+    for pop_name in pattern_similarity_matrix_dict:
+        pattern_similarity_matrix = pattern_similarity_matrix_dict[pop_name]
+        neuron_similarity_matrix = neuron_similarity_matrix_dict[pop_name]
 
-    ax = fig.add_subplot(axes[1])
-    im = ax.imshow(neuron_similarity_matrix, interpolation='none')
-    # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
-    # cbar = plt.colorbar(im, cax=cax)
-    # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
-    ax.set_xlabel('Neurons (sorted by argmax)')
-    ax.set_ylabel('Neurons (sorted by argmax)')
-    ax.set_title('Neuron cosine similarity')
+        fig = plt.figure(figsize=(8, 4))
+        axes = gs.GridSpec(nrows=1, ncols=2, wspace=0.4)
 
-    return pattern_similarity_matrix, neuron_similarity_matrix, fig
+        ax = fig.add_subplot(axes[0])
+        im = ax.imshow(pattern_similarity_matrix, interpolation='none')
+        # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
+        # cbar = plt.colorbar(im, cax=cax)
+        # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+        num_samples = pattern_labels.shape[0]
+        num_labels = len(np.unique(pattern_labels))
+        samples_per_label = num_samples // num_labels
+        x_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
+        y_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
+        ax.set_xticks(x_ticks)
+        ax.set_yticks(y_ticks)
+        ax.set_xticklabels(range(0, num_labels))
+        ax.set_yticklabels(range(0, num_labels))
+        ax.set_xlabel('Patterns (sorted by label)')
+        ax.set_ylabel('Patterns (sorted by label)')
+        ax.set_title('Pattern cosine similarity')
+
+        ax = fig.add_subplot(axes[1])
+        im = ax.imshow(neuron_similarity_matrix, interpolation='none')
+        # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
+        # cbar = plt.colorbar(im, cax=cax)
+        # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+        ax.set_xlabel('Neurons (sorted by argmax)')
+        ax.set_ylabel('Neurons (sorted by argmax)')
+        ax.set_title('Neuron cosine similarity')
+
+        neuron_dimensionality = ut.compute_dimensionality_from_RSM(neuron_similarity_matrix)
+        print(f"Estimated representational dimensionality ({pop_name}): {neuron_dimensionality:.2f}")
+        if 'E' in pop_name:
+            pop_neuron_dimensionality[pop_name] = neuron_dimensionality
+
+        if len(neuron_similarity_matrix_dict) > 1:
+            fig.suptitle(pop_name)
+
+    if len(neuron_similarity_matrix_dict) > 1:
+        # Plot dimensionality across E layers of the neural network
+        neuron_dim = list(pop_neuron_dimensionality.values())[::-1]
+        names = list(pop_neuron_dimensionality.keys())[::-1]
+        fig, ax = plt.subplots(1, 1, figsize=(8, 4))
+        ax.plot(neuron_dim, marker='o', linestyle='-', color='b')
+        ax.set_xticks(range(len(neuron_dim)))
+        ax.set_xticklabels(names)
+        ax.set_xlabel("Layer")
+        ax.set_ylabel("Representational dimensionality \n(participation ratio)")
+        ax.grid(True)
+
+    return fig
 
 
 def plot_plateaus(population, start=0, end=-1):
