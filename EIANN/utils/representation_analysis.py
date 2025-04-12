@@ -23,15 +23,15 @@ def compute_test_activity(network, test_dataloader, class_average:bool, sort:boo
 
     if sorted_output_idx is not None:
         output = output[:, sorted_output_idx]
-    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == pattern_labels) / data.shape[0]
+    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == pattern_labels) / len(pattern_labels)
     percent_correct = torch.round(percent_correct, decimals=2)        
 
     # Compute sorted/averaged test activity for each population
     reversed_populations = list(reversed(network.populations.values())) # start with the output population
     pop_activity_dict = {}
+    unit_labels_dict = {}
     if sort:
         pattern_labels, pattern_sort_idx = torch.sort(pattern_labels)
-        unit_labels_dict = {}
         for population in reversed_populations: 
             pop_activity = population.activity
 
@@ -44,6 +44,8 @@ def compute_test_activity(network, test_dataloader, class_average:bool, sort:boo
                     unit_sort_idx = torch.arange(0, network.output_pop.size)
                 else:
                     unit_sort_idx = sorted_output_idx
+                unit_labels = pattern_labels[unit_sort_idx.int()] # convert from index to class label
+                unit_labels_dict[population.fullname] = unit_labels
             else:
                 silent_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
                 active_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
@@ -533,14 +535,14 @@ def compute_within_class_representational_similarity(network, test_dataloader, p
             within_class_pattern_similarity_dict[pop_name].append(within_similarity_matrix[lower_idx])
 
             between_similarity_matrix = pattern_similarity_matrix_dict[pop_name][pattern_labels != class_label, :][:, pattern_labels == class_label]
-            between_class_pattern_similarity_dict[pop_name].append(between_similarity_matrix)
+            between_class_pattern_similarity_dict[pop_name].append(between_similarity_matrix.flatten())
 
             within_similarity_matrix = neuron_similarity_matrix_dict[pop_name][unit_labels_dict[pop_name] == class_label, :][:, unit_labels_dict[pop_name] == class_label]
             lower_idx = np.tril_indices_from(within_similarity_matrix, -1)
             within_class_unit_similarity_dict[pop_name].append(within_similarity_matrix[lower_idx])
 
             between_similarity_matrix = neuron_similarity_matrix_dict[pop_name][unit_labels_dict[pop_name] != class_label, :][:, unit_labels_dict[pop_name] == class_label]
-            between_class_unit_similarity_dict[pop_name].append(between_similarity_matrix)
+            between_class_unit_similarity_dict[pop_name].append(between_similarity_matrix.flatten())
 
     return within_class_pattern_similarity_dict, between_class_pattern_similarity_dict, within_class_unit_similarity_dict, between_class_unit_similarity_dict
 

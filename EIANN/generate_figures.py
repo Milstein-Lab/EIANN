@@ -12,6 +12,7 @@ import h5py
 import click
 import gc
 import copy
+import string
 from reportlab.pdfgen import canvas
 
 import EIANN.utils as ut
@@ -66,7 +67,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     seed = f"{network_seed}_{data_seed}"
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'dimensionality',
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'neural_dimensionality',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
@@ -144,7 +145,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
 
     # Representational dimensionality of neural manifold (participation ratio of eigenvalues)
-    if 'dimensionality' in variables_to_recompute:
+    if 'neural_dimensionality' in variables_to_recompute:
         percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
         neural_dimensionality_dict = ut.compute_dimensionality_from_activity(pop_activity_dict)
         ut.save_plot_data(network.name, network.seed, data_key='neural_dimensionality', data=neural_dimensionality_dict, file_path=hdf5_path, overwrite=True)
@@ -439,9 +440,10 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax, error='std'):
     elif error == 'sem':
         error = np.nanstd(fb_angles_all_seeds, axis=0) / np.sqrt(len(model_dict['seeds']))
     train_steps = data_dict[seed]['val_history_train_steps'][:]
-    ax.hlines(30, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
-    ax.hlines(60, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
-    ax.hlines(90, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
+    # ax.hlines(30, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
+    # ax.hlines(60, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
+    # ax.hlines(90, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
+    ax.grid(True, color='gray', linewidth=0.5, alpha=0.1)
     if np.isnan(avg_angle).any():
         print(f"Warning: NaN values found in avg W vs B angle.")
     else:
@@ -454,6 +456,39 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax, error='std'):
     ax.set_xlim([-train_steps[-1]/20, train_steps[-1]+1])
     ax.set_yticks(np.arange(0, 101, 30))
 
+
+def plot_dimensionality_all_seeds(data_dict, model_dict, ax):
+    # Plot dimensionality across E layers of the neural network
+    dimensionality_all_seeds = []
+    for seed in model_dict['seeds']:
+        dimensionality_dict = data_dict[seed]['neural_dimensionality']
+        dim_values = [val[()] for key, val in dimensionality_dict.items() if 'E' in key][::-1]  
+        dimensionality_all_seeds.append(dim_values)
+
+    labels = [name for name in dimensionality_dict if 'E' in name][::-1]
+    avg_dim = np.mean(dimensionality_all_seeds, axis=0)
+    error = np.std(dimensionality_all_seeds, axis=0) / np.sqrt(len(model_dict['seeds']))
+
+    ax.plot(avg_dim, linestyle='-', color=model_dict['color'], label=model_dict['name'], linewidth=1)
+    ax.fill_between(range(len(avg_dim)), avg_dim-error, avg_dim+error, alpha=0.3, color=model_dict['color'], linewidth=0)
+    ax.scatter(range(len(avg_dim)), avg_dim, color=model_dict['color'], marker='o', s=3)
+    ax.set_xticks(range(len(avg_dim)))
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+    ax.set_ylabel("Dimensionality \nof neural representation")
+
+    # ax.grid(True, which='major', color='lightgray', linewidth=0.5)
+    # ax.plot(avg_dim, range(len(avg_dim)), color=model_dict['color'], label=model_dict['name'], linewidth=1)
+    # ax.fill_betweenx(range(len(avg_dim)), avg_dim-error, avg_dim+error, alpha=0.5, color=model_dict['color'], linewidth=0)
+    # ax.set_yticks(range(len(avg_dim)))
+    # ax.set_yticklabels(labels)
+    # ax.set_xticks(np.arange(0, 40, 10))
+    # ax.set_xlim(left=-3)
+    # ax.set_xlabel("Dimensionality \nof neural representation")
+    # ax.xaxis.set_ticks_position('top')
+    # ax.xaxis.set_label_position('top')
+    # ax.spines['bottom'].set_visible(False)
+    # ax.spines['left'].set_visible(False)
+    # ax.tick_params(axis='both', length=0)
 
 ########################################################################################################
 
@@ -510,27 +545,27 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def plot_average_dynamics(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=False):
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=3,                        
-                       left=0.049,right=0.95,
-                       top=0.95, bottom=0.52,
-                       wspace=0.2, hspace=0.4)
+# def plot_average_dynamics(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=False):
+#     fig = plt.figure(figsize=(5.5, 9))
+#     axes = gs.GridSpec(nrows=3, ncols=3,                        
+#                        left=0.049,right=0.95,
+#                        top=0.95, bottom=0.52,
+#                        wspace=0.2, hspace=0.4)
     
-    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+#     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
+#     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
-    labels = ['a', 'b', 'c', 'd']
-    for i,model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['name']}")
+#     labels = ['a', 'b', 'c', 'd']
+#     for i,model_key in enumerate(all_models):
+#         model_dict = model_dict_all[model_key]
+#         network_name = model_dict['config'].split('.')[0]
+#         hdf5_path = f"data/plot_data_{network_name}.h5"
+#         with h5py.File(hdf5_path, 'r') as f:
+#             data_dict = f[network_name]
+#             print(f"Generating plots for {model_dict['name']}")
             
-            dynamics_dict = data_dict['activity_dynamics']
-            pt.plot_average_dynamics(dynamics_dict, ax=axes[i])
+#             dynamics_dict = data_dict['activity_dynamics']
+#             pt.plot_average_dynamics(dynamics_dict, ax=axes[i])
 
 
 def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
@@ -539,11 +574,11 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
                        left=0.049,right=0.95,
                        top=0.95, bottom=0.52,
                        wspace=0.2, hspace=0.4)
-    metrics_axes = gs.GridSpec(nrows=3, ncols=3,                        
-                       left=0.049,right=0.7,
-                       top=0.95, bottom=0.6,
-                       wspace=0.5, hspace=0.35,
-                       width_ratios=[2, 1, 1])
+    metrics_axes = gs.GridSpec(nrows=3, ncols=4,                        
+                       left=0.049,right=0.95,
+                       top=0.95, bottom=0.57,
+                       wspace=0.5, hspace=0.3,
+                       width_ratios=[2,1,1,1.3])
     # fig = plt.figure(figsize=(5.5, 4))
     # axes = gs.GridSpec(nrows=3, ncols=3,                        
     #                    left=0.049,right=0.95,
@@ -558,13 +593,11 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
     ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
     ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
     ax_structure   = fig.add_subplot(metrics_axes[2, 2])
-    ax_unit_similarity = fig.add_subplot(metrics_axes[2, 3])
+    ax_dimensionality = fig.add_subplot(metrics_axes[2, 3])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
-    # labels = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
-    import string
     labels = list(string.ascii_lowercase)
     label_counter = 0
     for i,model_key in enumerate(all_models):
@@ -621,15 +654,12 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy, legend=False)
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
+                plot_dimensionality_all_seeds(data_dict, model_dict, ax=ax_dimensionality)
 
-
-                ax_unit_similarity
-
-            # label = None
-            # ax.annotate(label, xy=(0.5, 0.5), xycoords='figure fraction', fontsize=12, weight='bold')
-    ax_accuracy.annotate(labels[label_counter], xy=(-0.2, 1.08), xycoords='axes fraction', fontsize=12, weight='bold')
-    ax_selectivity.annotate(labels[label_counter+1], xy=(-0.2, 1.08), xycoords='axes fraction', fontsize=12, weight='bold')
-    ax_structure.annotate(labels[label_counter+2], xy=(-0.2, 1.08), xycoords='axes fraction', fontsize=12, weight='bold')
+    ax_accuracy.annotate(labels[label_counter], xy=(-0.17, 1.2), xycoords='axes fraction', fontsize=12, weight='bold')
+    ax_selectivity.annotate(labels[label_counter+1], xy=(-0.2, 1.2), xycoords='axes fraction', fontsize=12, weight='bold')
+    ax_structure.annotate(labels[label_counter+2], xy=(-0.2, 1.2), xycoords='axes fraction', fontsize=12, weight='bold')
+    ax_dimensionality.annotate(labels[label_counter+3], xy=(-0.2, 1.2), xycoords='axes fraction', fontsize=12, weight='bold')
 
     legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0., 1.25), loc='upper left', fontsize=6)
     for line in legend.get_lines():
