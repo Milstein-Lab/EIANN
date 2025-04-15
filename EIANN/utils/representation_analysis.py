@@ -30,10 +30,12 @@ def compute_test_activity(network, test_dataloader, class_average:bool, sort:boo
     reversed_populations = list(reversed(network.populations.values())) # start with the output population
     pop_activity_dict = {}
     unit_labels_dict = {}
-    if sort:
-        pattern_labels, pattern_sort_idx = torch.sort(pattern_labels)
-        for population in reversed_populations: 
-            pop_activity = population.activity
+    
+    for i, population in enumerate(reversed_populations):
+        pop_activity = population.activity
+        if sort:
+            if i == 0:
+                pattern_labels, pattern_sort_idx = torch.sort(pattern_labels)
 
             # Sort patterns (rows) of pop_activity by label
             pop_activity = pop_activity[pattern_sort_idx]
@@ -44,20 +46,19 @@ def compute_test_activity(network, test_dataloader, class_average:bool, sort:boo
                     unit_sort_idx = torch.arange(0, network.output_pop.size)
                 else:
                     unit_sort_idx = sorted_output_idx
-                unit_labels = pattern_labels[unit_sort_idx.int()] # convert from index to class label
-                unit_labels_dict[population.fullname] = unit_labels
+                unit_labels = pattern_labels[torch.argmax(pop_activity, dim=0)]
             else:
                 silent_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
                 active_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
-                preferred_input_active = torch.argmax(pop_activity[:,active_unit_indexes], dim=0)
-                preferred_input_active = pattern_labels[preferred_input_active.int()] # convert from index to class label
+                preferred_input_active = pattern_labels[torch.argmax(pop_activity[:,active_unit_indexes], dim=0)]
                 unit_labels, idx = torch.sort(preferred_input_active)
                 unit_sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
                 unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_indexes))*torch.nan])
-                unit_labels_dict[population.fullname] = unit_labels
-            pop_activity = pop_activity[:,unit_sort_idx]
 
-            pop_activity_dict[population.fullname] = pop_activity
+            pop_activity = pop_activity[:,unit_sort_idx]
+            unit_labels_dict[population.fullname] = unit_labels
+
+        pop_activity_dict[population.fullname] = pop_activity
 
     if class_average: 
         # Average activity across the patterns (rows) for each class label
@@ -73,6 +74,15 @@ def compute_test_activity(network, test_dataloader, class_average:bool, sort:boo
             pop_activity_dict[population.fullname] = avg_pop_activity.T
 
     return percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict
+
+
+def compute_test_activity_dynamics(network, test_dataloader):
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+    idx, data, target = next(iter(test_dataloader))
+    network.forward(data, no_grad=True, store_dynamics=True)
+    reversed_populations = list(reversed(network.populations.values())) # start with the output population
+    pop_dynamics_dict = {population.fullname: torch.stack(population.forward_steps_activity) for population in reversed_populations}
+    return pop_dynamics_dict
 
 
 def compute_dParam_history(network):

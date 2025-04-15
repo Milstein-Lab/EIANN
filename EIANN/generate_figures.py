@@ -67,7 +67,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     seed = f"{network_seed}_{data_seed}"
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'neural_dimensionality',
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'neural_dimensionality', #'RSM_dimensionality',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
@@ -150,6 +150,14 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         neural_dimensionality_dict = ut.compute_dimensionality_from_activity(pop_activity_dict)
         ut.save_plot_data(network.name, network.seed, data_key='neural_dimensionality', data=neural_dimensionality_dict, file_path=hdf5_path, overwrite=True)
 
+    if 'RSM_dimensionality' in variables_to_recompute:
+        percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
+        pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population='all')
+        unit_RSM_dimensionality_dict = {}
+        for pop_name, neuron_similarity_matrix in neuron_similarity_matrix_dict.items():
+            unit_RSM_dimensionality_dict[pop_name] = ut.compute_dimensionality_from_RSM(neuron_similarity_matrix)
+        ut.save_plot_data(network.name, network.seed, data_key='unit_RSM_dimensionality', data=unit_RSM_dimensionality_dict, file_path=hdf5_path, overwrite=True)
+
     # Receptive fields and metrics
     for population in network.populations.values():
         if f"metrics_dict_{population.fullname}" in variables_to_recompute:
@@ -221,10 +229,8 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
     # Network forward dynamics
     if 'activity_dynamics' in variables_to_recompute:
-        idx, data, target = next(iter(test_dataloader))
-        network.forward(data, store_dynamics=True)
-        dynamics_dict = {pop_name: torch.stack(population.forward_steps_activity) for pop_name, population in network.populations.items()}
-        ut.save_plot_data(network.name, network.seed, data_key='activity_dynamics', data=dynamics_dict, file_path=hdf5_path, overwrite=True)
+        pop_dynamics_dict = ut.compute_test_activity_dynamics(network, test_dataloader)
+        ut.save_plot_data(network.name, network.seed, data_key='activity_dynamics', data=pop_dynamics_dict, file_path=hdf5_path, overwrite=True)
 
 
 def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=None):
@@ -462,6 +468,7 @@ def plot_dimensionality_all_seeds(data_dict, model_dict, ax):
     dimensionality_all_seeds = []
     for seed in model_dict['seeds']:
         dimensionality_dict = data_dict[seed]['neural_dimensionality']
+        # dimensionality_dict = data_dict[seed]['unit_RSM_dimensionality']
         dim_values = [val[()] for key, val in dimensionality_dict.items() if 'E' in key][::-1]  
         dimensionality_all_seeds.append(dim_values)
 
@@ -489,6 +496,65 @@ def plot_dimensionality_all_seeds(data_dict, model_dict, ax):
     # ax.spines['bottom'].set_visible(False)
     # ax.spines['left'].set_visible(False)
     # ax.tick_params(axis='both', length=0)
+
+
+def plot_dynamics_all_seeds(data_dict, model_dict, ax):
+    dynamics_all_seeds = {}
+    for seed in model_dict['seeds']:
+        pop_dynamics_dict = data_dict[seed]['activity_dynamics']
+        for pop_name, pop_dynamics in pop_dynamics_dict.items():
+            if pop_name not in dynamics_all_seeds:
+                dynamics_all_seeds[pop_name] = []
+            avg_dynamics = np.mean(pop_dynamics, axis=(1,2))
+            avg_dynamics = avg_dynamics/avg_dynamics[-1]
+            dynamics_all_seeds[pop_name].append(avg_dynamics)
+    dynamics_all_seeds = {pop_name:np.array(dynamics) for pop_name, dynamics in dynamics_all_seeds.items()}
+
+    axes = gs.GridSpecFromSubplotSpec(1, 2, subplot_spec=ax, wspace=0.2, hspace=0.2)
+    fig = axes.figure
+    ax_E = fig.add_subplot(axes[0])
+    ax_I = fig.add_subplot(axes[1])
+
+    E_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in dynamics_all_seeds.items() if 'E' in pop_name and 'Input' not in pop_name}
+    # cmap = plt.get_cmap('Reds')
+    cmap = plt.get_cmap('autumn_r')
+    for i, (pop_name, pop_dynamics) in enumerate(E_populations.items()):
+        avg_dynamics = np.mean(pop_dynamics, axis=(0))
+        error = np.std(pop_dynamics, axis=0)
+        # color = cmap(0.2 + 0.7*i/len(E_populations))
+        color = cmap(0.2 + i/len(E_populations))
+        ax_E.plot(np.arange(1,16), avg_dynamics, label=pop_name, color=color)
+        ax_E.fill_between(np.arange(1,16), avg_dynamics-error, avg_dynamics+error, alpha=0.2, linewidth=0,  color=color)
+    legend = ax_E.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.2), frameon=False, handlelength=0.8, handletextpad=0.5, columnspacing=1)
+    for line in legend.get_lines():
+        line.set_linewidth(2)
+
+    I_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in dynamics_all_seeds.items() if 'SomaI' in pop_name}
+    # cmap = plt.get_cmap('Blues')
+    cmap = plt.get_cmap('winter_r')
+    for i, (pop_name, pop_dynamics) in enumerate(I_populations.items()):
+        avg_dynamics = np.mean(pop_dynamics, axis=(0))
+        error = np.std(pop_dynamics, axis=0)
+        # color = cmap(0.2 + 0.7*i/len(I_populations))
+        color = cmap(0.2 + i/len(I_populations))
+        ax_I.plot(np.arange(1,16), avg_dynamics, label=pop_name, color=color)
+        ax_I.fill_between(np.arange(1,16), avg_dynamics-error, avg_dynamics+error, alpha=0.2, linewidth=0,  color=color)
+    legend = ax_I.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.2), frameon=False, handlelength=0.8, handletextpad=0.5, columnspacing=1)
+    for line in legend.get_lines():
+        line.set_linewidth(2)
+
+    ax_E.set_ylim([-0.1, 3])
+    ax_I.set_ylim([-0.1, 3])
+    ax_E.set_xlim([1, 15])
+    ax_I.set_xlim([1, 15])
+    ax_E.set_xticks([0, 5, 10, 15])
+    ax_I.set_xticks([0, 5, 10, 15])
+    ax_E.set_xlabel('Forward timestep')
+    ax_I.set_xlabel('Forward timestep')
+    ax_E.set_ylabel('Activity dynamics (norm.)')
+    ax_I.set_ylabel('Activity dynamics (norm.)')
+    ax_E.set_title(model_dict['name'], rotation=90, x=-0.18, y=0.4, va='center')
+
 
 ########################################################################################################
 
@@ -528,7 +594,7 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
     print("Generating figure...")
 
     fig = plt.figure(figsize=(5.5, 9))
-    gs_axes = gs.GridSpec(nrows=2, ncols=1,                        
+    gs_axes = gs.GridSpec(nrows=2, ncols=1, figure=fig,                        
                        left=0.68,right=0.97,
                        top=0.86, bottom = 0.65,
                        wspace=0.3, hspace=0.5)
@@ -545,46 +611,47 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-# def plot_average_dynamics(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=False):
-#     fig = plt.figure(figsize=(5.5, 9))
-#     axes = gs.GridSpec(nrows=3, ncols=3,                        
-#                        left=0.049,right=0.95,
-#                        top=0.95, bottom=0.52,
-#                        wspace=0.2, hspace=0.4)
+def plot_average_dynamics(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=False):
+    fig = plt.figure(figsize=(5.5, 9))
+    axes = gs.GridSpec(nrows=len(model_list), ncols=1, figure=fig,                       
+                       left=0.1,right=0.95,
+                       top=0.95, bottom=0.52,
+                       wspace=0.2, hspace=0.6)
     
-#     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-#     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+    all_models = model_list
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
-#     labels = ['a', 'b', 'c', 'd']
-#     for i,model_key in enumerate(all_models):
-#         model_dict = model_dict_all[model_key]
-#         network_name = model_dict['config'].split('.')[0]
-#         hdf5_path = f"data/plot_data_{network_name}.h5"
-#         with h5py.File(hdf5_path, 'r') as f:
-#             data_dict = f[network_name]
-#             print(f"Generating plots for {model_dict['name']}")
+    for i, model_key in enumerate(all_models):
+        model_dict = model_dict_all[model_key]
+        network_name = model_dict['config'].split('.')[0]
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
+            data_dict = f[network_name]
+            print(f"Generating plots for {model_dict['name']}")    
+            plot_dynamics_all_seeds(data_dict, model_dict, ax=axes[i])
+
+    if save is not None:
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
             
-#             dynamics_dict = data_dict['activity_dynamics']
-#             pt.plot_average_dynamics(dynamics_dict, ax=axes[i])
-
 
 def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=3,                        
+    axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                    
                        left=0.049,right=0.95,
                        top=0.95, bottom=0.52,
                        wspace=0.2, hspace=0.4)
-    metrics_axes = gs.GridSpec(nrows=3, ncols=4,                        
+    metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,                        
                        left=0.049,right=0.95,
                        top=0.95, bottom=0.57,
                        wspace=0.5, hspace=0.3,
                        width_ratios=[2,1,1,1.3])
     # fig = plt.figure(figsize=(5.5, 4))
-    # axes = gs.GridSpec(nrows=3, ncols=3,                        
+    # axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                   
     #                    left=0.049,right=0.95,
     #                    top=0.95, bottom=0.08,
     #                    wspace=0.2, hspace=0.35)
-    # metrics_axes = gs.GridSpec(nrows=3, ncols=4,                        
+    # metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,                     
     #                    left=0.049,right=0.95,
     #                    top=0.95, bottom=0.25,
     #                    wspace=0.5, hspace=0.3,
@@ -595,7 +662,7 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
     ax_structure   = fig.add_subplot(metrics_axes[2, 2])
     ax_dimensionality = fig.add_subplot(metrics_axes[2, 3])
 
-    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
+    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics)) # remove duplicates
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
     labels = list(string.ascii_lowercase)
@@ -679,11 +746,11 @@ def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_me
     '''
 
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=4, ncols=6,                        
+    axes = gs.GridSpec(nrows=4, ncols=6, figure=fig,                        
                        left=0.049,right=1,
                        top=0.95, bottom = 0.5,
                        wspace=0.15, hspace=0.5)
-    metrics_axes = gs.GridSpec(nrows=4, ncols=4,                        
+    metrics_axes = gs.GridSpec(nrows=4, ncols=4, figure=fig,                 
                        left=0.049,right=0.95,
                        top=0.95, bottom = 0.48,
                        wspace=0.5, hspace=0.8)
@@ -766,12 +833,12 @@ def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_me
 
 def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=4, ncols=6,                        
+    axes = gs.GridSpec(nrows=4, ncols=6, figure=fig,                       
                        left=0.049,right=0.98,
                        top=0.95, bottom = 0.5,
                        wspace=0.15, hspace=0.5)
     
-    metrics_axes = gs.GridSpec(nrows=4, ncols=1,                        
+    metrics_axes = gs.GridSpec(nrows=4, ncols=1, figure=fig,                     
                        left=0.6,right=0.78,
                        top=0.95, bottom = 0.5,
                        wspace=0., hspace=0.5)
@@ -828,13 +895,13 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
 
 def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=4,                        
+    axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,            
                        left=0.049,right=0.95,
                        top=0.95, bottom = 0.5,
                        wspace=0.3, hspace=0.5,
                        width_ratios=[1, 1, 1, 0.5])
     
-    metrics_axes = gs.GridSpec(nrows=3, ncols=4,
+    metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,
                        left=0.049,right=0.95,
                        top=0.95, bottom = 0.5,
                        wspace=0.3, hspace=0.6,
@@ -904,11 +971,11 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
     '''
 
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=2, ncols=4,                        
+    axes = gs.GridSpec(nrows=2, ncols=4, figure=fig,               
                        left=0.049,right=0.9,
                        top=0.9, bottom = 0.6,
                        wspace=0.15, hspace=0.5)
-    axes_metrics = gs.GridSpec(nrows=2, ncols=3,                        
+    axes_metrics = gs.GridSpec(nrows=2, ncols=3, figure=fig,            
                         left=0.15,right=1,
                         top=0.9, bottom = 0.65,
                         wspace=0.15, hspace=0.5)    
@@ -970,7 +1037,7 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
 
 def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=2, ncols=3,                        
+    axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                    
                        left=0.25,right=0.95,
                        top=0.98, bottom = 0.78,
                        wspace=0.5, hspace=0.7)
@@ -1248,7 +1315,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
     cols = max(len(model_list_heatmaps), 3)
 
     fig = plt.figure(figsize=(cols * 3, cols * 2.5))
-    axes = gs.GridSpec(nrows=3, ncols=cols,                        
+    axes = gs.GridSpec(nrows=3, ncols=cols, figure=fig,                    
                        left=0.03, right=0.97,
                        top=0.95, bottom=0.5,
                        wspace=0.5, hspace=0.7)
@@ -1716,6 +1783,12 @@ def main(figure, recompute):
         figure_name = "FigS1_somaI"
         compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
+    # Population activity dynamics
+    if figure in ['all', "dynamics"]:
+        model_list = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup"]
+        figure_name = "Suppl_dynamics"
+        plot_average_dynamics(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+                  
     # Supplementary Spirals Figure
     if figure in ["all", "spiral-suppl"]:
         saved_network_path_prefix += "spiral/"
@@ -1729,7 +1802,7 @@ def main(figure, recompute):
         generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='decision', config_path_prefix='network_config/spiral/',
                                 saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
 
-    if figure == 'table':
+    if figure in ["all", "table"]:
         saved_network_path_prefix += "MNIST/"
         figure_name = "FigS3_mnist_table"
         model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
@@ -1737,7 +1810,7 @@ def main(figure, recompute):
                       "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
         generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
     
-    elif figure == 'spiral-table':
+    if figure in ["all", "spiral-table"]:
         saved_network_path_prefix += "spiral/"
         figure_name = "spiral-table"
         model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
@@ -1745,7 +1818,7 @@ def main(figure, recompute):
                     "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral"]
         generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
-    if figure == 'structure':
+    if figure in ["all", "structure"]:
         saved_network_path_prefix += "MNIST/"
         figure_name = "structure"
         model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]

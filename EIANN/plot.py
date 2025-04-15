@@ -6,6 +6,7 @@ import itertools
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
+import matplotlib.patches as patches
 
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
@@ -407,26 +408,43 @@ def plot_MNIST_examples(network, dataloader):
     fig.show()
 
 
-def plot_network_dynamics(network):
+def plot_network_dynamics(pop_dynamics_dict, axes=None):
     """
-    Plots activity dynamics for every population in the network
+    Plot the activity dynamics of each population in the network
     """
-    rows = len(network.layers)
-    cols = np.max([len(layer.populations) for layer in network])
+    if axes is None:
+        fig = plt.figure(figsize=(8, 2))
+        axes = gs.GridSpec(1, 2, figure=fig, wspace=0.5, hspace=0.5)
+    else:
+        fig = axes.figure
+    ax_E = fig.add_subplot(axes[0])
+    ax_I = fig.add_subplot(axes[1])
 
-    fig = plt.figure(figsize=(8, 6))
-    axes = gs.GridSpec(nrows=rows, ncols=cols,
-                       left=0.05, right=0.98,
-                       top=0.83, bottom=0.1,
-                       wspace=0.3, hspace=0.8)
+    E_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in pop_dynamics_dict.items() if 'E' in pop_name and 'Input' not in pop_name}
+    for i, (pop_name, pop_dynamics) in enumerate(E_populations.items()):
+        avg_dynamics = torch.mean(pop_dynamics, dim=(1,2))
+        avg_dynamics = avg_dynamics/avg_dynamics[-1]
+        ax_E.plot(avg_dynamics, color='r', alpha=1/(1+i), label=pop_name)
+    ax_E.set_ylim([0, 3])
+    ax_E.set_xlabel('Forward timestep')
+    ax_E.set_ylabel('Activity dynamics (norm.)')
+    # ax_E.set_title('E populations')
+    legend = ax_E.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.25), frameon=False, framealpha=0.5, handlelength=0.8, handletextpad=0.5, columnspacing=1)
+    for line in legend.get_lines():
+        line.set_linewidth(3)
 
-    for row, layer in enumerate(network):
-        for col, population in enumerate(layer):
-            ax = fig.add_subplot(axes[row, col])
-            # average_activity_dynamics = torch.mean(population.activity_history, dim=0)
-            average_activity_dynamics = torch.mean(population.activity_history[-21:], dim=(0,2))
-            ax.plot(average_activity_dynamics)
-            ax.set_title(f'{population.fullname} dynamics')
+    I_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in pop_dynamics_dict.items() if 'SomaI' in pop_name}
+    for i, (pop_name, pop_dynamics) in enumerate(I_populations.items()):
+        avg_dynamics = torch.mean(pop_dynamics, dim=(1,2))
+        avg_dynamics = avg_dynamics/avg_dynamics[-1]
+        ax_I.plot(avg_dynamics, color='b', alpha=1/(1+i), label=pop_name)
+    ax_I.set_ylim([0, 3])
+    ax_I.set_xlabel('Forward timestep')
+    ax_I.set_ylabel('Activity dynamics (norm.)')
+    # ax_I.set_title('I populations')
+    legend = ax_I.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0.2, 1.25), frameon=False, framealpha=0.5, handlelength=0.8, handletextpad=0.5, columnspacing=1)
+    for line in legend.get_lines():
+        line.set_linewidth(3)
 
 
 def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, population, units, t, axes=None, colors=None):
@@ -931,11 +949,15 @@ def plot_rsm(network, test_dataloader, population='all'):
     """
 
     percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
-    pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population)
+    activity_dimensionality_dict = ut.compute_dimensionality_from_activity(pop_activity_dict)
+    activity_dimensionality_dict = {pop_name: activity_dimensionality_dict[pop_name] for pop_name in activity_dimensionality_dict if 'E' in pop_name}
 
-    if population != 'all':
-        pattern_similarity_matrix_dict = {population: pattern_similarity_matrix_dict[population]}
-        neuron_similarity_matrix_dict = {population: neuron_similarity_matrix_dict[population]}
+    if population in ['E', 'SomaI', 'DendI']:
+        pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population='all')
+        pattern_similarity_matrix_dict = {pop_name: pattern_similarity_matrix_dict[pop_name] for pop_name in pattern_similarity_matrix_dict if population in pop_name}
+        neuron_similarity_matrix_dict = {pop_name: neuron_similarity_matrix_dict[pop_name] for pop_name in neuron_similarity_matrix_dict if population in pop_name}
+    else:
+        pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population=population)
 
     pop_neuron_dimensionality = {}
     for pop_name in pattern_similarity_matrix_dict:
@@ -971,9 +993,30 @@ def plot_rsm(network, test_dataloader, population='all'):
         ax.set_xlabel('Neurons (sorted by argmax)')
         ax.set_ylabel('Neurons (sorted by argmax)')
         ax.set_title('Neuron cosine similarity')
+        unit_labels = unit_labels_dict[pop_name]
+        num_units = len(unit_labels)
+        if pop_name == 'OutputE':
+            x_ticks = np.arange(0, num_units)
+            ax.set_xticks(x_ticks)
+            # ax.set_xticklabels(range(0, num_units, 10))
+            y_ticks = np.arange(0, num_units)
+            ax.set_yticks(y_ticks)
+            # ax.set_yticklabels(range(0, num_units, 10))
+
+
+        for i in range(10):
+            class_idx = np.where(unit_labels == i)[0]
+            cmap = plt.cm.get_cmap('tab20')
+            if len(class_idx) > 0:
+                class_boundary_start = class_idx[0]
+                class_boundary_end = class_idx[-1]+1
+                ax.add_patch(patches.Rectangle((class_boundary_start-0.5, class_boundary_start-0.5), class_boundary_end - class_boundary_start, class_boundary_end - class_boundary_start, fill=False, edgecolor=cmap(i), linewidth=3, facecolor=cmap(i)))
+                # class_boundary = class_idx[-1] + 0.5
+                # ax.vlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
+                # ax.hlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
 
         neuron_dimensionality = ut.compute_dimensionality_from_RSM(neuron_similarity_matrix)
-        print(f"Estimated representational dimensionality ({pop_name}): {neuron_dimensionality:.2f}")
+        # print(f"Estimated representational dimensionality ({pop_name}): {neuron_dimensionality:.2f}")
         if 'E' in pop_name:
             pop_neuron_dimensionality[pop_name] = neuron_dimensionality
 
@@ -984,8 +1027,12 @@ def plot_rsm(network, test_dataloader, population='all'):
         # Plot dimensionality across E layers of the neural network
         neuron_dim = list(pop_neuron_dimensionality.values())[::-1]
         names = list(pop_neuron_dimensionality.keys())[::-1]
+        neuron_dim2 = list(activity_dimensionality_dict.values())[::-1]
+
         fig, ax = plt.subplots(1, 1, figsize=(8, 4))
-        ax.plot(neuron_dim, marker='o', linestyle='-', color='b')
+        ax.plot(neuron_dim, marker='o', linestyle='-', color='b', label='RSM dimensionality')
+        ax.plot(neuron_dim2, marker='o', linestyle='-', color='r', label='Activity dimensionality')
+        ax.legend()
         ax.set_xticks(range(len(neuron_dim)))
         ax.set_xticklabels(names)
         ax.set_xlabel("Layer")
@@ -1297,34 +1344,6 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.set_xlabel('$Relative~time~(samples)$', math_fontfamily='cm', fontsize=8, labelpad=8)
     ax.set_title('BTSP', fontsize=8)
 
-
-def plot_dynamics(dynamics_dict, ax=None):
-    avg_SomaI_dynamics = []
-    avg_DendI_dynamics = []
-    avg_E_dynamics = []
-
-    for pop in dynamics_dict:
-        avg_pop_dynamics = dynamics_dict[pop].mean(dim=(1))
-        if 'SomaI' in pop:
-            avg_SomaI_dynamics.append(avg_pop_dynamics)
-        elif 'DendI' in pop:
-            avg_DendI_dynamics.append(avg_pop_dynamics)
-        elif 'E' in pop and 'Input' not in pop:
-            avg_E_dynamics.append(avg_pop_dynamics)
-
-    avg_SomaI_dynamics = np.concatenate(avg_SomaI_dynamics, axis=1)
-    avg_DendI_dynamics = np.concatenate(avg_DendI_dynamics, axis=1)
-    avg_E_dynamics = np.concatenate(avg_E_dynamics, axis=1)
-
-    if ax is None:
-        fig, ax = plt.subplots(1, 1, figsize=[10, 2])
-
-    ax.plot(avg_SomaI_dynamics.T, color='steelblue', alpha=0.5)
-    ax.plot(avg_DendI_dynamics.T, color='lightblue', alpha=0.5)
-    ax.plot(avg_E_dynamics.T, color='red', alpha=0.5)
-    ax.set_xlabel('Forward timestep')
-    ax.set_ylabel('Average activity')
-    ax.legend()
 
 
 # *******************************************************************
