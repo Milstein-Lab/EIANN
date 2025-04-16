@@ -510,10 +510,11 @@ def plot_dynamics_all_seeds(data_dict, model_dict, ax):
             dynamics_all_seeds[pop_name].append(avg_dynamics)
     dynamics_all_seeds = {pop_name:np.array(dynamics) for pop_name, dynamics in dynamics_all_seeds.items()}
 
-    axes = gs.GridSpecFromSubplotSpec(1, 2, subplot_spec=ax, wspace=0.2, hspace=0.2)
+    axes = gs.GridSpecFromSubplotSpec(1, 3, subplot_spec=ax, wspace=0.2, hspace=0.2)
     fig = axes.figure
     ax_E = fig.add_subplot(axes[0])
     ax_I = fig.add_subplot(axes[1])
+    all_axes = [ax_E, ax_I]
 
     E_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in dynamics_all_seeds.items() if 'E' in pop_name and 'Input' not in pop_name}
     # cmap = plt.get_cmap('Reds')
@@ -522,10 +523,10 @@ def plot_dynamics_all_seeds(data_dict, model_dict, ax):
         avg_dynamics = np.mean(pop_dynamics, axis=(0))
         error = np.std(pop_dynamics, axis=0)
         # color = cmap(0.2 + 0.7*i/len(E_populations))
-        color = cmap(0.2 + i/len(E_populations))
+        color = cmap(0.2 + i/3)
         ax_E.plot(np.arange(1,16), avg_dynamics, label=pop_name, color=color)
         ax_E.fill_between(np.arange(1,16), avg_dynamics-error, avg_dynamics+error, alpha=0.2, linewidth=0,  color=color)
-    legend = ax_E.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.2), frameon=False, handlelength=0.8, handletextpad=0.5, columnspacing=1)
+    legend = ax_E.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.3), frameon=False, handlelength=0.8, handletextpad=0.5, columnspacing=1)
     for line in legend.get_lines():
         line.set_linewidth(2)
 
@@ -536,24 +537,40 @@ def plot_dynamics_all_seeds(data_dict, model_dict, ax):
         avg_dynamics = np.mean(pop_dynamics, axis=(0))
         error = np.std(pop_dynamics, axis=0)
         # color = cmap(0.2 + 0.7*i/len(I_populations))
-        color = cmap(0.2 + i/len(I_populations))
+        color = cmap(0.2 + i/3)
         ax_I.plot(np.arange(1,16), avg_dynamics, label=pop_name, color=color)
         ax_I.fill_between(np.arange(1,16), avg_dynamics-error, avg_dynamics+error, alpha=0.2, linewidth=0,  color=color)
-    legend = ax_I.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.2), frameon=False, handlelength=0.8, handletextpad=0.5, columnspacing=1)
+    legend = ax_I.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0.1, 1.3), frameon=False, handlelength=0.8, handletextpad=0.5, columnspacing=1)
     for line in legend.get_lines():
         line.set_linewidth(2)
 
-    ax_E.set_ylim([-0.1, 3])
-    ax_I.set_ylim([-0.1, 3])
-    ax_E.set_xlim([1, 15])
-    ax_I.set_xlim([1, 15])
-    ax_E.set_xticks([0, 5, 10, 15])
-    ax_I.set_xticks([0, 5, 10, 15])
-    ax_E.set_xlabel('Forward timestep')
-    ax_I.set_xlabel('Forward timestep')
-    ax_E.set_ylabel('Activity dynamics (norm.)')
-    ax_I.set_ylabel('Activity dynamics (norm.)')
-    ax_E.set_title(model_dict['name'], rotation=90, x=-0.18, y=0.4, va='center')
+    DendI_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in dynamics_all_seeds.items() if 'DendI' in pop_name}
+    if len(DendI_populations) > 0:
+        ax_dendI = fig.add_subplot(axes[2])
+        all_axes.append(ax_dendI)
+
+        # cmap = plt.get_cmap('Blues')
+        cmap = plt.get_cmap('winter_r')
+        for i, (pop_name, pop_dynamics) in enumerate(DendI_populations.items()):
+            avg_dynamics = np.mean(pop_dynamics, axis=(0))
+            error = np.std(pop_dynamics, axis=0)
+            color = cmap(0.2 + i/3)
+            ax_dendI.plot(np.arange(1,16), avg_dynamics, label=pop_name, color=color)
+            ax_dendI.fill_between(np.arange(1,16), avg_dynamics-error, avg_dynamics+error, alpha=0.2, linewidth=0,  color=color)
+        legend = ax_dendI.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.3), frameon=False, handlelength=0.8, handletextpad=0.5, columnspacing=1)
+        for line in legend.get_lines():
+            line.set_linewidth(2)
+        
+    for ax in all_axes:
+        ax.set_xticks(np.arange(0, 16, 5))
+        ax.set_yticks(np.arange(0, 3.1, 1))
+        ax.set_ylim([-0.1, 3])
+        ax.set_xlim([1, 15])
+        ax.set_xticks([0, 5, 10, 15])
+        ax.set_xlabel('Forward timestep')
+        # ax.set_ylabel('Activity (norm.)')
+    ax_E.set_ylabel('Activity (norm.)')
+    ax_E.set_title(model_dict['name'], rotation=90, x=-0.25, y=0.4, va='center')
 
 
 ########################################################################################################
@@ -616,7 +633,7 @@ def plot_average_dynamics(model_dict_all, model_list, config_path_prefix="networ
     axes = gs.GridSpec(nrows=len(model_list), ncols=1, figure=fig,                       
                        left=0.1,right=0.95,
                        top=0.95, bottom=0.52,
-                       wspace=0.2, hspace=0.6)
+                       wspace=1, hspace=0.8)
     
     all_models = model_list
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -1448,21 +1465,21 @@ def main(figure, recompute):
 
             "bpDale_learned":{"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml",
                             "color":  "blue",
-                            "name":   "bpDale(learned somaI)",
+                            "name":   "bpDale\n(learned soma I)",
                             "Architecture": "",
                             "Algorithm": "",
                             "Learning Rule": ""},
 
             "bpDale_fixed":{"config": "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml",
                             "color":  "cyan",
-                            "name":   "bpDale(fixed somaI)",
+                            "name":   "bpDale\n(fixed soma I)",
                             "Architecture": "",
                             "Algorithm": "",
                             "Learning Rule": ""},
 
             "bpDale_noI":  {"config": "20240919_EIANN_2_hidden_mnist_bpDale_noI_relu_SGD_config_G_complete_optimized.yaml",
                             "color": "blue",
-                            "name": "Dale's Law (no somaI)",
+                            "name": "Dale's Law\n(no soma I)",
                             "Architecture": "",
                             "Algorithm": "",
                             "Learning Rule": ""},
@@ -1472,7 +1489,7 @@ def main(figure, recompute):
             ##########################
             "bpLike_WT_hebbdend":  {"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_complete_optimized.yaml",
                                     "color": "red",
-                                    "name": "BP-like (dend. gating)",
+                                    "name": "Dend. Target Prop.",
                                     "Architecture": "",
                                     "Algorithm": "",
                                     "Learning Rule": ""},
@@ -1518,7 +1535,7 @@ def main(figure, recompute):
 
             "bpLike_WT_localBP":   {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5M_complete_optimized.yaml",
                                     "color": "orange",
-                                    "name": "bpLike_WT_localBP",
+                                    "name": "Backprop\n(Local loss func.)",
                                     "Architecture": "", 
                                     "Algorithm": "", 
                                     "Learning Rule": "",},
@@ -1532,7 +1549,7 @@ def main(figure, recompute):
 
             "bpLike_WT_fixedDend": {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5K_complete_optimized.yaml",
                                     "color":  "gray",
-                                    "name":   "bpLike_WT_fixedDend",
+                                    "name":   "Fixed random weights",
                                     "Architecture": "", 
                                     "Algorithm": "", 
                                     "Learning Rule": "",},
@@ -1563,7 +1580,7 @@ def main(figure, recompute):
             ##########################
             "HebbWN_topsup":       {"config": "20241105_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_7_complete_optimized.yaml",
                                     "color":  "green",
-                                    "name":   "Top-supervised HebbWN",
+                                    "name":   "Top-supervised Hebb",
                                     "Architecture": "", 
                                     "Algorithm": "", 
                                     "Learning Rule": "",}, # bpLike in the top layer
@@ -1775,17 +1792,18 @@ def main(figure, recompute):
 
     #-------------- Supplementary Figures --------------
 
-    # Analyze somaI selectivity (supplement to Fig.2)
-    if figure in ["all", "S1"]:
+    # Analyze somaI selectivity (S2: supplement to Fig.2)
+    if figure in ["all", "S2"]:
         saved_network_path_prefix += "MNIST/"
         model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS1_somaI"
         compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
-    # Population activity dynamics
+    # Population activity dynamics S1
     if figure in ['all', "dynamics"]:
-        model_list = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup"]
+        model_list = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
+        # model_list = ["bpLike_WT_hebbdend"]
         figure_name = "Suppl_dynamics"
         plot_average_dynamics(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
                   
