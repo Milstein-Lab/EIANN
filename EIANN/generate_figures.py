@@ -67,7 +67,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     seed = f"{network_seed}_{data_seed}"
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'neural_dimensionality', #'RSM_dimensionality',
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
@@ -140,23 +140,12 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
     # Class-averaged activity
     if 'percent_correct' in variables_to_recompute:
-        percent_correct, average_pop_activity_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=False)
+        average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=False)
+        output = average_pop_activity_dict[network.output_pop.fullname]
+        percent_correct = ut.compute_test_accuracy(output, pattern_labels)
+
         ut.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
-
-    # Representational dimensionality of neural manifold (participation ratio of eigenvalues)
-    if 'neural_dimensionality' in variables_to_recompute:
-        percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
-        neural_dimensionality_dict = ut.compute_dimensionality_from_activity(pop_activity_dict)
-        ut.save_plot_data(network.name, network.seed, data_key='neural_dimensionality', data=neural_dimensionality_dict, file_path=hdf5_path, overwrite=True)
-
-    if 'RSM_dimensionality' in variables_to_recompute:
-        percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
-        pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population='all')
-        unit_RSM_dimensionality_dict = {}
-        for pop_name, neuron_similarity_matrix in neuron_similarity_matrix_dict.items():
-            unit_RSM_dimensionality_dict[pop_name] = ut.compute_dimensionality_from_RSM(neuron_similarity_matrix)
-        ut.save_plot_data(network.name, network.seed, data_key='unit_RSM_dimensionality', data=unit_RSM_dimensionality_dict, file_path=hdf5_path, overwrite=True)
 
     # Receptive fields and metrics
     for population in network.populations.values():
@@ -677,7 +666,7 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
     ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
     ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
     ax_structure   = fig.add_subplot(metrics_axes[2, 2])
-    ax_dimensionality = fig.add_subplot(metrics_axes[2, 3])
+    # ax_dimensionality = fig.add_subplot(metrics_axes[2, 3])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics)) # remove duplicates
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -738,12 +727,12 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy, legend=False)
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
-                plot_dimensionality_all_seeds(data_dict, model_dict, ax=ax_dimensionality)
+                # plot_dimensionality_all_seeds(data_dict, model_dict, ax=ax_dimensionality)
 
     ax_accuracy.annotate(labels[label_counter], xy=(-0.17, 1.2), xycoords='axes fraction', fontsize=12, weight='bold')
     ax_selectivity.annotate(labels[label_counter+1], xy=(-0.2, 1.2), xycoords='axes fraction', fontsize=12, weight='bold')
     ax_structure.annotate(labels[label_counter+2], xy=(-0.2, 1.2), xycoords='axes fraction', fontsize=12, weight='bold')
-    ax_dimensionality.annotate(labels[label_counter+3], xy=(-0.2, 1.2), xycoords='axes fraction', fontsize=12, weight='bold')
+    # ax_dimensionality.annotate(labels[label_counter+3], xy=(-0.2, 1.2), xycoords='axes fraction', fontsize=12, weight='bold')
 
     legend = ax_accuracy.legend(ncol=3, bbox_to_anchor=(-0., 1.25), loc='upper left', fontsize=6)
     for line in legend.get_lines():
@@ -977,6 +966,47 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
     if save:
         # fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
+
+
+def compare_RSM_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+    fig = plt.figure(figsize=(5.5, 9))
+    axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,
+                       left=0.049,right=0.95,
+                       top=0.95, bottom = 0.5,
+                       wspace=0.3, hspace=0.5,
+                       width_ratios=[1, 1, 1, 0.5])
+
+    metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,
+                       left=0.049,right=0.95,
+                       top=0.95, bottom = 0.5,
+                       wspace=0.3, hspace=0.6,
+                       width_ratios=[1, 1, 1, 0.5])
+    
+    ax_hist = fig.add_subplot(metrics_axes[1, 0])
+    ax_h_bp = fig.add_subplot(metrics_axes[1, 1])
+    ax_h_bp_d = fig.add_subplot(metrics_axes[1, 2])
+    ax_h_bp_d_bp = fig.add_subplot(metrics_axes[1, 3])
+    ax_h_bp_d_bp_bp = fig.add_subplot(metrics_axes[0, 3])
+
+    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+
+    for col, model_key in enumerate(all_models):
+        model_dict = model_dict_all[model_key]
+        network_name = model_dict['config'].split('.')[0]
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
+            data_dict = f[network_name]
+            print(f"Generating plots for {model_dict['name']}")
+
+            # Plot RSM heatmaps
+            if model_key in model_list_heatmaps:
+                for row,population in enumerate(['H2DendI']):
+                    # Activity plots: batch accuracy of each population to the test dataset
+                    ax = fig.add_subplot(axes[row, col])
+                    seed = model_dict['seeds'][0]
+
+                    fig = pt.plot_rsm(dend_network, test_dataloader, population='E')    
 
 
 def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
@@ -1792,6 +1822,13 @@ def main(figure, recompute):
 
     #-------------- Supplementary Figures --------------
 
+    # S1: Population activity dynamics
+    if figure in ['all', "dynamics"]:
+        model_list = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
+        # model_list = ["bpLike_WT_hebbdend"]
+        figure_name = "Suppl_dynamics"
+        plot_average_dynamics(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+                  
     # Analyze somaI selectivity (S2: supplement to Fig.2)
     if figure in ["all", "S2"]:
         saved_network_path_prefix += "MNIST/"
@@ -1800,13 +1837,14 @@ def main(figure, recompute):
         figure_name = "FigS1_somaI"
         compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
-    # Population activity dynamics S1
-    if figure in ['all', "dynamics"]:
-        model_list = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
-        # model_list = ["bpLike_WT_hebbdend"]
-        figure_name = "Suppl_dynamics"
-        plot_average_dynamics(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-                  
+    # S3: Representational similarity analysis
+    if figure in ["all", "S3"]:
+        saved_network_path_prefix += "MNIST/"
+        model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
+        model_list_metrics = model_list_heatmaps
+        figure_name = "Suppl_similarity_analysis"
+        compare_RSM_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+
     # Supplementary Spirals Figure
     if figure in ["all", "spiral-suppl"]:
         saved_network_path_prefix += "spiral/"

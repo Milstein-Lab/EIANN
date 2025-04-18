@@ -869,7 +869,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, population=None, title=None, ax=None, cbar=True):
+def plot_batch_accuracy_from_data(average_pop_activity_dict, population='OutputE', title=None, ax=None, cbar=True):
     """
     Plot the average population activity from a data dict.
     :param average_pop_activity_dict: dict of average population activity
@@ -879,11 +879,7 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
     :param ax: (optional) matplotlib axis to plot on
     :param cbar: (optional) whether to include a colorbar
     """
-    if population is None:
-        # Include only last population in the data dict
-        population = list(average_pop_activity_dict.keys())[0]
-        average_pop_activity_dict = {population: average_pop_activity_dict[population]}
-    elif isinstance(population, str):
+    if isinstance(population, str):
         if population != 'all':
             average_pop_activity_dict = {population: average_pop_activity_dict[population]}
     elif isinstance(population, list):
@@ -894,26 +890,15 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
 
     for pop_name, avg_pop_activity in average_pop_activity_dict.items():
         avg_pop_activity = torch.tensor(np.array(avg_pop_activity))
-        if sort: # Sort units by their preferred input
-            if pop_name == 'OutputE':
-                sort_idx = torch.arange(0, avg_pop_activity.shape[0])
-            else:
-                silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-                active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-                preferred_input_active = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-                _, idx = torch.sort(preferred_input_active)
-                sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
-            avg_pop_activity = avg_pop_activity[sort_idx]
-
         if ax is None:
             fig, _ax = plt.subplots()
         else:
             _ax = ax
 
-        im = _ax.imshow(avg_pop_activity, aspect='auto', interpolation='none')
+        im = _ax.imshow(avg_pop_activity.T, aspect='auto', interpolation='none')
         if cbar:
             cbar = plt.colorbar(im, ax=_ax)
-        _ax.set_xticks(range(avg_pop_activity.shape[1]))
+        _ax.set_xticks(range(avg_pop_activity.shape[0]))
         _ax.set_xlabel('Labels')
         _ax.set_ylabel(f'{pop_name} unit')
 
@@ -938,24 +923,31 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     :param sorted_output_idx: tensor of int
     :param title: str
     """
-    percent_correct, average_pop_activity_dict,_,_ = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True, sorted_output_idx=sorted_output_idx)
+    # percent_correct, average_pop_activity_dict,_,_ = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True, sorted_output_idx=sorted_output_idx)
+
+    average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True)
+
+    if sorted_output_idx is not None:
+        average_pop_activity_dict[network.output_pop.fullname] = average_pop_activity_dict[network.output_pop.fullname][:, sorted_output_idx]
+    output = average_pop_activity_dict[network.output_pop.fullname]
+
+    percent_correct = ut.compute_test_accuracy(output, pattern_labels)
     print(f'Batch accuracy = {percent_correct}%')
+
     plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, title=title, ax=ax)
 
 
-def plot_rsm(network, test_dataloader, population='all'):
+def plot_rsm(pop_activity_dict, pattern_labels, unit_labels_dict, population='all'):
     """
     Plot the representational similarity matrix (RSM) and related unit similarity matrix for a given population.
     """
 
-    percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
-    activity_dimensionality_dict = ut.compute_dimensionality_from_activity(pop_activity_dict)
-    activity_dimensionality_dict = {pop_name: activity_dimensionality_dict[pop_name] for pop_name in activity_dimensionality_dict if 'E' in pop_name}
+    # percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
 
     if population in ['E', 'SomaI', 'DendI']:
         pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population='all')
-        pattern_similarity_matrix_dict = {pop_name: pattern_similarity_matrix_dict[pop_name] for pop_name in pattern_similarity_matrix_dict if population in pop_name}
-        neuron_similarity_matrix_dict = {pop_name: neuron_similarity_matrix_dict[pop_name] for pop_name in neuron_similarity_matrix_dict if population in pop_name}
+        pattern_similarity_matrix_dict = {pop_name: pattern_similarity_matrix_dict[pop_name] for pop_name in pattern_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
+        neuron_similarity_matrix_dict = {pop_name: neuron_similarity_matrix_dict[pop_name] for pop_name in neuron_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
     else:
         pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population=population)
 
@@ -972,7 +964,7 @@ def plot_rsm(network, test_dataloader, population='all'):
         # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
         # cbar = plt.colorbar(im, cax=cax)
         # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
-        num_samples = pattern_labels.shape[0]
+        num_samples = pattern_similarity_matrix.shape[0]
         num_labels = len(np.unique(pattern_labels))
         samples_per_label = num_samples // num_labels
         x_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
@@ -993,8 +985,7 @@ def plot_rsm(network, test_dataloader, population='all'):
         ax.set_xlabel('Neurons (sorted by argmax)')
         ax.set_ylabel('Neurons (sorted by argmax)')
         ax.set_title('Neuron cosine similarity')
-        unit_labels = unit_labels_dict[pop_name]
-        num_units = len(unit_labels)
+        num_units = neuron_similarity_matrix.shape[0]
         if pop_name == 'OutputE':
             x_ticks = np.arange(0, num_units)
             ax.set_xticks(x_ticks)
@@ -1003,41 +994,25 @@ def plot_rsm(network, test_dataloader, population='all'):
             ax.set_yticks(y_ticks)
             # ax.set_yticklabels(range(0, num_units, 10))
 
-
-        for i in range(10):
-            class_idx = np.where(unit_labels == i)[0]
-            cmap = plt.cm.get_cmap('tab20')
-            if len(class_idx) > 0:
-                class_boundary_start = class_idx[0]
-                class_boundary_end = class_idx[-1]+1
-                ax.add_patch(patches.Rectangle((class_boundary_start-0.5, class_boundary_start-0.5), class_boundary_end - class_boundary_start, class_boundary_end - class_boundary_start, fill=False, edgecolor=cmap(i), linewidth=3, facecolor=cmap(i)))
-                # class_boundary = class_idx[-1] + 0.5
-                # ax.vlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
-                # ax.hlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
-
-        neuron_dimensionality = ut.compute_dimensionality_from_RSM(neuron_similarity_matrix)
-        # print(f"Estimated representational dimensionality ({pop_name}): {neuron_dimensionality:.2f}")
-        if 'E' in pop_name:
-            pop_neuron_dimensionality[pop_name] = neuron_dimensionality
+        unit_labels = unit_labels_dict[pop_name]
+        nan_idx = torch.isnan(unit_labels)
+        pop_is_sorted = torch.all(unit_labels[~nan_idx][:-1] <= unit_labels[~nan_idx][1:])
+        if pop_is_sorted:
+            for i in range(10):
+                class_idx = np.where(unit_labels == i)[0]
+                cmap = plt.cm.get_cmap('tab20')
+                if len(class_idx) > 0:
+                    class_boundary_start = class_idx[0]
+                    class_boundary_end = class_idx[-1]+1
+                    ax.add_patch(patches.Rectangle((class_boundary_start-0.5, class_boundary_start-0.5), class_boundary_end - class_boundary_start, class_boundary_end - class_boundary_start, fill=False, edgecolor=cmap(i), linewidth=3, facecolor=cmap(i)))
+                    # class_boundary = class_idx[-1] + 0.5
+                    # ax.vlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
+                    # ax.hlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
+        else:
+            print(f'WARNING: {pop_name} is not sorted')
 
         if len(neuron_similarity_matrix_dict) > 1:
             fig.suptitle(pop_name)
-
-    if len(neuron_similarity_matrix_dict) > 1:
-        # Plot dimensionality across E layers of the neural network
-        neuron_dim = list(pop_neuron_dimensionality.values())[::-1]
-        names = list(pop_neuron_dimensionality.keys())[::-1]
-        neuron_dim2 = list(activity_dimensionality_dict.values())[::-1]
-
-        fig, ax = plt.subplots(1, 1, figsize=(8, 4))
-        ax.plot(neuron_dim, marker='o', linestyle='-', color='b', label='RSM dimensionality')
-        ax.plot(neuron_dim2, marker='o', linestyle='-', color='r', label='Activity dimensionality')
-        ax.legend()
-        ax.set_xticks(range(len(neuron_dim)))
-        ax.set_xticklabels(names)
-        ax.set_xlabel("Layer")
-        ax.set_ylabel("Representational dimensionality \n(participation ratio)")
-        ax.grid(True)
 
     return fig
 

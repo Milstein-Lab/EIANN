@@ -12,68 +12,68 @@ from EIANN.utils import data_utils, network_utils
 import EIANN.plot as pt
 
     
-def compute_test_activity(network, test_dataloader, class_average:bool, sort:bool, sorted_output_idx=None):
+def compute_test_activity(network, test_dataloader, class_average:bool, sort:bool):
     """
-    Compute activity for all populations in the network on the test dataloader, as well as total accuracy (% correct).
+    Compute activity for all populations in the network on the test dataloader
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
     idx, data, target = next(iter(test_dataloader))
-    output = network.forward(data, no_grad=True)
+    network.forward(data, no_grad=True)
     pattern_labels = torch.argmax(target, dim=1)
-
-    if sorted_output_idx is not None:
-        output = output[:, sorted_output_idx]
-    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == pattern_labels) / len(pattern_labels)
-    percent_correct = torch.round(percent_correct, decimals=2)        
+    sorted_pattern_labels, pattern_sort_idx = torch.sort(pattern_labels) 
+    if class_average:
+        num_labels = target.shape[1]
+        sorted_pattern_labels = torch.arange(num_labels)
 
     # Compute sorted/averaged test activity for each population
     reversed_populations = list(reversed(network.populations.values())) # start with the output population
     pop_activity_dict = {}
-    unit_labels_dict = {}
-    
+    unit_labels_dict = {}    
     for i, population in enumerate(reversed_populations):
         pop_activity = population.activity
-        if sort:
-            if i == 0:
-                pattern_labels, pattern_sort_idx = torch.sort(pattern_labels)
 
-            # Sort patterns (rows) of pop_activity by label
-            pop_activity = pop_activity[pattern_sort_idx]
+        if class_average: 
+            # Average activity across the patterns (rows) for each class label
+            num_units = pop_activity.shape[1]
+            avg_pop_activity = torch.zeros(num_labels, num_units)
+            for label in range(num_labels):
+                label_idx = torch.where(pattern_labels == label)
+                avg_pop_activity[label] = torch.mean(pop_activity[label_idx], dim=0)
+            pop_activity = avg_pop_activity
+
+        if sort:
+            if not class_average:
+                # Sort patterns (rows) of pop_activity by label
+                pop_activity = pop_activity[pattern_sort_idx]
 
             # Sort neurons (columns) by argmax of activity
             if population is network.output_pop:
-                if sorted_output_idx is None:
-                    unit_sort_idx = torch.arange(0, network.output_pop.size)
-                else:
-                    unit_sort_idx = sorted_output_idx
+                unit_sort_idx = torch.arange(0, network.output_pop.size)
                 unit_labels = pattern_labels[torch.argmax(pop_activity, dim=0)]
             else:
-                silent_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
-                active_unit_indexes = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
-                preferred_input_active = pattern_labels[torch.argmax(pop_activity[:,active_unit_indexes], dim=0)]
-                unit_labels, idx = torch.sort(preferred_input_active)
-                unit_sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
-                unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_indexes))*torch.nan])
-
+                silent_unit_idx = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
+                active_unit_idx = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
+                preferred_input_active = sorted_pattern_labels[torch.argmax(pop_activity[:,active_unit_idx], dim=0)]
+                unit_labels, sort_idx = torch.sort(preferred_input_active)
+                unit_sort_idx = torch.cat([active_unit_idx[sort_idx], silent_unit_idx])
+                unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_idx))*torch.nan])
             pop_activity = pop_activity[:,unit_sort_idx]
-            unit_labels_dict[population.fullname] = unit_labels
-
+        else:
+            unit_labels = sorted_pattern_labels[torch.argmax(pop_activity, dim=0)]
+            
         pop_activity_dict[population.fullname] = pop_activity
+        unit_labels_dict[population.fullname] = unit_labels
+    
+    if sort:
+        pattern_labels = sorted_pattern_labels
 
-    if class_average: 
-        # Average activity across the patterns (rows) for each class label
-        num_labels = target.shape[1]
-        for population in reversed_populations:
-            if population.fullname not in pop_activity_dict:
-                pop_activity_dict[population.fullname] = population.activity
+    return pop_activity_dict, pattern_labels, unit_labels_dict
 
-            avg_pop_activity = torch.zeros_like(population.activity)
-            for label in range(num_labels):
-                label_idx = torch.where(pattern_labels == label)
-                avg_pop_activity[label] = torch.mean(pop_activity_dict[population.fullname][label_idx], dim=0)
-            pop_activity_dict[population.fullname] = avg_pop_activity.T
 
-    return percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict
+def compute_test_accuracy(output, labels):
+    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / len(labels)
+    percent_correct = torch.round(percent_correct, decimals=2)       
+    return percent_correct 
 
 
 def compute_test_activity_dynamics(network, test_dataloader):
@@ -518,6 +518,18 @@ def compute_representational_similarity_matrix(pop_activity_dict, population='al
         neuron_similarity_matrix_dict[pop_name] = cosine_similarity(pop_activity.T)
 
     return pattern_similarity_matrix_dict, neuron_similarity_matrix_dict
+
+
+def compute_discriminability_ratio_from_RSM(representational_similarity_matrix):
+    """
+    Compute the discriminability as the ratio of cosine similarities between within-class patterns (/units) and between-class patterns (/units). 
+
+        discriminability = 1 - (mean(within-class) / mean(between-class))
+
+    """
+
+    pass
+
 
 
 def compute_within_class_representational_similarity(network, test_dataloader, population='all'):
