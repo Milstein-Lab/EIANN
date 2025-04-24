@@ -70,6 +70,23 @@ def compute_test_activity(network, test_dataloader, class_average:bool, sort:boo
     return pop_activity_dict, pattern_labels, unit_labels_dict
 
 
+def compute_average_activity(pop_activity_dict, pattern_labels):
+    """
+    Compute average activity for each population
+    """
+    # Compute average activity for each population
+    avg_pop_activity_dict = {}
+    for pop_name, pop_activity in pop_activity_dict.items():
+        avg_pop_activity = []
+        for class_label in torch.unique(pattern_labels):
+            class_idx = torch.where(pattern_labels == class_label)
+            avg_class_activity = torch.mean(pop_activity[class_idx], dim=0)
+            avg_pop_activity.append(avg_class_activity)
+        avg_pop_activity_dict[pop_name] = torch.stack(avg_pop_activity)
+
+    return avg_pop_activity_dict
+
+
 def compute_test_accuracy(output, labels):
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / len(labels)
     percent_correct = torch.round(percent_correct, decimals=2)       
@@ -518,18 +535,6 @@ def compute_representational_similarity_matrix(pop_activity_dict, population='al
         neuron_similarity_matrix_dict[pop_name] = cosine_similarity(pop_activity.T)
 
     return pattern_similarity_matrix_dict, neuron_similarity_matrix_dict
-
-
-def compute_discriminability_ratio_from_RSM(representational_similarity_matrix):
-    """
-    Compute the discriminability as the ratio of cosine similarities between within-class patterns (/units) and between-class patterns (/units). 
-
-        discriminability = 1 - (mean(within-class) / mean(between-class))
-
-    """
-
-    pass
-
 
 
 def compute_within_class_representational_similarity(network, test_dataloader, population='all'):

@@ -6,7 +6,6 @@ import itertools
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
-import matplotlib.patches as patches
 
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
@@ -645,7 +644,6 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
 
     # Filter by class activity preference to sample units across all classes
     if sort and preferred_classes is not None:
-        assert isinstance(preferred_classes, torch.Tensor), 'sort_by_activities must be a tensor of maxact class labels'
         class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
         preferred_classes = preferred_classes[class_sorted_idx]
         receptive_fields = receptive_fields[class_sorted_idx]
@@ -869,7 +867,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy_from_data(average_pop_activity_dict, population='OutputE', title=None, ax=None, cbar=True):
+def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, population='OutputE', title=None, ax=None, cbar=True):
     """
     Plot the average population activity from a data dict.
     :param average_pop_activity_dict: dict of average population activity
@@ -890,6 +888,17 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, population='OutputE
 
     for pop_name, avg_pop_activity in average_pop_activity_dict.items():
         avg_pop_activity = torch.tensor(np.array(avg_pop_activity))
+        if sort: # Sort units by their preferred input
+            if pop_name == 'OutputE':
+                sort_idx = torch.arange(0, avg_pop_activity.shape[1])
+            else:
+                silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=0) == 0)[0]
+                active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=0) > 0)[0]
+                preferred_input_active = torch.argmax(avg_pop_activity[:,active_unit_indexes], dim=0)
+                _, idx = torch.sort(preferred_input_active)
+                sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
+            avg_pop_activity = avg_pop_activity[:,sort_idx]
+
         if ax is None:
             fig, _ax = plt.subplots()
         else:
@@ -925,14 +934,16 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     """
     # percent_correct, average_pop_activity_dict,_,_ = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True, sorted_output_idx=sorted_output_idx)
 
-    average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True)
-
+    # Calculate accuracy
+    pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=False)
     if sorted_output_idx is not None:
-        average_pop_activity_dict[network.output_pop.fullname] = average_pop_activity_dict[network.output_pop.fullname][:, sorted_output_idx]
-    output = average_pop_activity_dict[network.output_pop.fullname]
-
+        pop_activity_dict[network.output_pop.fullname] = average_pop_activity_dict[network.output_pop.fullname][:, sorted_output_idx]
+    output = pop_activity_dict[network.output_pop.fullname]
     percent_correct = ut.compute_test_accuracy(output, pattern_labels)
     print(f'Batch accuracy = {percent_correct}%')
+
+    # Get average activity
+    average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True)
 
     plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, title=title, ax=ax)
 
@@ -951,7 +962,6 @@ def plot_rsm(pop_activity_dict, pattern_labels, unit_labels_dict, population='al
     else:
         pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population=population)
 
-    pop_neuron_dimensionality = {}
     for pop_name in pattern_similarity_matrix_dict:
         pattern_similarity_matrix = pattern_similarity_matrix_dict[pop_name]
         neuron_similarity_matrix = neuron_similarity_matrix_dict[pop_name]
@@ -1004,11 +1014,11 @@ def plot_rsm(pop_activity_dict, pattern_labels, unit_labels_dict, population='al
                 if len(class_idx) > 0:
                     class_boundary_start = class_idx[0]
                     class_boundary_end = class_idx[-1]+1
-                    ax.add_patch(patches.Rectangle((class_boundary_start-0.5, class_boundary_start-0.5), class_boundary_end - class_boundary_start, class_boundary_end - class_boundary_start, fill=False, edgecolor=cmap(i), linewidth=3, facecolor=cmap(i)))
+                    ax.add_patch(matplotlib.patches.Rectangle((class_boundary_start-0.5, class_boundary_start-0.5), class_boundary_end - class_boundary_start, class_boundary_end - class_boundary_start, fill=False, edgecolor=cmap(i), linewidth=3, facecolor=cmap(i)))
                     # class_boundary = class_idx[-1] + 0.5
                     # ax.vlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
                     # ax.hlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
-        else:
+        elif pop_name != 'OutputE':
             print(f'WARNING: {pop_name} is not sorted')
 
         if len(neuron_similarity_matrix_dict) > 1:
