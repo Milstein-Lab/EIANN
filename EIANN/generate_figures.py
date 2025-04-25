@@ -1411,7 +1411,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
 
 def generate_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     mm = 1/25.4 #convert mm to inches
-    fig, ax = plt.subplots(figsize=(180*mm,170*mm))
+    fig, ax = plt.subplots(figsize=(240*mm,200*mm))
     # fig, ax = plt.subplots(figsize=(5.5, 9))
     ax.axis('off')
 
@@ -1446,8 +1446,8 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 std_accuracy_50k = np.std(accuracy_all_seeds_50k)
                 sem_accuracy_50k = std_accuracy_50k / np.sqrt(len(accuracy_all_seeds_50k))
 
-                networks[model_dict['label']] = {'MNIST Accuracy (20k samples)': f"{avg_accuracy_20k:.2f} \u00b1 {sem_accuracy_20k:.2f}",
-                                                'MNIST Accuracy (50k samples)': f"{avg_accuracy_50k:.2f} \u00b1 {sem_accuracy_50k:.2f}"}
+                networks[model_dict.get('name', model_dict['label'])] = {'MNIST Accuracy (20k samples)': f"{avg_accuracy_20k:.2f} \u00b1 {sem_accuracy_20k:.2f}",
+                                                                        'MNIST Accuracy (50k samples)': f"{avg_accuracy_50k:.2f} \u00b1 {sem_accuracy_50k:.2f}"}
 
             elif 'spiral' in saved_network_path_prefix:
                 accuracy_all_seeds_1_epoch = []
@@ -1466,16 +1466,20 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 std_accuracy_10_epochs = np.std(accuracy_all_seeds_10_epochs)
                 sem_accuracy_10_epochs = std_accuracy_10_epochs / np.sqrt(len(accuracy_all_seeds_10_epochs))
 
-                networks[model_dict['label']] = {'Spiral Accuracy (1 epoch)': f"{avg_accuracy_1_epoch:.2f} \u00b1 {sem_accuracy_1_epoch:.2f}",
-                                                'Spiral Accuracy (10 epochs)': f"{avg_accuracy_10_epochs:.2f} \u00b1 {sem_accuracy_10_epochs:.2f}"}
+                networks[model_dict.get('name', model_dict['label'])] = {'Spiral Accuracy (1 epoch)': f"{avg_accuracy_1_epoch:.2f} \u00b1 {sem_accuracy_1_epoch:.2f}",
+                                                                        'Spiral Accuracy (10 epochs)': f"{avg_accuracy_10_epochs:.2f} \u00b1 {sem_accuracy_10_epochs:.2f}"}
                 
         columns = list(model_dict.keys())
         columns.remove('config')
         columns.remove('color')
         columns.remove('seeds')
+        if 'label' in columns:
+            columns.remove('label')
+        if 'name' in columns:
+            columns.remove('name')
 
         for col in columns:
-            networks[model_dict['label']].update({col: model_dict[col]})
+            networks[model_dict.get('name', model_dict['label'])].update({col: model_dict[col]})
 
     # Create a table from the networks dictionary
     table_vals = []
@@ -1483,8 +1487,8 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
     column_labels.insert(0, "")
     for network_name in networks:
         network_vals = [network_name]
-        for col in networks[network_name]:
-            network_vals.append(networks[network_name][col])
+        for col in column_labels[1:]:
+            network_vals.append(networks[network_name].get(col, "N/A"))
         table_vals.append(network_vals)
 
     table = ax.table(cellText=table_vals, colLabels=column_labels, cellLoc="center", loc="center")
@@ -1496,13 +1500,13 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
         if key[0] == 0:
             cell.set_facecolor([0.9 for i in range(3)])
             cell.set_text_props(weight='bold')
-        # cell.set_fontsize(20)
+        cell.set_fontsize(20)
         # cell.set_height(cell.get_height() * 1.1)
-        cell.set_text_props(fontname='Arial', fontsize=2)
-
+        cell.set_text_props(fontname='Arial', fontsize=6)
+    
     if save:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
+        fig.savefig(f"figures/{save}.png", dpi=600)
+        fig.savefig(f"figures/{save}.svg", dpi=600)
 
 
 def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, recompute=None):
@@ -1748,8 +1752,7 @@ def main(figure, recompute):
         saved_network_path_prefix += "spiral/"
         figure_name = "spiral-table"
         model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
-                    "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
-                    "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral"]
+                    "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
         generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
     if figure in ["all", "structure"]:
