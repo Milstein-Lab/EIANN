@@ -276,7 +276,7 @@ def plot_accuracy_all_seeds(data_dict, model_dict, ax, legend=True, extended=Fal
     ax.set_xlabel('Training step')
     ax.set_ylabel('Test accuracy (%)', labelpad=-2)
     if legend:
-        legend = ax.legend(ncol=1, bbox_to_anchor=(0.2, 0.5), loc='upper left', fontsize=6)
+        legend = ax.legend(ncol=1, bbox_to_anchor=(0.2, 0.6), loc='upper left', fontsize=6)
         for line in legend.get_lines():
             line.set_linewidth(1.5)
 
@@ -300,7 +300,7 @@ def plot_error_all_seeds(data_dict, model_dict, ax, scale='log'):
     #     ax.set_yticks([0, 5, 10], labels=['0%', '5%', '10%'])
 
 
-def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf'):
+def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf', side='both'):
     """
     Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
 
@@ -355,27 +355,39 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
             pooled_data.extend(metric_one_seed)
 
         # Get existing labels (excluding default numerical labels) to set the x-axis positions
-        existing_labels = [t.get_text() for t in ax.get_xticklabels()]
-        existing_labels = [label for label in existing_labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
-        x = len(existing_labels)
+        labels = [t.get_text() for t in ax.get_xticklabels()]
+        labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
+        if model_dict["label"] not in labels:
+            # Update x-axis labels
+            new_label = True
+            labels = labels + [model_dict["label"]]
+            ax.set_xticks(range(len(labels)))  # Set ticks explicitly
+            ax.set_xticklabels(labels, rotation=45, ha='right')
+            ax.set_ylabel(metric_name.capitalize())
+            ax.set_ylim([-0.03, 1.03])
+        else: 
+            new_label = False
+
+        x = len(labels) - 1
+        x_offset = 0
+        if new_label == False:
+            ax.vlines(x, -0.03, 1.03, color='w', linestyle='-', linewidth=0.8)
+        if side == 'low':
+            x_offset = -0.12
+        elif side=='high':
+            x_offset = 0.12
 
         # Create the violin plot
-        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9)
-        parts['bodies'][0].set_alpha(0.55)
+        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9, side=side)
+        parts['bodies'][0].set_alpha(0.65)
         parts['bodies'][0].set_facecolor(model_dict["color"])
 
         # Scatter on a point with the mean and error bar
         mean_value = np.mean(seed_means)
         error = np.std(seed_means) #/ np.sqrt(len(seed_means))
-        ax.scatter(x, mean_value, color='red', marker='o', s=5, zorder=5)
+        # ax.scatter(x, mean_value, color='red', marker='o', s=5, zorder=5)
+        ax.scatter(x+x_offset, mean_value, color='tomato', marker='o', s=5, zorder=5, edgecolors='w', linewidth=0.3)
         # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=2, capthick=1, zorder=5)
-
-        # Update x-axis labels
-        new_labels = existing_labels + [model_dict["label"]]
-        ax.set_xticks(range(len(new_labels)))  # Set ticks explicitly
-        ax.set_xticklabels(new_labels, rotation=45, ha='right')
-        ax.set_ylabel(metric_name.capitalize())
-        ax.set_ylim([-0.03, 1.03])
 
         
 def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
@@ -403,33 +415,38 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True, error
     for seed in model_dict['seeds']:
         if stochastic:
             angle = data_dict[seed]['angle_vs_bp_stochastic']['all_params'][:]
-            # check if there are any NaNs in the array
-            if np.isnan(angle).any():
+            if np.isnan(angle).any(): # check if there are any NaNs in the array
                 print(f"Warning: NaN values found in angle array for seed {seed}")
             angle = np.where(np.isnan(angle), 0, angle) # replace NaNs with 0
-            angle = scipy.ndimage.uniform_filter1d(angle, size=3) # Smooth with 3-point boxcar average
+            bin_size = 3
+            n = len(angle) // bin_size
+            angle_trimmed = angle[:n * bin_size]
+            angle = angle_trimmed.reshape(-1, bin_size).mean(axis=1) # Bin and average timepoints
             angle_all_seeds.append(angle)
         else:
             angle_all_seeds.append(data_dict[seed]['angle_vs_bp']['all_params'])
     avg_angle = np.nanmean(angle_all_seeds, axis=0)
+
     if error == 'std':
         error = np.nanstd(angle_all_seeds, axis=0)
     elif error == 'sem':
         error = np.nanstd(angle_all_seeds, axis=0) / np.sqrt(len(model_dict['seeds']))
     train_steps = data_dict[seed]['val_history_train_steps'][:]
-    if not stochastic:
+
+    if stochastic:
+        train_steps = train_steps[::bin_size]
+    else:
         train_steps = train_steps[1:]
+
     ax.plot(train_steps, avg_angle, label=model_dict["label"], color=model_dict["color"])
     ax.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
-    ax.hlines(0, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
-    ax.hlines(30, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
-    ax.hlines(60, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
-    ax.hlines(90, -train_steps[-1]/20, train_steps[-1], color='gray', linewidth=0.5, alpha=0.1)
+    ax.grid(True, axis='y', color='gray', linewidth=0.5, alpha=0.3)
     ax.set_xlabel('Training step')
-    ax.set_ylabel('Angle vs BP')
+    ax.set_ylabel('Alignment angle\n(Δw     vs backprop)')
     ax.set_ylim([-5,max(100, np.nanmax(avg_angle+error))])
     ax.set_xlim([-train_steps[-1]/20, train_steps[-1]+1])
     ax.set_yticks(np.arange(0, 101, 30))
+    ax.set_yticklabels([f'{y:.0f}°' for y in ax.get_yticks()])
 
 
 def plot_angle_FB_all_seeds(data_dict, model_dict, ax, error='std'):
@@ -447,21 +464,19 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax, error='std'):
     elif error == 'sem':
         error = np.nanstd(fb_angles_all_seeds, axis=0) / np.sqrt(len(model_dict['seeds']))
     train_steps = data_dict[seed]['val_history_train_steps'][:]
-    # ax.hlines(30, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
-    # ax.hlines(60, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
-    # ax.hlines(90, -1000, 20000, color='gray', linewidth=0.5, alpha=0.1)
-    ax.grid(True, color='gray', linewidth=0.5, alpha=0.1)
+    ax.grid(True, axis='y', color='gray', linewidth=0.5, alpha=0.3)
     if np.isnan(avg_angle).any():
         print(f"Warning: NaN values found in avg W vs B angle.")
     else:
         ax.plot(train_steps, avg_angle, color=model_dict['color'], label=model_dict['label'])
         ax.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict['color'], linewidth=0)
     ax.set_xlabel('Training step')
-    ax.set_ylabel('Angle \n(F vs B weights)')
+    ax.set_ylabel('Alignment angle \n(W     vs B)')
     ax.set_xlabel('Training step')
     ax.set_ylim([-5,max(100, np.nanmax(avg_angle+error))])
     ax.set_xlim([-train_steps[-1]/20, train_steps[-1]+1])
     ax.set_yticks(np.arange(0, 101, 30))
+    ax.set_yticklabels([f'{y:.0f}°' for y in ax.get_yticks()])
 
 
 def plot_dimensionality_all_seeds(data_dict, model_dict, ax):
@@ -653,17 +668,17 @@ def plot_average_dynamics(model_dict_all, model_list, config_path_prefix="networ
         fig.savefig(f"figures/{save}.svg", dpi=300)
             
 
-def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                    
                        left=0.049,right=0.95,
                        top=0.95, bottom=0.52,
                        wspace=0.2, hspace=0.4)
-    metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,                        
-                       left=0.049,right=0.95,
-                       top=0.95, bottom=0.57,
-                       wspace=0.5, hspace=0.3,
-                       width_ratios=[2,1,1,1.3])
+    metrics_axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                        
+                       left=0.15,right=0.8,
+                       top=0.95, bottom=0.6,
+                       wspace=0.7, hspace=0.2,
+                       width_ratios=[2.5,1,1])
     
     # fig = plt.figure(figsize=(5.5, 4))
     # axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                   
@@ -679,7 +694,6 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
     ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
     ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
     ax_structure   = fig.add_subplot(metrics_axes[2, 2])
-    # ax_dimensionality = fig.add_subplot(metrics_axes[2, 3])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics)) # remove duplicates
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -713,27 +727,28 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
                 # Receptive field plots
                 receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
                 num_units = 10
-                ax = fig.add_subplot(axes[1, i])
-
-                ax.axis('off')
-                pos = ax.get_position()
-                ax.set_position([pos.x0+0.0, pos.y0-0.02, pos.width-0.04, pos.height+0.03])
-                rf_axes = gs.GridSpecFromSubplotSpec(5, 5, subplot_spec=ax, wspace=0., hspace=0.1)
+                temp_ax = fig.add_subplot(axes[1, i])
+                pos = temp_ax.get_position()
+                temp_ax.remove()
+                rf_axes = fig.add_gridspec(5,5,left=pos.x0, right=pos.x1-0.04, bottom=pos.y0-0.02, top=pos.y1+0.01, wspace=0.1, hspace=0.1)
                 ax_list = []
                 for j in range(num_units):
-                    ax = fig.add_subplot(rf_axes[j])
-                    ax_list.append(ax)
-
+                    _ax = fig.add_subplot(rf_axes[j])
+                    ax_list.append(_ax)
                 preferred_classes = np.argmax(average_pop_activity_dict[population], axis=0)
                 im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
                 fig_width, fig_height = fig.get_size_inches()
-                cax = fig.add_axes([ax_list[0].get_position().x0, ax.get_position().y0-0.08/fig_height, 0.05, 0.03/fig_height])
+                cax = fig.add_axes([ax_list[0].get_position().x0, _ax.get_position().y0-0.08/fig_height, 0.05, 0.03/fig_height])
                 fig.colorbar(im, cax=cax, orientation='horizontal')
 
             if model_key in model_list_metrics:
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy, legend=True)
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin', side='low')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E'], ax=ax_structure, metric_name='structure', plot_type='violin', side='low')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin', side='high')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H2E'], ax=ax_structure, metric_name='structure', plot_type='violin', side='high')
 
     if save is not None:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -742,31 +757,18 @@ def compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_
 
 def fig4(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                    
-                       left=0.049,right=0.95,
-                       top=0.95, bottom=0.52,
-                       wspace=0.2, hspace=0.4)
-    metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,                        
-                       left=0.049,right=0.95,
-                       top=0.95, bottom=0.57,
-                       wspace=0.5, hspace=0.3,
-                       width_ratios=[2,1,1,1.3])
-    
-    # fig = plt.figure(figsize=(5.5, 4))
-    # axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                   
-    #                    left=0.049,right=0.95,
-    #                    top=0.95, bottom=0.08,
-    #                    wspace=0.2, hspace=0.35)
-    # metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,                     
-    #                    left=0.049,right=0.95,
-    #                    top=0.95, bottom=0.25,
-    #                    wspace=0.5, hspace=0.3,
-    #                    width_ratios=[1.5, 1, 1, 1])
-
-    ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
-    ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
-    ax_structure   = fig.add_subplot(metrics_axes[2, 2])
-    # ax_dimensionality = fig.add_subplot(metrics_axes[2, 3])
+    axes = gs.GridSpec(nrows=2, ncols=2, figure=fig,                    
+                       left=0.04,right=0.6,
+                       top=0.88, bottom=0.59,
+                       wspace=0.1, hspace=0.3,
+                       height_ratios=[1,1.2])
+    metrics_axes = gs.GridSpec(nrows=2, ncols=2, figure=fig,                        
+                       left=0.7,right=0.98,
+                       top=0.99, bottom=0.72,
+                       wspace=0.8, hspace=0.4)
+    ax_accuracy    = fig.add_subplot(metrics_axes[0, :])  
+    ax_selectivity = fig.add_subplot(metrics_axes[1, 0])
+    ax_structure   = fig.add_subplot(metrics_axes[1, 1])
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics)) # remove duplicates
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
@@ -798,20 +800,17 @@ def fig4(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_pr
                     ax.set_yticklabels([])
 
                 # Receptive field plots
-                receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
-                num_units = 10
-                ax = fig.add_subplot(axes[1, i])
-
-                ax.axis('off')
-                pos = ax.get_position()
-                ax.set_position([pos.x0+0.0, pos.y0-0.02, pos.width-0.04, pos.height+0.03])
-                rf_axes = gs.GridSpecFromSubplotSpec(5, 5, subplot_spec=ax, wspace=0., hspace=0.1)
+                temp_ax = fig.add_subplot(axes[1, i])
+                pos = temp_ax.get_position()
+                temp_ax.remove()
+                rf_axes = fig.add_gridspec(5,5,left=pos.x0, right=pos.x1-0.04, bottom=pos.y0, top=pos.y1, wspace=0.1, hspace=0.1)
                 ax_list = []
+                num_units = 10
                 for j in range(num_units):
                     ax = fig.add_subplot(rf_axes[j])
                     ax_list.append(ax)
-
                 preferred_classes = np.argmax(average_pop_activity_dict[population], axis=0)
+                receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
                 im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
                 fig_width, fig_height = fig.get_size_inches()
                 cax = fig.add_axes([ax_list[0].get_position().x0, ax.get_position().y0-0.08/fig_height, 0.05, 0.03/fig_height])
@@ -821,8 +820,52 @@ def fig4(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_pr
                 plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy, legend=True)
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin',side='low')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E'], ax=ax_structure, metric_name='structure', plot_type='violin', side='low')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin', side='high')
+                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H2E'], ax=ax_structure, metric_name='structure', plot_type='violin', side='high')
 
     if save is not None:
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
+
+
+def fig4_spirals(model_dict_all, model_list_spirals, model_list_metrics, spiral_type='scatter', config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, recompute=None):
+    fig = plt.figure(figsize=(5.5, 9))
+    axes = gs.GridSpec(nrows=1, ncols=4, figure=fig,                    
+                       left=0.1,right=0.9,
+                       top=0.9, bottom=0.8,
+                       wspace=0.3, hspace=0.5,
+                       width_ratios=[1,1,0.1,1.3])
+    ax_accuracy =   fig.add_subplot(axes[0, 3])  
+
+    all_models = list(dict.fromkeys(model_list_spirals + model_list_metrics))
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+
+    for model_idx, model_key in enumerate(all_models):
+        model_dict = model_dict_all[model_key]
+        network_name = model_dict['config'].split('.')[0]
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
+            data_dict = f[network_name]
+            print(f"Generating plots for {model_dict['label']}")
+            seed = model_dict['seeds'][0] # example seed to plot
+
+            if model_key in model_list_spirals:
+                # Plot spirals
+                ax = fig.add_subplot(axes[0, model_idx])
+                decision_data = data_dict[seed]['spiral_decision_data_dict']
+                pt.plot_spiral_decisions(decision_data, graph=spiral_type, ax=ax)
+                ax.set_aspect('equal')
+                ax.set_title(model_dict["label"], pad=4)
+                ax.set_xlabel('x1')
+                ax.set_ylabel('x2')
+
+            # Plot metrics
+            if model_key in model_list_metrics:                
+                plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
+
+    if save:
         fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
@@ -853,7 +896,6 @@ def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_me
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
     col = 0
-    # labels = ['A', 'B', 'C', 'D']
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
@@ -878,9 +920,6 @@ def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_me
                     if col>0:
                         ax.set_ylabel('')
                         ax.set_yticklabels([])
-
-                    # if row==0:
-                    #     ax.annotate(labels[i], xy=(-0.4, 1.1), xycoords='axes fraction', fontsize=12, weight='bold')
 
                     # Receptive field plots
                     receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
@@ -913,8 +952,6 @@ def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_me
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
                 plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
 
-            # label = None
-            # ax.annotate(label, xy=(0.5, 0.5), xycoords='figure fraction', fontsize=12, weight='bold')
 
     if save is not None:
         fig.savefig(f"figures/{save}.png", dpi=300)
@@ -983,7 +1020,7 @@ def compare_somaI_properties(model_dict_all, model_list_heatmaps, model_list_met
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,            
                        left=0.049,right=0.95,
@@ -994,7 +1031,7 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
     metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,
                        left=0.049,right=0.98,
                        top=0.95, bottom=0.55,
-                       wspace=0.35, hspace=0.6,
+                       wspace=0.4, hspace=0.6,
                        width_ratios=[1, 1, 1, 0.4])
 
     ax_accuracy    = fig.add_subplot(metrics_axes[1, 0])
@@ -1005,7 +1042,10 @@ def compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_met
 
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
+    
+    if "bpLike_WT_hebbdend" in model_dict_all: # Update model label for this figure
+        model_dict_all["bpLike_WT_hebbdend"]["label"] = "Learned (Hebb)"
+        
     for col, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
@@ -1193,54 +1233,7 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def compare_angle_metrics(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                    
-                       left=0.25,right=0.95,
-                       top=0.98, bottom = 0.78,
-                       wspace=0.5, hspace=0.7)
-    ax_accuracy1 = fig.add_subplot(axes[0,0])
-    ax_angle_vs_BP1 = fig.add_subplot(axes[0,1])
-    ax_FB_angle1 = fig.add_subplot(axes[0,2])
-    ax_accuracy2 = fig.add_subplot(axes[1,0])
-    ax_angle_vs_BP2 = fig.add_subplot(axes[1,1])
-    ax_FB_angle2 = fig.add_subplot(axes[1,2])
-
-    all_models = list(dict.fromkeys(model_list1 + model_list2))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    for i, model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-            if model_key in model_list1:
-                ax_accuracy = ax_accuracy1
-                ax_angle_vs_BP = ax_angle_vs_BP1
-                ax_FB_angle = ax_FB_angle1
-            if model_key in model_list2:
-                ax_accuracy = ax_accuracy2
-                ax_angle_vs_BP = ax_angle_vs_BP2
-                ax_FB_angle = ax_FB_angle2
-            plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP, error='std')
-            plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angle, error='std')
-
-    legend = ax_accuracy1.legend(ncol=3, bbox_to_anchor=(-0.1, 1.25), loc='upper left')
-    for line in legend.get_lines():
-        line.set_linewidth(1.5)
-    legend = ax_accuracy2.legend(ncol=3, bbox_to_anchor=(-0.1, 1.25), loc='upper left')
-    for line in legend.get_lines():
-        line.set_linewidth(1.5)
-
-    if save is not None:
-        # fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-
-
-def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_fig5(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                       
                        left=0.1,right=0.9,
@@ -1261,6 +1254,9 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="netwo
     all_models = list(dict.fromkeys(model_list))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
+    model_dict_all["BTSP_WT_hebbdend"]["label"] = "BTSP"
+    model_dict_all["bpLike_WT_hebbdend"]["label"] = "LDS"
+
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
@@ -1275,6 +1271,54 @@ def compare_metrics_simple(model_dict_all, model_list, config_path_prefix="netwo
             plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP)
 
     legend = ax_accuracy.legend(ncol=4, bbox_to_anchor=(-0.1, 1.25), loc='upper left')
+    for line in legend.get_lines():
+        line.set_linewidth(1.5)
+
+    if save is not None:
+        fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.svg", dpi=300)
+
+
+def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+    fig = plt.figure(figsize=(5.5, 2.4))
+    axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                    
+                       left=0.26,right=0.95,
+                       top=0.92, bottom = 0.15,
+                       wspace=0.6, hspace=0.8)
+    ax_accuracy1 = fig.add_subplot(axes[0,0])
+    ax_angle_vs_BP1 = fig.add_subplot(axes[0,1])
+    ax_FB_angle1 = fig.add_subplot(axes[0,2])
+    ax_accuracy2 = fig.add_subplot(axes[1,0])
+    ax_angle_vs_BP2 = fig.add_subplot(axes[1,1])
+    ax_FB_angle2 = fig.add_subplot(axes[1,2])
+
+    all_models = list(dict.fromkeys(model_list1 + model_list2))
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+    model_dict_all["bpLike_WT_hebbdend"]["label"] = "LDS"
+
+    for i, model_key in enumerate(all_models):
+        model_dict = model_dict_all[model_key]
+        network_name = model_dict['config'].split('.')[0]
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
+            data_dict = f[network_name]
+            print(f"Generating plots for {model_dict['label']}")
+            if model_key in model_list1:
+                ax_accuracy = ax_accuracy1
+                ax_angle_vs_BP = ax_angle_vs_BP1
+                ax_FB_angle = ax_FB_angle1
+            if model_key in model_list2:
+                ax_accuracy = ax_accuracy2
+                ax_angle_vs_BP = ax_angle_vs_BP2
+                ax_FB_angle = ax_FB_angle2
+            plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
+            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP, error='std')
+            plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angle, error='std')
+
+    legend = ax_accuracy1.legend(ncol=3, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
+    for line in legend.get_lines():
+        line.set_linewidth(1.5)
+    legend = ax_accuracy2.legend(ncol=3, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
     for line in legend.get_lines():
         line.set_linewidth(1.5)
 
@@ -1535,7 +1579,6 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
 
 from reportlab.pdfgen import canvas
 import os
-
 def images_to_pdf(image_paths, output_path, dpi=300):
     # Define US Letter page size in points
     letter_size = [8.5 * 72, 11 * 72]  # 612 x 792 points
@@ -1607,7 +1650,7 @@ def main(figure, recompute):
             "bpDale_learned":{"config": "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml",
                               "name":   "bpDale (learned soma I)",
                               "label":  "Backprop (EIANN)",
-                              "color":  "blue",
+                              "color":  "royalblue",
                               "Architecture": "",
                               "Algorithm": "",
                               "Learning Rule": ""},
@@ -1615,14 +1658,14 @@ def main(figure, recompute):
             "bpDale_fixed":{"config": "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml",
                             "name":   "bpDale (fixed soma I)",
                             "label":  "Backprop (EIANN)",
-                            "color":  "cyan",
+                            "color":  "cornflowerblue",
                             "Architecture": "",
                             "Algorithm": "",
                             "Learning Rule": ""},
 
             "bpDale_noI":  {"config": "20240919_EIANN_2_hidden_mnist_bpDale_noI_relu_SGD_config_G_complete_optimized.yaml",
                             "label": "Dale's Law\n(no soma I)",
-                            "color": "blue",
+                            "color": "royalblue",
                             "Architecture": "",
                             "Algorithm": "",
                             "Learning Rule": ""},
@@ -1645,6 +1688,62 @@ def main(figure, recompute):
                                     "Algorithm": "", 
                                     "Learning Rule": "",},
 
+            # "bpLike_TC_hebbdend": {"config": "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTC_2_complete_optimized.yaml",
+            #                        "color": "green",
+            #                        "label": "bpLike_TC_hebbdend"},  # TC applied to activity of wrong (bottom-up) unit instead of top-down unit
+
+            "bpLike_WT_tempcont":  {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_1J_complete_optimized.yaml",
+                                    "color": "red",
+                                    "label": "BP-like (temp. cont.)",
+                                    "Architecture": "",
+                                    "Algorithm": "",
+                                    "Learning Rule": ""},
+
+            "bpLike_WT_localBP":   {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5M_complete_optimized.yaml",
+                                    "name":  "Backprop\n(Local loss func.)",
+                                    "color": "black",
+                                    "label": "Learned (Backprop)",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": "",},
+
+            "bpLike_WT_localBP_eq":{"config": "20240628_EIANN_2_hidden_mnist_BP_like_config_3M_complete_optimized.yaml",
+                                    "color":  "black",
+                                    "label":   "bpLike_WT_localBP_eq",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": ""},
+
+            "bpLike_WT_fixedDend": {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5K_complete_optimized.yaml",
+                                    "name": "bpLike_WT_fixedDend",
+                                    "label":  "Fixed random",
+                                    "color":  "gray",
+                                    "Architecture": "", 
+                                    "Algorithm": "", 
+                                    "Learning Rule": ""},
+
+            "bpLike_WT_fixedDend_eq":  {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
+                                        "color":  "gray",
+                                        "label":   "bpLike_WT_fixedDend_eq",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": ""},
+
+            "bpLike_fixedTD_hebbdend": {"config": "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_fixed_TD_complete_optimized.yaml",
+                                        "name": "bpLike_fixedTD_hebbdend",
+                                        "color": "gray",
+                                        "label": "Fixed random B (LDS)",
+                                        "Architecture": "", 
+                                        "Algorithm": "", 
+                                        "Learning Rule": ""},
+
+            "bpLike_fixedTD_hebbdend_eq":  {"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml",
+                                            "color": "lightgray",
+                                            "label": "bpLike_fixedTD_hebbdend_eq",
+                                            "Architecture": "", 
+                                            "Algorithm": "", 
+                                            "Learning Rule": ""},
+
             "bpLike_hebbTD_hebbdend":{"config": "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HWN_1_complete_optimized.yaml",
                                     "color": "blue",
                                     "label": "bpLike_hebbTD_hebbdend",
@@ -1660,66 +1759,12 @@ def main(figure, recompute):
                                         "Learning Rule": "",},
 
             "bpLike_TCWN_hebbdend": {"config": "20241120_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTCWN_2_complete_optimized.yaml",
-                                   "color": "green",
-                                   "label": "bpLike_TCWN_hebbdend",
-                                    "Architecture": "", 
-                                    "Algorithm": "", 
-                                    "Learning Rule": "",}, # TC with weight norm
-
-            # "bpLike_TC_hebbdend": {"config": "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTC_2_complete_optimized.yaml",
-            #                        "color": "green",
-            #                        "label": "bpLike_TC_hebbdend"},  # TC applied to activity of wrong (bottom-up) unit instead of top-down unit
-
-            "bpLike_WT_tempcont":  {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_1J_complete_optimized.yaml",
-                                    "color": "red",
-                                    "label": "BP-like (temp. cont.)",
-                                    "Architecture": "",
-                                    "Algorithm": "",
-                                    "Learning Rule": ""},
-
-            "bpLike_WT_localBP":   {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5M_complete_optimized.yaml",
-                                    "name":  "Backprop\n(Local loss func.)",
-                                    "color": "orange",
-                                    "label": "Backprop",
-                                    "Architecture": "", 
-                                    "Algorithm": "", 
-                                    "Learning Rule": "",},
-
-            "bpLike_WT_localBP_eq":{"config": "20240628_EIANN_2_hidden_mnist_BP_like_config_3M_complete_optimized.yaml",
-                                    "color":  "black",
-                                    "label":   "bpLike_WT_localBP_eq",
-                                    "Architecture": "", 
-                                    "Algorithm": "", 
-                                    "Learning Rule": ""},
-
-            "bpLike_WT_fixedDend": {"config": "20241113_EIANN_2_hidden_mnist_BP_like_config_5K_complete_optimized.yaml",
-                                    "name": "bpLike_WT_fixedDend",
-                                    "label":   "Fixed random",
-                                    "color":  "gray",
-                                    "Architecture": "", 
-                                    "Algorithm": "", 
-                                    "Learning Rule": ""},
-
-            "bpLike_WT_fixedDend_eq":  {"config": "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml",
-                                        "color":  "gray",
-                                        "label":   "bpLike_WT_fixedDend_eq",
-                                        "Architecture": "", 
-                                        "Algorithm": "", 
-                                        "Learning Rule": ""},
-
-            "bpLike_fixedTD_hebbdend": {"config": "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_fixed_TD_complete_optimized.yaml",
-                                        "color": "lightblue",
-                                        "label": "bpLike_fixedTD_hebbdend",
-                                        "Architecture": "", 
-                                        "Algorithm": "", 
-                                        "Learning Rule": ""},
-
-            "bpLike_fixedTD_hebbdend_eq":  {"config": "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml",
-                                            "color": "lightgray",
-                                            "label": "bpLike_fixedTD_hebbdend_eq",
-                                            "Architecture": "", 
-                                            "Algorithm": "", 
-                                            "Learning Rule": ""},
+                                     "name": "bpLike_TCWN_hebbdend",
+                                     "label": "Learned B: TCH (LDS)",
+                                     "color": "green",
+                                     "Architecture": "", 
+                                     "Algorithm": "", 
+                                     "Learning Rule": "",}, # TC with weight norm
 
             ##########################
             # Biological models
@@ -1740,8 +1785,8 @@ def main(figure, recompute):
                                     "Learning Rule": ""}, 
 
             "SupHebbTempCont_WT_hebbdend": {"config": "20241125_EIANN_2_hidden_mnist_Hebb_Temp_Contrast_config_2_complete_optimized.yaml",
-                                            "color": "purple",
-                                            "label": "Hebb Temp. Contrast",
+                                            "color": "mediumaquamarine",
+                                            "label": "TCH",
                                             "Architecture": "", 
                                             "Algorithm": "", 
                                             "Learning Rule": ""}, # Like target propagation / temporal contrast on forward dW
@@ -1754,15 +1799,16 @@ def main(figure, recompute):
                                                 "Learning Rule": ""},
 
             "Supervised_BCM_WT_hebbdend":  {"config": "20240723_EIANN_2_hidden_mnist_Supervised_BCM_config_4_complete_optimized.yaml",
-                                            "color": "lightgray",
+                                            "color": "mediumpurple",
                                             "label": "BCM",
                                             "Architecture": "", 
                                             "Algorithm": "", 
                                             "Learning Rule": ""},
 
             "BTSP_WT_hebbdend":    {"config":"20241212_EIANN_2_hidden_mnist_BTSP_config_5L_complete_optimized.yaml",
-                                    "label": "BTSP",
-                                    "color": "orange",
+                                    "name": "BTSP_WT_hebbdend",
+                                    "label": "Symmetric B=W (BTSP)",
+                                    "color": "orange",  
                                     "Architecture": "", 
                                     "Algorithm": "", 
                                     "Learning Rule": ""}, 
@@ -1772,14 +1818,16 @@ def main(figure, recompute):
             #                         "label": "BTSP_hebbTD_hebbdend"},
 
             "BTSP_fixedTD_hebbdend":{"config": "20241216_EIANN_2_hidden_mnist_BTSP_config_5L_fixed_TD_complete_optimized.yaml",
-                                    "label": "BTSP_fixedTD_hebbdend",
-                                    "color": "black",
+                                    "name": "BTSP_fixedTD_hebbdend",
+                                    "label": "Fixed random B (BTSP)",
+                                    "color": "gray",
                                     "Architecture": "", 
                                     "Algorithm": "", 
                                     "Learning Rule": ""},
 
             "BTSP_TCWN_hebbdend": {"config": "20241216_EIANN_2_hidden_mnist_BTSP_config_5L_learn_TD_HTCWN_3_complete_optimized.yaml",
-                                    "label": "BTSP_TCWN_hebbdend",
+                                    "name":  "BTSP_TCWN_hebbdend",
+                                    "label": "Learned B: TCH (BTSP)",
                                     "color": "green",
                                     "Architecture": "", 
                                     "Algorithm": "", 
@@ -1797,24 +1845,27 @@ def main(figure, recompute):
                                             "Bias": "Learned"},
 
             "vanBP_2_hidden_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml",
-                                            "color": "red",
-                                            "label": "Vanilla Backprop 2-Hidden (Learned Bias)",
-                                            "Architecture": "2-hidden", 
-                                            "Algorithm": "Backprop", 
-                                            "Learning Rule": "Gradient Descent",
-                                            "Bias": "Learned"},
+                                                   "name": "Vanilla Backprop 2-Hidden (Learned Bias)",
+                                                   "color": "black",
+                                                   "label": "FF Backprop (learned bias)",
+                                                   "Architecture": "2-hidden", 
+                                                   "Algorithm": "Backprop", 
+                                                   "Learning Rule": "Gradient Descent",
+                                                   "Bias": "Learned"},
 
             "vanBP_2_hidden_zero_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config_complete_optimized.yaml",
-                                        "color": "olive",
-                                        "label": "Vanilla Backprop 2-Hidden (Zero Bias)",
+                                        "name": "Vanilla Backprop 2-Hidden (Zero Bias)",
+                                        "color": "gray",
+                                        "label": "FF Backprop (no bias)",
                                         "Architecture": "2-hidden", 
                                         "Algorithm": "Backprop", 
                                         "Learning Rule": "Gradient Descent",
                                         "Bias": "Zero"},
 
             "bpDale_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
-                                        "color": "orange",
-                                        "label": "Backprop + Dale's Law (Learned Bias)",
+                                        "name": "Backprop + Dale's Law 2-Hidden (Learned Bias)",
+                                        "color": "blue",
+                                        "label": "Backprop, learned bias (EIANN)",
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
@@ -1826,39 +1877,39 @@ def main(figure, recompute):
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                          "Bias": "Learned"},
+                                        "Bias": "Learned"},
 
             "DTP_learned_bias_spiral": {"config": "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml",
-                                        "color": "blue",
-                                        "label": "DTP (Learned Bias)",
+                                        "color": "red",
+                                        "label": "Dend. Target Prop., learned bias",
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
                                         "Bias": "Learned"}, # optimized DendI fraction (~50%)
 
             "DTP_fixed_DendI_learned_bias_1_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_1_config_complete_optimized.yaml",
-                                        "color": "green",
-                                        "label": "DTP Fixed DendI and SomaI (Learned Bias) 1",
+                                        "color": "red",
+                                        "label": "Dend Target Prop, fixed DendI/SomaI, learned bias (1)",
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
                                         "Bias": "Learned"}, # optimized DendI fraction
 
             "DTP_fixed_DendI_learned_bias_2_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_2_config_complete_optimized.yaml",
-                                        "color": "pink",
-                                        "label": "DTP Fixed DendI and SomaI (Learned Bias) 2",
+                                        "color": "red",
+                                        "label": "Dend Target Prop, fixed DendI/SomaI, learned bias (2)", # fixed DendI fraction to 25%
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                        "Bias": "Learned"}, # fixed DendI fraction to 25%
+                                        "Bias": "Learned"}, 
 
             "DTP_fixed_DendI_learned_bias_3_spiral": {"config": "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_3_config_complete_optimized.yaml",
-                                        "color": "crimson",
-                                        "label": "DTP Fixed DendI and SomaI (Learned Bias) 3",
+                                        "color": "red",
+                                        "label": "Dend Target Prop, fixed DendI/SomaI, learned bias (3)", # fixed DendI fraction to 10%
                                         "Architecture": "", 
                                         "Algorithm": "", 
                                         "Learning Rule": "",
-                                        "Bias": "Learned"}, # fixed DendI fraction to 10%
+                                        "Bias": "Learned"}, 
         }
 
 
@@ -1897,7 +1948,7 @@ def main(figure, recompute):
         model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig2_vanBP_bpDale_hebb"
-        compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Analyze DendI
     if figure in ["all", "fig3"]:
@@ -1906,22 +1957,29 @@ def main(figure, recompute):
         # model_list_metrics = model_list_heatmaps + ["bpDale_fixed"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig3_dendI"
-        compare_dendI_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Analyze E properties of main models
     if figure in ["all", "fig4"]:
-        saved_network_path_prefix += "MNIST/"
+        saved_network_path_prefix_m = saved_network_path_prefix + "MNIST/"
         model_list_heatmaps = ["bpDale_fixed", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "Fig4_bpDale_bpLike"
-        compare_E_properties_simple(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        fig4(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix_m, recompute=recompute)
+        
+        saved_network_path_prefix_s = saved_network_path_prefix + "spiral/"
+        model_list_spirals = ["bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]        
+        model_list_metrics = model_list_spirals + ["vanBP_2_hidden_zero_bias_spiral", "vanBP_2_hidden_learned_bias_spiral"]
+        figure_name = "Fig4_Spirals"
+        fig4_spirals(model_dict_all, model_list_spirals, model_list_metrics, spiral_type='decision', config_path_prefix='network_config/spiral/',
+                                saved_network_path_prefix=saved_network_path_prefix_s, save=figure_name, recompute=recompute)
 
     # Biological learning rules (with WT/good gradients)
     if figure in ["all","fig5"]:
         saved_network_path_prefix += "MNIST/"
-        model_list = ["bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
+        model_list = ["bpLike_WT_hebbdend", "BTSP_WT_hebbdend", "Supervised_BCM_WT_hebbdend","SupHebbTempCont_WT_hebbdend"]
         figure_name = "Fig5_BTSP_BCM_HebbWN"
-        compare_metrics_simple(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        generate_fig5(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
         
     # Forward (W) vs backward (B) alignment angle
     if figure in ["all", "fig6"]:
@@ -1929,7 +1987,7 @@ def main(figure, recompute):
         model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend"]
         model_list2 = ["BTSP_WT_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
         figure_name = "Fig6_WB_alignment_FA_bpLike_BTSP"
-        compare_angle_metrics(model_dict_all, model_list1, model_list2, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        generate_fig6(model_dict_all, model_list1, model_list2, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
 
     #-------------- Supplementary Figures --------------

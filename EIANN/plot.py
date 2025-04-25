@@ -904,7 +904,7 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
         else:
             _ax = ax
 
-        im = _ax.imshow(avg_pop_activity.T, aspect='auto', interpolation='none')
+        im = _ax.imshow(avg_pop_activity.T, aspect='auto', interpolation='none', vmin=0)
         if cbar:
             cbar = plt.colorbar(im, ax=_ax)
         _ax.set_xticks(range(avg_pop_activity.shape[0]))
@@ -1261,8 +1261,9 @@ def plot_learning_rule_diagram(axes_list=None):
     if axes_list is None:
         fig, axes_list = plt.subplots(1, 4, figsize=[10, 2])
 
-    a_pre = 1                   # presynaptic activation
+    a_pre = 1  # presynaptic activation
     d = np.linspace(-1, 1, 100) # dendritic state
+    mathfont = 'stix'
 
     # Backprop
     dW_BP = d*a_pre
@@ -1270,8 +1271,8 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.plot(d, dW_BP, label='BP-like', color='black', linewidth=1.5)
     ax.hlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
     ax.vlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
-    ax.set_xlabel('$\hat{d}$', math_fontfamily='cm', fontsize=10)
-    ax.set_ylabel(r'$\Delta W$', math_fontfamily='cm', fontsize=10, rotation=0, labelpad=10, y=0.45)
+    ax.set_xlabel('$\hat{d}$', math_fontfamily=mathfont, fontsize=10)
+    ax.set_ylabel(r'$\Delta W$', math_fontfamily=mathfont, fontsize=10, rotation=0, labelpad=10, y=0.45)
     ax.set_xticks([0])
     ax.set_yticks([-1, 0, 1])
     ax.set_title('BP-like (dend. gating)', fontsize=8)
@@ -1283,7 +1284,7 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.hlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
     ax.vlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
     ax.plot(delta_a, dW_HTC, label='BP-like', color='black', linewidth=1.5)
-    ax.set_xlabel('$\Delta a = \hat{a} - a$', math_fontfamily='cm', fontsize=10)
+    ax.set_xlabel('$\Delta a = \hat{a} - a$', math_fontfamily=mathfont, fontsize=10)
     ax.set_xticks([0])
     ax.set_yticks([-1, 0, 1])
     ax.set_title('Hebb Temp. Contrast', fontsize=8)
@@ -1305,7 +1306,7 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.set_ylim(-0.2, 0.3)
     ax.set_xticks([0])
     ax.set_yticks([0])
-    ax.set_xlabel('$\hat{a}$', math_fontfamily='cm', fontsize=10)
+    ax.set_xlabel('$\hat{a}$', math_fontfamily=mathfont, fontsize=10)
     ax.set_title('BCM', fontsize=8)
 
     # BTSP
@@ -1322,11 +1323,11 @@ def plot_learning_rule_diagram(axes_list=None):
         dW_curr = (w_max-w)*a_pre - w*q_dep(torch.tensor(a_pre))
         dW_next = (w_max-w)*a_pre*temporal_discount - w*q_dep(torch.tensor(a_pre*temporal_discount))
         ax.plot([0,0.9, 1.05,1.95, 2.1,3], [dW_prev,dW_prev, dW_curr,dW_curr, dW_next,dW_next], color=colors[i], linewidth=1.5)
-        ax.text(1.05, dW_curr+0.1, f'$w={w}$', fontsize=6, color=colors[i], math_fontfamily='cm')
+        ax.text(1.05, dW_curr+0.1, f'$w={w}$', fontsize=6, color=colors[i], math_fontfamily=mathfont)
     ax.set_ylim(-1.5,3)
     ax.set_yticks([0])
     ax.set_xticklabels([])    
-    ax.set_xlabel('$Relative~time~(samples)$', math_fontfamily='cm', fontsize=8, labelpad=8)
+    ax.set_xlabel('$Relative~time~(samples)$', math_fontfamily=mathfont, fontsize=8, labelpad=8)
     ax.set_title('BTSP', fontsize=8)
 
 
@@ -1923,9 +1924,9 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
         y_range = np.linspace(-2, 2, decision_map.shape[0])
         X, Y = np.meshgrid(x_range, y_range)                
         # contour = ax.contourf(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 50), cmap=cmap, alpha=0., linewidths=0.5)
-        contour = ax.contour(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 4), colors='black', linewidths=0.5, zorder=1)
+        contour = ax.contour(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 4), colors='black', linewidths=0.2, zorder=1)
 
-        ax.scatter(inputs[:,0], inputs[:,1], c=test_labels[:], s=4, alpha=0.8, linewidth=0, cmap=cmap)
+        ax.scatter(inputs[:,0], inputs[:,1], c=test_labels[:], s=1, alpha=0.8, linewidth=0, cmap=cmap)
         # ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=4, alpha=0.6, linewidth=0)
         # ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4, alpha=1, linewidth=0)
         
