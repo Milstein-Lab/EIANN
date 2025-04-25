@@ -241,7 +241,7 @@ vanBP_0_hidden_learned_bias_spiral:
   config: "20250108_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml"
   color: "black"
   label: "Vanilla Backprop 0-Hidden (Learned Bias)"
-  Architecture: "0-hidden"
+  Architecture: "ANN, 0-hidden"
   Algorithm: "Backprop"
   Learning Rule: "Gradient Descent"
   Bias: "Learned"
@@ -271,8 +271,8 @@ bpDale_learned_bias_spiral:
   name: "Backprop + Dale's Law 2-Hidden (Learned Bias)"
   color: "blue"
   label: "Backprop, learned bias (EIANN)"
-  Architecture: ""
-  Algorithm: ""
+  Architecture: "EIANN, 2 hidden"
+  Algorithm: "Backprop"
   Learning Rule: ""
   Bias: "Learned"
 
@@ -282,7 +282,7 @@ bpLike_DTC_learned_bias_spiral:
   label: "Backprop Like (DTC) (Learned Bias)"
   Architecture: ""
   Algorithm: ""
-  Learning Rule: ""
+  Learning Rule: "LDS"
   Bias: "Learned"
 
 DTP_learned_bias_spiral:
@@ -317,6 +317,6 @@ DTP_fixed_DendI_learned_bias_3_spiral:
   color: "red"
   label: "Dend Target Prop, fixed DendI/SomaI, learned bias (3)"
   Architecture: ""
-  Algorithm: ""
+  Algorithm: "Dend Target Prop"
   Learning Rule: ""
   Bias: "Learned"
