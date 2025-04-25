@@ -1,0 +1,322 @@
+######################
+# Backprop models   
+######################
+
+vanBP:
+  config: "20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml"
+  name: "Feedforward ANN"
+  label: "Backprop (ANN)"
+  color: "black"
+  Architecture: "2-hidden"
+  Algorithm: "Backprop"
+  Learning rule: "Gradient descent"
+
+vanBP_0hidden:
+  config: "20250103_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml"
+  label: "Vanilla Backprop 0-hidden"
+  color: "black"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+vanBP_fixed_hidden:
+  config: "20250108_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_fixed_hidden_complete_optimized.yaml"
+  label: "Vanilla Backprop fixed hidden"
+  color: "black"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpDale_learned:
+  config: "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml"
+  name: "bpDale (learned soma I)"
+  label: "Backprop (EIANN)"
+  color: "royalblue"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpDale_fixed:
+  config: "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml"
+  name: "bpDale (fixed soma I)"
+  label: "Backprop (EIANN)"
+  color: "cornflowerblue"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpDale_noI:
+  config: "20240919_EIANN_2_hidden_mnist_bpDale_noI_relu_SGD_config_G_complete_optimized.yaml"
+  label: "Dale's Law\n(no soma I)"
+  color: "royalblue"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+
+##########################################################
+# Backprop-Like models (Linear dendritic state dependence)
+##########################################################
+
+bpLike_WT_hebbdend:
+  config: "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_complete_optimized.yaml"
+  name: "bpLike_WT_hebbdend"
+  label: "Dend. Target Prop."
+  color: "red"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_WT_hebbdend_eq:
+  config: "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml"
+  color: "red"
+  label: "bpLike_WT_hebbdend_eq"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_WT_tempcont:
+  config: "20240508_EIANN_2_hidden_mnist_BP_like_config_1J_complete_optimized.yaml"
+  color: "red"
+  label: "BP-like (temp. cont.)"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_WT_localBP:
+  config: "20241113_EIANN_2_hidden_mnist_BP_like_config_5M_complete_optimized.yaml"
+  name: "Backprop\n(Local loss func.)"
+  color: "black"
+  label: "Learned (Backprop)"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_WT_localBP_eq:
+  config: "20240628_EIANN_2_hidden_mnist_BP_like_config_3M_complete_optimized.yaml"
+  color: "black"
+  label: "bpLike_WT_localBP_eq"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_WT_fixedDend:
+  config: "20241113_EIANN_2_hidden_mnist_BP_like_config_5K_complete_optimized.yaml"
+  name: "bpLike_WT_fixedDend"
+  label: "Fixed random"
+  color: "gray"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_WT_fixedDend_eq:
+  config: "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml"
+  color: "gray"
+  label: "bpLike_WT_fixedDend_eq"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_fixedTD_hebbdend:
+  config: "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_fixed_TD_complete_optimized.yaml"
+  name: "bpLike_fixedTD_hebbdend"
+  color: "gray"
+  label: "Fixed random B (LDS)"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_fixedTD_hebbdend_eq:
+  config: "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml"
+  color: "lightgray"
+  label: "bpLike_fixedTD_hebbdend_eq"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_hebbTD_hebbdend:
+  config: "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HWN_1_complete_optimized.yaml"
+  color: "blue"
+  label: "bpLike_hebbTD_hebbdend"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_hebbTD_hebbdend_eq:
+  config: "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_3_complete_optimized.yaml"
+  color: "magenta"
+  label: "bpLike_hebbTD_hebbdend_eq"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+bpLike_TCWN_hebbdend:
+  config: "20241120_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTCWN_2_complete_optimized.yaml"
+  name: "bpLike_TCWN_hebbdend"
+  label: "Learned B: TCH (LDS)"
+  color: "green"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+
+######################
+# Biological models   
+######################
+
+HebbWN_topsup:
+  config: "20241105_EIANN_2_hidden_mnist_Top_Layer_Supervised_Hebb_WeightNorm_config_7_complete_optimized.yaml"
+  name: "Top-supervised Hebb"
+  label: "Hebb (EIANN)"
+  color: "green"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+Supervised_HebbWN_WT_hebbdend:
+  config: "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml"
+  color: "olive"
+  label: "Supervised_HebbWN_WT_hebbdend"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+SupHebbTempCont_WT_hebbdend:
+  config: "20241125_EIANN_2_hidden_mnist_Hebb_Temp_Contrast_config_2_complete_optimized.yaml"
+  color: "mediumaquamarine"
+  label: "TCH"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+Supervised_HebbWN_learned_somaI:
+  config: "20240919_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_learn_somaI_config_4_complete_optimized.yaml"
+  color: "lime"
+  label: "Supervised HebbWN learned somaI"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+Supervised_BCM_WT_hebbdend:
+  config: "20240723_EIANN_2_hidden_mnist_Supervised_BCM_config_4_complete_optimized.yaml"
+  color: "mediumpurple"
+  label: "BCM"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+BTSP_WT_hebbdend:
+  config: "20241212_EIANN_2_hidden_mnist_BTSP_config_5L_complete_optimized.yaml"
+  name: "BTSP_WT_hebbdend"
+  label: "Symmetric B=W (BTSP)"
+  color: "orange"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+BTSP_fixedTD_hebbdend:
+  config: "20241216_EIANN_2_hidden_mnist_BTSP_config_5L_fixed_TD_complete_optimized.yaml"
+  name: "BTSP_fixedTD_hebbdend"
+  label: "Fixed random B (BTSP)"
+  color: "gray"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+BTSP_TCWN_hebbdend:
+  config: "20241216_EIANN_2_hidden_mnist_BTSP_config_5L_learn_TD_HTCWN_3_complete_optimized.yaml"
+  name: "BTSP_TCWN_hebbdend"
+  label: "Learned B: TCH (BTSP)"
+  color: "green"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+
+
+#########################
+# Spirals dataset models
+#########################
+
+vanBP_0_hidden_learned_bias_spiral:
+  config: "20250108_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml"
+  color: "black"
+  label: "Vanilla Backprop 0-Hidden (Learned Bias)"
+  Architecture: "0-hidden"
+  Algorithm: "Backprop"
+  Learning Rule: "Gradient Descent"
+  Bias: "Learned"
+
+vanBP_2_hidden_learned_bias_spiral:
+  config: "20250108_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml"
+  name: "Vanilla Backprop 2-Hidden (Learned Bias)"
+  color: "black"
+  label: "FF Backprop (learned bias)"
+  Architecture: "2-hidden"
+  Algorithm: "Backprop"
+  Learning Rule: "Gradient Descent"
+  Bias: "Learned"
+
+vanBP_2_hidden_zero_bias_spiral:
+  config: "20250108_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config_complete_optimized.yaml"
+  name: "Vanilla Backprop 2-Hidden (Zero Bias)"
+  color: "gray"
+  label: "FF Backprop (no bias)"
+  Architecture: "2-hidden"
+  Algorithm: "Backprop"
+  Learning Rule: "Gradient Descent"
+  Bias: "Zero"
+
+bpDale_learned_bias_spiral:
+  config: "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml"
+  name: "Backprop + Dale's Law 2-Hidden (Learned Bias)"
+  color: "blue"
+  label: "Backprop, learned bias (EIANN)"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+  Bias: "Learned"
+
+bpLike_DTC_learned_bias_spiral:
+  config: "20250108_EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias_config_complete_optimized.yaml"
+  color: "purple"
+  label: "Backprop Like (DTC) (Learned Bias)"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+  Bias: "Learned"
+
+DTP_learned_bias_spiral:
+  config: "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml"
+  color: "red"
+  label: "Dend. Target Prop., learned bias"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+  Bias: "Learned"
+
+DTP_fixed_DendI_learned_bias_1_spiral:
+  config: "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_1_config_complete_optimized.yaml"
+  color: "red"
+  label: "Dend Target Prop, fixed DendI/SomaI, learned bias (1)"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+  Bias: "Learned"
+
+DTP_fixed_DendI_learned_bias_2_spiral:
+  config: "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_2_config_complete_optimized.yaml"
+  color: "red"
+  label: "Dend Target Prop, fixed DendI/SomaI, learned bias (2)"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+  Bias: "Learned"
+
+DTP_fixed_DendI_learned_bias_3_spiral:
+  config: "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_3_config_complete_optimized.yaml"
+  color: "red"
+  label: "Dend Target Prop, fixed DendI/SomaI, learned bias (3)"
+  Architecture: ""
+  Algorithm: ""
+  Learning Rule: ""
+  Bias: "Learned"
