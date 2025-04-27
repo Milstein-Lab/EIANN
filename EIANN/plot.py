@@ -642,21 +642,33 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
             average_pop_activity = average_pop_activity[sorted_idx]
             preferred_classes = torch.argmax(torch.tensor(average_pop_activity), dim=1)
 
-    # Filter by class activity preference to sample units across all classes
-    if sort and preferred_classes is not None:
-        class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
-        preferred_classes = preferred_classes[class_sorted_idx]
-        receptive_fields = receptive_fields[class_sorted_idx]
-        if average_pop_activity is not None:
-            average_pop_activity = average_pop_activity[class_sorted_idx]
-        if isinstance(scale, torch.Tensor):
-            scale = scale[class_sorted_idx]
+        # Filter by class activity preference to sample units across all classes
+        if preferred_classes is not None:
+            class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
+            preferred_classes = preferred_classes[class_sorted_idx]
+            receptive_fields = receptive_fields[class_sorted_idx]
+            if average_pop_activity is not None:
+                average_pop_activity = average_pop_activity[class_sorted_idx]
+            if isinstance(scale, torch.Tensor):
+                scale = scale[class_sorted_idx]
+
+    if ax_list is None:
+        num_units = receptive_fields.shape[0]
+    else:
+        num_units = len(ax_list)
 
     # Filter by number of units
     if num_units is not None:
-        receptive_fields = receptive_fields[:num_units]
-        if isinstance(scale, torch.Tensor):
-            scale = scale[:num_units]   
+        if preferred_classes is not None:
+            values, idx = ut.sample_evenly_by_class(preferred_classes, num_units=num_units)
+            receptive_fields = receptive_fields[idx]
+            preferred_classes = preferred_classes[idx]
+            if isinstance(scale, torch.Tensor):
+                scale = scale[idx]  
+        else:
+            receptive_fields = receptive_fields[:num_units]
+            if isinstance(scale, torch.Tensor):
+                scale = scale[:num_units]   
 
     if (num_cols is not None) and (num_rows is not None):
         num_units = num_cols * num_rows
@@ -672,11 +684,6 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         else:
             receptive_fields = receptive_fields * scale     
 
-    if ax_list is None:
-        num_units = receptive_fields.shape[0]
-    else:
-        num_units = len(ax_list)
-
     # Calculate the number of rows and columns for the plot (to make it approximately square)
     if num_cols is None:
         if num_units < 25:
@@ -689,8 +696,8 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
     size = np.min([12, num_cols])
     num_rows += 1
     if ax_list is None:
-        axes = gs.GridSpec(num_rows, num_cols)
         fig = plt.figure(figsize=(size, size * num_rows / num_cols))
+        axes = gs.GridSpec(num_rows, num_cols, figure=fig)
     else:
         fig = ax_list[0].get_figure()
 
@@ -760,6 +767,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
         fig.show()
         # plt.show()
+        return fig
     else:
         return im
 
@@ -1010,7 +1018,7 @@ def plot_rsm(pop_activity_dict, pattern_labels, unit_labels_dict, population='al
         if pop_is_sorted:
             for i in range(10):
                 class_idx = np.where(unit_labels == i)[0]
-                cmap = plt.cm.get_cmap('tab20')
+                cmap = plt.colormaps['tab20']
                 if len(class_idx) > 0:
                     class_boundary_start = class_idx[0]
                     class_boundary_end = class_idx[-1]+1

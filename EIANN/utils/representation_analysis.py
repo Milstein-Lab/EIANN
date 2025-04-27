@@ -7,6 +7,7 @@ import scipy.stats as stats
 import copy
 from tqdm.autonotebook import tqdm
 from scipy import signal
+from collections import defaultdict
 
 from EIANN.utils import data_utils, network_utils
 import EIANN.plot as pt
@@ -695,6 +696,32 @@ def spatial_structure_similarity_fft(img1, img2):
     spatial_structure_similarity =  signal.correlate2d(freq1, freq2, mode='valid')[0][0]
 
     return spatial_structure_similarity
+
+
+def sample_evenly_by_class(preferred_classes, num_units):
+    unique_classes = np.unique(preferred_classes).tolist()
+    num_classes = len(unique_classes)
+    samples_per_class = num_units // num_classes
+    remainder = num_units % num_classes
+
+    # Count how many samples to take per class
+    class_sample_counts = {cls: samples_per_class for cls in unique_classes}
+    for cls in unique_classes[:remainder]:
+        class_sample_counts[cls] += 1
+
+    # Get indices grouped by class
+    class_to_indices = defaultdict(list)
+    for idx, val in enumerate(preferred_classes):
+        class_to_indices[int(val)].append(idx)
+
+    selected_indices = []
+    selected_values = []
+    for cls in unique_classes:
+        indices = class_to_indices[cls][:class_sample_counts[cls]]
+        selected_indices.extend(indices)
+        selected_values.extend([cls] * len(indices))
+
+    return selected_values, selected_indices
 
 
 def compute_rf_structure(receptive_fields, dimensions=None, method='moran'):
