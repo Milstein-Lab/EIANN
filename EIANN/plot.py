@@ -595,7 +595,7 @@ def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
 
 def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_classes=None, average_pop_activity=None, 
                           num_units=None, num_cols=None, num_rows=None, activity_threshold=1e-10, cmap='custom',
-                          ax_list=None, dimensions=None):
+                          ax_list=None, dimensions=None, class_labels=True):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
     structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
@@ -656,11 +656,11 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         num_units = receptive_fields.shape[0]
     else:
         num_units = len(ax_list)
-
+    
     # Filter by number of units
-    if num_units is not None:
+    if num_units is not None and num_units < receptive_fields.shape[0]:
         if preferred_classes is not None:
-            values, idx = ut.sample_evenly_by_class(preferred_classes, num_units=num_units)
+            values, idx = ut.sample_evenly_by_class(preferred_classes, num_units=num_units)            
             receptive_fields = receptive_fields[idx]
             preferred_classes = preferred_classes[idx]
             if isinstance(scale, torch.Tensor):
@@ -752,12 +752,11 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
             ax = fig.add_subplot(axes[row_idx, col_idx])
         else:
             ax = ax_list[i]
-        
         im = ax.imshow(receptive_fields[i].view(rf_width, rf_height), cmap=my_cmap, vmin=colorscale_min,
                        vmax=colorscale_max, aspect='equal', interpolation='none')
         ax.axis('off')
 
-        if preferred_classes is not None:
+        if preferred_classes is not None and class_labels==True:
             ax.text(0, 8, f'{preferred_classes[i]}', color='k', fontsize=5)        
 
     if ax_list is None:
@@ -767,7 +766,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
         fig.show()
         # plt.show()
-        return fig
+        # return fig
     else:
         return im
 

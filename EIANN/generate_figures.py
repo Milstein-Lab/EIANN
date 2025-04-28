@@ -141,12 +141,14 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     if 'average_pop_activity_dict' in variables_to_recompute:
         average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=False)
         ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
 
     if 'percent_correct' in variables_to_recompute:
         pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
-        ut.save_plot_data(network.name, network.seed, data_key='sorted_activity_dict', data=pop_activity_dict, file_path=hdf5_path, overwrite=True)
-        ut.save_plot_data(network.name, network.seed, data_key='sorted_pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
-        ut.save_plot_data(network.name, network.seed, data_key='sorted_unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
+        # ut.save_plot_data(network.name, network.seed, data_key='sorted_activity_dict', data=pop_activity_dict, file_path=hdf5_path, overwrite=True)
+        # ut.save_plot_data(network.name, network.seed, data_key='sorted_pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
+        # ut.save_plot_data(network.name, network.seed, data_key='sorted_unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
 
         output = pop_activity_dict[network.output_pop.fullname]
         percent_correct = ut.compute_test_accuracy(output, pattern_labels)
@@ -1103,6 +1105,124 @@ def generate_figS2(model_dict_all, model_list_heatmaps, model_list_metrics, conf
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
+def generate_figS3(model_dict_all, model_list_heatmaps, model_list_metrics, population, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+    fig = plt.figure(figsize=(5.5, 5))
+    axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,
+                       left=0.07,right=0.94,
+                       top=0.93, bottom = 0.1,
+                       wspace=0.5, hspace=0.3,
+                       height_ratios=[2,1,1])
+
+    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
+    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+
+    for i,model_key in enumerate(all_models):
+        model_dict = model_dict_all[model_key]
+        network_name = model_dict['config'].split('.')[0]
+        hdf5_path = f"data/plot_data_{network_name}.h5"
+        with h5py.File(hdf5_path, 'r') as f:
+            data_dict = f[network_name]
+            print(f"Generating plots for {model_dict['label']}")
+
+            seed = model_dict['seeds'][1] # example seed to plot
+            fig.suptitle(population, fontsize=9, x=0.5, y=0.99)
+
+            # Example receptive fields
+            receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
+            num_units = 50
+            temp_ax = fig.add_subplot(axes[0, i])
+            pos = temp_ax.get_position()
+            
+            rf_axes = fig.add_gridspec(10,5,left=pos.x0, right=pos.x1, bottom=pos.y0, top=pos.y1, wspace=0.1, hspace=0.1)
+            ax_list = []
+            for j in range(num_units):
+                _ax = fig.add_subplot(rf_axes[j])
+                ax_list.append(_ax)
+                
+            average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
+            preferred_classes = np.argmax(average_pop_activity_dict[population], axis=0)
+            im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes, class_labels=False)
+            height = _ax.get_position().y1 - _ax.get_position().y0
+            width = _ax.get_position().x1 - _ax.get_position().x0
+            cax = fig.add_axes([_ax.get_position().x1+width/5, _ax.get_position().y0, width/5, 1.5*height])
+            fig.colorbar(im, cax=cax, orientation='vertical')
+            ax_list[2].set_title(model_dict["label"])
+            for label in range(10):
+                temp_ax.text(-0.1, label*0.101+0.04, str(9-label), fontsize=7, ha='center', va='center')
+            if i==0:
+                temp_ax.set_title('Unit tuning\n(label of max avg. activity)', x=-0.31, rotation=90, y=0.45, ha='center', va='center', fontsize=7)
+            temp_ax.axis('off')
+
+            # Draw an arrow below the x-axis
+            new_ax = fig.add_axes([temp_ax.get_position().x0, temp_ax.get_position().y0-0.035, temp_ax.get_position().x1-temp_ax.get_position().x0, 0.05])
+            new_ax.set_ylim(-0.5, 0.5)
+            new_ax.axis('off')
+            new_ax.arrow(0, 0, 1, 0, head_width=0.2, head_length=0.1, facecolor='k', edgecolor='k', linewidth=1)     
+            new_ax.text(0.5, -0.3, "Example units", fontsize=7, ha='center', va='center')                          
+
+            # Receptive field similarity (for each unit)
+            unit_labels_dict = data_dict[seed]['unit_labels_dict']
+            unit_labels = unit_labels_dict[population][:]
+            idx = np.argsort(unit_labels)
+            unit_labels = unit_labels[idx]
+            receptive_fields = np.array(data_dict[seed][f"maxact_receptive_fields_{population}"])
+            sorted_receptive_fields = receptive_fields[idx]
+            rf_similarity = cosine_similarity(sorted_receptive_fields)
+            np.fill_diagonal(rf_similarity, 0)
+            
+            # sorted_unit_labels_dict = data_dict[seed]['sorted_unit_labels_dict']
+            # unit_labels = sorted_unit_labels_dict[population][:]
+            # sorted_activity_dict = data_dict[seed]['sorted_activity_dict']
+            # pop_activity = sorted_activity_dict[population][:].T
+            # rf_similarity = cosine_similarity(pop_activity)
+            # np.fill_diagonal(rf_similarity, 0)
+
+            ax = fig.add_subplot(axes[1, i])
+            masked_rf_similarity = np.ma.masked_array(rf_similarity, mask=~np.tril(np.ones(rf_similarity.shape), k=-1).astype(bool))
+            # im = ax.imshow(masked_rf_similarity, interpolation="nearest", vmin=0, vmax=1)
+            im = ax.imshow(masked_rf_similarity, interpolation="nearest", cmap='bwr', vmin=-1, vmax=1)
+            ax.set_xlabel(f"{population} unit")
+            ax.set_ylabel(f"{population} unit")
+            if i==len(all_models)-1:
+                cax = fig.add_axes([ax.get_position().x1+0.005, ax.get_position().y0, 0.01, ax.get_position().height])
+                fig.colorbar(im, cax=cax, orientation='vertical')
+                cax.set_yticks([-1, 1])
+                # cax.set_yticks([0, 1])
+                cax.set_ylabel('Receptive field\ncosine similarity', rotation=270, labelpad=5)
+
+            within_class_similarity = []
+            between_class_similarity = []
+            norm_between_similarity = []
+            for label in range(10):
+                class_idx = np.where(unit_labels == label)[0]
+                within_class_values = np.max(rf_similarity[class_idx,:][:, class_idx], axis=1)
+                between_class_values = np.max(rf_similarity[class_idx,:][:, ~class_idx], axis=1)
+                within_class_similarity.extend(within_class_values)
+                between_class_similarity.extend(between_class_values)
+                norm_between_similarity.extend(between_class_values / within_class_values)
+
+                # cmap = plt.colormaps['tab20']
+                if len(class_idx) > 0: # Add triangle to indicate units within the same class
+                    class_boundary_start = class_idx[0]
+                    class_boundary_end = class_idx[-1]+1
+                    top = (class_boundary_start-0.5, class_boundary_start-0.5)
+                    bottom = (class_boundary_start-0.5, class_boundary_end-0.5)
+                    right = (class_boundary_end-0.5, class_boundary_end-0.5)
+                    # ax.add_patch(matplotlib.patches.Polygon([bottom, top, right], fill=False, edgecolor=cmap(i), linewidth=0.3))
+                    ax.add_patch(matplotlib.patches.Polygon([bottom, top, right], fill=False, edgecolor='k', linewidth=0.3))
+            
+            # Histogram of receptive field similarity
+            ax = fig.add_subplot(axes[2, i])
+            ax.hist(between_class_similarity, bins=30)
+            ax.set_xlabel('Max out-of-class similarity')
+            ax.set_ylabel('Count')
+            ax.set_xlim(min(-0.4, np.min(between_class_similarity)), max(1, np.max(between_class_similarity)))
+
+    if save:
+        fig.savefig(f"figures/{save}_{population}.png", dpi=300)
+        fig.savefig(f"figures/{save}_{population}.svg", dpi=300)
+
+
 
 
 def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
@@ -1191,56 +1311,6 @@ def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_me
     if save is not None:
         fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
-
-
-def compare_receptive_fields(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 6))
-    axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,
-                       left=0.05,right=0.95,
-                       top=0.9, bottom = 0.1,
-                       wspace=0.1, hspace=0.1,
-                       height_ratios=[2,1,1])
-
-    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    for i,model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-
-            if model_key in model_list_heatmaps:
-                seed = model_dict['seeds'][1] # example seed to plot
-                population = 'H2E'
-
-                # Receptive field plots
-                receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
-                num_units = 50
-                temp_ax = fig.add_subplot(axes[0, i])
-                pos = temp_ax.get_position()
-                temp_ax.remove()
-                rf_axes = fig.add_gridspec(10,5,left=pos.x0, right=pos.x1, bottom=pos.y0, top=pos.y1, wspace=0.1, hspace=0.1)
-                ax_list = []
-                for j in range(num_units):
-                    _ax = fig.add_subplot(rf_axes[j])
-                    ax_list.append(_ax)
-                    
-                average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                preferred_classes = np.argmax(average_pop_activity_dict[population], axis=0)
-                im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
-                fig_width, fig_height = fig.get_size_inches()
-                cax = fig.add_axes([ax_list[0].get_position().x0, _ax.get_position().y0-0.08/fig_height, 0.05, 0.03/fig_height])
-                fig.colorbar(im, cax=cax, orientation='horizontal')
-                ax_list[2].set_title(model_dict["label"])
-
-
-    if save:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-
 
 
 def compare_RSM_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
@@ -1782,7 +1852,8 @@ def main(figure, recompute):
         model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS3_receptive_fields"
-        compare_receptive_fields(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        generate_figS3(model_dict_all, model_list_heatmaps, model_list_metrics, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        generate_figS3(model_dict_all, model_list_heatmaps, model_list_metrics, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Representational similarity analysis
     if figure in ["all", "rsm"]:

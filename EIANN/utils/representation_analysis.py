@@ -67,6 +67,7 @@ def compute_test_activity(network, test_dataloader, class_average:bool, sort:boo
     
     if sort:
         pattern_labels = sorted_pattern_labels
+        # return pop_activity_dict, pattern_labels, unit_labels_dict, pattern_sort_idx, unit_sort_idx
 
     return pop_activity_dict, pattern_labels, unit_labels_dict
 
@@ -699,6 +700,11 @@ def spatial_structure_similarity_fft(img1, img2):
 
 
 def sample_evenly_by_class(preferred_classes, num_units):
+    """
+    Sample a specified number of units evenly across a set of classes.
+    Always returns exactly num_units elements.
+    """
+    preferred_classes = np.array(preferred_classes)
     unique_classes = np.unique(preferred_classes).tolist()
     num_classes = len(unique_classes)
     samples_per_class = num_units // num_classes
@@ -716,11 +722,36 @@ def sample_evenly_by_class(preferred_classes, num_units):
 
     selected_indices = []
     selected_values = []
+    
+    # First, collect as many elements as we can following the even distribution
+    unavailable_samples = 0
     for cls in unique_classes:
-        indices = class_to_indices[cls][:class_sample_counts[cls]]
-        selected_indices.extend(indices)
-        selected_values.extend([cls] * len(indices))
-
+        indices = class_to_indices[cls]
+        # Take only what's available for this class
+        available = min(len(indices), class_sample_counts[cls])
+        selected_indices.extend(indices[:available])
+        selected_values.extend([cls] * available)
+        
+        # Track deficit
+        unavailable_samples += class_sample_counts[cls] - available
+    
+    # If we couldn't get enough samples with even distribution,
+    # fill the remaining slots with whatever classes have extras
+    if unavailable_samples > 0:
+        # Create a pool of remaining indices from all classes
+        remaining_indices = []
+        remaining_classes = []
+        for cls in unique_classes:
+            used = min(len(class_to_indices[cls]), class_sample_counts[cls])
+            remaining = class_to_indices[cls][used:]
+            remaining_indices.extend(remaining)
+            remaining_classes.extend([cls] * len(remaining))
+        
+        # Add as many as needed to reach num_units
+        needed = num_units - len(selected_indices)
+        selected_indices.extend(remaining_indices[:needed])
+        selected_values.extend(remaining_classes[:needed])
+    
     return selected_values, selected_indices
 
 
