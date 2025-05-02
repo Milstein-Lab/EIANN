@@ -689,7 +689,7 @@ def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                 # Activity plots: batch accuracy of each population to the test dataset
                 ax = fig.add_subplot(axes[0, i])
                 average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                num_units = average_pop_activity_dict[population].shape[0]
+                num_units = average_pop_activity_dict[population].shape[1]
 
                 pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, sort=True, ax=ax, cbar=True)
                 ax.set_yticks([0,num_units-1])
@@ -969,7 +969,7 @@ def generate_fig5(model_dict_all, model_list, config_path_prefix="network_config
 def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 2.4))
     axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                    
-                       left=0.26,right=0.95,
+                       left=0.28,right=0.95,
                        top=0.92, bottom = 0.15,
                        wspace=0.6, hspace=0.8)
     ax_accuracy1 = fig.add_subplot(axes[0,0])
@@ -1012,7 +1012,6 @@ def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="
     if save is not None:
         fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
-
 
 
 
@@ -1847,6 +1846,22 @@ def main(figure, recompute):
         model_list = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
         # model_list = ["BTSP_WT_hebbdend", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
         figure_name = "FigS3_receptive_fields"
+        generate_figS3(model_dict_all, model_list, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+        generate_figS3(model_dict_all, model_list, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+
+    # Extended fig5: representations in biological learning rules
+    if figure in ["all", "S4"]:
+        saved_network_path_prefix += "MNIST/"
+        model_list_heatmaps = ["BTSP_WT_hebbdend", "Supervised_BCM_WT_hebbdend","SupHebbTempCont_WT_hebbdend"]
+        model_list_metrics = model_list_heatmaps
+        figure_name = "FigS4_biorule_representations"
+        generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+
+    # Extended fig5: receptive fields in biological learning rules
+    if figure in ["all", "S5"]:
+        saved_network_path_prefix += "MNIST/"
+        model_list = ["BTSP_WT_hebbdend", "Supervised_BCM_WT_hebbdend","SupHebbTempCont_WT_hebbdend"]
+        figure_name = "FigS5_biorule_receptive_fields"
         generate_figS3(model_dict_all, model_list, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
         generate_figS3(model_dict_all, model_list, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
