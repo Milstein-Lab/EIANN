@@ -1542,6 +1542,10 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
     networks = {}
     columns = []
 
+    column_name_map = {
+        'NumLayers': 'Num. Hidden Layers',
+    }
+
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
@@ -1575,7 +1579,6 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 for seed in model_dict['seeds']:
                     accuracy_all_seeds_1_epoch.append(data_dict[seed]['test_accuracy_history'][-1])
                 avg_accuracy_1_epoch = np.mean(accuracy_all_seeds_1_epoch)
-                # print(avg_accuracy_1_epoch)
                 std_accuracy_1_epoch = np.std(accuracy_all_seeds_1_epoch)
                 sem_accuracy_1_epoch = std_accuracy_1_epoch / np.sqrt(len(accuracy_all_seeds_1_epoch))
 
@@ -1583,7 +1586,6 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
                 for seed in model_dict['seeds']:
                     accuracy_all_seeds_10_epochs.append(data_dict[seed]['test_accuracy_history_extended'][-1])
                 avg_accuracy_10_epochs = np.mean(accuracy_all_seeds_10_epochs)
-                # print(avg_accuracy_10_epochs)
                 std_accuracy_10_epochs = np.std(accuracy_all_seeds_10_epochs)
                 sem_accuracy_10_epochs = std_accuracy_10_epochs / np.sqrt(len(accuracy_all_seeds_10_epochs))
 
@@ -1605,10 +1607,12 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
     # Create a table from the networks dictionary
     table_vals = []
     column_labels = [header for header in list(networks.values())[0]]
+    column_labels = [column_name_map.get(header, header) for header in column_labels]
     column_labels.insert(0, "")
+    
     for network_name in networks:
         network_vals = [network_name]
-        for col in column_labels[1:]:
+        for i, col in enumerate(list(networks[network_name].keys())):
             network_vals.append(networks[network_name].get(col, "N/A"))
         table_vals.append(network_vals)
 

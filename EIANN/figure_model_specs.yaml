@@ -8,6 +8,7 @@ vanBP:
   label: "Backprop (ANN)"
   color: "black"
   Architecture: "2-hidden"
+  NumLayers: "2"
   Algorithm: "Backprop"
   Learning rule: "Gradient descent"
 
@@ -17,6 +18,7 @@ vanBP_0hidden:
   color: "black"
   Architecture: ""
   Algorithm: "Backprop"
+  NumLayers: "2"
   Learning Rule: ""
 
 vanBP_fixed_hidden:
@@ -25,6 +27,7 @@ vanBP_fixed_hidden:
   color: "black"
   Architecture: ""
   Algorithm: "Backprop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpDale_learned:
@@ -34,6 +37,7 @@ bpDale_learned:
   color: "royalblue"
   Architecture: ""
   Algorithm: "Backprop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpDale_fixed:
@@ -43,6 +47,7 @@ bpDale_fixed:
   color: "cornflowerblue"
   Architecture: ""
   Algorithm: "Backprop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpDale_noI:
@@ -51,6 +56,7 @@ bpDale_noI:
   color: "royalblue"
   Architecture: ""
   Algorithm: "Backprop"
+  NumLayers: "2"
   Learning Rule: ""
 
 
@@ -65,6 +71,7 @@ bpLike_WT_hebbdend:
   color: "red"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_WT_hebbdend_eq:
@@ -73,6 +80,7 @@ bpLike_WT_hebbdend_eq:
   label: "bpLike_WT_hebbdend_eq"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_WT_tempcont:
@@ -81,6 +89,7 @@ bpLike_WT_tempcont:
   label: "BP-like (temp. cont.)"
   Architecture: ""
   Algorithm: "Dend Temp Contrast"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_WT_localBP:
@@ -90,6 +99,7 @@ bpLike_WT_localBP:
   label: "Learned (Backprop)"
   Architecture: ""
   Algorithm: "Backprop/Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_WT_localBP_eq:
@@ -98,6 +108,7 @@ bpLike_WT_localBP_eq:
   label: "bpLike_WT_localBP_eq"
   Architecture: ""
   Algorithm: "Backprop/Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_WT_fixedDend:
@@ -107,6 +118,7 @@ bpLike_WT_fixedDend:
   color: "gray"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_WT_fixedDend_eq:
@@ -115,6 +127,7 @@ bpLike_WT_fixedDend_eq:
   label: "bpLike_WT_fixedDend_eq"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_fixedTD_hebbdend:
@@ -124,6 +137,7 @@ bpLike_fixedTD_hebbdend:
   label: "Fixed random B (LDS)"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_fixedTD_hebbdend_eq:
@@ -132,6 +146,7 @@ bpLike_fixedTD_hebbdend_eq:
   label: "bpLike_fixedTD_hebbdend_eq"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_hebbTD_hebbdend:
@@ -140,6 +155,7 @@ bpLike_hebbTD_hebbdend:
   label: "bpLike_hebbTD_hebbdend"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_hebbTD_hebbdend_eq:
@@ -148,6 +164,7 @@ bpLike_hebbTD_hebbdend_eq:
   label: "bpLike_hebbTD_hebbdend_eq"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 bpLike_TCWN_hebbdend:
@@ -157,6 +174,7 @@ bpLike_TCWN_hebbdend:
   color: "green"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 
@@ -171,6 +189,7 @@ HebbWN_topsup:
   color: "green"
   Architecture: ""
   Algorithm: "Unsupervised (no propagation)"
+  NumLayers: "2"
   Learning Rule: ""
 
 Supervised_HebbWN_WT_hebbdend:
@@ -179,6 +198,7 @@ Supervised_HebbWN_WT_hebbdend:
   label: "Supervised_HebbWN_WT_hebbdend"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 SupHebbTempCont_WT_hebbdend:
@@ -188,6 +208,7 @@ SupHebbTempCont_WT_hebbdend:
   label: "TCH"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 Supervised_HebbWN_learned_somaI:
@@ -196,6 +217,7 @@ Supervised_HebbWN_learned_somaI:
   label: "Supervised HebbWN learned somaI"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 Supervised_BCM_WT_hebbdend:
@@ -205,6 +227,7 @@ Supervised_BCM_WT_hebbdend:
   label: "BCM"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 BTSP_WT_hebbdend:
@@ -214,6 +237,7 @@ BTSP_WT_hebbdend:
   color: "orange"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 BTSP_fixedTD_hebbdend:
@@ -223,6 +247,7 @@ BTSP_fixedTD_hebbdend:
   color: "gray"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 BTSP_TCWN_hebbdend:
@@ -232,6 +257,7 @@ BTSP_TCWN_hebbdend:
   color: "green"
   Architecture: ""
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: ""
 
 
@@ -245,7 +271,7 @@ vanBP_0_hidden_learned_bias_spiral:
   color: "black"
   label: "Vanilla Backprop 0-Hidden (Learned Bias)"
   Architecture: "ANN"
-  NumLayers: "0" # TODO add this everywhere
+  NumLayers: "0"
   Algorithm: "Backprop"
   Learning Rule: "Gradient Descent"
   Bias: "Learned"
@@ -256,6 +282,7 @@ vanBP_2_hidden_learned_bias_spiral:
   color: "black"
   label: "FF Backprop (learned bias)"
   Architecture: "ANN, 2-hidden"
+  NumLayers: "2"
   Algorithm: "Backprop"
   Learning Rule: "Gradient Descent"
   Bias: "Learned"
@@ -266,6 +293,7 @@ vanBP_2_hidden_zero_bias_spiral:
   color: "gray"
   label: "FF Backprop, no bias"
   Architecture: "ANN, 2-hidden"
+  NumLayers: "2"
   Algorithm: "Backprop"
   Learning Rule: "Gradient Descent"
   Bias: "Zero"
@@ -276,6 +304,7 @@ bpDale_learned_bias_spiral:
   color: "blue"
   label: "Backprop, learned bias (EIANN), fixed SomaI, learned bias"
   Architecture: "EIANN, 2 hidden"
+  NumLayers: "2"
   Algorithm: "Backprop"
   Learning Rule: "Gradient Descent"
   Bias: "Learned"
@@ -286,6 +315,7 @@ bpLike_DTC_learned_bias_spiral:
   label: "Backprop-Like, fixed SomaI, learned bias"
   Architecture: "EIANN, 2 hidden"
   Algorithm: "Dend. Temp. Contrast"
+  NumLayers: "2"
   Learning Rule: "LDS"
   Bias: "Learned"
 
@@ -295,6 +325,7 @@ DTP_learned_bias_spiral:
   label: "Dend. Target Prop., learned bias"
   Architecture: "Dendritic EIANN, 2 hidden"
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: "LDS"
   Bias: "Learned"
 
@@ -304,6 +335,7 @@ DTP_fixed_DendI_learned_bias_1_spiral:
   label: "Dend Target Prop, fixed DendI/SomaI, learned bias (1)"
   Architecture: "Dendritic EIANN, 2 hidden"
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: "LDS"
   Bias: "Learned"
 
@@ -313,6 +345,7 @@ DTP_fixed_DendI_learned_bias_2_spiral:
   label: "Dend Target Prop, fixed DendI/SomaI, learned bias (2)"
   Architecture: "Dendritic EIANN, 2 hidden"
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: "LDS"
   Bias: "Learned"
 
@@ -322,5 +355,6 @@ DTP_fixed_DendI_learned_bias_3_spiral:
   label: "Dend Target Prop, fixed DendI/SomaI, learned bias (3)"
   Architecture: "Dendritic EIANN, 2 hidden"
   Algorithm: "Dend Target Prop"
+  NumLayers: "2"
   Learning Rule: "LDS"
   Bias: "Learned"
