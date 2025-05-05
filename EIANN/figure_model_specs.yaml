@@ -267,7 +267,7 @@ BTSP_TCWN_hebbdend:
 
 vanBP_0_hidden_learned_bias_spiral:
   config: "20250108_EIANN_0_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml"
-  name: "Vanilla Backprop, 0-Hidden, learned bias"
+  name: "Vanilla Backprop, 0-Hidden"
   color: "black"
   label: "Vanilla Backprop 0-Hidden (Learned Bias)"
   Architecture: "ANN"
@@ -278,7 +278,7 @@ vanBP_0_hidden_learned_bias_spiral:
 
 vanBP_2_hidden_learned_bias_spiral:
   config: "20250108_EIANN_2_hidden_spiral_van_bp_relu_learned_bias_config_complete_optimized.yaml"
-  name: "Vanilla Backprop, learned bias"
+  name: "Vanilla Backprop"
   color: "black"
   label: "FF Backprop (learned bias)"
   Architecture: "ANN, 2-hidden"
@@ -289,7 +289,7 @@ vanBP_2_hidden_learned_bias_spiral:
 
 vanBP_2_hidden_zero_bias_spiral:
   config: "20250108_EIANN_2_hidden_spiral_van_bp_relu_zero_bias_config_complete_optimized.yaml"
-  name: "Vanilla Backprop, no bias"
+  name: "Vanilla Backprop"
   color: "gray"
   label: "FF Backprop, no bias"
   Architecture: "ANN, 2-hidden"
@@ -300,9 +300,9 @@ vanBP_2_hidden_zero_bias_spiral:
 
 bpDale_learned_bias_spiral:
   config: "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml"
-  name: "Backprop + Dale's Law, learned bias"
+  name: "Backprop + Dale's Law"
   color: "blue"
-  label: "Backprop, learned bias (EIANN), fixed SomaI, learned bias"
+  label: "Backprop, (EIANN), fixed SomaI, learned bias"
   Architecture: "EIANN, 2 hidden"
   NumLayers: "2"
   Algorithm: "Backprop"
@@ -312,6 +312,7 @@ bpDale_learned_bias_spiral:
 bpLike_DTC_learned_bias_spiral:
   config: "20250108_EIANN_2_hidden_spiral_BP_like_1_fixed_SomaI_learned_bias_config_complete_optimized.yaml"
   color: "purple"
+  name: "Backprop-Like"
   label: "Backprop-Like, fixed SomaI, learned bias"
   Architecture: "EIANN, 2 hidden"
   Algorithm: "Dend. Temp. Contrast"
@@ -322,6 +323,7 @@ bpLike_DTC_learned_bias_spiral:
 DTP_learned_bias_spiral:
   config: "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml"
   color: "red"
+  name: "Dendritic Target Propagation"
   label: "Dend. Target Prop., learned bias"
   Architecture: "Dendritic EIANN, 2 hidden"
   Algorithm: "Dend Target Prop"
