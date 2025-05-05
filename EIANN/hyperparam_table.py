@@ -1,14 +1,15 @@
+import re
 import csv
 import click
 import os
-import re
+import openpyxl
 
 import EIANN.utils as ut
 
 
 def flatten_projection_config(projection_config):
     """
-    Traverse the projection_config dict and extract weight_init_args and learning_rate from each layer.
+    Traverse the projection_config dict and extract weight_init_args, learning_rate, and theta_tau from each layer.
     """
     hyperparams = {}
 
@@ -28,19 +29,74 @@ def flatten_projection_config(projection_config):
                     # theta_tau
                     theta = val.get('learning_rule_kwargs', {}).get('theta_tau')
                     if theta is not None:
-                        hyperparams[f"{path_str} θΤ"] = theta
+                        hyperparams[f"{path_str} θτ"] = theta
                 # Continue recursion
                 recurse(val, path + [key])
 
     recurse(projection_config, [])
-    
     return hyperparams
 
 
-def generate_csv(model_hyperparams, output_path):
+def shorten_label(name):
     """
-    Given a mapping of model label -> {hyperparam_name: value}, write out a CSV
-    where each column is a model label and each row a hyperparameter.
+    Convert a full hyperparameter key like 'H1EInputE η' into a short abbreviation
+    using W, B, Q, Y, R rules plus the unit prefix.
+    """
+    parts = name.split(' ', 1)
+    if len(parts) != 2:
+        return name
+    prefix, suffix = parts
+    # Match destination layer & cell, then source layer & cell
+    m = re.match(r'^(Input|Output|H\d+)(E|DendI|SomaI)(Input|Output|H\d+)(E|DendI|SomaI)$', prefix)
+    if not m:
+        return name
+    dst_layer, dst_cell, src_layer, src_cell = m.groups()
+    non_excit = ('DendI', 'SomaI')
+
+    def layer_index(layer):
+        if layer == 'Input':
+            return 0
+        if layer == 'Output':
+            return float('inf')
+        if layer.startswith('H'):
+            try:
+                return int(layer[1:])
+            except ValueError:
+                return float('nan')
+        return float('nan')
+
+    # Determine connection type
+    if dst_cell == 'E' and src_cell == 'E':
+        # Excitatory-to-excitatory: forward or backward
+        if layer_index(dst_layer) > layer_index(src_layer):
+            code = 'W'
+        else:
+            code = 'B'
+        details = f'({dst_layer})'
+    elif dst_cell in non_excit and src_cell == 'E':
+        # Non-excitatory receiving from excitatory
+        code = 'Q'
+        details = f'({dst_cell}, {dst_layer})'
+    elif dst_cell == 'E' and src_cell in non_excit:
+        # Excitatory receiving from non-excitatory
+        code = 'Y'
+        details = f'({src_cell}, {src_layer})'
+    elif dst_cell in non_excit and src_cell in non_excit and dst_layer == src_layer:
+        # Recurrent non-excitatory
+        code = 'R'
+        details = f'({dst_cell}, {dst_layer})'
+    else:
+        return name
+
+    # Normalize unit label to lowercase (keeps Greek letters intact)
+    unit = suffix.lower()
+    return f"{unit}, {code} {details}"
+
+
+def generate_excel(model_hyperparams, output_path):
+    """
+    Generate an Excel file with columns for each model and rows for each hyperparameter.
+    Adds an 'abbr' column for the shortened labels.
     """
     # Collect all hyperparam names
     all_names = set()
@@ -49,64 +105,65 @@ def generate_csv(model_hyperparams, output_path):
     all_names = sorted(all_names)
 
     labels = list(model_hyperparams.keys())
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    # Header with abbreviation column
+    ws.append(['abbr', 'hyperparameter'] + labels)
 
-    # Write CSV
-    with open(output_path, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['hyperparameter'] + labels)
-        for name in all_names:
-            row = [name]
-            for label in labels:
-                val = model_hyperparams[label].get(name, '-')
-                if isinstance(val, (list, tuple)):
-                    val = str(val)
-                    if re.match(r'\(\d+\.?\d*,\)', val):
-                        val = re.sub(r'\((\d+\.?\d*),\)', r'\1', val)
-                row.append(float(val) if val != '-' else val)
-            writer.writerow(row)
+    for name in all_names:
+        abbr = shorten_label(name)
+        row = [abbr, name]
+        for label in labels:
+            val = model_hyperparams[label].get(name, '-')
+            if isinstance(val, (list, tuple)):
+                # take the single scale value for init scale
+                val = val[0] if val else '-'
+            # convert numeric strings to floats where appropriate
+            if val != '-':
+                try:
+                    val = float(val)
+                except Exception:
+                    pass
+            row.append(val)
+        ws.append(row)
+
+    wb.save(output_path)
 
 
 @click.command()
 @click.option('--models_path', type=click.Path(exists=True), required=True, help="Path to the models specification YAML file")
-@click.option('--out', type=click.Path(), required=True, help="Output path for the CSV file")
+@click.option('--out', type=click.Path(), required=True, help="Output path for the XLSX file")
 def main(models_path, out):
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    output_path = os.path.join(project_root, out)
+    output_path = os.path.join(project_root, 'EIANN', out)
 
-    # Read the spec of models
     model_specs = ut.read_from_yaml(models_path)
     model_hyperparams = {}
 
     for model_key, spec in model_specs.items():
-
         config_file = spec.get('config')
         if config_file:
-            config_file_path = os.path.join(project_root, 'EIANN', 'network_config')
-            
+            base = os.path.join(project_root, 'EIANN', 'network_config')
             if 'mnist' in config_file.lower():
-                config_file_path = os.path.join(config_file_path, 'mnist')
+                base = os.path.join(base, 'mnist')
             elif 'spiral' in config_file.lower():
-                config_file_path = os.path.join(config_file_path, 'spiral')
-            
-            config_file_path = os.path.join(config_file_path, config_file)
+                base = os.path.join(base, 'spiral')
+            config_file = os.path.join(base, config_file)
 
-        # Use the label if provided, otherwise fallback to model_key
         label = spec.get('label', model_key)
-        # Read each model's config YAML
-        model_cfg = ut.read_from_yaml(config_file_path)
+        model_cfg = ut.read_from_yaml(config_file)
         proj_cfg = model_cfg.get('projection_config', {})
-        # Flatten out hyperparameters
         hyperparams = flatten_projection_config(proj_cfg)
         model_hyperparams[label] = hyperparams
 
-    # Generate the CSV
-    generate_csv(model_hyperparams, out)
-    print(f"Saved hyperparameters CSV to {out}")
+    generate_excel(model_hyperparams, output_path)
+    print(f"Saved hyperparameters XLSX to {output_path}")
 
 
 if __name__ == "__main__":
     main()
 
-# python hyperparam_table.py --models_path=figure_model_specs.yaml --out=figures/hyperparameters_table.csv
+# python hyperparam_table.py --models_path=figure_model_specs.yaml --out=figures/hyperparameters_table.xlsx
 
-# TODO replace all column names with W, B, Q, R
+# normalized weight scale, clone weight scale, temporal discount
