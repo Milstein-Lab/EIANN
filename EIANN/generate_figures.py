@@ -146,9 +146,9 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
     if 'percent_correct' in variables_to_recompute:
         pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
-        # ut.save_plot_data(network.name, network.seed, data_key='sorted_activity_dict', data=pop_activity_dict, file_path=hdf5_path, overwrite=True)
-        # ut.save_plot_data(network.name, network.seed, data_key='sorted_pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
-        # ut.save_plot_data(network.name, network.seed, data_key='sorted_unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='sorted_activity_dict', data=pop_activity_dict, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='sorted_pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='sorted_unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
 
         output = pop_activity_dict[network.output_pop.fullname]
         percent_correct = ut.compute_test_accuracy(output, pattern_labels)
@@ -727,8 +727,9 @@ def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                 # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H2E'], ax=ax_structure, metric_name='structure', plot_type='violin', side='high')
 
     if save is not None:
-        fig.savefig(f"figures/{save}.png", dpi=300)
+        # fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
+        fig.savefig(f"figures/{save}.tiff", dpi=300)
 
 
 def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
@@ -1216,6 +1217,7 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
     if save:
         fig.savefig(f"figures/{save}_{population}.png", dpi=300)
         fig.savefig(f"figures/{save}_{population}.svg", dpi=300)
+        fig.savefig(f"figures/{save}_{population}.tiff", dpi=300)
 
 
 
@@ -1555,7 +1557,8 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
             print(f"Generating table for {network_name}")
             data_dict = f[network_name]
 
-            if 'mnist' in saved_network_path_prefix:
+            if 'MNIST' in saved_network_path_prefix:
+
                 # Get the accuracy for each seed
                 accuracy_all_seeds_20k = []
                 for seed in model_dict['seeds']:
@@ -1600,7 +1603,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
             columns.remove('label')
         if 'name' in columns:
             columns.remove('name')
-
+        
         for col in columns:
             networks[model_dict.get('name', model_dict['label'])].update({col: model_dict[col]})
 
@@ -1859,6 +1862,7 @@ def main(figure, recompute):
         model_list_heatmaps = ["BTSP_WT_hebbdend", "Supervised_BCM_WT_hebbdend","SupHebbTempCont_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         figure_name = "FigS4_biorule_representations"
+        model_dict_all["BTSP_WT_hebbdend"]["label"] = "BTSP"
         generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Extended fig5: receptive fields in biological learning rules
@@ -1868,6 +1872,21 @@ def main(figure, recompute):
         figure_name = "FigS5_biorule_receptive_fields"
         generate_figS3(model_dict_all, model_list, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
         generate_figS3(model_dict_all, model_list, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
+
+    if figure in ["all", "T1"]:
+        saved_network_path_prefix += "MNIST/"
+        figure_name = "FigT1_mnist_table"
+        model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
+                      "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
+                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
+        generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
+    
+    if figure in ["all", "spiral-table"]:
+        saved_network_path_prefix += "spiral/"
+        figure_name = "Fig_T2_spiral_table"
+        model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
+                    "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
+        generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
     # Representational similarity analysis
     if figure in ["all", "rsm"]:
@@ -1889,21 +1908,6 @@ def main(figure, recompute):
         # Choose spiral_type='scatter' or 'decision'
         generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='decision', config_path_prefix='network_config/spiral/',
                                 saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
-
-    if figure in ["all", "table"]:
-        saved_network_path_prefix += "MNIST/"
-        figure_name = "mnist_table"
-        model_list = ["vanBP", "bpDale_fixed", "bpDale_learned", "HebbWN_topsup", 
-                      "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
-                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend"]
-        generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
-    
-    if figure in ["all", "spiral-table"]:
-        saved_network_path_prefix += "spiral/"
-        figure_name = "spiral-table"
-        model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
-                    "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
-        generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
     if figure in ["all", "structure"]:
         saved_network_path_prefix += "MNIST/"
