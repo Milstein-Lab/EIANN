@@ -10,16 +10,18 @@ vanBP:
   Architecture: "ANN"
   NumLayers: "2"
   Algorithm: "Backprop"
-  Learning rule: "Gradient descent"
+  W Learning rule: "Gradient descent"
+  B Learning rule: "Symmetric ($B=W^T$)"
 
 vanBP_0hidden:
   config: "20250103_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml"
-  label: "Vanilla Backprop 0-hidden"
+  label: "Vanilla Backprop"
   color: "black"
   Architecture: "ANN"
-  NumLayers: "2"
+  NumLayers: "0"
   Algorithm: "Backprop"
-  Learning Rule: "Gradient descent"
+  W Learning Rule: "Gradient descent"
+  B Learning rule: "Symmetric ($B=W^T$)"
 
 vanBP_fixed_hidden:
   config: "20250108_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_fixed_hidden_complete_optimized.yaml"
@@ -28,37 +30,41 @@ vanBP_fixed_hidden:
   Architecture: "ANN"
   NumLayers: "2"
   Algorithm: "Backprop"
-  Learning Rule: "Gradient descent"
+  W Learning Rule: "Gradient descent"
+  B Learning rule: "Symmetric ($B=W^T$)"
 
 bpDale_learned:
   config: "20240419_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_F_complete_optimized.yaml"
-  name: "bpDale (learned soma I)"
+  name: "Backprop (EIANN, learned somaI)"
   label: "Backprop (EIANN)"
   color: "royalblue"
   Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Backprop"
-  Learning Rule: "Gradient descent"
-
+  W Learning Rule: "Gradient descent"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 bpDale_fixed:
   config: "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml"
-  name: "bpDale (fixed soma I)"
+  name: "Backprop (EIANN, fixed somaI)"
   label: "Backprop (EIANN)"
   color: "cornflowerblue"
   Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Backprop"
-  Learning Rule: "Gradient descent"
-
+  W Learning Rule: "Gradient descent"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 bpDale_noI:
   config: "20240919_EIANN_2_hidden_mnist_bpDale_noI_relu_SGD_config_G_complete_optimized.yaml"
-  label: "Dale's Law\n(no soma I)"
+  label: "Backprop (EIANN, no somaI)"
   color: "royalblue"
   Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Backprop"
-  Learning Rule: "Gradient descent"
-
+  W Learning Rule: "Gradient descent"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 
 ##########################################################
 # Backprop-Like models (Linear dendritic state dependence)
@@ -66,117 +72,130 @@ bpDale_noI:
 
 bpLike_WT_hebbdend:
   config: "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_complete_optimized.yaml"
-  name: "bpLike_WT_hebbdend"
+  name: "Dendritic Target Propagation"
   label: "Dend. Target Prop."
   color: "red"
-  Architecture: "EIANN"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 bpLike_WT_hebbdend_eq:
   config: "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized.yaml"
   color: "red"
   label: "bpLike_WT_hebbdend_eq"
-  Architecture: "EIANN"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 bpLike_WT_tempcont:
   config: "20240508_EIANN_2_hidden_mnist_BP_like_config_1J_complete_optimized.yaml"
   color: "red"
   label: "BP-like (temp. cont.)"
-  Architecture: "EIANN"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Dend Temp Contrast"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 bpLike_WT_localBP:
   config: "20241113_EIANN_2_hidden_mnist_BP_like_config_5M_complete_optimized.yaml"
-  name: "Backprop\n(Local loss func.)"
+  name: "Backprop (Local loss func.)"
   color: "black"
   label: "Learned (Backprop)"
-  Architecture: "EIANN"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
-  Algorithm: "Backprop/Dend Target Prop"
-  Learning Rule: "LDS"
-
+  Algorithm: "Dend Target Prop \n+ Backprop (dendI)"
+  W Learning Rule: "LDS"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 bpLike_WT_localBP_eq:
   config: "20240628_EIANN_2_hidden_mnist_BP_like_config_3M_complete_optimized.yaml"
   color: "black"
   label: "bpLike_WT_localBP_eq"
-  Architecture: "EIANN"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Backprop/Dend Target Prop"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 bpLike_WT_fixedDend:
   config: "20241113_EIANN_2_hidden_mnist_BP_like_config_5K_complete_optimized.yaml"
-  name: "bpLike_WT_fixedDend"
+  name: "Fixed DendI weights"
   label: "Fixed random"
   color: "gray"
-  Architecture: "EIANN"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 bpLike_WT_fixedDend_eq:
   config: "20240508_EIANN_2_hidden_mnist_BP_like_config_2K_complete_optimized.yaml"
   color: "gray"
   label: "bpLike_WT_fixedDend_eq"
-  Architecture: "EIANN"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 bpLike_fixedTD_hebbdend:
   config: "20241114_EIANN_2_hidden_mnist_BP_like_config_5J_fixed_TD_complete_optimized.yaml"
-  name: "bpLike_fixedTD_hebbdend"
-  color: "gray"
+  name: "LDS Fixed top-down weights"
   label: "Fixed random B (LDS)"
-  Architecture: "EIANN"
+  color: "gray"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "Fixed random"
+  
 bpLike_fixedTD_hebbdend_eq:
   config: "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_fixed_TD_complete_optimized.yaml"
-  color: "lightgray"
+  name: "LDS Fixed top-down weights"
   label: "bpLike_fixedTD_hebbdend_eq"
-  Architecture: "EIANN"
+  color: "lightgray"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "Fixed random"
+  
 bpLike_hebbTD_hebbdend:
   config: "20241009_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HWN_1_complete_optimized.yaml"
   color: "blue"
   label: "bpLike_hebbTD_hebbdend"
-  Architecture: "EIANN"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "Hebb + Weight Norm."
+  
 bpLike_hebbTD_hebbdend_eq:
   config: "20240830_EIANN_2_hidden_mnist_BP_like_config_2L_learn_TD_HWN_3_complete_optimized.yaml"
   color: "magenta"
   label: "bpLike_hebbTD_hebbdend_eq"
-  Architecture: "EIANN"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "Hebb + Weight Norm."
+  
 bpLike_TCWN_hebbdend:
   config: "20241120_EIANN_2_hidden_mnist_BP_like_config_5J_learn_TD_HTCWN_2_complete_optimized.yaml"
-  name: "bpLike_TCWN_hebbdend"
+  name: "LDS Learned top-down weights"
   label: "Learned B: TCH (LDS)"
   color: "green"
-  Architecture: "EIANN"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "LDS"
-
+  W Learning Rule: "LDS"
+  B Learning rule: "TCH + Weight Norm."
+  
 
 ######################
 # Biological models   
@@ -189,77 +208,87 @@ HebbWN_topsup:
   color: "green"
   Architecture: "EIANN"
   NumLayers: "2"
-  Algorithm: "Unsupervised (no propagation)"
-  Learning Rule: "Hebb + Weight Norm"
-
+  Algorithm: "Unsupervised \n(no propagation)"
+  W Learning Rule: "Hebb + Weight Norm."
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 Supervised_HebbWN_WT_hebbdend:
   config: "20240714_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_config_4_complete_optimized.yaml"
-  color: "olive"
+  name: "Supervised Hebb"
   label: "Supervised_HebbWN_WT_hebbdend"
+  color: "olive"
   Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "Hebb + Weight Norm"
-
+  W Learning Rule: "Hebb + Weight Norm."
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 SupHebbTempCont_WT_hebbdend:
   config: "20241125_EIANN_2_hidden_mnist_Hebb_Temp_Contrast_config_2_complete_optimized.yaml"
-  name: "SupHebbTempCont_WT_hebbdend"
-  color: "mediumaquamarine"
+  name: "Temporally Contrastive Hebbian"
   label: "TCH"
+  color: "mediumaquamarine"
   Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "Temp Contrast Hebb"
-
+  W Learning Rule: "Temp Contrast Hebb"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 Supervised_HebbWN_learned_somaI:
   config: "20240919_EIANN_2_hidden_mnist_Supervised_Hebb_WeightNorm_learn_somaI_config_4_complete_optimized.yaml"
-  color: "lime"
+  name: "Supervised HebbWN learned somaI"
   label: "Supervised HebbWN learned somaI"
+  color: "lime"
   Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "Hebb + Weight Norm"
-
+  W Learning Rule: "Hebb + Weight Norm."
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 Supervised_BCM_WT_hebbdend:
   config: "20240723_EIANN_2_hidden_mnist_Supervised_BCM_config_4_complete_optimized.yaml"
-  name: "Supervised_BCM_WT_hebbdend"
-  color: "mediumpurple"
+  name: "BCM"
   label: "BCM"
+  color: "mediumpurple"
   Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "BCM"
-
+  W Learning Rule: "BCM"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 BTSP_WT_hebbdend:
   config: "20241212_EIANN_2_hidden_mnist_BTSP_config_5L_complete_optimized.yaml"
-  name: "BTSP_WT_hebbdend"
+  name: "BTSP"
   label: "Symmetric B=W (BTSP)"
   color: "orange"
   Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "BTSP"
-
+  W Learning Rule: "BTSP"
+  B Learning rule: "Symmetric ($B=W^T$)"
+  
 BTSP_fixedTD_hebbdend:
   config: "20241216_EIANN_2_hidden_mnist_BTSP_config_5L_fixed_TD_complete_optimized.yaml"
-  name: "BTSP_fixedTD_hebbdend"
+  name: "BTSP (fixed top-down)"
   label: "Fixed random B (BTSP)"
   color: "gray"
   Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "BTSP"
-
+  W Learning Rule: "BTSP"
+  B Learning rule: "Fixed random"
+  
 BTSP_TCWN_hebbdend:
   config: "20241216_EIANN_2_hidden_mnist_BTSP_config_5L_learn_TD_HTCWN_3_complete_optimized.yaml"
-  name: "BTSP_TCWN_hebbdend"
+  name: "BTSP (learned top-down)"
   label: "Learned B: TCH (BTSP)"
   color: "green"
   Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Dend Target Prop"
-  Learning Rule: "BTSP"
-
+  W Learning Rule: "BTSP"
+  B Learning rule: "TCH + Weight Norm."
+  
 
 #########################
 # Spirals dataset models
@@ -273,7 +302,8 @@ vanBP_0_hidden_learned_bias_spiral:
   Architecture: "ANN"
   NumLayers: "0"
   Algorithm: "Backprop"
-  Learning Rule: "Gradient Descent"
+  W Learning Rule: "Gradient Descent"
+  B Learning rule:
   Bias: "Learned"
 
 vanBP_2_hidden_learned_bias_spiral:
@@ -281,10 +311,11 @@ vanBP_2_hidden_learned_bias_spiral:
   name: "Vanilla Backprop"
   color: "black"
   label: "FF Backprop (learned bias)"
-  Architecture: "ANN, 2-hidden"
+  Architecture: "ANN"
   NumLayers: "2"
   Algorithm: "Backprop"
-  Learning Rule: "Gradient Descent"
+  W Learning Rule: "Gradient Descent"
+  B Learning rule:
   Bias: "Learned"
 
 vanBP_2_hidden_zero_bias_spiral:
@@ -292,21 +323,23 @@ vanBP_2_hidden_zero_bias_spiral:
   name: "Vanilla Backprop"
   color: "gray"
   label: "FF Backprop, no bias"
-  Architecture: "ANN, 2-hidden"
+  Architecture: "ANN"
   NumLayers: "2"
   Algorithm: "Backprop"
-  Learning Rule: "Gradient Descent"
+  W Learning Rule: "Gradient Descent"
+  B Learning rule:
   Bias: "Zero"
 
 bpDale_learned_bias_spiral:
   config: "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml"
-  name: "Backprop + Dale's Law"
+  name: "Backprop (EIANN)"
   color: "blue"
   label: "Backprop, (EIANN), fixed SomaI, learned bias"
-  Architecture: "EIANN, 2 hidden"
+  Architecture: "EIANN"
   NumLayers: "2"
   Algorithm: "Backprop"
-  Learning Rule: "Gradient Descent"
+  W Learning Rule: "Gradient Descent"
+  B Learning rule:
   Bias: "Learned"
 
 bpLike_DTC_learned_bias_spiral:
@@ -314,31 +347,34 @@ bpLike_DTC_learned_bias_spiral:
   color: "purple"
   name: "Backprop-Like"
   label: "Backprop-Like, fixed SomaI, learned bias"
-  Architecture: "EIANN, 2 hidden"
+  Architecture: "EIANN"
   Algorithm: "Dend. Temp. Contrast"
   NumLayers: "2"
-  Learning Rule: "LDS"
+  W Learning Rule: "LDS"
+  B Learning rule:
   Bias: "Learned"
 
 DTP_learned_bias_spiral:
   config: "20250108_EIANN_2_hidden_spiral_DTP_fixed_SomaI_learned_bias_config_complete_optimized.yaml"
-  color: "red"
   name: "Dendritic Target Propagation"
+  color: "red"
   label: "Dend. Target Prop., learned bias"
-  Architecture: "Dendritic EIANN, 2 hidden"
-  Algorithm: "Dend Target Prop"
+  Architecture: "Dend EIANN"
   NumLayers: "2"
-  Learning Rule: "LDS"
+  Algorithm: "Dend Target Prop"
+  W Learning Rule: "LDS"
+  B Learning rule:
   Bias: "Learned"
 
 DTP_fixed_DendI_learned_bias_1_spiral:
   config: "20250217_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_1_config_complete_optimized.yaml"
   color: "red"
   label: "Dend Target Prop, fixed DendI/SomaI, learned bias (1)"
-  Architecture: "Dendritic EIANN, 2 hidden"
+  Architecture: "Dend EIANN"
   Algorithm: "Dend Target Prop"
   NumLayers: "2"
-  Learning Rule: "LDS"
+  W Learning Rule: "LDS"
+  B Learning rule:
   Bias: "Learned"
 
 DTP_fixed_DendI_learned_bias_2_spiral:
@@ -348,7 +384,7 @@ DTP_fixed_DendI_learned_bias_2_spiral:
   Architecture: "Dendritic EIANN, 2 hidden"
   Algorithm: "Dend Target Prop"
   NumLayers: "2"
-  Learning Rule: "LDS"
+  W Learning Rule: "LDS"
   Bias: "Learned"
 
 DTP_fixed_DendI_learned_bias_3_spiral:
@@ -358,5 +394,6 @@ DTP_fixed_DendI_learned_bias_3_spiral:
   Architecture: "Dendritic EIANN, 2 hidden"
   Algorithm: "Dend Target Prop"
   NumLayers: "2"
-  Learning Rule: "LDS"
+  W Learning Rule: "LDS"
+  B Learning rule:
   Bias: "Learned"

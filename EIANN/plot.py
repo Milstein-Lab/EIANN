@@ -702,11 +702,13 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         fig = ax_list[0].get_figure()
 
     # Set colorscale limits for all receptive field images
-    colorscale_max = torch.max(receptive_fields.abs())
-    if torch.min(receptive_fields) < 0:
-        colorscale_min = -colorscale_max
-    else:
-        colorscale_min = 0
+    # colorscale_max = torch.max(receptive_fields.abs())
+    # if torch.min(receptive_fields) < 0:
+    #     colorscale_min = -colorscale_max
+    # else:
+    #     colorscale_min = 0
+    colorscale_max = 1
+    colorscale_min = -1
         
     if cmap == 'custom':
         # Create custom colormap
