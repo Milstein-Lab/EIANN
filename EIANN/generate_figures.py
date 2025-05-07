@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-import scipy
+import pandas as pd
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -695,7 +695,7 @@ def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                 ax.set_yticks([0,num_units-1])
                 ax.set_yticklabels([1,num_units])
                 ax.set_ylabel(f'{population} unit', labelpad=-8)
-                ax.set_title(model_dict["name"])
+                ax.set_title(model_dict["display_name"])
                 if i>0:
                     ax.set_ylabel('')
                     ax.set_yticklabels([])
@@ -782,7 +782,7 @@ def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                     ax.set_yticklabels([1,num_units])
                     ax.set_ylabel(f'{population} unit', labelpad=-8)
                     if row==0:
-                        ax.set_title(model_dict["name"], pad=3)
+                        ax.set_title(model_dict["display_name"], pad=3)
                     if col>0:
                         ax.set_ylabel('')
                         ax.set_yticklabels([])
@@ -845,7 +845,7 @@ def generate_fig4(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                 ax.set_yticks([0,num_units-1])
                 ax.set_yticklabels([1,num_units])
                 ax.set_ylabel(f'{population} unit', labelpad=-8)
-                ax.set_title(model_dict["name"])
+                ax.set_title(model_dict["display_name"])
                 if i>0:
                     ax.set_ylabel('')
                     ax.set_yticklabels([])
@@ -1220,7 +1220,6 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
         fig.savefig(f"figures/{save}_{population}.tiff", dpi=300)
 
 
-
 def generate_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     mm = 1/25.4 #convert mm to inches
     fig, ax = plt.subplots(figsize=(240*mm,200*mm))
@@ -1230,103 +1229,73 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
     all_models = list(dict.fromkeys(model_list))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
-    networks = {}
-    columns = []
-
-    column_name_map = {'NumLayers': 'Hidden Layers',}
+    columns = {'display_name': 0.2, 'Architecture': 0.1, 'Hidden Layers': 0.1, 'Algorithm': 0.1, 'W Learning Rule': 0.13, 'B Learning Rule': 0.13, 'Bias': 0.05}
+    table_vals = []
 
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
         hdf5_path = f"data/plot_data_{network_name}.h5"
-
+        network_table_vals = [model_dict[col] for col in columns.keys() if col in model_dict]
         with h5py.File(hdf5_path, 'r') as f:
             print(f"Generating table for {network_name}")
             data_dict = f[network_name]
 
+            # Get the accuracy for each seed
+            accuracy_all_seeds = []
+            for seed in model_dict['seeds']:
+                accuracy_all_seeds.append(data_dict[seed]['test_accuracy_history'][-1])
+            avg_accuracy = np.mean(accuracy_all_seeds)
+            std_accuracy = np.std(accuracy_all_seeds)
+            sem_accuracy = std_accuracy / np.sqrt(len(accuracy_all_seeds))
+
+            accuracy_all_seeds_extended = []
+            for seed in model_dict['seeds']:
+                accuracy_all_seeds_extended.append(data_dict[seed]['test_accuracy_history_extended'][-1])
+            avg_accuracy_extended = np.mean(accuracy_all_seeds_extended)
+            std_accuracy_extended = np.std(accuracy_all_seeds_extended)
+            sem_accuracy_extended = std_accuracy_extended / np.sqrt(len(accuracy_all_seeds_extended))
+
             if 'MNIST' in saved_network_path_prefix:
-
-                # Get the accuracy for each seed
-                accuracy_all_seeds_20k = []
-                for seed in model_dict['seeds']:
-                    accuracy_all_seeds_20k.append(data_dict[seed]['test_accuracy_history'][-1])
-                avg_accuracy_20k = np.mean(accuracy_all_seeds_20k)
-                std_accuracy_20k = np.std(accuracy_all_seeds_20k)
-                sem_accuracy_20k = std_accuracy_20k / np.sqrt(len(accuracy_all_seeds_20k))
-
-                accuracy_all_seeds_50k = []
-                for seed in model_dict['seeds']:
-                    accuracy_all_seeds_50k.append(data_dict[seed]['test_accuracy_history_extended'][-1])
-                avg_accuracy_50k = np.mean(accuracy_all_seeds_50k)
-                std_accuracy_50k = np.std(accuracy_all_seeds_50k)
-                sem_accuracy_50k = std_accuracy_50k / np.sqrt(len(accuracy_all_seeds_50k))
-
-                networks[model_dict.get('name', model_dict['label'])] = {'MNIST Accuracy \n(20k samples)': f"{avg_accuracy_20k:.2f} \u00b1 {sem_accuracy_20k:.2f}",
-                                                                        'MNIST Accuracy \n(50k samples)': f"{avg_accuracy_50k:.2f} \u00b1 {sem_accuracy_50k:.2f}"}
-
+                new_column_labels = ['MNIST Accuracy \n(20k samples)', 
+                                     'MNIST Accuracy \n(50k samples)']
+                network_table_vals += [f"{avg_accuracy:.2f} \u00b1 {sem_accuracy:.2f}", 
+                                       f"{avg_accuracy_extended:.2f} \u00b1 {sem_accuracy_extended:.2f}"]
             elif 'spiral' in saved_network_path_prefix:
-                accuracy_all_seeds_1_epoch = []
-                for seed in model_dict['seeds']:
-                    accuracy_all_seeds_1_epoch.append(data_dict[seed]['test_accuracy_history'][-1])
-                avg_accuracy_1_epoch = np.mean(accuracy_all_seeds_1_epoch)
-                std_accuracy_1_epoch = np.std(accuracy_all_seeds_1_epoch)
-                sem_accuracy_1_epoch = std_accuracy_1_epoch / np.sqrt(len(accuracy_all_seeds_1_epoch))
-
-                accuracy_all_seeds_10_epochs = []
-                for seed in model_dict['seeds']:
-                    accuracy_all_seeds_10_epochs.append(data_dict[seed]['test_accuracy_history_extended'][-1])
-                avg_accuracy_10_epochs = np.mean(accuracy_all_seeds_10_epochs)
-                std_accuracy_10_epochs = np.std(accuracy_all_seeds_10_epochs)
-                sem_accuracy_10_epochs = std_accuracy_10_epochs / np.sqrt(len(accuracy_all_seeds_10_epochs))
-
-                networks[model_dict.get('name', model_dict['label'])] = {'Spiral Accuracy \n(1 epoch)': f"{avg_accuracy_1_epoch:.2f} \u00b1 {sem_accuracy_1_epoch:.2f}",
-                                                                        'Spiral Accuracy \n(10 epochs)': f"{avg_accuracy_10_epochs:.2f} \u00b1 {sem_accuracy_10_epochs:.2f}"}
+                new_column_labels = ['Spiral Accuracy \n(1 epoch)', 
+                                     'Spiral Accuracy \n(10 epochs)']
+                network_table_vals += [f"{avg_accuracy:.2f} \u00b1 {sem_accuracy:.2f}", 
+                                       f"{avg_accuracy_extended:.2f} \u00b1 {sem_accuracy_extended:.2f}"]
                 
-        columns = list(model_dict.keys())
-        columns.remove('config')
-        columns.remove('color')
-        columns.remove('seeds')
-        if 'label' in columns:
-            columns.remove('label')
-        if 'name' in columns:
-            columns.remove('name')
-        
-        for col in columns:
-            networks[model_dict.get('name', model_dict['label'])].update({col: model_dict[col]})
-    
-    # Create a table from the networks dictionary
-    column_labels = [header for header in list(networks.values())[0]]
-    column_labels = [column_name_map.get(header, header) for header in column_labels]
-    column_labels.insert(0, "")
-    
-    table_vals = []
-    for network_name in networks:
-        network_vals = [network_name]
-        for i, col in enumerate(list(networks[network_name].keys())):
-            network_vals.append(networks[network_name].get(col, "N/A"))
-        table_vals.append(network_vals)
+        table_vals.append(network_table_vals)
 
-    col_widths = [0.1]*len(column_labels)
-    col_widths[0] = 0.2
-    col_widths[-1] = 0.15
+    column_labels = list(columns.keys()) + new_column_labels
+    column_labels[0] = ""
+    col_widths = list(columns.values()) + [0.1, 0.1]
+    
     table = ax.table(cellText=table_vals, colLabels=column_labels, cellLoc="center", loc="center", colWidths=col_widths)
     table.auto_set_font_size(False)
     
     for key, cell in table.get_celld().items():
         cell.set_linewidth(0)
         cell.set_height(cell.get_height() * 1.3)
-        if key[0] % 2 == 0:
-            cell.set_facecolor([0.95 for i in range(3)])
-        if key[0] == 0:
+        cell.set_text_props(fontname='Arial', fontsize=6)
+        if key[0] == 0: # Header row
             cell.set_facecolor([0.9 for i in range(3)])
             cell.set_text_props(weight='bold')
             cell.set_height(cell.get_height() * 1.2)
-        cell.set_text_props(fontname='Arial', fontsize=6)
-    
+        elif key[0] % 2 == 0: # Even rows
+            cell.set_facecolor([0.96 for i in range(3)]) # make even rows light grey
+            
+        if key[1] == 0: # First column
+            cell.set_text_props(horizontalalignment='left', weight='semibold')
+
     if save:
         fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
         fig.savefig(f"figures/{save}.tiff", dpi=300)
+
+
 
 
 def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
@@ -1710,7 +1679,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-
+import codecs
 
 from reportlab.pdfgen import canvas
 import os
@@ -1754,7 +1723,11 @@ def images_to_pdf(image_paths, output_path, dpi=300):
 @click.option('--recompute', default=None, help='Recompute plot data for a particular parameter')
 
 def main(figure, recompute):
-    model_dict_all = ut.read_from_yaml("figure_model_specs.yaml")
+    # Load model specs from csv file
+    csv_file_path = "figure_model_specs.csv" 
+    df = pd.read_csv(csv_file_path, index_col=0)
+    df = df.map(lambda x: codecs.decode(x, 'unicode_escape') if isinstance(x, str) else x) # convert special characters like \n
+    model_dict_all = df.transpose().to_dict()
 
     # Set path to Box data directory (default path based on OS)
     if os.name == "posix":
@@ -1879,12 +1852,11 @@ def main(figure, recompute):
     if figure in ["all", "T1"]:
         saved_network_path_prefix += "MNIST/"
         figure_name = "FigT1_mnist_table"
-        model_list = ["vanBP", "vanBP_0hidden", "vanBP_fixed_hidden", 
+        model_list = ["vanBP", #"vanBP_fixed_hidden", #"vanBP_0hidden",
                       "bpDale_fixed", "bpDale_learned", "bpDale_noI", 
                       "HebbWN_topsup", "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
                       "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
                       "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-
         generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
     
     if figure in ["all", "T2"]:
