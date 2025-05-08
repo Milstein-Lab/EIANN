@@ -11,6 +11,7 @@ import pathlib
 import h5py
 import click
 import gc
+import codecs
 from reportlab.pdfgen import canvas
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -1125,7 +1126,7 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
         hdf5_path = f"data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
+            print(f"Generating plots for {model_dict['display_name']}")
 
             example_seed = model_dict['seeds'][-1] # example seed to plot
             # fig.suptitle(f"{population} {example_seed}", fontsize=9, x=0.5, y=0.99)
@@ -1149,7 +1150,7 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
             width = _ax.get_position().x1 - _ax.get_position().x0
             cax = fig.add_axes([_ax.get_position().x1+width/5, _ax.get_position().y0, width/5, 1.5*height])
             fig.colorbar(im, cax=cax, orientation='vertical')
-            ax_list[2].set_title(model_dict["label"])
+            ax_list[2].set_title(model_dict["display_name"])
             for label in range(10):
                 temp_ax.text(-0.1, label*0.101+0.04, str(9-label), fontsize=7, ha='center', va='center')
             if i==0:
@@ -1220,7 +1221,7 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
         fig.savefig(f"figures/{save}_{population}.tiff", dpi=300)
 
 
-def generate_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_model_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     mm = 1/25.4 #convert mm to inches
     fig, ax = plt.subplots(figsize=(240*mm,200*mm))
     # fig, ax = plt.subplots(figsize=(5.5, 9))
@@ -1286,7 +1287,7 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
             cell.set_height(cell.get_height() * 1.2)
         elif key[0] % 2 == 0: # Even rows
             cell.set_facecolor([0.96 for i in range(3)]) # make even rows light grey
-            
+
         if key[1] == 0: # First column
             cell.set_text_props(horizontalalignment='left', weight='semibold')
 
@@ -1296,94 +1297,6 @@ def generate_summary_table(model_dict_all, model_list, config_path_prefix="netwo
         fig.savefig(f"figures/{save}.tiff", dpi=300)
 
 
-
-
-def compare_E_properties_full(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
-    '''
-    Figure 1: Van_BP vs bpDale(learnedI)
-        -> bpDale is more structured/sparse (focus on H1E metrics)
-
-    Compare vanilla Backprop to networks with 'cortical' architecures (i.e. with somatic feedback inhibition). 
-    '''
-
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=4, ncols=6, figure=fig,                        
-                       left=0.049,right=1,
-                       top=0.95, bottom = 0.5,
-                       wspace=0.15, hspace=0.5)
-    metrics_axes = gs.GridSpec(nrows=4, ncols=4, figure=fig,                 
-                       left=0.049,right=0.95,
-                       top=0.95, bottom = 0.48,
-                       wspace=0.5, hspace=0.8)
-    ax_accuracy    = fig.add_subplot(metrics_axes[3, 0])  
-    ax_sparsity    = fig.add_subplot(metrics_axes[3, 1])
-    ax_selectivity = fig.add_subplot(metrics_axes[3, 2])
-    ax_structure   = fig.add_subplot(metrics_axes[3, 3])
-
-    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    col = 0
-    for i,model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-
-            if model_key in model_list_heatmaps:
-                seed = model_dict['seeds'][0] # example seed to plot
-                populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'E' in population and population!='InputE']
-                for row,population in enumerate(populations_to_plot):
-                    # Activity plots: batch accuracy of each population to the test dataset
-                    ax = fig.add_subplot(axes[row, col*2])
-                    average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=False)
-                    ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
-                    ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
-                    ax.set_ylabel(f'{population} unit', labelpad=-8)
-                    if row==0:
-                        ax.set_title(model_dict["label"])
-                    if col>0:
-                        ax.set_ylabel('')
-                        ax.set_yticklabels([])
-
-                    # Receptive field plots
-                    receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
-                    num_units = 10
-                    ax = fig.add_subplot(axes[row, col*2+1])
-                    ax.axis('off')
-                    pos = ax.get_position()
-                    new_left = pos.x0 - 0.01  # Move left boundary to the left
-                    new_bottom = pos.y0 # Move bottom boundary up
-                    new_height = pos.height  # Decrease height
-                    new_width = pos.width - 0.036  # Decrease width 
-                    ax.set_position([new_left, new_bottom, new_width, new_height])
-                    rf_axes = gs.GridSpecFromSubplotSpec(4, 3, subplot_spec=ax, wspace=0., hspace=0.1)
-                    ax_list = [fig.add_subplot(rf_axes[3,1])]
-                    for j in range(num_units-1):
-                        ax = fig.add_subplot(rf_axes[j])
-                        ax_list.append(ax)
-                        # box = matplotlib.patches.Rectangle((-0.5,-0.5), 28, 28, linewidth=0.5, edgecolor='k', facecolor='none', zorder=10)
-                        # ax.add_patch(box)
-                    preferred_classes = torch.argmax(torch.tensor(np.array(data_dict[seed]['average_pop_activity_dict'][population])), dim=1)
-                    im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
-                    fig_width, fig_height = fig.get_size_inches()
-                    cax = fig.add_axes([ax_list[0].get_position().x0-0.02/fig_width, ax.get_position().y0-0.25/fig_height, 0.04, 0.03/fig_height])
-                    fig.colorbar(im, cax=cax, orientation='horizontal')
-                col += 1
-
-            if model_key in model_list_metrics:
-                plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
-
-
-    if save is not None:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
 def compare_RSM_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
@@ -1679,10 +1592,8 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-import codecs
 
 from reportlab.pdfgen import canvas
-import os
 def images_to_pdf(image_paths, output_path, dpi=300):
     # Define US Letter page size in points
     letter_size = [8.5 * 72, 11 * 72]  # 612 x 792 points
@@ -1857,14 +1768,14 @@ def main(figure, recompute):
                       "HebbWN_topsup", "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
                       "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
                       "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-        generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
+        generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
     
     if figure in ["all", "T2"]:
         saved_network_path_prefix += "spiral/"
         figure_name = "FigT2_spiral_table"
         model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
                     "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
-        generate_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
+        generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
 
     # Representational similarity analysis
