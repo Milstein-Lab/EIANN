@@ -12,6 +12,8 @@ import h5py
 import click
 import gc
 import codecs
+import openpyxl
+import re
 from reportlab.pdfgen import canvas
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -44,6 +46,8 @@ plt.rcParams.update({'font.size': 6,
 
 
 
+########################################################################################################
+# Data hdf5 generation
 ########################################################################################################
 
 def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=None):
@@ -256,6 +260,9 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
             gc.collect()
 
 
+
+########################################################################################################
+# Multi-seed plotting functions
 ########################################################################################################
 
 def plot_accuracy_all_seeds(data_dict, model_dict, ax, legend=True, extended=False):
@@ -589,6 +596,9 @@ def plot_dynamics_all_seeds(data_dict, model_dict, ax):
     ax_E.set_title(model_dict['label'], rotation=90, x=-0.25, y=0.4, va='center')
 
 
+
+########################################################################################################
+# Multi-panel figure generation
 ########################################################################################################
 
 def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=False):
@@ -1297,6 +1307,31 @@ def generate_model_summary_table(model_dict_all, model_list, config_path_prefix=
         fig.savefig(f"figures/{save}.tiff", dpi=300)
 
 
+def generate_hyperparams_csv(model_dict_all, model_list, save):
+
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    hyperparams = {}
+
+    for model_key in model_list:
+        config_file = model_dict_all[model_key]['config']
+
+        # build path to config YAML
+        base = os.path.join(project_root, 'EIANN', 'network_config')
+        if 'mnist' in config_file and 'spiral' not in config_file:
+            base = os.path.join(base, 'mnist')
+        elif 'spiral' in config_file:
+            base = os.path.join(base, 'spiral')
+        cfg_path = os.path.join(base, config_file)
+
+        label = model_dict_all[model_key]['display_name']
+        model_cfg = ut.read_from_yaml(cfg_path)
+        proj_cfg = model_cfg.get('projection_config', {})
+        hyperparams[label] = flatten_projection_config(proj_cfg)
+
+    out_file = f"{save}.csv"
+    generate_excel(hyperparams, out_file)
+    print(f"Saved hyperparams table to {out_file}")
+
 
 
 def compare_RSM_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
@@ -1593,6 +1628,136 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
 
 
 
+########################################################################################################
+# Helper functions
+########################################################################################################
+
+def flatten_projection_config(projection_config):
+    """
+    Traverse the projection_config dict and extract weight_init_args, learning_rate, and theta_tau.
+    Returns a dict mapping flattened keys to their values.
+    """
+    hyperparams = {}
+
+    def recurse(node, path):
+        for key, val in node.items():
+            if isinstance(val, dict):
+                if 'weight_init_args' in val or 'learning_rule_kwargs' in val:
+                    path_str = "".join(path + [key])
+                    # init scale
+                    if 'weight_init_args' in val:
+                        hyperparams[f"{path_str} Init Scale"] = val['weight_init_args']
+                    # learning rate
+                    lr = val.get('learning_rule_kwargs', {}).get('learning_rate')
+                    if lr is not None:
+                        hyperparams[f"{path_str} η"] = lr
+                    # theta_tau
+                    theta = val.get('learning_rule_kwargs', {}).get('theta_tau')
+                    if theta is not None:
+                        hyperparams[f"{path_str} θτ"] = theta
+                    # temporal_discount
+                    td = val.get('learning_rule_kwargs', {}).get('temporal_discount')
+                    if td is not None:
+                        hyperparams[f"{path_str} Temporal Discount"] = td
+                    # clone weight scale
+                    if val.get('weight_constraint') == 'clone_weight':
+                        clone_scale = val.get('weight_constraint_kwargs', {}).get('scale')
+                        if clone_scale is not None:
+                            hyperparams[f"{path_str} Clone Weight Scale"] = clone_scale
+                    # normalized weight scale
+                    if val.get('weight_constraint') == 'normalize_weight':
+                        norm_scale = val.get('weight_constraint_kwargs', {}).get('scale')
+                        if norm_scale is not None:
+                            hyperparams[f"{path_str} Normalized Weight Scale"] = norm_scale
+                recurse(val, path + [key])
+
+    recurse(projection_config, [])
+    return hyperparams
+
+
+def shorten_label(name):
+    """
+    Map full hyperparam key to abbreviated form using W, B, Q, Y, R rules.
+    """
+    parts = name.split(' ', 1)
+    if len(parts) != 2:
+        return name
+    prefix, suffix = parts
+    # regex for dest/source
+    m = re.match(r'^(Input|Output|H\d+)(E|DendI|SomaI)(Input|Output|H\d+)(E|DendI|SomaI)$', prefix)
+    if not m:
+        return name
+    dst_layer, dst_cell, src_layer, src_cell = m.groups()
+    non_excit = ('DendI', 'SomaI')
+
+    def layer_index(layer):
+        if layer == 'Input': 
+            return 0
+        if layer == 'Output': 
+            return float('inf')
+        if layer.startswith('H'):
+            return int(layer[1:])
+        return float('nan')
+
+    # determine code & details
+    if dst_cell == 'E' and src_cell == 'E':
+        # Excitatory-to-excitatory: forward or backward
+        if layer_index(dst_layer) > layer_index(src_layer):
+            code = 'W'
+        else:
+            code = 'B'
+        details = f'({dst_layer})'
+    elif dst_cell in non_excit and src_cell == 'E':
+        # Non-excitatory receiving from excitatory
+        code = 'Q'
+        details = f'({dst_cell}, {dst_layer})'
+    elif dst_cell == 'E' and src_cell in non_excit:
+        # Excitatory receiving from non-excitatory
+        code = 'Y'
+        details = f'({src_cell}, {src_layer})'
+    elif dst_cell in non_excit and src_cell in non_excit and dst_layer == src_layer:
+        # Recurrent non-excitatory
+        code = 'R'
+        details = f'({dst_cell}, {dst_layer})'
+    else:
+        return name
+
+    # Normalize unit label to lowercase (keeps Greek letters intact)
+    unit = suffix.lower()
+    return f"{unit}, {code} {details}"
+
+
+def generate_excel(model_hyperparams, output_path):
+    """
+    Create an Excel workbook for given model hyperparameters dict.
+    Adds columns: abbr, hyperparameter, and one per model label.
+    """
+    # collect all names
+    all_names = sorted({name for params in model_hyperparams.values() for name in params})
+    labels = list(model_hyperparams)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(['abbreviation', 'hyperparameter'] + labels)
+
+    for name in all_names:
+        abbr = shorten_label(name)
+        row = [abbr, name]
+        for label in labels:
+            val = model_hyperparams[label].get(name, '-')
+            if isinstance(val, (list, tuple)):
+                val = val[0] if val else '-'
+            if val != '-':
+                try:
+                    val = float(val)
+                except:
+                    pass
+            row.append(val)
+        ws.append(row)
+
+    wb.save(output_path)
+
+
 from reportlab.pdfgen import canvas
 def images_to_pdf(image_paths, output_path, dpi=300):
     # Define US Letter page size in points
@@ -1628,6 +1793,11 @@ def images_to_pdf(image_paths, output_path, dpi=300):
     
     c.save()
 
+
+
+########################################################################################################
+# Main script
+########################################################################################################
 
 @click.command()
 @click.option('--figure', default=None, help='Figure to generate')
@@ -1777,6 +1947,22 @@ def main(figure, recompute):
                     "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
         generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
+    if figure in ["all", "T3"]:
+        model_list = ["vanBP", #"vanBP_fixed_hidden", #"vanBP_0hidden",
+                      "bpDale_fixed", "bpDale_learned", "bpDale_noI", 
+                      "HebbWN_topsup", "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
+                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
+                      "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
+        figure_name = "FigT3_mnist_hyperparams"
+        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
+
+        figure_name = "FigT3_spiral_hyperparams"
+        model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
+                    "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
+        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
+
+
+    #-------------- Other Figures --------------
 
     # Representational similarity analysis
     if figure in ["all", "rsm"]:
