@@ -12,7 +12,7 @@ import h5py
 import click
 import gc
 import codecs
-import openpyxl
+import csv
 import re
 from reportlab.pdfgen import canvas
 from sklearn.metrics.pairwise import cosine_similarity
@@ -47,7 +47,7 @@ plt.rcParams.update({'font.size': 6,
 
 
 ########################################################################################################
-# Data hdf5 generation
+# Plot data generation (hdf5 and csv files of computed model analyses)
 ########################################################################################################
 
 def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=None):
@@ -259,6 +259,43 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute)
             gc.collect()
 
+
+def generate_hyperparams_csv(model_dict_all, model_list, save):
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    hyperparams_dict = {}
+
+    for model_key in model_list:
+        config_file = model_dict_all[model_key]['config']
+
+        # build path to config YAML
+        base = os.path.join(project_root, 'EIANN', 'network_config')
+        if 'mnist' in config_file and 'spiral' not in config_file:
+            base = os.path.join(base, 'mnist')
+        elif 'spiral' in config_file:
+            base = os.path.join(base, 'spiral')
+        cfg_path = os.path.join(base, config_file)
+
+        label = model_dict_all[model_key]['display_name']
+        model_cfg = ut.read_from_yaml(cfg_path)
+        proj_cfg = model_cfg.get('projection_config', {})
+        hyperparams_dict[label] = flatten_projection_config(proj_cfg)
+
+    df = pd.DataFrame.from_dict(hyperparams_dict)
+    hyperparam_names = []
+    abbreviated_names = []
+    for param_name in df.index:
+        abbreviation = shorten_label(param_name)
+        hyperparam_names.append(param_name)
+        abbreviated_names.append(abbreviation)
+    # df.insert(0, 'Full name', hyperparam_names)
+    df.insert(0, 'Param name', abbreviated_names)
+
+    # df = df.groupby("Param name", as_index=False).mean(numeric_only=True)
+    df = df.fillna("-")
+
+    out_file = f"{save}.csv"
+    df.to_csv(out_file, index=False)
+    print(f"Saved hyperparams table to {out_file}")
 
 
 ########################################################################################################
@@ -740,7 +777,7 @@ def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     if save is not None:
         # fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
-        fig.savefig(f"figures/{save}.tiff", dpi=300)
+        fig.savefig(f"figures/{save}.png", dpi=300)
 
 
 def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
@@ -1240,7 +1277,7 @@ def generate_model_summary_table(model_dict_all, model_list, config_path_prefix=
     all_models = list(dict.fromkeys(model_list))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
-    columns = {'display_name': 0.2, 'Architecture': 0.1, 'Hidden Layers': 0.1, 'Algorithm': 0.1, 'W Learning Rule': 0.13, 'B Learning Rule': 0.13, 'Bias': 0.05}
+    columns = {'display_name': 0.13, 'Architecture': 0.1, 'Hidden Layers': 0.1, 'Algorithm': 0.1, 'W Learning Rule': 0.13, 'B Learning Rule': 0.13, 'Bias': 0.05}
     table_vals = []
 
     for i,model_key in enumerate(all_models):
@@ -1249,7 +1286,7 @@ def generate_model_summary_table(model_dict_all, model_list, config_path_prefix=
         hdf5_path = f"data/plot_data_{network_name}.h5"
         network_table_vals = [model_dict[col] for col in columns.keys() if col in model_dict]
         with h5py.File(hdf5_path, 'r') as f:
-            print(f"Generating table for {network_name}")
+            # print(f"Generating table for {network_name}")
             data_dict = f[network_name]
 
             # Get the accuracy for each seed
@@ -1289,7 +1326,7 @@ def generate_model_summary_table(model_dict_all, model_list, config_path_prefix=
     
     for key, cell in table.get_celld().items():
         cell.set_linewidth(0)
-        cell.set_height(cell.get_height() * 1.3)
+        cell.set_height(cell.get_height() * 1.5)
         cell.set_text_props(fontname='Arial', fontsize=6)
         if key[0] == 0: # Header row
             cell.set_facecolor([0.9 for i in range(3)])
@@ -1307,30 +1344,53 @@ def generate_model_summary_table(model_dict_all, model_list, config_path_prefix=
         fig.savefig(f"figures/{save}.tiff", dpi=300)
 
 
-def generate_hyperparams_csv(model_dict_all, model_list, save):
+def generate_hyperparams_table(csv_filename, save):
+    # Load model specs from csv file
+    df = pd.read_csv(csv_filename)
+    # df = df.map(lambda x: codecs.decode(x, 'unicode_escape') if isinstance(x, str) else x) # convert special characters like \n
 
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    hyperparams = {}
+    num_columns = len(df.columns)
+    num_rows = len(df)
 
-    for model_key in model_list:
-        config_file = model_dict_all[model_key]['config']
+    mm = 1/25.4 #convert mm to inches
+    fig_width = num_columns*28*mm
+    fig_height = num_rows*10*mm
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    if fig_width > 8.5:
+        print(f"WARNING: Table too wide ({fig_width} inch) to fit on one page. Consider reducing the number of columns.")
+    if fig_height > 11:
+        print(f"WARNING: Table too tall ({fig_height} inch) to fit on one page. Consider reducing the number of rows.")
+    # fig, ax = plt.subplots(figsize=(5.5, 9))
+    ax.axis('off')
 
-        # build path to config YAML
-        base = os.path.join(project_root, 'EIANN', 'network_config')
-        if 'mnist' in config_file and 'spiral' not in config_file:
-            base = os.path.join(base, 'mnist')
-        elif 'spiral' in config_file:
-            base = os.path.join(base, 'spiral')
-        cfg_path = os.path.join(base, config_file)
+    def round_if_numeric(x, decimals):
+        try:
+            f = float(x)
+            return f"{f:.{decimals}f}"
+        except (ValueError, TypeError):
+            return x
+    df = df.map(round_if_numeric, decimals=4)
 
-        label = model_dict_all[model_key]['display_name']
-        model_cfg = ut.read_from_yaml(cfg_path)
-        proj_cfg = model_cfg.get('projection_config', {})
-        hyperparams[label] = flatten_projection_config(proj_cfg)
+    table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc="center", loc="center")
+    table.auto_set_font_size(False)    
+    for key, cell in table.get_celld().items():
+        cell.set_linewidth(0)
+        cell.set_height(cell.get_height() * 1.3)
+        cell.set_text_props(fontname='Arial', fontsize=6)
+        if key[0] == 0: # Header row
+            cell.set_facecolor([0.9 for i in range(3)])
+            cell.set_text_props(weight='bold')
+            cell.set_height(cell.get_height() * 1.2)
+        elif key[0] % 2 == 0: # Even rows
+            cell.set_facecolor([0.96 for i in range(3)]) # make even rows light grey
 
-    out_file = f"{save}.csv"
-    generate_excel(hyperparams, out_file)
-    print(f"Saved hyperparams table to {out_file}")
+        if key[1] == 0: # First column
+            cell.set_text_props(horizontalalignment='left')
+            # cell.set_width(cell.get_width() * 1.5)
+            
+    fig.savefig(f"figures/{save}.png", dpi=300)
+    fig.savefig(f"figures/{save}.svg", dpi=300)
+    fig.savefig(f"figures/{save}.tiff", dpi=300)
 
 
 
@@ -1637,125 +1697,132 @@ def flatten_projection_config(projection_config):
     Traverse the projection_config dict and extract weight_init_args, learning_rate, and theta_tau.
     Returns a dict mapping flattened keys to their values.
     """
-    hyperparams = {}
-
-    def recurse(node, path):
+    model_hyperparams = {}
+    
+    def recurse(node, path): 
         for key, val in node.items():
             if isinstance(val, dict):
-                if 'weight_init_args' in val or 'learning_rule_kwargs' in val:
-                    path_str = "".join(path + [key])
-                    # init scale
-                    if 'weight_init_args' in val:
-                        hyperparams[f"{path_str} Init Scale"] = val['weight_init_args']
-                    # learning rate
-                    lr = val.get('learning_rule_kwargs', {}).get('learning_rate')
-                    if lr is not None:
-                        hyperparams[f"{path_str} η"] = lr
-                    # theta_tau
-                    theta = val.get('learning_rule_kwargs', {}).get('theta_tau')
-                    if theta is not None:
-                        hyperparams[f"{path_str} θτ"] = theta
-                    # temporal_discount
-                    td = val.get('learning_rule_kwargs', {}).get('temporal_discount')
-                    if td is not None:
-                        hyperparams[f"{path_str} Temporal Discount"] = td
-                    # clone weight scale
-                    if val.get('weight_constraint') == 'clone_weight':
-                        clone_scale = val.get('weight_constraint_kwargs', {}).get('scale')
-                        if clone_scale is not None:
-                            hyperparams[f"{path_str} Clone Weight Scale"] = clone_scale
-                    # normalized weight scale
-                    if val.get('weight_constraint') == 'normalize_weight':
-                        norm_scale = val.get('weight_constraint_kwargs', {}).get('scale')
-                        if norm_scale is not None:
-                            hyperparams[f"{path_str} Normalized Weight Scale"] = norm_scale
-                recurse(val, path + [key])
+                if 'weight_init' in val:
+                    projection_name = "".join(path + [key])
+                    if projection_name == "OutputEInputE":
+                        # Replace to avoid redundant rows in the final table
+                        projection_name = "OutputEH2E"
 
-    recurse(projection_config, [])
-    return hyperparams
+                    if 'weight_init_args' in val:
+                        model_hyperparams[f"{projection_name} $_{{\mathrm{{init}}}}$"] = val['weight_init_args'][0]
+                    
+                    if 'learning_rule_kwargs' in val:
+                        learning_rule_kwargs = val['learning_rule_kwargs']
+                        model_hyperparams[f"{projection_name} $\eta$"] = learning_rule_kwargs['learning_rate']
+
+                        if 'theta_tau' in learning_rule_kwargs:
+                            model_hyperparams[f"{projection_name} $\\tau_{{\\theta}}$"] = learning_rule_kwargs['theta_tau']
+                    
+                        if 'temporal_discount' in learning_rule_kwargs:
+                            model_hyperparams[f"{projection_name} BTSP $\gamma$"] = val['learning_rule_kwargs']['temporal_discount']
+
+                        if 'k' in learning_rule_kwargs:
+                            model_hyperparams[f"{projection_name} BCM k"] = learning_rule_kwargs['k']
+
+                    if 'weight_constraint' in val:
+                        if val['weight_constraint'] == 'normalize_weight':
+                            model_hyperparams[f"{projection_name} $_{{\mathrm{{sum}}}}$"] = val['weight_constraint_kwargs']['scale']
+
+                        if val['weight_constraint'] == 'clone_weight':
+                            model_hyperparams[f"{projection_name} Clone Scale"] = val['weight_constraint_kwargs']['scale']
+
+                recurse(val, path + [key]) # Keep recursive traversal until we get to the args
+
+    recurse(projection_config, []) 
+    return model_hyperparams
 
 
 def shorten_label(name):
     """
     Map full hyperparam key to abbreviated form using W, B, Q, Y, R rules.
+    
+    Parameters:
+    -----------
+    name : str
+        The full hyperparameter name to be shortened
+    
+    Returns:
+    --------
+    str
+        Shortened label based on specific connectivity patterns
     """
+    # Split name into prefix and suffix parts
     parts = name.split(' ', 1)
     if len(parts) != 2:
         return name
-    prefix, suffix = parts
-    # regex for dest/source
-    m = re.match(r'^(Input|Output|H\d+)(E|DendI|SomaI)(Input|Output|H\d+)(E|DendI|SomaI)$', prefix)
-    if not m:
-        return name
-    dst_layer, dst_cell, src_layer, src_cell = m.groups()
-    non_excit = ('DendI', 'SomaI')
+    prefix, param_name = parts
 
-    def layer_index(layer):
-        if layer == 'Input': 
+    # Parse connectivity pattern using regex
+    pattern = r'^(Input|Output|H\d+)(E|DendI|SomaI)(Input|Output|H\d+)(E|DendI|SomaI)$'
+    match = re.match(pattern, prefix)
+    if not match:
+        return name
+    
+    # Extract layer and cell types for pre and post components
+    post_layer, post_cell, pre_layer, pre_cell = match.groups()
+
+    def get_layer_index(layer):
+        """Convert layer name to a numeric index for comparison"""
+        if layer == 'Input':
             return 0
-        if layer == 'Output': 
-            return float('inf')
+        if layer == 'Output':
+            return float('inf') # Output layer is considered the highest
         if layer.startswith('H'):
             return int(layer[1:])
         return float('nan')
 
-    # determine code & details
-    if dst_cell == 'E' and src_cell == 'E':
-        # Excitatory-to-excitatory: forward or backward
-        if layer_index(dst_layer) > layer_index(src_layer):
-            code = 'W'
-        else:
-            code = 'B'
-        details = f'({dst_layer})'
-    elif dst_cell in non_excit and src_cell == 'E':
-        # Non-excitatory receiving from excitatory
-        code = 'Q'
-        details = f'({dst_cell}, {dst_layer})'
-    elif dst_cell == 'E' and src_cell in non_excit:
-        # Excitatory receiving from non-excitatory
-        code = 'Y'
-        details = f'({src_cell}, {src_layer})'
-    elif dst_cell in non_excit and src_cell in non_excit and dst_layer == src_layer:
-        # Recurrent non-excitatory
-        code = 'R'
-        details = f'({dst_cell}, {dst_layer})'
+    # Determine connection type code and details based on connectivity pattern
+    pre_layer_idx = get_layer_index(pre_layer)
+    post_layer_idx = get_layer_index(post_layer)
+    if post_layer_idx > pre_layer_idx:
+        direction = 'forward'
+    elif post_layer_idx < pre_layer_idx:
+        direction = 'backward'
+    elif post_layer_idx == pre_layer_idx:
+        direction = 'lateral'
+
+    pre_type = 'E' if pre_cell=='E' else 'I'
+    post_type = 'E' if post_cell=='E' else 'I'
+
+    match direction, pre_type, post_type:
+        case 'forward','E','E':
+            proj_name = 'W'
+            details = f'({post_layer})'
+        case 'forward','E','I':
+            proj_name = 'W'
+            details = f'({post_cell}, {post_layer})'
+
+        case 'backward','E','E':
+            proj_name = 'B'
+            details = f'({post_layer})'
+
+        case 'lateral','E','I':
+            proj_name = 'Q'
+            details = f'({post_cell}, {post_layer})'
+        case 'lateral','I','E':
+            proj_name = 'Y'
+            details = f'({pre_cell}, {pre_layer})'
+        case 'lateral','I','I':
+            proj_name = 'R'
+            details = f'({post_cell}, {post_layer})'
+        case _:
+            return name  # Default case for unmatched patterns
+        
+    # Return the shortened form
+    if '\eta' in param_name:
+        return f"{param_name}, {proj_name} {details}"
+    elif any(k in param_name for k in ('\\theta','gamma','lambda','BCM')):
+        return f"{param_name}, {details}"
+    elif 'Clone Scale' in param_name:
+        return f"{proj_name} {param_name} {details}"
     else:
-        return name
-
-    # Normalize unit label to lowercase (keeps Greek letters intact)
-    unit = suffix.lower()
-    return f"{unit}, {code} {details}"
-
-
-def generate_excel(model_hyperparams, output_path):
-    """
-    Create an Excel workbook for given model hyperparameters dict.
-    Adds columns: abbr, hyperparameter, and one per model label.
-    """
-    # collect all names
-    all_names = sorted({name for params in model_hyperparams.values() for name in params})
-    labels = list(model_hyperparams)
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.append(['abbreviation', 'hyperparameter'] + labels)
-
-    for name in all_names:
-        abbr = shorten_label(name)
-        row = [abbr, name]
-        for label in labels:
-            val = model_hyperparams[label].get(name, '-')
-            if isinstance(val, (list, tuple)):
-                val = val[0] if val else '-'
-            if val != '-':
-                try:
-                    val = float(val)
-                except:
-                    pass
-            row.append(val)
-        ws.append(row)
-
-    wb.save(output_path)
+        return f"{proj_name}{param_name} {details}"
+    
 
 
 from reportlab.pdfgen import canvas
@@ -1930,10 +1997,12 @@ def main(figure, recompute):
         generate_figS3(model_dict_all, model_list, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
         generate_figS3(model_dict_all, model_list, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
+    #-------------- Supplementary Tables --------------
+
     if figure in ["all", "T1"]:
         saved_network_path_prefix += "MNIST/"
         figure_name = "FigT1_mnist_table"
-        model_list = ["vanBP", #"vanBP_fixed_hidden", #"vanBP_0hidden",
+        model_list = ["vanBP", "vanBP_fixed_hidden", "vanBP_0hidden",
                       "bpDale_fixed", "bpDale_learned", "bpDale_noI", 
                       "HebbWN_topsup", "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
                       "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
@@ -1948,15 +2017,33 @@ def main(figure, recompute):
         generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
     if figure in ["all", "T3"]:
-        model_list = ["vanBP", #"vanBP_fixed_hidden", #"vanBP_0hidden",
-                      "bpDale_fixed", "bpDale_learned", "bpDale_noI", 
-                      "HebbWN_topsup", "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
-                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
-                      "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-        figure_name = "FigT3_mnist_hyperparams"
+        csv_filename = "FigT3_mnist_hyperparams1.csv"
+        figure_name = "FigT3_mnist_hyperparams1"
+        generate_hyperparams_table(csv_filename, save=figure_name)
+
+        csv_filename = "FigT3_mnist_hyperparams2.csv"
+        figure_name = "FigT3_mnist_hyperparams2"
+        generate_hyperparams_table(csv_filename, save=figure_name)
+
+    if figure in ["all", "T4"]:
+        csv_filename = "FigT4_spiral_hyperparams.csv"
+        figure_name = "FigT4_spiral_hyperparams"
+        generate_hyperparams_table(csv_filename, save=figure_name)
+
+
+    if figure in ["all", "hyperparams"]:
+        model_list = ["vanBP", "vanBP_fixed_hidden", "vanBP_0hidden",
+                      "bpDale_fixed", "bpDale_learned", "bpDale_noI", "HebbWN_topsup"]
+        figure_name = "FigT3_mnist_hyperparams1"
         generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
 
-        figure_name = "FigT3_spiral_hyperparams"
+        model_list = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
+                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
+                      "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
+        figure_name = "FigT3_mnist_hyperparams2"
+        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
+
+        figure_name = "FigT4_spiral_hyperparams"
         model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
                     "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
         generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
