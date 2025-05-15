@@ -1724,12 +1724,15 @@ def flatten_projection_config(projection_config):
                         if 'k' in learning_rule_kwargs:
                             model_hyperparams[f"{projection_name} BCM k"] = learning_rule_kwargs['k']
 
+                        if 'BTSP' in val['learning_rule']:
+                            model_hyperparams[f"{projection_name} BTSP W$_{{\mathrm{{max}}}}$"] = val['weight_bounds'][1]
+
                     if 'weight_constraint' in val:
                         if val['weight_constraint'] == 'normalize_weight':
                             model_hyperparams[f"{projection_name} $_{{\mathrm{{sum}}}}$"] = val['weight_constraint_kwargs']['scale']
 
                         if val['weight_constraint'] == 'clone_weight':
-                            model_hyperparams[f"{projection_name} Clone Scale"] = val['weight_constraint_kwargs']['scale']
+                            model_hyperparams[f"{projection_name} $_{{\mathrm{{scale}}}}$"] = val['weight_constraint_kwargs']['scale']
 
                 recurse(val, path + [key]) # Keep recursive traversal until we get to the args
 
@@ -1816,10 +1819,8 @@ def shorten_label(name):
     # Return the shortened form
     if '\eta' in param_name:
         return f"{param_name}, {proj_name} {details}"
-    elif any(k in param_name for k in ('\\theta','gamma','lambda','BCM')):
+    elif any(k in param_name for k in ('\\theta','gamma','lambda','BCM','BTSP')):
         return f"{param_name}, {details}"
-    elif 'Clone Scale' in param_name:
-        return f"{proj_name} {param_name} {details}"
     else:
         return f"{proj_name}{param_name} {details}"
     
