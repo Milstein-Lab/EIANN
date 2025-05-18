@@ -1269,14 +1269,18 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
 
 def generate_model_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     mm = 1/25.4 #convert mm to inches
-    fig, ax = plt.subplots(figsize=(240*mm,200*mm))
+    num_rows = len(model_list)
+    fig_height = num_rows*6.5*mm + 10*mm
+    fig, ax = plt.subplots(figsize=(180*mm, fig_height))
     # fig, ax = plt.subplots(figsize=(5.5, 9))
     ax.axis('off')
 
     all_models = list(dict.fromkeys(model_list))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
-    columns = {'display_name': 0.13, 'Architecture': 0.1, 'Hidden Layers': 0.1, 'Algorithm': 0.1, 'W Learning Rule': 0.13, 'B Learning Rule': 0.13, 'Bias': 0.05}
+    columns = {'display_name': 0.17, 'Architecture': 0.12, 
+               'Hidden Layers': 0.12, 'Algorithm': 0.12, 
+               'W Learning Rule': 0.17, 'B Learning Rule': 0.17, 'Bias': 0.08}
     table_vals = []
 
     for i,model_key in enumerate(all_models):
@@ -1318,7 +1322,7 @@ def generate_model_summary_table(model_dict_all, model_list, config_path_prefix=
 
     column_labels = list(columns.keys()) + new_column_labels
     column_labels[0] = ""
-    col_widths = list(columns.values()) + [0.1, 0.1]
+    col_widths = list(columns.values()) + [0.14, 0.14]
     
     table = ax.table(cellText=table_vals, colLabels=column_labels, cellLoc="center", loc="center", colWidths=col_widths)
     table.auto_set_font_size(False)
@@ -1352,8 +1356,8 @@ def generate_hyperparams_table(csv_filename, save):
     num_rows = len(df)
 
     mm = 1/25.4 #convert mm to inches
-    fig_width = num_columns*28*mm
-    fig_height = num_rows*10*mm
+    fig_width = num_columns*22*mm
+    fig_height = num_rows*5.8*mm
     fig, ax = plt.subplots(figsize=(fig_width, fig_height))
     if fig_width > 8.5:
         print(f"WARNING: Table too wide ({fig_width} inch) to fit on one page. Consider reducing the number of columns.")
@@ -1370,7 +1374,8 @@ def generate_hyperparams_table(csv_filename, save):
             return x
     df = df.map(round_if_numeric, decimals=4)
 
-    table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc="center", loc="center")
+    col_widths = [1/(0.83*num_columns)] * num_columns
+    table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc="center", loc="center", colWidths=col_widths)
     table.auto_set_font_size(False)    
     for key, cell in table.get_celld().items():
         cell.set_linewidth(0)
@@ -2026,13 +2031,13 @@ def main(figure, recompute):
         figure_name = "FigT3_mnist_hyperparams1"
         generate_hyperparams_table(csv_filename, save=figure_name)
 
-        # csv_filename = "FigT3_mnist_hyperparams2.csv"
-        # figure_name = "FigT3_mnist_hyperparams2"
-        # generate_hyperparams_table(csv_filename, save=figure_name)
+        csv_filename = "FigT3_mnist_hyperparams2.csv"
+        figure_name = "FigT3_mnist_hyperparams2"
+        generate_hyperparams_table(csv_filename, save=figure_name)
 
-        # csv_filename = "FigT3_mnist_hyperparams3.csv"
-        # figure_name = "FigT3_mnist_hyperparams3"
-        # generate_hyperparams_table(csv_filename, save=figure_name)
+        csv_filename = "FigT3_mnist_hyperparams3.csv"
+        figure_name = "FigT3_mnist_hyperparams3"
+        generate_hyperparams_table(csv_filename, save=figure_name)
 
     if figure in ["all", "T4"]:
         csv_filename = "FigT4_spiral_hyperparams.csv"
