@@ -3591,8 +3591,8 @@ class BTSP_19(LearningRule):
         """
         Like the original BTSP class, this method includes both positive and negative modulatory events. In this
         variant, both positive and negative modulatory events nudge the somatic activity.
-        Plateaus increment an instructive signal (IS) that decays to zero in two time steps. Presynaptic activity
-        increments an eligibility trace (ET) that decays to zero in two time steps. Positive modulatory events
+        Plateaus increment an instructive signal (IS) that decays to zero in two samples. Presynaptic activity
+        increments an eligibility trace (ET) that decays to zero in two samples. Positive modulatory events
         result in a BTSP weight update that depends on IS, current weight, and ET.
         Negative modulatory events result in a weight update proportional to plateaus and presynaptic activity.
         If unit selection is stochastic, hidden units are selected for a weight update with a probability proportional

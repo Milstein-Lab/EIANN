@@ -2051,7 +2051,7 @@ BTSP_5J_learn_TD_HWN_1:
     H_I_size: 50.0
     Output_I_size: 10.0
 BTSP_5L:
-    # Like BTSP_3L; uses BTSP_19 learning rule with adjascent sample contrast implementation bug fixed
+    # Like BTSP_3L; uses BTSP_19 learning rule with adjacent sample contrast implementation bug fixed
     #    accuracy: 94.19200134277344
     #    dynamics_residuals: 0.0
     #    loss: 0.014692616648972034

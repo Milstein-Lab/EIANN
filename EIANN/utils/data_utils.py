@@ -342,7 +342,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
         return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
 
 
-def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0):
+def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0, offset=0.):
         """
         Generate points of spiral dataset
         - arm_size: number of points in each arm 
@@ -359,8 +359,10 @@ def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0):
 
         # arm_index is the offset or phase shift, allowing the function to generate points for each arm in the spiral
         for arm_index in range(K):
-            X[arm_index*arm_size:(arm_index+1)*arm_size, 0] = t*(torch.sin(2*np.pi/K*(2*t+arm_index)) + sigma*torch.randn(arm_size))
-            X[arm_index*arm_size:(arm_index+1)*arm_size, 1] = t*(torch.cos(2*np.pi/K*(2*t+arm_index)) + sigma*torch.randn(arm_size))
+            X[arm_index*arm_size:(arm_index+1)*arm_size, 0] = (
+                    t*(torch.sin(2*np.pi/K*(2*t+arm_index)) + sigma*torch.randn(arm_size))) + offset
+            X[arm_index*arm_size:(arm_index+1)*arm_size, 1] = (
+                    t*(torch.cos(2*np.pi/K*(2*t+arm_index)) + sigma*torch.randn(arm_size))) + offset
             y[arm_index*arm_size:(arm_index+1)*arm_size] = arm_index    
 
         all_data = []

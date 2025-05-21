@@ -21,6 +21,7 @@ import EIANN.utils as utils
 
 from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
+from pygments.lexers.ruby import FancyLexer
 
 context = Context()
 
@@ -146,11 +147,20 @@ def config_worker():
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
-
+    
+    if 'positive_inputs' in context():
+        context.positive_inputs = str_to_bool(context.positive_inputs)
+    else:
+        context.positive_inputs = False
+    if context.positive_inputs:
+        spiral_offset = 2.
+    else:
+        spiral_offset = 0.
+    
     # Load data
-    spiral_train = generate_spiral_data(arm_size=1400)
-    spiral_val = generate_spiral_data(arm_size=300)
-    spiral_test = generate_spiral_data(arm_size=300)
+    spiral_train = generate_spiral_data(arm_size=1400, offset=spiral_offset)
+    spiral_val = generate_spiral_data(arm_size=300, offset=spiral_offset)
+    spiral_test = generate_spiral_data(arm_size=300, offset=spiral_offset)
 
     # Put in dataloaders
     context.data_generator = torch.Generator()

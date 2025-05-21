@@ -2375,7 +2375,8 @@ class Top_Down_Hebbian_Temporal_Contrast_1(LearningRule):
     def __init__(self, projection, learning_rate=None, forward_only=False):
         """
         Assumes another learning rule has updated activity during a backward phase.
-        Weight updates are computed using the Contrastive Hebbian Learning approach of Xie & Seung, 2003.
+        Weight updates are computed using a temporally contrastive Hebbian learning approach similar to
+        Xie & Seung, 2003.
         :param projection: :class:'nn.Linear'
         :param learning_rate: float
         :param forward_only: bool; whether to consult forward_activity in weight update
@@ -2409,7 +2410,8 @@ class Top_Down_Hebbian_Temporal_Contrast_3(LearningRule):
     def __init__(self, projection, learning_rate=None):
         """
         Assumes another learning rule has updated activity during a backward phase.
-        Weight updates are computed using the Contrastive Hebbian Learning approach of Xie & Seung, 2003.
+        Weight updates are computed using a temporally contrastive Hebbian learning approach similar to
+        Xie & Seung, 2003.
         Consults presynaptic activity equilibrated during the backward phase.
         :param projection: :class:'nn.Linear'
         :param learning_rate: float
