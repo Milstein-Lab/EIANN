@@ -260,21 +260,20 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
             print(f'{data_key} saved to file: {file_path}')
 
 
-def delete_plot_data(network_name, seed, file_path):
+def delete_plot_data(variable_name, file_name, file_path_prefix="../data/"):
     """
-    Delete all data for a given network and seed from the hdf5 file
-    :param network_name: str
-    :param seed: int
-    :param data_key: str
-    :param file_path: str
+    Deletes the specified data from an hdf5 file.
     """
-    seed = str(seed)
+    file_path = file_path_prefix + file_name
     if os.path.exists(file_path):
         with h5py.File(file_path, 'a') as hdf5_file:
-            if network_name in hdf5_file:
-                if seed in hdf5_file[network_name]:
-                    del hdf5_file[network_name][seed]
-                    print(f'Deleted data for network {network_name} and seed {seed} from file: {file_path}')
+            for network_name in hdf5_file.keys():
+                for seed in hdf5_file[network_name]:
+                    if variable_name in hdf5_file[network_name][seed]:
+                        del hdf5_file[network_name][seed][variable_name]
+                        print(f"Deleted '{variable_name}' from {file_path.split('/')[-1]}, seed: {seed}")
+                    else:
+                        print(f"Variable '{variable_name}' not found in {file_path.split('/')[-1]}, seed: {seed}")
 
 
 def get_project_root():

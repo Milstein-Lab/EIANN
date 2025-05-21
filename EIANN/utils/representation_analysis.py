@@ -7,73 +7,101 @@ import scipy.stats as stats
 import copy
 from tqdm.autonotebook import tqdm
 from scipy import signal
+from collections import defaultdict
 
 from EIANN.utils import data_utils, network_utils
 import EIANN.plot as pt
 
-def compute_average_activity(activity, labels):
-    '''
-    Compute the average activity for each unit, grouped by the class labels
-    '''
-    num_units = activity.shape[1]
-    num_labels = labels.shape[1]
-    avg_activity = torch.zeros(num_units, num_labels)
-    for label in range(num_labels):
-        label_idx = torch.where(labels == label)
-        avg_activity[:, label] = torch.mean(activity[label_idx], dim=0)
-    return avg_activity
-
-
-def compute_test_activity(network, test_dataloader, sort, sorted_output_idx=None):
+    
+def compute_test_activity(network, test_dataloader, class_average:bool, sort:bool):
     """
-    Compute total accuracy (% correct) on given dataset
-    :param network:
-    :param test_dataloader:
-    :param population: :class:'Population' or str 'all'
-    :param sorted_output_idx: tensor of int
-    :param title: str
+    Compute activity for all populations in the network on the test dataloader
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
-    idx, data, targets = next(iter(test_dataloader))
-    data = data.to(network.device)
-    targets = targets.to(network.device)
-    labels = torch.argmax(targets, axis=1)  # convert from 1-hot vector to int label
-    output = network.forward(data, no_grad=True)
-    num_labels = targets.shape[1]
+    idx, data, target = next(iter(test_dataloader))
+    network.forward(data, no_grad=True)
+    pattern_labels = torch.argmax(target, dim=1)
+    sorted_pattern_labels, pattern_sort_idx = torch.sort(pattern_labels) 
+    if class_average:
+        num_labels = target.shape[1]
+        sorted_pattern_labels = torch.arange(num_labels)
 
-    # if unsupervised, sort output units by their mean activity
-    if sorted_output_idx is not None:
-        output = output[:, sorted_output_idx]
-    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / data.shape[0]
-    percent_correct = torch.round(percent_correct, decimals=2)
-
-    # Compute average activity for each population
-    average_pop_activity_dict = {}
+    # Compute sorted/averaged test activity for each population
     reversed_populations = list(reversed(network.populations.values())) # start with the output population
-    for population in reversed_populations:
-        avg_pop_activity = torch.zeros(population.size, num_labels)
-        for label in range(num_labels):
-            label_idx = torch.where(labels == label)
-            avg_pop_activity[:, label] = torch.mean(population.activity[label_idx], dim=0)
-            
-        # Sort units by their preferred input
+    pop_activity_dict = {}
+    unit_labels_dict = {}    
+    for i, population in enumerate(reversed_populations):
+        pop_activity = population.activity
+
+        if class_average: 
+            # Average activity across the patterns (rows) for each class label
+            num_units = pop_activity.shape[1]
+            avg_pop_activity = torch.zeros(num_labels, num_units)
+            for label in range(num_labels):
+                label_idx = torch.where(pattern_labels == label)
+                avg_pop_activity[label] = torch.mean(pop_activity[label_idx], dim=0)
+            pop_activity = avg_pop_activity
+
         if sort:
+            if not class_average:
+                # Sort patterns (rows) of pop_activity by label
+                pop_activity = pop_activity[pattern_sort_idx]
+
+            # Sort neurons (columns) by argmax of activity
             if population is network.output_pop:
-                if sorted_output_idx is None:
-                    sort_idx = torch.arange(0, network.output_pop.size)
-                else:
-                    sort_idx = sorted_output_idx
+                unit_sort_idx = torch.arange(0, network.output_pop.size)
+                unit_labels = pattern_labels[torch.argmax(pop_activity, dim=0)]
             else:
-                silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-                active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-                preferred_input_active = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-                _, idx = torch.sort(preferred_input_active)
-                sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
-            avg_pop_activity = avg_pop_activity[sort_idx]
+                silent_unit_idx = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
+                active_unit_idx = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
+                preferred_input_active = sorted_pattern_labels[torch.argmax(pop_activity[:,active_unit_idx], dim=0)]
+                unit_labels, sort_idx = torch.sort(preferred_input_active)
+                unit_sort_idx = torch.cat([active_unit_idx[sort_idx], silent_unit_idx])
+                unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_idx))*torch.nan])
+            pop_activity = pop_activity[:,unit_sort_idx]
+        else:
+            unit_labels = sorted_pattern_labels[torch.argmax(pop_activity, dim=0)]
+            
+        pop_activity_dict[population.fullname] = pop_activity
+        unit_labels_dict[population.fullname] = unit_labels
+    
+    if sort:
+        pattern_labels = sorted_pattern_labels
+        # return pop_activity_dict, pattern_labels, unit_labels_dict, pattern_sort_idx, unit_sort_idx
 
-        average_pop_activity_dict[population.fullname] = avg_pop_activity
+    return pop_activity_dict, pattern_labels, unit_labels_dict
 
-    return percent_correct, average_pop_activity_dict
+
+def compute_average_activity(pop_activity_dict, pattern_labels):
+    """
+    Compute average activity for each population
+    """
+    # Compute average activity for each population
+    avg_pop_activity_dict = {}
+    for pop_name, pop_activity in pop_activity_dict.items():
+        avg_pop_activity = []
+        for class_label in torch.unique(pattern_labels):
+            class_idx = torch.where(pattern_labels == class_label)
+            avg_class_activity = torch.mean(pop_activity[class_idx], dim=0)
+            avg_pop_activity.append(avg_class_activity)
+        avg_pop_activity_dict[pop_name] = torch.stack(avg_pop_activity)
+
+    return avg_pop_activity_dict
+
+
+def compute_test_accuracy(output, labels):
+    percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / len(labels)
+    percent_correct = torch.round(percent_correct, decimals=2)       
+    return percent_correct 
+
+
+def compute_test_activity_dynamics(network, test_dataloader):
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+    idx, data, target = next(iter(test_dataloader))
+    network.forward(data, no_grad=True, store_dynamics=True)
+    reversed_populations = list(reversed(network.populations.values())) # start with the output population
+    pop_dynamics_dict = {population.fullname: torch.stack(population.forward_steps_activity) for population in reversed_populations}
+    return pop_dynamics_dict
 
 
 def compute_dParam_history(network):
@@ -492,6 +520,168 @@ def compute_discriminability(population_activity):
     return discriminability
 
 
+def compute_representational_similarity_matrix(pop_activity_dict, population='all'):
+    """
+    Compute the representational similarity matrix between patterns and between units.
+    """
+    pattern_similarity_matrix_dict = {}
+    neuron_similarity_matrix_dict = {}
+
+    if population == 'all':
+        pop_activity_dict = pop_activity_dict
+    else:
+        pop_activity_dict = {population: pop_activity_dict[population]}
+
+    for pop_name, pop_activity in pop_activity_dict.items():
+        pattern_similarity_matrix_dict[pop_name] = cosine_similarity(pop_activity)
+        neuron_similarity_matrix_dict[pop_name] = cosine_similarity(pop_activity.T)
+
+    return pattern_similarity_matrix_dict, neuron_similarity_matrix_dict
+
+
+def compute_within_class_representational_similarity(network, test_dataloader, population='all'):
+    """
+    Compute cosine similarity between patterns and between units
+    """
+    percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = compute_test_activity(network, test_dataloader, class_average=False, sort=True)
+    pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = compute_representational_similarity_matrix(pop_activity_dict, population)
+
+    within_class_pattern_similarity_dict = {}
+    between_class_pattern_similarity_dict = {}
+    within_class_unit_similarity_dict = {}
+    between_class_unit_similarity_dict = {}
+    num_classes = len(np.unique(pattern_labels))
+
+    for pop_name in pattern_similarity_matrix_dict:
+        within_class_pattern_similarity_dict[pop_name] = []
+        between_class_pattern_similarity_dict[pop_name] = []
+        within_class_unit_similarity_dict[pop_name] = []
+        between_class_unit_similarity_dict[pop_name] = []
+        
+        for class_label in range(num_classes):
+            within_similarity_matrix = pattern_similarity_matrix_dict[pop_name][pattern_labels == class_label, :][:, pattern_labels == class_label]
+            lower_idx = np.tril_indices_from(within_similarity_matrix, -1)
+            within_class_pattern_similarity_dict[pop_name].append(within_similarity_matrix[lower_idx])
+
+            between_similarity_matrix = pattern_similarity_matrix_dict[pop_name][pattern_labels != class_label, :][:, pattern_labels == class_label]
+            between_class_pattern_similarity_dict[pop_name].append(between_similarity_matrix.flatten())
+
+            within_similarity_matrix = neuron_similarity_matrix_dict[pop_name][unit_labels_dict[pop_name] == class_label, :][:, unit_labels_dict[pop_name] == class_label]
+            lower_idx = np.tril_indices_from(within_similarity_matrix, -1)
+            within_class_unit_similarity_dict[pop_name].append(within_similarity_matrix[lower_idx])
+
+            between_similarity_matrix = neuron_similarity_matrix_dict[pop_name][unit_labels_dict[pop_name] != class_label, :][:, unit_labels_dict[pop_name] == class_label]
+            between_class_unit_similarity_dict[pop_name].append(between_similarity_matrix.flatten())
+
+    return within_class_pattern_similarity_dict, between_class_pattern_similarity_dict, within_class_unit_similarity_dict, between_class_unit_similarity_dict
+
+
+def compute_dimensionality_from_RSM(representational_similarity_matrix):
+    """
+    Estimate the effective intrinsic dimensionality of a neural population
+    using the participation ratio (PR) of the eigenvalue spectrum of a 
+    representational similarity matrix (RSM).
+
+    Parameters
+    ----------
+    RSM : np.ndarray
+        A square representational similarity matrix (RSM),
+        where each entry RSM[i, j] indicates the similarity between the tuning
+        vectors of neurons (or stimulus patterns) i and j. Typically computed using cosine 
+        similarity or correlation between neural response vectors.
+
+    Returns
+    -------
+    float
+        The participation ratio, defined as:
+
+            PR = (sum_i λ_i)^2 / sum_i (λ_i^2)
+
+        where λ_i are the eigenvalues of the RSM. This quantity estimates the 
+        effective number of orthogonal dimensions required to describe the 
+        representational space encoded by the population.
+
+        A value of:
+        - ~1 indicates complete redundancy or representational collapse 
+          (all neurons behave identically),
+        - ~n_neurons indicates complete decorrelation (each neuron codes 
+          independently).
+
+    Notes
+    -----
+    This approach is based on methods for characterizing the 
+    representational capacity or dimensionality of neural population codes.
+
+    See:
+    - Kriegeskorte, N., Mur, M., & Bandettini, P. A. (2008). Representational similarity analysis—connecting the branches of systems neuroscience. *Frontiers in Systems Neuroscience*, 2, 4. https://doi.org/10.3389/neuro.06.004.2008
+    - Yamins, D. L., et al. (2014). Performance-optimized hierarchical models predict neural responses in higher visual cortex. *PNAS*, 111(23), 8619–8624. https://doi.org/10.1073/pnas.1403112111
+    """
+    representational_similarity_matrix = 0.5 * (representational_similarity_matrix + representational_similarity_matrix.T) # Ensure symmetry for numerical stability (to avoid floating point rounding errors)
+
+    # Compute eigenvalues
+    eigenvalues = np.linalg.eigvalsh(representational_similarity_matrix)
+
+    # Remove small negative eigenvalues due to numerical precision
+    eigenvalues = eigenvalues[eigenvalues > 1e-10]
+
+    # Compute participation ratio
+    pr = (np.sum(eigenvalues) ** 2) / np.sum(eigenvalues ** 2)
+    return pr
+
+
+def compute_dimensionality_from_activity(pop_activity_dict):
+    """
+    Compute the intrinsic dimensionality (participation ratio) of neural representations across layers.
+
+    For each population (e.g., layer) in the provided dictionary, the function performs PCA on the
+    (pattern x neuron) activity matrix and calculates the participation ratio of the eigenvalue spectrum.
+
+    This metric estimates the effective number of dimensions used to encode stimulus representations to assess representational capacity or collapse.
+
+    The participation ratio is defined as:
+        (sum_i λ_i)^2 / sum_i (λ_i^2)
+    where λ_i are the eigenvalues of the covariance matrix of the activity.
+
+    Parameters
+    ----------
+    pop_activity_dict : dict[str, np.ndarray]
+        Dictionary where each key is a layer name and each value is a 2D numpy array of shape 
+        (n_patterns, n_neurons), representing the activation of that population across inputs.
+
+    Returns
+    -------
+    dim_dict : dict[str, float]
+        Dictionary mapping each layer name to its estimated intrinsic dimensionality (participation ratio).
+
+    Reference
+    ---------
+    - Gao, P. et al. (2017). A theory of multineuronal dimensionality, dynamics and measurement. bioRxiv.
+      https://doi.org/10.1101/214262
+    - Stringer, C. et al. (2019). High-dimensional geometry of population responses in visual cortex. Nature.
+      https://doi.org/10.1038/s41586-019-1346-5
+    """
+    dim_dict = {}
+    for population_name, X in pop_activity_dict.items():
+        # Center the data across patterns (rows)
+        X = np.array(X)
+        X_centered = X - np.mean(X, axis=0, keepdims=True)
+        
+        # Compute covariance matrix
+        cov = np.cov(X_centered, rowvar=False)  # shape: (n_neurons, n_neurons)
+
+        # Compute eigenvalues
+        eigvals = np.linalg.eigvalsh(cov)  # sorted ascending
+        eigvals = np.clip(eigvals, 0, None) # clip to avoid tiny negatives due to numerical error
+
+        # Compute participation ratio
+        numerator = np.sum(eigvals) ** 2
+        denominator = np.sum(eigvals ** 2)
+        dim = numerator / denominator if denominator > 0 else 0.0
+        dim_dict[population_name] = dim
+
+    return dim_dict
+
+
 def spatial_structure_similarity_fft(img1, img2):
     '''
     Compute the structural similarity of two images based on the correlation of their 2D spatial frequency distributions
@@ -507,6 +697,62 @@ def spatial_structure_similarity_fft(img1, img2):
     spatial_structure_similarity =  signal.correlate2d(freq1, freq2, mode='valid')[0][0]
 
     return spatial_structure_similarity
+
+
+def sample_evenly_by_class(preferred_classes, num_units):
+    """
+    Sample a specified number of units evenly across a set of classes.
+    Always returns exactly num_units elements.
+    """
+    preferred_classes = np.array(preferred_classes)
+    unique_classes = np.unique(preferred_classes).tolist()
+    num_classes = len(unique_classes)
+    samples_per_class = num_units // num_classes
+    remainder = num_units % num_classes
+
+    # Count how many samples to take per class
+    class_sample_counts = {cls: samples_per_class for cls in unique_classes}
+    for cls in unique_classes[:remainder]:
+        class_sample_counts[cls] += 1
+
+    # Get indices grouped by class
+    class_to_indices = defaultdict(list)
+    for idx, val in enumerate(preferred_classes):
+        class_to_indices[int(val)].append(idx)
+
+    selected_indices = []
+    selected_values = []
+    
+    # First, collect as many elements as we can following the even distribution
+    unavailable_samples = 0
+    for cls in unique_classes:
+        indices = class_to_indices[cls]
+        # Take only what's available for this class
+        available = min(len(indices), class_sample_counts[cls])
+        selected_indices.extend(indices[:available])
+        selected_values.extend([cls] * available)
+        
+        # Track deficit
+        unavailable_samples += class_sample_counts[cls] - available
+    
+    # If we couldn't get enough samples with even distribution,
+    # fill the remaining slots with whatever classes have extras
+    if unavailable_samples > 0:
+        # Create a pool of remaining indices from all classes
+        remaining_indices = []
+        remaining_classes = []
+        for cls in unique_classes:
+            used = min(len(class_to_indices[cls]), class_sample_counts[cls])
+            remaining = class_to_indices[cls][used:]
+            remaining_indices.extend(remaining)
+            remaining_classes.extend([cls] * len(remaining))
+        
+        # Add as many as needed to reach num_units
+        needed = num_units - len(selected_indices)
+        selected_indices.extend(remaining_indices[:needed])
+        selected_values.extend(remaining_classes[:needed])
+    
+    return selected_values, selected_indices
 
 
 def compute_rf_structure(receptive_fields, dimensions=None, method='moran'):
@@ -997,7 +1243,7 @@ def compute_spiral_decisions_data(network, test_dataloader):
     wrong_indices = (predicted_labels != test_labels).nonzero().squeeze()
 
     # For decision map boundary plot
-    meshgrid_size = 500
+    meshgrid_size = 1000
     x_max = 2.0
     arms = 4
     eps=1e-3
@@ -1008,15 +1254,17 @@ def compute_spiral_decisions_data(network, test_dataloader):
     X_all = torch.cat([ii.unsqueeze(-1),
 					   jj.unsqueeze(-1)],
 					   dim=-1).view(-1, 2)
-    
     y_pred = network.forward(X_all)
-    decision_map = torch.argmax(y_pred, dim=1)
 
-    for i in range(len(data)):
-        indices = (X_all[:, 0] - data[i, 0])**2 + (X_all[:, 1] - data[i, 1])**2 < eps
-        decision_map[indices] = (arms + predicted_labels[i]).long()
+    decision_map = torch.argmax(y_pred, dim=1)
+    # decision_value, decision_map = torch.max(y_pred, dim=1)
+    y_prob = torch.nn.functional.softmax(y_pred, dim=1)
+    decision_value, _ = torch.max(y_prob, dim=1)
+
     decision_map = decision_map.view(meshgrid_size, meshgrid_size).detach().cpu()
     decision_map = decision_map.T
+    decision_value = decision_value.view(meshgrid_size, meshgrid_size).detach().cpu()
+    decision_value = decision_value.T
 
     # Return data for plotting
     decision_data = {
@@ -1025,45 +1273,9 @@ def compute_spiral_decisions_data(network, test_dataloader):
         "accuracy": accuracy,
         "correct_indices": correct_indices,
         "wrong_indices": wrong_indices,
-        "decision_map": decision_map
+        "decision_map": decision_map,
+        "decision_value": decision_value
     }
 
     return decision_data
 
-
-# def compute_spiral_decisions_data(network, test_dataloader):
-#     '''
-#     Get the correct and wrong indices to plot the spiral loss landscape
-#     '''
-#     # Test batch inputs
-#     inputs = network.Input.E.activity
-
-#     # Predicted labels after training 
-#     outputs = network.Output.E.activity
-#     _, predicted_labels = torch.max(outputs, 1)
-
-#     # Test labels
-#     on_device = False
-#     for _, _, sample_target in test_dataloader:
-#         sample_target = torch.squeeze(sample_target)
-#         if not on_device:
-#             sample_target = sample_target.to(network.device)
-#         break
-#     _, test_labels = torch.max(sample_target, 1)
-
-#     # Accuracy
-#     accuracy = (predicted_labels == test_labels).sum().item() / len(test_labels)
-
-#     # Data needed for graphing
-#     correct_indices = (predicted_labels == test_labels).nonzero().squeeze()
-#     wrong_indices = (predicted_labels != test_labels).nonzero().squeeze()
-
-#     decision_data = {
-#         "inputs": inputs,
-#         "test_labels": test_labels,
-#         "accuracy": accuracy,
-#         "correct_indices": correct_indices,
-#         "wrong_indices": wrong_indices
-#     }
-
-#     return decision_data

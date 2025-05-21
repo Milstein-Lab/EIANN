@@ -17,7 +17,7 @@ sbatch <<EOT
 #SBATCH -J $JOB_NAME
 #SBATCH -o /scratch/${USER}/logs/EIANN/$JOB_NAME.%j.o
 #SBATCH -e /scratch/${USER}/logs/EIANN/$JOB_NAME.%j.e
-#SBATCH --partition=nonpre,p_am2820_1,genetics_1,main                 # Choose the appropriate partition (options: main, gpu, mem, cmain, cgpu, nonpre, graphical)
+#SBATCH --partition=nonpre,main,mem                                   # Choose the appropriate partition (options: main, gpu, mem, cmain, cgpu, nonpre, graphical)
 #SBATCH --requeue                                                     # Keep the job in the queue if it is preempted                   
 #SBATCH --ntasks=251                                                  # Total number of cores/tasks across all nodes
 #SBATCH --time=24:00:00                                               # Time limit for the job
@@ -28,7 +28,12 @@ set -x
 
 cd $HOME/EIANN/EIANN
 
-srun --mpi=pmi2 -n 251 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
+eval "$(conda shell.bash hook)"
+conda activate eiann
+export OMPI_MCA_btl_tcp_if_include=ib0
+module load openmpi/4.1.6
+
+mpirun -np 251 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=/scratch/${USER}/data/EIANN --pop_size=200 --max_iter=50 --path_length=3 --disp \
   --framework=mpi
 EOT
@@ -36,7 +41,7 @@ EOT
 
 # Run with this:
 # cd $HOME/EIANN/EIANN/optimize/jobscripts/amarel
-# sbatch optimize_EIANN_amarel.sh optimize/optimize_config/spiral/nested_optimize_EIANN_2_hidden_BP_like_5J_fixed_bias.yaml spiral_BP_like_5J_fixed_bias
+# sbatch optimize_EIANN_amarel.sh optimize/optimize_config/spiral/20250217_nested_optimize_EIANN_2_hidden_spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_config.yaml spiral_DTP_fixed_DendI_fixed_SomaI_learned_bias_3
 
 # See error and output logs with this:
 # cd /scratch/$USER/logs/EIANN
@@ -46,6 +51,8 @@ EOT
 
 
 
+# See the progress
+# watch -n 1 squeue -u yc1376
 
 # If you want to specify the number of nodes to run on, add this:
 # #SBATCH --nodes=10

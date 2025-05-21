@@ -407,26 +407,43 @@ def plot_MNIST_examples(network, dataloader):
     fig.show()
 
 
-def plot_network_dynamics(network):
+def plot_network_dynamics(pop_dynamics_dict, axes=None):
     """
-    Plots activity dynamics for every population in the network
+    Plot the activity dynamics of each population in the network
     """
-    rows = len(network.layers)
-    cols = np.max([len(layer.populations) for layer in network])
+    if axes is None:
+        fig = plt.figure(figsize=(8, 2))
+        axes = gs.GridSpec(1, 2, figure=fig, wspace=0.5, hspace=0.5)
+    else:
+        fig = axes.figure
+    ax_E = fig.add_subplot(axes[0])
+    ax_I = fig.add_subplot(axes[1])
 
-    fig = plt.figure(figsize=(8, 6))
-    axes = gs.GridSpec(nrows=rows, ncols=cols,
-                       left=0.05, right=0.98,
-                       top=0.83, bottom=0.1,
-                       wspace=0.3, hspace=0.8)
+    E_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in pop_dynamics_dict.items() if 'E' in pop_name and 'Input' not in pop_name}
+    for i, (pop_name, pop_dynamics) in enumerate(E_populations.items()):
+        avg_dynamics = torch.mean(pop_dynamics, dim=(1,2))
+        avg_dynamics = avg_dynamics/avg_dynamics[-1]
+        ax_E.plot(avg_dynamics, color='r', alpha=1/(1+i), label=pop_name)
+    ax_E.set_ylim([0, 3])
+    ax_E.set_xlabel('Forward timestep')
+    ax_E.set_ylabel('Activity dynamics (norm.)')
+    # ax_E.set_title('E populations')
+    legend = ax_E.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.25), frameon=False, framealpha=0.5, handlelength=0.8, handletextpad=0.5, columnspacing=1)
+    for line in legend.get_lines():
+        line.set_linewidth(3)
 
-    for row, layer in enumerate(network):
-        for col, population in enumerate(layer):
-            ax = fig.add_subplot(axes[row, col])
-            # average_activity_dynamics = torch.mean(population.activity_history, dim=0)
-            average_activity_dynamics = torch.mean(population.activity_history[-21:], dim=(0,2))
-            ax.plot(average_activity_dynamics)
-            ax.set_title(f'{population.fullname} dynamics')
+    I_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in pop_dynamics_dict.items() if 'SomaI' in pop_name}
+    for i, (pop_name, pop_dynamics) in enumerate(I_populations.items()):
+        avg_dynamics = torch.mean(pop_dynamics, dim=(1,2))
+        avg_dynamics = avg_dynamics/avg_dynamics[-1]
+        ax_I.plot(avg_dynamics, color='b', alpha=1/(1+i), label=pop_name)
+    ax_I.set_ylim([0, 3])
+    ax_I.set_xlabel('Forward timestep')
+    ax_I.set_ylabel('Activity dynamics (norm.)')
+    # ax_I.set_title('I populations')
+    legend = ax_I.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0.2, 1.25), frameon=False, framealpha=0.5, handlelength=0.8, handletextpad=0.5, columnspacing=1)
+    for line in legend.get_lines():
+        line.set_linewidth(3)
 
 
 def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, population, units, t, axes=None, colors=None):
@@ -578,7 +595,7 @@ def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
 
 def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_classes=None, average_pop_activity=None, 
                           num_units=None, num_cols=None, num_rows=None, activity_threshold=1e-10, cmap='custom',
-                          ax_list=None, dimensions=None):
+                          ax_list=None, dimensions=None, class_labels=True):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
     structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
@@ -597,6 +614,9 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
     :param ax_list:
     :param dimensions: tuple of int
     """
+    if not isinstance(receptive_fields, torch.Tensor):
+        receptive_fields = torch.tensor(receptive_fields)
+
     if isinstance(scale, torch.Tensor):
         scale = scale.diagonal()
         print(f'Min activity: {torch.min(scale)}, Max activity: {torch.max(scale)}')
@@ -622,22 +642,33 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
             average_pop_activity = average_pop_activity[sorted_idx]
             preferred_classes = torch.argmax(torch.tensor(average_pop_activity), dim=1)
 
-    # Filter by class activity preference to sample units across all classes
-    if sort==True and preferred_classes is not None:
-        assert isinstance(preferred_classes, torch.Tensor), 'sort_by_activities must be a tensor of maxact class labels'
-        class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
-        preferred_classes = preferred_classes[class_sorted_idx]
-        receptive_fields = receptive_fields[class_sorted_idx]
-        if average_pop_activity is not None:
-            average_pop_activity = average_pop_activity[class_sorted_idx]
-        if isinstance(scale, torch.Tensor):
-            scale = scale[class_sorted_idx]
+        # Filter by class activity preference to sample units across all classes
+        if preferred_classes is not None:
+            class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
+            preferred_classes = preferred_classes[class_sorted_idx]
+            receptive_fields = receptive_fields[class_sorted_idx]
+            if average_pop_activity is not None:
+                average_pop_activity = average_pop_activity[class_sorted_idx]
+            if isinstance(scale, torch.Tensor):
+                scale = scale[class_sorted_idx]
 
+    if ax_list is None:
+        num_units = receptive_fields.shape[0]
+    else:
+        num_units = len(ax_list)
+    
     # Filter by number of units
-    if num_units is not None:
-        receptive_fields = receptive_fields[:num_units]
-        if isinstance(scale, torch.Tensor):
-            scale = scale[:num_units]   
+    if num_units is not None and num_units < receptive_fields.shape[0]:
+        if preferred_classes is not None:
+            values, idx = ut.sample_evenly_by_class(preferred_classes, num_units=num_units)            
+            receptive_fields = receptive_fields[idx]
+            preferred_classes = preferred_classes[idx]
+            if isinstance(scale, torch.Tensor):
+                scale = scale[idx]  
+        else:
+            receptive_fields = receptive_fields[:num_units]
+            if isinstance(scale, torch.Tensor):
+                scale = scale[:num_units]   
 
     if (num_cols is not None) and (num_rows is not None):
         num_units = num_cols * num_rows
@@ -653,11 +684,6 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         else:
             receptive_fields = receptive_fields * scale     
 
-    if ax_list is None:
-        num_units = receptive_fields.shape[0]
-    else:
-        num_units = len(ax_list)
-
     # Calculate the number of rows and columns for the plot (to make it approximately square)
     if num_cols is None:
         if num_units < 25:
@@ -670,17 +696,19 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
     size = np.min([12, num_cols])
     num_rows += 1
     if ax_list is None:
-        axes = gs.GridSpec(num_rows, num_cols)
         fig = plt.figure(figsize=(size, size * num_rows / num_cols))
+        axes = gs.GridSpec(num_rows, num_cols, figure=fig)
     else:
         fig = ax_list[0].get_figure()
 
     # Set colorscale limits for all receptive field images
-    colorscale_max = torch.max(receptive_fields.abs())
-    if torch.min(receptive_fields) < 0:
-        colorscale_min = -colorscale_max
-    else:
-        colorscale_min = 0
+    # colorscale_max = torch.max(receptive_fields.abs())
+    # if torch.min(receptive_fields) < 0:
+    #     colorscale_min = -colorscale_max
+    # else:
+    #     colorscale_min = 0
+    colorscale_max = 1
+    colorscale_min = -1
         
     if cmap == 'custom':
         # Create custom colormap
@@ -726,13 +754,12 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
             ax = fig.add_subplot(axes[row_idx, col_idx])
         else:
             ax = ax_list[i]
-        
         im = ax.imshow(receptive_fields[i].view(rf_width, rf_height), cmap=my_cmap, vmin=colorscale_min,
                        vmax=colorscale_max, aspect='equal', interpolation='none')
         ax.axis('off')
 
-        if preferred_classes is not None:
-            ax.text(0, 8, f'{preferred_classes[i]}', color='k', fontsize=4)        
+        if preferred_classes is not None and class_labels==True:
+            ax.text(0, 8, f'{preferred_classes[i]}', color='k', fontsize=5)        
 
     if ax_list is None:
         fig.tight_layout(pad=0.2)
@@ -741,6 +768,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
         fig.show()
         # plt.show()
+        # return fig
     else:
         return im
 
@@ -848,7 +876,7 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
     fig.show()
 
 
-def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, population=None, title=None, ax=None, cbar=True):
+def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, population='OutputE', title=None, ax=None, cbar=True):
     """
     Plot the average population activity from a data dict.
     :param average_pop_activity_dict: dict of average population activity
@@ -858,11 +886,7 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
     :param ax: (optional) matplotlib axis to plot on
     :param cbar: (optional) whether to include a colorbar
     """
-    if population is None:
-        # Include only last population in the data dict
-        population = list(average_pop_activity_dict.keys())[0]
-        average_pop_activity_dict = {population: average_pop_activity_dict[population]}
-    elif isinstance(population, str):
+    if isinstance(population, str):
         if population != 'all':
             average_pop_activity_dict = {population: average_pop_activity_dict[population]}
     elif isinstance(population, list):
@@ -875,24 +899,24 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
         avg_pop_activity = torch.tensor(np.array(avg_pop_activity))
         if sort: # Sort units by their preferred input
             if pop_name == 'OutputE':
-                sort_idx = torch.arange(0, avg_pop_activity.shape[0])
+                sort_idx = torch.arange(0, avg_pop_activity.shape[1])
             else:
-                silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-                active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-                preferred_input_active = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
+                silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=0) == 0)[0]
+                active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=0) > 0)[0]
+                preferred_input_active = torch.argmax(avg_pop_activity[:,active_unit_indexes], dim=0)
                 _, idx = torch.sort(preferred_input_active)
                 sort_idx = torch.cat([active_unit_indexes[idx], silent_unit_indexes])
-            avg_pop_activity = avg_pop_activity[sort_idx]
+            avg_pop_activity = avg_pop_activity[:,sort_idx]
 
         if ax is None:
             fig, _ax = plt.subplots()
         else:
             _ax = ax
 
-        im = _ax.imshow(avg_pop_activity, aspect='auto', interpolation='none')
+        im = _ax.imshow(avg_pop_activity.T, aspect='auto', interpolation='none', vmin=0)
         if cbar:
             cbar = plt.colorbar(im, ax=_ax)
-        _ax.set_xticks(range(avg_pop_activity.shape[1]))
+        _ax.set_xticks(range(avg_pop_activity.shape[0]))
         _ax.set_xlabel('Labels')
         _ax.set_ylabel(f'{pop_name} unit')
 
@@ -917,44 +941,99 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     :param sorted_output_idx: tensor of int
     :param title: str
     """
-    percent_correct, average_pop_activity_dict = (
-        ut.compute_test_activity(network, test_dataloader, sort=True, sorted_output_idx=sorted_output_idx))
+    # percent_correct, average_pop_activity_dict,_,_ = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True, sorted_output_idx=sorted_output_idx)
+
+    # Calculate accuracy
+    pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=False)
+    if sorted_output_idx is not None:
+        pop_activity_dict[network.output_pop.fullname] = average_pop_activity_dict[network.output_pop.fullname][:, sorted_output_idx]
+    output = pop_activity_dict[network.output_pop.fullname]
+    percent_correct = ut.compute_test_accuracy(output, pattern_labels)
     print(f'Batch accuracy = {percent_correct}%')
+
+    # Get average activity
+    average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True)
 
     plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, title=title, ax=ax)
 
 
-def plot_rsm(network, test_dataloader):
+def plot_rsm(pop_activity_dict, pattern_labels, unit_labels_dict, population='all'):
+    """
+    Plot the representational similarity matrix (RSM) and related unit similarity matrix for a given population.
+    """
 
-    idx, data, target = next(iter(test_dataloader))
-    data.to(network.device)
-    network.forward(data, no_grad=True)
-    pop_activity = network.H1.E.activity
+    # percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
 
-    # Sort rows of pop_activity by label
-    _, sort_idx = torch.sort(torch.argmax(target, dim=1))
-    pop_activity = pop_activity[sort_idx]
+    if population in ['E', 'SomaI', 'DendI']:
+        pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population='all')
+        pattern_similarity_matrix_dict = {pop_name: pattern_similarity_matrix_dict[pop_name] for pop_name in pattern_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
+        neuron_similarity_matrix_dict = {pop_name: neuron_similarity_matrix_dict[pop_name] for pop_name in neuron_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
+    else:
+        pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population=population)
 
-    similarity_matrix = cosine_similarity(pop_activity)
+    for pop_name in pattern_similarity_matrix_dict:
+        pattern_similarity_matrix = pattern_similarity_matrix_dict[pop_name]
+        neuron_similarity_matrix = neuron_similarity_matrix_dict[pop_name]
 
-    fig, ax = plt.subplots()
-    im = plt.imshow(similarity_matrix, interpolation='none')
-    cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
-    cbar = plt.colorbar(im, cax=cax)
-    cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+        fig = plt.figure(figsize=(8, 4))
+        axes = gs.GridSpec(nrows=1, ncols=2, wspace=0.4)
 
-    num_samples = target.shape[0]
-    num_labels = target.shape[1]
-    samples_per_label = num_samples // num_labels
-    x_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
-    y_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
-    ax.set_xticklabels(range(0, num_labels))
-    ax.set_yticklabels(range(0, num_labels))
-    ax.set_xticks(x_ticks)
-    ax.set_yticks(y_ticks)
-    ax.set_xlabel('Patterns (sorted by label)')
-    ax.set_ylabel('Patterns (sorted by label)')
-    ax.set_title('Representational Similarity Matrix')
+        ax = fig.add_subplot(axes[0])
+        im = ax.imshow(pattern_similarity_matrix, interpolation='none')
+        # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
+        # cbar = plt.colorbar(im, cax=cax)
+        # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+        num_samples = pattern_similarity_matrix.shape[0]
+        num_labels = len(np.unique(pattern_labels))
+        samples_per_label = num_samples // num_labels
+        x_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
+        y_ticks = np.arange(samples_per_label / 2, num_samples, samples_per_label)
+        ax.set_xticks(x_ticks)
+        ax.set_yticks(y_ticks)
+        ax.set_xticklabels(range(0, num_labels))
+        ax.set_yticklabels(range(0, num_labels))
+        ax.set_xlabel('Patterns (sorted by label)')
+        ax.set_ylabel('Patterns (sorted by label)')
+        ax.set_title('Pattern cosine similarity')
+
+        ax = fig.add_subplot(axes[1])
+        im = ax.imshow(neuron_similarity_matrix, interpolation='none')
+        # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
+        # cbar = plt.colorbar(im, cax=cax)
+        # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+        ax.set_xlabel('Neurons (sorted by argmax)')
+        ax.set_ylabel('Neurons (sorted by argmax)')
+        ax.set_title('Neuron cosine similarity')
+        num_units = neuron_similarity_matrix.shape[0]
+        if pop_name == 'OutputE':
+            x_ticks = np.arange(0, num_units)
+            ax.set_xticks(x_ticks)
+            # ax.set_xticklabels(range(0, num_units, 10))
+            y_ticks = np.arange(0, num_units)
+            ax.set_yticks(y_ticks)
+            # ax.set_yticklabels(range(0, num_units, 10))
+
+        unit_labels = unit_labels_dict[pop_name]
+        nan_idx = torch.isnan(unit_labels)
+        pop_is_sorted = torch.all(unit_labels[~nan_idx][:-1] <= unit_labels[~nan_idx][1:])
+        if pop_is_sorted:
+            for i in range(10):
+                class_idx = np.where(unit_labels == i)[0]
+                cmap = plt.colormaps['tab20']
+                if len(class_idx) > 0:
+                    class_boundary_start = class_idx[0]
+                    class_boundary_end = class_idx[-1]+1
+                    ax.add_patch(matplotlib.patches.Rectangle((class_boundary_start-0.5, class_boundary_start-0.5), class_boundary_end - class_boundary_start, class_boundary_end - class_boundary_start, fill=False, edgecolor=cmap(i), linewidth=3, facecolor=cmap(i)))
+                    # class_boundary = class_idx[-1] + 0.5
+                    # ax.vlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
+                    # ax.hlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
+        elif pop_name != 'OutputE':
+            print(f'WARNING: {pop_name} is not sorted')
+
+        if len(neuron_similarity_matrix_dict) > 1:
+            fig.suptitle(pop_name)
+
+    return fig
 
 
 def plot_plateaus(population, start=0, end=-1):
@@ -1191,8 +1270,9 @@ def plot_learning_rule_diagram(axes_list=None):
     if axes_list is None:
         fig, axes_list = plt.subplots(1, 4, figsize=[10, 2])
 
-    a_pre = 1                   # presynaptic activation
+    a_pre = 1  # presynaptic activation
     d = np.linspace(-1, 1, 100) # dendritic state
+    mathfont = 'stix'
 
     # Backprop
     dW_BP = d*a_pre
@@ -1200,8 +1280,8 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.plot(d, dW_BP, label='BP-like', color='black', linewidth=1.5)
     ax.hlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
     ax.vlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
-    ax.set_xlabel('$\hat{d}$', math_fontfamily='cm', fontsize=10)
-    ax.set_ylabel(r'$\Delta W$', math_fontfamily='cm', fontsize=10, rotation=0, labelpad=10, y=0.45)
+    ax.set_xlabel('$\hat{d}$', math_fontfamily=mathfont, fontsize=10)
+    ax.set_ylabel(r'$\Delta W$', math_fontfamily=mathfont, fontsize=10, rotation=0, labelpad=10, y=0.45)
     ax.set_xticks([0])
     ax.set_yticks([-1, 0, 1])
     ax.set_title('BP-like (dend. gating)', fontsize=8)
@@ -1213,7 +1293,7 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.hlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
     ax.vlines(0, -1, 1, linestyle='--', color='gray', linewidth=1, alpha=0.5)
     ax.plot(delta_a, dW_HTC, label='BP-like', color='black', linewidth=1.5)
-    ax.set_xlabel('$\Delta a = \hat{a} - a$', math_fontfamily='cm', fontsize=10)
+    ax.set_xlabel('$\Delta a = \hat{a} - a$', math_fontfamily=mathfont, fontsize=10)
     ax.set_xticks([0])
     ax.set_yticks([-1, 0, 1])
     ax.set_title('Hebb Temp. Contrast', fontsize=8)
@@ -1235,7 +1315,7 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.set_ylim(-0.2, 0.3)
     ax.set_xticks([0])
     ax.set_yticks([0])
-    ax.set_xlabel('$\hat{a}$', math_fontfamily='cm', fontsize=10)
+    ax.set_xlabel('$\hat{a}$', math_fontfamily=mathfont, fontsize=10)
     ax.set_title('BCM', fontsize=8)
 
     # BTSP
@@ -1252,12 +1332,13 @@ def plot_learning_rule_diagram(axes_list=None):
         dW_curr = (w_max-w)*a_pre - w*q_dep(torch.tensor(a_pre))
         dW_next = (w_max-w)*a_pre*temporal_discount - w*q_dep(torch.tensor(a_pre*temporal_discount))
         ax.plot([0,0.9, 1.05,1.95, 2.1,3], [dW_prev,dW_prev, dW_curr,dW_curr, dW_next,dW_next], color=colors[i], linewidth=1.5)
-        ax.text(1.05, dW_curr+0.1, f'$w={w}$', fontsize=6, color=colors[i], math_fontfamily='cm')
+        ax.text(1.05, dW_curr+0.1, f'$w={w}$', fontsize=6, color=colors[i], math_fontfamily=mathfont)
     ax.set_ylim(-1.5,3)
     ax.set_yticks([0])
     ax.set_xticklabels([])    
-    ax.set_xlabel('$Relative~time~(samples)$', math_fontfamily='cm', fontsize=8, labelpad=8)
+    ax.set_xlabel('$Relative~time~(samples)$', math_fontfamily=mathfont, fontsize=8, labelpad=8)
     ax.set_title('BTSP', fontsize=8)
+
 
 
 # *******************************************************************
@@ -1823,9 +1904,7 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
     graph option can be either 'scatter' or 'decision'
     '''
     if ax is None:
-        fig, axes = plt.subplots(1, 1, figsize=(5, 5))
-    else:
-        axes = ax
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
     if graph == 'scatter':
         inputs = decision_data['inputs']
@@ -1833,19 +1912,37 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
         correct_indices = decision_data['correct_indices']
         wrong_indices = decision_data['wrong_indices']
         
-        axes.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
-        axes.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
-        axes.set_xlabel('x1')
-        axes.set_ylabel('x2')
-        axes.set_title('Predictions')
+        ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
+        ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
+        ax.set_xlabel('x1')
+        ax.set_ylabel('x2')
+        ax.set_title('Predictions')
 
     elif graph == 'decision':
-        decision_map = decision_data['decision_map']
+        inputs = decision_data['inputs'][:]
+        test_labels = decision_data['test_labels'][:]
+        correct_indices = decision_data['correct_indices'][:]
+        wrong_indices = decision_data['wrong_indices'][:]
+        decision_map = decision_data['decision_map'][:]
+        decision_value = decision_data['decision_value'][:]
 
-        axes.imshow(decision_map, extent=[-2, 2, -2, 2], cmap='jet', origin='lower')
-        axes.set_xlabel('x1')
-        axes.set_ylabel('x2')
-        axes.set_title('Predictions')
+        cmap = 'tab10'
+        ax.imshow(decision_map, extent=[-2, 2, -2, 2], cmap=cmap, origin='lower', alpha=decision_value*0.7)
+
+        x_range = np.linspace(-2, 2, decision_map.shape[1])
+        y_range = np.linspace(-2, 2, decision_map.shape[0])
+        X, Y = np.meshgrid(x_range, y_range)                
+        # contour = ax.contourf(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 50), cmap=cmap, alpha=0., linewidths=0.5)
+        contour = ax.contour(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 4), colors='black', linewidths=0.2, zorder=1)
+
+        ax.scatter(inputs[:,0], inputs[:,1], c=test_labels[:], s=1, alpha=0.8, linewidth=0, cmap=cmap)
+        # ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=4, alpha=0.6, linewidth=0)
+        # ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4, alpha=1, linewidth=0)
+        
+        ax.set_xticks([-2, -1, 0, 1, 2])
+        ax.set_yticks([-2, -1, 0, 1, 2])
+        ax.set_xlabel('x1')
+        ax.set_ylabel('x2')
 
     if ax is None:
         fig.tight_layout(rect=[0, 0, 1, 0.95]) 
