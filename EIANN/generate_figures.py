@@ -1375,6 +1375,7 @@ def generate_hyperparams_table(csv_filename, save):
     df = df.map(round_if_numeric, decimals=4)
 
     col_widths = [1/(0.83*num_columns)] * num_columns
+    col_widths[0] *= 1.2
     table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc="center", loc="center", colWidths=col_widths)
     table.auto_set_font_size(False)    
     for key, cell in table.get_celld().items():
