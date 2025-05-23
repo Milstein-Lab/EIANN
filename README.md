@@ -23,4 +23,18 @@ pip install -r requirements.txt
 pip install -e . --use-pep517
 ```
 
- 
+## Testing
+
+### 1. Navigate to the notebooks directory
+```
+cd EIANN/notebooks
+```
+
+### 2. Open a jupyter notebook
+```
+jupyter notebook
+```
+
+### 3. Train example models using the explore_MNIST.ipynb notebook
+
+For large-scale model optimization and analysis instructions, contact Aaron Milstein (milstein at cabm.rutgers.edu)

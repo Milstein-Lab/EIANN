@@ -595,7 +595,7 @@ def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
 
 def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_classes=None, average_pop_activity=None, 
                           num_units=None, num_cols=None, num_rows=None, activity_threshold=1e-10, cmap='custom',
-                          ax_list=None, dimensions=None, class_labels=True):
+                          ax_list=None, dimensions=None, class_labels=True, title=None):
     """
     Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
     structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
@@ -613,6 +613,8 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
     :param cmap:
     :param ax_list:
     :param dimensions: tuple of int
+    :param class_labels: bool
+    :param title: str
     """
     if not isinstance(receptive_fields, torch.Tensor):
         receptive_fields = torch.tensor(receptive_fields)
@@ -762,6 +764,8 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
             ax.text(0, 8, f'{preferred_classes[i]}', color='k', fontsize=5)        
 
     if ax_list is None:
+        if title is not None:
+            fig.suptitle(title)
         fig.tight_layout(pad=0.2)
         fig_width, fig_height = fig.get_size_inches()
         cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
@@ -946,7 +950,7 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     # Calculate accuracy
     pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=False)
     if sorted_output_idx is not None:
-        pop_activity_dict[network.output_pop.fullname] = average_pop_activity_dict[network.output_pop.fullname][:, sorted_output_idx]
+        pop_activity_dict[network.output_pop.fullname] = pop_activity_dict[network.output_pop.fullname][:, sorted_output_idx]
     output = pop_activity_dict[network.output_pop.fullname]
     percent_correct = ut.compute_test_accuracy(output, pattern_labels)
     print(f'Batch accuracy = {percent_correct}%')
