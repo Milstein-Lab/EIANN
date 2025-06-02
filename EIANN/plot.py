@@ -1900,7 +1900,7 @@ def plot_spiral_accuracy(net, test_dataloader):
     fig.show()
 
 
-def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
+def plot_spiral_decisions(decision_data, graph='decision', ax=None, point_size=1):
     '''
     Using data from utils/representational_analysis, plot the data to generate the spiral decisions with colored points or 
     decision boundary graph. 
@@ -1916,8 +1916,8 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
         correct_indices = decision_data['correct_indices']
         wrong_indices = decision_data['wrong_indices']
         
-        ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
-        ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
+        ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=point_size, alpha=0.4)
+        ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=point_size*1.2)
         ax.set_xlabel('x1')
         ax.set_ylabel('x2')
         ax.set_title('Predictions')
@@ -1939,7 +1939,7 @@ def plot_spiral_decisions(decision_data, graph='scatter', ax=None):
         # contour = ax.contourf(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 50), cmap=cmap, alpha=0., linewidths=0.5)
         contour = ax.contour(X, Y, decision_map, levels=np.linspace(decision_map.min(), decision_map.max(), 4), colors='black', linewidths=0.2, zorder=1)
 
-        ax.scatter(inputs[:,0], inputs[:,1], c=test_labels[:], s=1, alpha=0.8, linewidth=0, cmap=cmap)
+        ax.scatter(inputs[:,0], inputs[:,1], c=test_labels[:], s=point_size, alpha=0.8, linewidth=0, cmap=cmap)
         # ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=4, alpha=0.6, linewidth=0)
         # ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4, alpha=1, linewidth=0)
         
