@@ -325,10 +325,10 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
             ax_top.plot(angles[param_name], color='gray', alpha=0.3)
             ax.plot([0, len(angles[param_name])], [90, 90], color='gray', linestyle='--', alpha=0.5)
             ax.set_xlabel('Training step')
-            ax.set_ylabel('Angle between \nlearning rules (degrees)')
+            ax.set_ylabel('Angle\n(degrees)')
 
             max_angle = max(95, np.nanmax(angles[param_name]))
-            ax.set_ylim(bottom=-5, top=max_angle)
+            ax.set_ylim(bottom=-5, top=max_angle+1)
             ax.set_yticks(np.arange(0, max_angle+1, 30))
             if i == n_params-1:
                 ax.set_ylim(bottom=-5, top=120)
@@ -382,8 +382,12 @@ def compute_feedback_weight_angle_history(network, plot=False, ax=None):
             fig = ax.get_figure()
         steps = network.param_history_steps
         for i,projection_pair in enumerate(angles):
-            ax.plot(steps,angles[projection_pair], label=projection_pair)
-        ax.legend()
+            if projection_pair=='all_params':
+                ax.plot(steps,angles[projection_pair], label=projection_pair, color='k')
+            else:
+                ax.plot(steps,angles[projection_pair], label=projection_pair, alpha=0.5)
+        ax.grid(True, axis='y', color='gray', linewidth=0.8, alpha=0.3)
+        ax.legend(handlelength=1, handletextpad=0.5)
         ax.set_xlabel('Training step')
         ax.set_ylabel('Angle \n(forward vs backward weights)')
         ax.set_ylim(bottom=-2, top=90)

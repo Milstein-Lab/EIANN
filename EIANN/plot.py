@@ -189,7 +189,7 @@ def plot_EIANN_1_hidden_autoenc_config_summary(network, test_dataloader, sorted_
     fig3.show()
 
 
-def plot_train_loss_history(network, title=None):
+def plot_train_loss_history(network, title=None, train_step_range=None):
     """
     Plot loss history from training
     :param network:
@@ -199,8 +199,13 @@ def plot_train_loss_history(network, title=None):
         title_str = ''
     else:
         title_str = ': %s' % str(title)
+
+    if train_step_range is None:
+        train_step_range = [0, len(network.loss_history)]
+    train_steps = np.arange(train_step_range[0], train_step_range[1])
+
     fig = plt.figure()
-    plt.plot(network.loss_history)
+    plt.plot(train_steps, network.loss_history[train_step_range[0]:train_step_range[1]])
     plt.ylabel('Train loss')
     plt.xlabel('Training steps')
     fig.suptitle('Train loss%s' % title_str)
@@ -208,7 +213,7 @@ def plot_train_loss_history(network, title=None):
     fig.show()
 
 
-def plot_validate_loss_history(network, title=None):
+def plot_validate_loss_history(network, title=None, train_step_range=None):
     """
     Assumes network has been trained and a val_loss_history has been stored.
     :param network:
@@ -219,10 +224,24 @@ def plot_validate_loss_history(network, title=None):
         title_str = ''
     else:
         title_str = ': %s' % str(title)
+
+    if train_step_range is None:
+        train_steps = network.val_history_train_steps
+    else:
+        train_steps_idx = np.where((network.val_history_train_steps >= train_step_range[0]) & \
+                                    (network.val_history_train_steps <= train_step_range[1]))[0]
+        train_steps = network.val_history_train_steps[train_steps_idx]
+        val_loss_history = network.val_loss_history[train_steps_idx]
+
+    # if train_step_range is None:
+    #     train_step_range = [network.val_loss_history[0], network.val_loss_history[-1]]
+
     fig = plt.figure()
-    plt.plot(network.val_history_train_steps, network.val_loss_history)
+    plt.plot(train_steps, val_loss_history)
+    # plt.plot(network.val_history_train_steps, network.val_loss_history)
     plt.xlabel('Training steps')
     plt.ylabel('Validation loss')
+    plt.xlim(train_step_range[0], train_step_range[1])
     fig.suptitle('Validation loss%s' % title_str)
     fig.tight_layout()
     fig.show()
@@ -891,7 +910,11 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
     :param cbar: (optional) whether to include a colorbar
     """
     if isinstance(population, str):
-        if population != 'all':
+        if population == 'E':
+            average_pop_activity_dict = {pop: average_pop_activity_dict[pop] for pop in average_pop_activity_dict if 'E' in pop and 'Input' not in pop}
+        elif population == 'I':
+            average_pop_activity_dict = {pop: average_pop_activity_dict[pop] for pop in average_pop_activity_dict if 'I' in pop and 'Input' not in pop}
+        elif population != 'all':
             average_pop_activity_dict = {population: average_pop_activity_dict[population]}
     elif isinstance(population, list):
         average_pop_activity_dict = {pop: average_pop_activity_dict[pop] for pop in population}
