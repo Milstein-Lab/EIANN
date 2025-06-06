@@ -41,7 +41,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_mnist_van_bp_relu_SGD_G
+optimization_title: EIANN_2_hidden_fmnist_van_bp_relu_SGD_G_zero_bias
 x0:
     H_learning_rate: 0.5
     Output_learning_rate: 0.5
