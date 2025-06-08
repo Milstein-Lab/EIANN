@@ -35,6 +35,6 @@ cd EIANN/notebooks
 jupyter notebook
 ```
 
-### 3. Train example models using the explore_MNIST.ipynb notebook
+### 3. Train example models using the explore_MNIST.ipynb or explore_spirals.ipynb notebooks
 
 For large-scale model optimization and analysis instructions, contact Aaron Milstein (milstein at cabm.rutgers.edu)

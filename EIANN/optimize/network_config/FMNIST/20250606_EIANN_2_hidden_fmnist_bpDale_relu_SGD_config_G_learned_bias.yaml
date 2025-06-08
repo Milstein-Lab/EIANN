@@ -6,6 +6,10 @@ layer_config:
         E:
             size: 500
             activation: relu
+            include_bias: true
+            bias_learning_rule: BackpropBias
+            bias_learning_rule_kwargs:
+                learning_rate: 0.08
         SomaI:
             size: 50
             activation: relu
@@ -13,6 +17,10 @@ layer_config:
         E:
             size: 500
             activation: relu
+            include_bias: true
+            bias_learning_rule: BackpropBias
+            bias_learning_rule_kwargs:
+                learning_rate: 0.08
         SomaI:
             size: 50
             activation: relu
@@ -20,6 +28,10 @@ layer_config:
         E:
             size: 10
             activation: relu
+            include_bias: true
+            bias_learning_rule: BackpropBias
+            bias_learning_rule_kwargs:
+                learning_rate: 0.08
         SomaI:
             size: 10
             activation: relu

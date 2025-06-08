@@ -227,14 +227,13 @@ def plot_validate_loss_history(network, title=None, train_step_range=None):
 
     if train_step_range is None:
         train_steps = network.val_history_train_steps
+        train_step_range = (network.val_history_train_steps[0], network.val_history_train_steps[-1])
+        val_loss_history = network.val_loss_history
     else:
         train_steps_idx = np.where((network.val_history_train_steps >= train_step_range[0]) & \
                                     (network.val_history_train_steps <= train_step_range[1]))[0]
         train_steps = network.val_history_train_steps[train_steps_idx]
         val_loss_history = network.val_loss_history[train_steps_idx]
-
-    # if train_step_range is None:
-    #     train_step_range = [network.val_loss_history[0], network.val_loss_history[-1]]
 
     fig = plt.figure()
     plt.plot(train_steps, val_loss_history)
