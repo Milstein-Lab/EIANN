@@ -5,10 +5,16 @@ bounds:
     H2_E_H1_E_init_weight_scale:
         - 0.01
         - 10.
-    H_E_E_learning_rate:
+    H_E_learning_rate:
         - 0.0001
         - 0.25
     H_bias_learning_rate:
+        - 0.0001
+        - 0.25
+    H2_E_Output_E_learning_rate:
+        - 0.0001
+        - 0.25
+    H_E_TD_learning_rate:
         - 0.0001
         - 0.25
     H1_E_H2_E_weight_scale:
@@ -113,7 +119,7 @@ kwargs:
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: optimize/network_config/FMNIST/20250607_EIANN_2_hidden_fmnist_DTP_config_5J_learned_bias.yaml
+    network_config_file_path: optimize/network_config/FMNIST/20250611_EIANN_2_hidden_fmnist_DTP_config_5J_learn_TD_HTCWN_2_learned_bias.yaml
     val_interval:
         - -1000
         - -1
@@ -124,19 +130,21 @@ kwargs:
     include_equilibration_dynamics_objective: True
 update_context:
     - source: optimize.nested_optimize_EIANN_fashion_mnist
-      function: update_EIANN_config_2_hidden_DTP_5J_learned_bias
+      function: update_EIANN_config_2_hidden_DTP_5J_learn_TD_HTCWN_2_learned_bias
 stages:
     - source: optimize.nested_optimize_EIANN_fashion_mnist
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_fmnist_DTP_5J_learned_bias
+optimization_title: EIANN_2_hidden_fmnist_DTP_5J_learn_TD_HTCWN_2_learned_bias
 x0:
     H1_E_Input_E_init_weight_scale: 2.881149747735122
     H2_E_H1_E_init_weight_scale: 0.274426813251805
-    H_E_E_learning_rate: 0.008191940181921905
+    H_E_learning_rate: 0.008191940181921905
     H_bias_learning_rate: 0.008191940181921905
+    H2_E_Output_E_learning_rate: 0.008191940181921905
+    H_E_TD_learning_rate: 0.008191940181921905
     H1_E_H2_E_weight_scale: 0.7467185345024785
     H2_E_Output_E_weight_scale: 0.14814277909742227
     H1_E_H1_SomaI_init_weight_scale: 0.8740555596682464
