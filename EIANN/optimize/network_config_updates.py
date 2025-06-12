@@ -695,6 +695,41 @@ def update_EIANN_config_2_hidden_van_bp_relu_SGD_G_learned_bias(x, context):
     context.training_kwargs['optimizer'] = 'SGD'
 
 
+def update_EIANN_config_3_hidden_van_bp_relu_SGD_G_learned_bias(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    H_learning_rate = param_dict['H_learning_rate']
+    H1_init_weight_scale = param_dict['H1_init_weight_scale']
+    H2_init_weight_scale = param_dict['H2_init_weight_scale']
+    H3_init_weight_scale = param_dict['H3_init_weight_scale']
+    
+    Output_learning_rate = param_dict['Output_learning_rate']
+    Output_init_weight_scale = param_dict['Output_init_weight_scale']
+    
+    # Bias learning rates
+    H_bias_learning_rate = param_dict['H_bias_learning_rate']
+    Output_bias_learning_rate = param_dict['Output_bias_learning_rate']
+    
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_init_weight_scale,)
+    context.layer_config['H1']['E']['bias_learning_rule_kwargs']['learning_rate'] = H_bias_learning_rate
+    
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H_learning_rate
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_init_weight_scale,)
+    context.layer_config['H2']['E']['bias_learning_rule_kwargs']['learning_rate'] = H_bias_learning_rate
+    
+    context.projection_config['H3']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = H_learning_rate
+    context.projection_config['H3']['E']['H2']['E']['weight_init_args'] = (H3_init_weight_scale,)
+    context.layer_config['H3']['E']['bias_learning_rule_kwargs']['learning_rate'] = H_bias_learning_rate
+    
+    context.projection_config['Output']['E']['H3']['E']['learning_rule_kwargs']['learning_rate'] = (
+        Output_learning_rate)
+    context.projection_config['Output']['E']['H3']['E']['weight_init_args'] = (Output_init_weight_scale,)
+    context.layer_config['Output']['E']['bias_learning_rule_kwargs']['learning_rate'] = Output_bias_learning_rate
+    
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
 def update_EIANN_config_2_hidden_van_bp_relu_SGD_G_fixed_hidden(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
     

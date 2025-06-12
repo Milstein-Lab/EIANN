@@ -1,0 +1,11 @@
+van_bp_learned_bias:
+    #    accuracy: 38.9172
+    #    loss: 0.07542416
+    H_learning_rate: 0.0068880469576583165
+    H_bias_learning_rate: 0.012460389159657217
+    Output_learning_rate: 0.29405840587141197
+    Output_bias_learning_rate: 0.00575777235508807
+    H1_init_weight_scale: 3.806414925626837
+    H2_init_weight_scale: 0.30769989252993935
+    Output_init_weight_scale: 1.0366730418239012
+
