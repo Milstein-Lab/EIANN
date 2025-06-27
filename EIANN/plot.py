@@ -210,7 +210,7 @@ def plot_train_loss_history(network, title=None, train_step_range=None):
     plt.xlabel('Training steps')
     fig.suptitle('Train loss%s' % title_str)
     fig.tight_layout()
-    fig.show()
+    plt.show(block=False)
 
 
 def plot_validate_loss_history(network, title=None, train_step_range=None):
@@ -243,7 +243,7 @@ def plot_validate_loss_history(network, title=None, train_step_range=None):
     plt.xlim(train_step_range[0], train_step_range[1])
     fig.suptitle('Validation loss%s' % title_str)
     fig.tight_layout()
-    fig.show()
+    plt.show(block=False)
 
 
 def plot_loss_history(network):

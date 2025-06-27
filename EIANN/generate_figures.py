@@ -1966,7 +1966,6 @@ def main(figure, recompute):
     if figure in ['all', "S1"]:
         saved_network_path_prefix += "MNIST/"
         model_list = ["bpDale_learned", "HebbWN_topsup", "bpLike_WT_hebbdend"]
-        # model_list = ["bpLike_WT_hebbdend"]
         figure_name = "FigS1_dynamics"
         generate_figS1(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
                   
@@ -1982,7 +1981,6 @@ def main(figure, recompute):
     if figure in ["all", "S3"]:
         saved_network_path_prefix += "MNIST/"
         model_list = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
-        # model_list = ["BTSP_WT_hebbdend", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
         figure_name = "FigS3_receptive_fields"
         generate_figS3(model_dict_all, model_list, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
         generate_figS3(model_dict_all, model_list, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)

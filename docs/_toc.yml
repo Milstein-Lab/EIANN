@@ -1,0 +1,65 @@
+# Table of contents
+# Learn more at https://jupyterbook.org/customize/toc.html
+
+format: jb-book
+root: intro
+
+parts:
+  - caption: Using EIANN
+    chapters:
+    - file: installation
+    - file: tutorial
+    - glob: autoapi/*
+      title: Auto-generated API
+
+
+# - file: modules_reference
+#   chapters:
+#   - file: autoapi/EIANN/index
+#   - file: autoapi/EIANN/optimize/index
+#   - file: autoapi/EIANN/plot/index
+#   - file: autoapi/EIANN/rules/index
+#   - file: autoapi/EIANN/utils/index
+
+  # chapters:
+  # - file: user_guide/basic_usage
+  # - file: user_guide/network_architecture
+  # - file: user_guide/ei_cell_types
+  # - file: user_guide/learning_rules
+  # - file: user_guide/yaml_configuration
+  # - file: user_guide/training_networks
+
+# - caption: Tutorials
+#   chapters:
+#   - file: tutorials/mnist_example
+#   - file: tutorials/spirals_example
+#   - file: tutorials/custom_network
+#   - file: tutorials/learning_rules_comparison
+#   - file: tutorials/dale_law_constraints
+# - caption: Examples
+#   chapters:
+#   - file: examples/classification_tasks
+#   - file: examples/recurrent_dynamics
+#   - file: examples/plasticity_analysis
+#   - file: examples/hyperparameter_optimization
+# - caption: API Reference
+#   chapters:
+#   - file: api/overview
+#   - file: api/models
+#   - file: api/layers
+#   - file: api/learning_rules
+#   - file: api/constraints
+#   - file: api/utils
+# - caption: Advanced Topics
+#   chapters:
+#   - file: advanced/custom_learning_rules
+#   - file: advanced/dendrite_mechanisms
+#   - file: advanced/performance_optimization
+#   - file: advanced/nested_integration
+# - caption: Development
+#   chapters:
+#   - file: development/contributing
+#   - file: development/testing
+#   - file: development/roadmap
+# - file: changelog
+# - file: references

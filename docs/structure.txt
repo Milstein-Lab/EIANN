@@ -1,0 +1,81 @@
+# EIANN Documentation Directory Structure
+
+```
+docs/
+├── _config.yml                    # Main configuration file
+├── _toc.yml                      # Table of contents structure
+├── intro.md                      # Main landing page
+├── installation.md               # Installation instructions
+├── quickstart.ipynb             # Quick start tutorial (Jupyter notebook)
+├── changelog.md                  # Version history
+├── references.md                 # Bibliography/references
+├── logo.png                      # Optional: EIANN logo
+├── favicon.ico                   # Optional: Website favicon
+├── references.bib                # Optional: BibTeX file for citations
+│
+├── user_guide/
+│   ├── basic_usage.ipynb         # Basic EIANN usage
+│   ├── network_architecture.md   # Network design principles
+│   ├── ei_cell_types.ipynb       # E/I cell type implementation
+│   ├── learning_rules.ipynb      # Hebbian, Oja's, dendrite rules
+│   ├── yaml_configuration.md     # YAML config file guide
+│   └── training_networks.ipynb   # Training procedures
+│
+├── tutorials/
+│   ├── mnist_example.ipynb       # MNIST classification tutorial
+│   ├── spirals_example.ipynb     # Spirals dataset tutorial
+│   ├── custom_network.ipynb      # Building custom architectures
+│   ├── learning_rules_comparison.ipynb  # Comparing learning rules
+│   └── dale_law_constraints.ipynb       # Dale's Law implementation
+│
+├── examples/
+│   ├── classification_tasks.ipynb     # Various classification examples
+│   ├── recurrent_dynamics.ipynb       # Recurrent network dynamics
+│   ├── plasticity_analysis.ipynb      # Synaptic plasticity analysis
+│   └── hyperparameter_optimization.ipynb  # Using Nested for optimization
+│
+├── api/
+│   ├── overview.md               # API overview
+│   ├── models.md                 # Model classes documentation
+│   ├── layers.md                 # Layer implementations
+│   ├── learning_rules.md         # Learning rule classes
+│   ├── constraints.md            # Dale's Law and other constraints
+│   └── utils.md                  # Utility functions
+│
+├── advanced/
+│   ├── custom_learning_rules.ipynb    # Creating new learning rules
+│   ├── dendrite_mechanisms.ipynb      # Dendrite-based learning
+│   ├── performance_optimization.md    # Performance tips
+│   └── nested_integration.md          # Using Nested for optimization
+│
+└── development/
+    ├── contributing.md           # Contribution guidelines
+    ├── testing.md               # Testing procedures
+    └── roadmap.md               # Future development plans
+```
+
+## EIANN-Specific Content Focus
+
+The structure is now tailored specifically for EIANN's features:
+
+### **Key EIANN Concepts to Document:**
+- **E/I Cell Types**: Excitatory and Inhibitory neuron implementation
+- **Dale's Law**: Biological constraints on connections
+- **Learning Rules**: Hebbian, Oja's rule, dendrite-based learning
+- **YAML Configuration**: Your config file system
+- **Rate-based Networks**: Your specific neural network approach
+- **Nested Integration**: Hyperparameter optimization workflow
+
+### **Priority Files to Create First:**
+1. `intro.md` - Overview of EIANN's biological approach
+2. `installation.md` - Your current installation instructions
+3. `quickstart.ipynb` - Simple network example
+4. `tutorials/mnist_example.ipynb` - Based on your existing notebook
+5. `tutorials/spirals_example.ipynb` - Based on your existing notebook
+
+### **Leveraging Your Existing Content:**
+- Convert your existing notebooks in `EIANN/notebooks/` to tutorial format
+- Use your `network_config/examples/` YAML files in documentation
+- Reference your bioRxiv paper in the intro and references
+
+This structure highlights what makes EIANN unique: the biological constraints, E/I cell types, and local learning rules that differentiate it from standard PyTorch networks.
