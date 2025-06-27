@@ -8,6 +8,14 @@ van_bp_learned_bias:
     H1_init_weight_scale: 3.806414925626837
     H2_init_weight_scale: 0.30769989252993935
     Output_init_weight_scale: 1.0366730418239012
+van_bp_zero_bias:
+    #    accuracy: 38.5942
+    #    loss: 0.07621826
+    H_learning_rate: 0.009327596016647937
+    Output_learning_rate: 0.14782414651386236
+    H1_init_weight_scale: 5.00766522446131
+    H2_init_weight_scale: 0.3738218569196653
+    Output_init_weight_scale: 0.03487913148709866
 bpDale_F_learned_bias:
     #    accuracy: 32.324798583984375
     #    dynamics_residuals: 0.0
