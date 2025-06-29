@@ -12,7 +12,7 @@ import EIANN.external as external
 
 
 class Network(nn.Module):
-    def __init__(self, layer_config, projection_config, learning_rate, optimizer=SGD, optimizer_kwargs=None,
+    def __init__(self, layer_config, projection_config, learning_rate=None, optimizer=SGD, optimizer_kwargs=None,
                  criterion=MSELoss, criterion_kwargs=None, seed=None, device='cpu', tau=1, forward_steps=1,
                  backward_steps=1, verbose=False):
         """
@@ -951,4 +951,436 @@ class Projection(nn.Linear):
     def weight_history(self):
         return self.get_weight_history()
     
+
+
+from typing import Optional, Dict, Any, Union, Tuple, List
+
+class NetworkBuilder:
+    """Builder for biologically inspired neural networks with layers, populations, and projections."""
+    
+    def __init__(self):
+        self._layers = {}
+        self._projections = {}
+        self._training_kwargs = {}
+        self._current_layer = None
+        
+    def layer(self, name: str) -> 'LayerBuilder':
+        """Start building a layer with the given name."""
+        if name not in self._layers:
+            self._layers[name] = {}
+        self._current_layer = name
+        return LayerBuilder(self, name)
+    
+    def training(self, **kwargs) -> 'NetworkBuilder':
+        """Set training parameters."""
+        self._training_kwargs.update(kwargs)
+        return self
+    
+    def connect(self, source: str, target: str) -> 'ProjectionBuilder':
+        """Create a connection between populations using dot notation.
+        
+        Args:
+            source: Source in format "layer_name.population_name" (e.g., "Input.E")
+            target: Target in format "layer_name.population_name" (e.g., "H1.E")
+            
+        Returns:
+            ProjectionBuilder for further configuration
+            
+        Example:
+            network.connect(source='Input.E', target='H1.E')
+            network.connect('H1.E', 'H2.E').learning_rule('Hebbian')
+        """
+        # Parse source
+        if '.' not in source:
+            raise ValueError(f"Source '{source}' must be in format 'layer.population'")
+        source_layer, source_pop = source.split('.', 1)
+        
+        # Parse target  
+        if '.' not in target:
+            raise ValueError(f"Target '{target}' must be in format 'layer.population'")
+        target_layer, target_pop = target.split('.', 1)
+        
+        return ProjectionBuilder(
+            self,
+            source_layer,
+            source_pop,
+            target_layer, 
+            target_pop
+        )
+    
+    def set_learning_rule_for_layer(self, 
+                                    target_layer: str,
+                                    rule: Optional[str], 
+                                    learning_rate: Optional[float] = None,
+                                    **kwargs) -> 'NetworkBuilder':
+        """Set learning rule for all projections TO a specific layer.
+        
+        Args:
+            target_layer: Name of the target layer
+            rule: Learning rule name or None
+            learning_rate: Learning rate to apply
+            **kwargs: Additional learning rule parameters
+        
+        Returns:
+            Self for method chaining
+        """
+        if target_layer in self._projections:
+            for target_pop in self._projections[target_layer]:
+                for source_layer in self._projections[target_layer][target_pop]:
+                    for source_pop in self._projections[target_layer][target_pop][source_layer]:
+                        projection = self._projections[target_layer][target_pop][source_layer][source_pop]
+                        
+                        projection['learning_rule'] = rule
+                        
+                        if learning_rate is not None or kwargs:
+                            rule_kwargs = {}
+                            if learning_rate is not None:
+                                rule_kwargs['learning_rate'] = learning_rate
+                            rule_kwargs.update(kwargs)
+                            projection['learning_rule_kwargs'] = rule_kwargs
+        
+        return self
+    
+    def set_learning_rule_for_population(self, 
+                                         target_layer: str,
+                                         target_population: str,
+                                         rule: Optional[str], 
+                                         learning_rate: Optional[float] = None,
+                                         **kwargs) -> 'NetworkBuilder':
+        """Set learning rule for all projections TO a specific population.
+        
+        Args:
+            target_layer: Name of the target layer
+            target_population: Name of the target population
+            rule: Learning rule name or None
+            learning_rate: Learning rate to apply
+            **kwargs: Additional learning rule parameters
+        
+        Returns:
+            Self for method chaining
+        """
+        if (target_layer in self._projections and 
+            target_population in self._projections[target_layer]):
+            
+            for source_layer in self._projections[target_layer][target_population]:
+                for source_pop in self._projections[target_layer][target_population][source_layer]:
+                    projection = self._projections[target_layer][target_population][source_layer][source_pop]
+                    
+                    projection['learning_rule'] = rule
+                    
+                    if learning_rate is not None or kwargs:
+                        rule_kwargs = {}
+                        if learning_rate is not None:
+                            rule_kwargs['learning_rate'] = learning_rate
+                        rule_kwargs.update(kwargs)
+                        projection['learning_rule_kwargs'] = rule_kwargs
+        
+        return self
+    
+    def set_learning_rule(self, 
+                          rule: Optional[str], 
+                          learning_rate: Optional[float] = None,
+                          **kwargs) -> 'NetworkBuilder':
+        """Set learning rule for ALL projections in the network.
+        
+        Args:
+            rule: Learning rule name (e.g., 'Backprop', 'BTSP_19', etc.) or None
+            learning_rate: Learning rate to apply to all projections
+            **kwargs: Additional learning rule parameters to apply to all projections
+        
+        Returns:
+            Self for method chaining
+        """
+        # Iterate through all projections and set the learning rule
+        for target_layer in self._projections:
+            for target_pop in self._projections[target_layer]:
+                for source_layer in self._projections[target_layer][target_pop]:
+                    for source_pop in self._projections[target_layer][target_pop][source_layer]:
+                        projection = self._projections[target_layer][target_pop][source_layer][source_pop]
+                        
+                        # Set the learning rule
+                        projection['learning_rule'] = rule
+                        
+                        # Set learning rule parameters if provided
+                        if learning_rate is not None or kwargs:
+                            rule_kwargs = {}
+                            if learning_rate is not None:
+                                rule_kwargs['learning_rate'] = learning_rate
+                            rule_kwargs.update(kwargs)
+                            projection['learning_rule_kwargs'] = rule_kwargs
+                        
+        return self
+    
+    def get_layer_config(self) -> Dict[str, Any]:
+        """Get the layer configuration dictionary."""
+        return deepcopy(self._layers)
+    
+    def get_projection_config(self) -> Dict[str, Any]:
+        """Get the projection configuration dictionary."""
+        return deepcopy(self._projections)
+    
+    def get_training_kwargs(self) -> Dict[str, Any]:
+        """Get the training parameters dictionary."""
+        return deepcopy(self._training_kwargs)
+    
+    def print_architecture(self) -> None:
+        """Print the network architecture in a readable format."""
+        # First, collect all connections and sort them
+        connections = []
+        for target_layer in self._projections:
+            for target_pop in self._projections[target_layer]:
+                for source_layer in self._projections[target_layer][target_pop]:
+                    for source_pop in self._projections[target_layer][target_pop][source_layer]:
+                        projection = self._projections[target_layer][target_pop][source_layer][source_pop]
+                        
+                        # Get source population size
+                        source_size = self._layers.get(source_layer, {}).get(source_pop, {}).get('size', '?')
+                        
+                        # Get target population size
+                        target_size = self._layers.get(target_layer, {}).get(target_pop, {}).get('size', '?')
+                        
+                        # Build connection string
+                        source_str = f"{source_layer}.{source_pop} ({source_size})"
+                        target_str = f"{target_layer}.{target_pop} ({target_size})"
+                        
+                        # Get learning rule info
+                        learning_rule = projection.get('learning_rule', 'None')
+                        rule_kwargs = projection.get('learning_rule_kwargs', {})
+                        
+                        if learning_rule and learning_rule != 'None':
+                            if rule_kwargs:
+                                # Format learning rate and other parameters
+                                params = []
+                                if 'learning_rate' in rule_kwargs:
+                                    params.append(f"lr={rule_kwargs['learning_rate']}")
+                                # Add other parameters
+                                for key, value in rule_kwargs.items():
+                                    if key != 'learning_rate':
+                                        params.append(f"{key}={value}")
+                                
+                                rule_str = f"{learning_rule} ({', '.join(params)})"
+                            else:
+                                rule_str = learning_rule
+                        else:
+                            rule_str = "No learning rule"
+                        
+                        connections.append(f"{source_str} -> {target_str}: {rule_str}")
+        
+        # Sort connections by network flow order (Input -> Hidden -> Output)
+        def connection_sort_key(connection_str):
+            # Extract source layer name for sorting
+            source_part = connection_str.split(' -> ')[0]
+            layer_name = source_part.split('.')[0]
+            
+            # Define layer order priority
+            if layer_name.lower() == 'input':
+                return (0, layer_name)
+            elif layer_name.lower() == 'output':
+                return (999, layer_name)  # Output layers go last
+            elif layer_name.lower().startswith('h'):
+                # Hidden layers: try to extract number for proper ordering
+                try:
+                    num = int(''.join(filter(str.isdigit, layer_name)))
+                    return (1, num, layer_name)
+                except:
+                    return (1, 0, layer_name)
+            else:
+                # Other layers go in the middle
+                return (2, layer_name)
+        
+        connections.sort(key=connection_sort_key)
+        
+        # Print the architecture
+        if connections:
+            print('='*50)
+            print("Network Architecture:")
+            for connection in connections:
+                print(connection)
+            print('='*50)
+        else:
+            print("No connections defined in network.")
+
+    def build(self, seed=None) -> Tuple[Dict, Dict, Dict]:
+        """Build and return all configuration dictionaries."""
+        layer_config = self.get_layer_config()
+        projection_config = self.get_projection_config()
+        training_kwargs = self.get_training_kwargs()
+
+        network = Network(layer_config, projection_config, **training_kwargs, seed=seed)
+        print(network)
+        return network
+
+
+class LayerBuilder:
+    """Builder for individual layers containing populations."""
+    
+    def __init__(self, network_builder: NetworkBuilder, layer_name: str):
+        self._network_builder = network_builder
+        self._layer_name = layer_name
+        
+    def population(self, 
+                   pop_name: str, 
+                   size: int, 
+                   activation: Optional[str] = None) -> 'LayerBuilder':
+        """Add a population to the current layer."""
+        if self._layer_name not in self._network_builder._layers:
+            self._network_builder._layers[self._layer_name] = {}
+            
+        pop_config = {'size': size}
+        if activation is not None:
+            pop_config['activation'] = activation
+            
+        self._network_builder._layers[self._layer_name][pop_name] = pop_config
+        return self
+    
+    def connect_to(self, 
+                   target_layer: str, 
+                   target_population: str, 
+                   source_population: Optional[str] = None) -> 'ProjectionBuilder':
+        """Create a projection from this layer to a target layer/population."""
+        # If no source population specified, assume we're connecting from the last added population
+        if source_population is None:
+            if not self._network_builder._layers[self._layer_name]:
+                raise ValueError(f"No populations defined in layer {self._layer_name}")
+            source_population = list(self._network_builder._layers[self._layer_name].keys())[-1]
+        
+        return ProjectionBuilder(
+            self._network_builder, 
+            self._layer_name, 
+            source_population,
+            target_layer, 
+            target_population
+        )
+    
+    def connect_from(self, 
+                     source_layer: str, 
+                     source_population: str, 
+                     target_population: Optional[str] = None) -> 'ProjectionBuilder':
+        """Create a projection from a source layer/population to this layer."""
+        # If no target population specified, assume we're connecting to the last added population
+        if target_population is None:
+            if not self._network_builder._layers[self._layer_name]:
+                raise ValueError(f"No populations defined in layer {self._layer_name}")
+            target_population = list(self._network_builder._layers[self._layer_name].keys())[-1]
+        
+        return ProjectionBuilder(
+            self._network_builder,
+            source_layer,
+            source_population, 
+            self._layer_name,
+            target_population
+        )
+    
+    def layer(self, name: str) -> 'LayerBuilder':
+        """Switch to building a different layer."""
+        return self._network_builder.layer(name)
+    
+    def training(self, **kwargs) -> NetworkBuilder:
+        """Set training parameters and return to network builder."""
+        return self._network_builder.training(**kwargs)
+    
+    def build(self) -> Tuple[Dict, Dict, Dict]:
+        """Build and return all configuration dictionaries."""
+        return self._network_builder.build()
+
+
+class ProjectionBuilder:
+    """Builder for projections between populations."""
+    
+    def __init__(self, 
+                 network_builder: NetworkBuilder,
+                 source_layer: str,
+                 source_pop: str, 
+                 target_layer: str, 
+                 target_pop: str):
+        self._network_builder = network_builder
+        self._source_layer = source_layer
+        self._source_pop = source_pop
+        self._target_layer = target_layer
+        self._target_pop = target_pop
+        
+        # Initialize nested structure if needed
+        projections = self._network_builder._projections
+        if target_layer not in projections:
+            projections[target_layer] = {}
+        if target_pop not in projections[target_layer]:
+            projections[target_layer][target_pop] = {}
+        if source_layer not in projections[target_layer][target_pop]:
+            projections[target_layer][target_pop][source_layer] = {}
+        if source_pop not in projections[target_layer][target_pop][source_layer]:
+            projections[target_layer][target_pop][source_layer][source_pop] = {}
+            
+        self._projection_config = projections[target_layer][target_pop][source_layer][source_pop]
+    
+    def weight_init(self, 
+                    init_type: str, 
+                    *args, 
+                    **kwargs) -> 'ProjectionBuilder':
+        """Set weight initialization."""
+        self._projection_config['weight_init'] = init_type
+        if args:
+            self._projection_config['weight_init_args'] = args
+        if kwargs:
+            self._projection_config['weight_init_kwargs'] = kwargs
+        return self
+    
+    def weight_bounds(self, 
+                      lower: Optional[float] = None, 
+                      upper: Optional[float] = None) -> 'ProjectionBuilder':
+        """Set weight bounds (clipping)."""
+        self._projection_config['weight_bounds'] = (lower, upper)
+        return self
+    
+    def weight_constraint(self, 
+                          constraint_type: str, 
+                          **kwargs) -> 'ProjectionBuilder':
+        """Set weight constraints."""
+        self._projection_config['weight_constraint'] = constraint_type
+        if kwargs:
+            self._projection_config['weight_constraint_kwargs'] = kwargs
+        return self
+    
+    def direction(self, direction: str) -> 'ProjectionBuilder':
+        """Set connection direction (F=forward, R=recurrent, B=backward)."""
+        self._projection_config['direction'] = direction
+        return self
+    
+    def learning_rule(self, 
+                      rule: Optional[str], 
+                      learning_rate: Optional[float] = None,
+                      **kwargs) -> 'ProjectionBuilder':
+        """Set learning rule and parameters."""
+        self._projection_config['learning_rule'] = rule
+        if learning_rate is not None or kwargs:
+            rule_kwargs = {}
+            if learning_rate is not None:
+                rule_kwargs['learning_rate'] = learning_rate
+            rule_kwargs.update(kwargs)
+            self._projection_config['learning_rule_kwargs'] = rule_kwargs
+        return self
+    
+    def update_phase(self, phase: str) -> 'ProjectionBuilder':
+        """Set update phase (A or B)."""
+        self._projection_config['update_phase'] = phase
+        return self
+    
+    def compartment(self, compartment: str) -> 'ProjectionBuilder':
+        """Set target compartment (soma, dend, etc.)."""
+        self._projection_config['compartment'] = compartment
+        return self
+    
+    def layer(self, name: str) -> LayerBuilder:
+        """Switch to building a different layer."""
+        return self._network_builder.layer(name)
+    
+    def training(self, **kwargs) -> NetworkBuilder:
+        """Set training parameters and return to network builder."""
+        return self._network_builder.training(**kwargs)
+    
+    def build(self) -> Tuple[Dict, Dict, Dict]:
+        """Build and return all configuration dictionaries."""
+        return self._network_builder.build()
+
+
+
 
