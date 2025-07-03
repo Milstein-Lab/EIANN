@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import MSELoss, BCELoss
 from torch.optim import Adam, SGD
+import numpy as np
 from copy import deepcopy
 from collections import defaultdict
 from functools import partial
@@ -332,7 +333,7 @@ class Network(nn.Module):
                        
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
               store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
-              store_params_interval=None, save_to_file=None, status_bar=False, debug=False):
+              store_params_interval=None, save_to_file=None, status_bar=False):
         """
         Starting at validate_start, probe with the validate_data every validate_interval until >= validate_stop
         :param train_dataloader:
@@ -347,7 +348,6 @@ class Network(nn.Module):
         :param store_params_interval: tuple of int (start_index, stop_index, interval)
         :param save_to_file: None or file_path
         :param status_bar: bool
-        :param debug: bool
         """
         self.reset_history()
         if samples_per_epoch is None:
@@ -417,7 +417,7 @@ class Network(nn.Module):
             epoch_iter = tqdm(range(epochs), desc='Epochs')
         else:
             epoch_iter = range(epochs)
-        
+
         # Initialize learning rule parameters
         for post_layer in self:
             for post_pop in post_layer:
@@ -510,6 +510,8 @@ class Network(nn.Module):
                                output.shape[0]
                     self.val_accuracy_history.append(accuracy.item())
                     self.val_history_train_steps.append(train_step)
+                    if type(epoch_iter) is tqdm: # Display the current loss and accuracy on the progress bar
+                        epoch_iter.set_description(f"Validation Loss: {self.val_loss_history[-1]:.4f}, Accuracy: {self.val_accuracy_history[-1]:.2f}%, \n Epoch")
                 
                 train_step += 1
 
@@ -1197,6 +1199,7 @@ class NetworkBuilder:
             for connection in connections:
                 print(connection)
             print('='*50)
+            print()
         else:
             print("No connections defined in network.")
 
