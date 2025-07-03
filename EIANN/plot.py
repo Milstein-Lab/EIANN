@@ -427,7 +427,8 @@ def plot_MNIST_examples(network, dataloader):
 
 def plot_network_dynamics(pop_dynamics_dict, axes=None):
     """
-    Plot the activity dynamics of each population in the network
+    Plot the activity dynamics of each population in the network. Dynamics must first be computed for a given network and dataloader:
+    pop_dynamics_dict = utils.compute_test_activity_dynamics(network, test_dataloader)
     """
     if axes is None:
         fig = plt.figure(figsize=(8, 2))
@@ -459,7 +460,7 @@ def plot_network_dynamics(pop_dynamics_dict, axes=None):
     ax_I.set_xlabel('Forward timestep')
     ax_I.set_ylabel('Activity dynamics (norm.)')
     # ax_I.set_title('I populations')
-    legend = ax_I.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0.2, 1.25), frameon=False, framealpha=0.5, handlelength=0.8, handletextpad=0.5, columnspacing=1)
+    legend = ax_I.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.25), frameon=False, framealpha=0.5, handlelength=0.8, handletextpad=0.5, columnspacing=1)
     for line in legend.get_lines():
         line.set_linewidth(3)
 

@@ -1331,15 +1331,14 @@ class ProjectionBuilder:
         self._projection_config['weight_bounds'] = (lower, upper)
         return self
     
-    def type(self,weight_type: str) -> 'ProjectionBuilder':
+    def type(self,weight_type: str, init_scale=1) -> 'ProjectionBuilder':
         """Set weight type (Excitatory or Inhibitory)."""
         if weight_type.lower() in ['excitatory', 'e', 'exc']:
-            self.weight_init('half_kaiming', 3)
             self.weight_bounds(0, None)
+            self.weight_init('half_kaiming', init_scale)
         elif weight_type.lower() in ['inhibitory', 'i', 'inh']:
-            self.weight_init('half_kaiming', 0.001)
             self.weight_bounds(None, 0)
-
+            self.weight_init('half_kaiming', init_scale)
         else:
             raise ValueError("Invalid weight type. Must be 'Exc' or 'Inh'")
         return self
