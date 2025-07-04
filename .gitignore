@@ -1,16 +1,17 @@
 *.pkl
 *.DS_Store
+**/__pycache__/
+**/.ipynb_checkpoints/
+
 .idea/
 .DS_Store
 .vscode/
-dist/
 .pytest_cache/
 UNKNOWN.egg-info/
 EIANN.egg-info/
-**/__pycache__/
-docs/_build/
 
-EIANN/notebooks/.ipynb_checkpoints/
+docs/_build/
+dist/
 EIANN/notebooks/figures
 EIANN/notebooks/saved_networks/
 EIANN/optimize/figures

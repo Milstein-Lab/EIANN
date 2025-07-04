@@ -37,6 +37,13 @@ def linear(x):
     return x
 
 
+def softmax(x):
+    """
+    Softmax activation function
+    """
+    return torch.nn.functional.softmax(x, dim=-1)
+
+
 def get_scaled_rectified_sigmoid_orig(th, peak, x=None, ylim=None):
     """
     Transform a sigmoid to intersect x and y range limits.

@@ -8,8 +8,8 @@ parts:
   - caption: Using EIANN
     chapters:
     - file: installation
-    - file: tutorial_1
-    - file: tutorial_2
+    - file: 1_eiann_basics
+    # - file: tutorial_2
     - glob: autoapi/*
       title: Auto-generated API
 
