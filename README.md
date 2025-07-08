@@ -40,6 +40,8 @@ pip install -e . --use-pep517
 
 ## ⏱ Using EIANN
 
+The full documentation for EIANN is available at [https://milstein-lab.github.io/EIANN](https://milstein-lab.github.io/EIANN/).
+
 Models can be created by specifying the model architecture and parameters either in a YAML configuration file or in a Python dictionary.
 
 We provide example YAML configuration files in the `network_config/examples/` directory. You can run these models in the example jupyter notebooks we provide in the `notebooks/` directory: [`explore_MNIST.ipynb`](EIANN/notebooks/explore_MNIST.ipynb) and [`explore_spirals.ipynb`](EIANN/notebooks/explore_spirals.ipynb).
