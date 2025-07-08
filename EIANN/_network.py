@@ -965,6 +965,7 @@ class NetworkBuilder:
         self._projections = {}
         self._training_kwargs = {}
         self._current_layer = None
+        self._population_types = {}  # Track population types for automatic connection typing
         
     def layer(self, name: str) -> 'LayerBuilder':
         """Start building a layer with the given name."""
@@ -1002,13 +1003,21 @@ class NetworkBuilder:
             raise ValueError(f"Target '{target}' must be in format 'layer.population'")
         target_layer, target_pop = target.split('.', 1)
         
-        return ProjectionBuilder(
+        projection_builder = ProjectionBuilder(
             self,
             source_layer,
             source_pop,
             target_layer, 
             target_pop
         )
+        
+        # Apply population type if it exists for the source population
+        source_key = f"{source_layer}.{source_pop}"
+        if source_key in self._population_types:
+            pop_type, init_scale = self._population_types[source_key]
+            projection_builder.type(pop_type, init_scale)
+        
+        return projection_builder
     
     def set_learning_rule_for_layer(self, 
                                     target_layer: str,
@@ -1124,7 +1133,7 @@ class NetworkBuilder:
     def get_training_kwargs(self) -> Dict[str, Any]:
         """Get the training parameters dictionary."""
         return deepcopy(self._training_kwargs)
-    
+
     def print_architecture(self) -> None:
         """Print the network architecture in a readable format."""
         # First, collect all connections and sort them
@@ -1144,6 +1153,26 @@ class NetworkBuilder:
                         # Build connection string
                         source_str = f"{source_layer}.{source_pop} ({source_size})"
                         target_str = f"{target_layer}.{target_pop} ({target_size})"
+                        
+                        # Determine connection type from weight bounds
+                        weight_bounds = projection.get('weight_bounds', (None, None))
+                        connection_type = "Unknown"
+                        
+                        if weight_bounds == (0, None):
+                            connection_type = "Exc"
+                        elif weight_bounds == (None, 0):
+                            connection_type = "Inh"
+                        # elif weight_bounds == (None, None):
+                        #     connection_type = "Mixed"
+                        else:
+                            # Custom bounds
+                            lower, upper = weight_bounds
+                            if lower is not None and upper is not None:
+                                connection_type = f"[{lower}, {upper}]"
+                            elif lower is not None:
+                                connection_type = f"[{lower}, ∞)"
+                            elif upper is not None:
+                                connection_type = f"(-∞, {upper}]"
                         
                         # Get learning rule info
                         learning_rule = projection.get('learning_rule', 'None')
@@ -1166,7 +1195,10 @@ class NetworkBuilder:
                         else:
                             rule_str = "No learning rule"
                         
-                        connections.append(f"{source_str} -> {target_str}: {rule_str}")
+                        if connection_type != "Unknown":
+                            connections.append(f"{source_str} -> {target_str} [{connection_type}]: {rule_str}")
+                        else:
+                            connections.append(f"{source_str} -> {target_str}: {rule_str}")
         
         # Sort connections by network flow order (Input -> Hidden -> Output)
         def connection_sort_key(connection_str):
@@ -1192,16 +1224,55 @@ class NetworkBuilder:
         
         connections.sort(key=connection_sort_key)
         
+        # Find unconnected populations
+        connected_populations = set()
+        for target_layer in self._projections:
+            for target_pop in self._projections[target_layer]:
+                connected_populations.add(f"{target_layer}.{target_pop}")
+                for source_layer in self._projections[target_layer][target_pop]:
+                    for source_pop in self._projections[target_layer][target_pop][source_layer]:
+                        connected_populations.add(f"{source_layer}.{source_pop}")
+        
+        unconnected_populations = []
+        for layer_name, layer_config in self._layers.items():
+            for pop_name, pop_config in layer_config.items():
+                pop_key = f"{layer_name}.{pop_name}"
+                if pop_key not in connected_populations:
+                    size = pop_config.get('size', '?')
+                    
+                    # Determine population type if it exists
+                    pop_type_str = ""
+                    if pop_key in self._population_types:
+                        pop_type, _ = self._population_types[pop_key]
+                        if pop_type.lower() in ['excitatory', 'e', 'exc']:
+                            pop_type_str = " [Exc]"
+                        elif pop_type.lower() in ['inhibitory', 'i', 'inh']:
+                            pop_type_str = " [Inh]"
+                        else:
+                            pop_type_str = f" [{pop_type}]"
+                    
+                    unconnected_populations.append(f"{pop_key} ({size}){pop_type_str}")
+        
         # Print the architecture
-        if connections:
+        if connections or unconnected_populations:
             print('='*50)
             print("Network Architecture:")
-            for connection in connections:
-                print(connection)
+            
+            if connections:
+                for connection in connections:
+                    print(connection)
+            else:
+                print("No connections defined.")
+            
+            if unconnected_populations:
+                print("\nUnconnected populations:")
+                for pop in unconnected_populations:
+                    print(pop)
+            
             print('='*50)
             print()
         else:
-            print("No connections defined in network.")
+            print("No layers or connections defined in network.")
 
     def build(self, seed=None) -> Tuple[Dict, Dict, Dict]:
         """Build and return all configuration dictionaries."""
@@ -1236,6 +1307,50 @@ class LayerBuilder:
         self._network_builder._layers[self._layer_name][pop_name] = pop_config
         return self
     
+    def type(self, neuron_type: str, init_scale: float = 1.0) -> 'LayerBuilder':
+        """Set the type of the last added population.
+        
+        Args:
+            neuron_type: Type of neuron ('Exc', 'Inh', 'Excitatory', 'Inhibitory')
+            init_scale: Initialization scale for connections from this population
+            
+        Returns:
+            Self for method chaining
+        """
+        if not self._network_builder._layers[self._layer_name]:
+            raise ValueError(f"No populations defined in layer {self._layer_name}")
+        
+        # Get the last added population
+        last_pop = list(self._network_builder._layers[self._layer_name].keys())[-1]
+        
+        # Store the population type for future connections
+        pop_key = f"{self._layer_name}.{last_pop}"
+        self._network_builder._population_types[pop_key] = (neuron_type, init_scale)
+        
+        # Apply the type to any existing outgoing connections from this population
+        self._apply_type_to_existing_connections(last_pop, neuron_type, init_scale)
+        
+        return self
+    
+    def _apply_type_to_existing_connections(self, source_pop: str, neuron_type: str, init_scale: float):
+        """Apply the population type to existing outgoing connections."""
+        # Find all projections where this population is the source
+        for target_layer in self._network_builder._projections:
+            for target_pop in self._network_builder._projections[target_layer]:
+                if self._layer_name in self._network_builder._projections[target_layer][target_pop]:
+                    if source_pop in self._network_builder._projections[target_layer][target_pop][self._layer_name]:
+                        projection = self._network_builder._projections[target_layer][target_pop][self._layer_name][source_pop]
+                        
+                        # Apply the type settings
+                        if neuron_type.lower() in ['excitatory', 'e', 'exc']:
+                            projection['weight_bounds'] = (0, None)
+                            projection['weight_init'] = 'half_kaiming'
+                            projection['weight_init_args'] = (init_scale,)
+                        elif neuron_type.lower() in ['inhibitory', 'i', 'inh']:
+                            projection['weight_bounds'] = (None, 0)
+                            projection['weight_init'] = 'half_kaiming'
+                            projection['weight_init_args'] = (init_scale,)
+    
     def connect_to(self, 
                    target_layer: str, 
                    target_population: str, 
@@ -1247,13 +1362,21 @@ class LayerBuilder:
                 raise ValueError(f"No populations defined in layer {self._layer_name}")
             source_population = list(self._network_builder._layers[self._layer_name].keys())[-1]
         
-        return ProjectionBuilder(
+        projection_builder = ProjectionBuilder(
             self._network_builder, 
             self._layer_name, 
             source_population,
             target_layer, 
             target_population
         )
+        
+        # Apply population type if it exists for the source population
+        source_key = f"{self._layer_name}.{source_population}"
+        if source_key in self._network_builder._population_types:
+            pop_type, init_scale = self._network_builder._population_types[source_key]
+            projection_builder.type(pop_type, init_scale)
+        
+        return projection_builder
     
     def connect_from(self, 
                      source_layer: str, 
@@ -1266,13 +1389,21 @@ class LayerBuilder:
                 raise ValueError(f"No populations defined in layer {self._layer_name}")
             target_population = list(self._network_builder._layers[self._layer_name].keys())[-1]
         
-        return ProjectionBuilder(
+        projection_builder = ProjectionBuilder(
             self._network_builder,
             source_layer,
             source_population, 
             self._layer_name,
             target_population
         )
+        
+        # Apply population type if it exists for the source population
+        source_key = f"{source_layer}.{source_population}"
+        if source_key in self._network_builder._population_types:
+            pop_type, init_scale = self._network_builder._population_types[source_key]
+            projection_builder.type(pop_type, init_scale)
+        
+        return projection_builder
     
     def layer(self, name: str) -> 'LayerBuilder':
         """Switch to building a different layer."""
@@ -1334,7 +1465,7 @@ class ProjectionBuilder:
         self._projection_config['weight_bounds'] = (lower, upper)
         return self
     
-    def type(self,weight_type: str, init_scale=1) -> 'ProjectionBuilder':
+    def type(self, weight_type: str, init_scale: float = 1.0) -> 'ProjectionBuilder':
         """Set weight type (Excitatory or Inhibitory)."""
         if weight_type.lower() in ['excitatory', 'e', 'exc']:
             self.weight_bounds(0, None)
@@ -1395,7 +1526,5 @@ class ProjectionBuilder:
     def build(self) -> Tuple[Dict, Dict, Dict]:
         """Build and return all configuration dictionaries."""
         return self._network_builder.build()
-
-
 
 
