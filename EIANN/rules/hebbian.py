@@ -5,6 +5,90 @@ import torch
 import math
 
 
+class Ojas_rule(LearningRule):
+    def __init__(self, projection, learning_rate=None, forward_only=False):
+        """
+        Oja's rule for unsupervised learning and principal component analysis.
+        
+        Oja's rule is a modification of the standard Hebbian learning rule that includes
+        a weight decay term proportional to the square of the postsynaptic activity and
+        the current weight value. This normalization term prevents weights from growing
+        without bound (common with naive Hebbian learning) and causes the weight vector to converge to the first principal component
+        of the input correlation matrix.
+        
+        The weight update rule is:
+        
+        .. math::
+            \\Delta w_{ij} = \\eta (y_i x_j- y_i^2 w_{ij})
+        
+        where:
+        
+        - :math:`\\eta` is the learning rate
+        - :math:`y_j` is the postsynaptic activity
+        - :math:`x_i` is the presynaptic activity  
+        - :math:`w_{ij}` is the current weight from neuron j to neuron i
+        
+        Parameters
+        ----------
+        projection : EIANN.Projection
+            The projection/connection between neural populations
+        learning_rate : float, optional
+            Learning rate for weight updates. If None, inherits the value from network.learning_rate
+        forward_only : bool, default=False
+            If True, only uses forward_activity for weight updates, instead of the last stored activity
+
+        References
+        ----------
+        Oja, E. (1982). Simplified neuron model as a principal component analyzer.
+        Journal of Mathematical Biology, 15:267-273.
+        """
+        super().__init__(projection, learning_rate)
+        self.forward_only = forward_only
+    
+    def step(self):
+        """
+        Perform one step of Oja's rule weight update.
+        
+        Updates weights according to Oja's rule:
+        
+        .. math::
+            \\Delta w = \\eta (y \\cdot x - y^2 \\cdot w)
+            
+        where the weight decay term :math:`(y^2 \\cdot w)` provides automatic normalization.
+        """
+        # Get postsynaptic activity
+        if self.forward_only:
+            post_activity = torch.clamp(self.projection.post.forward_activity, min=0, max=1)
+        else:
+            post_activity = torch.clamp(self.projection.post.activity, min=0, max=1)
+        
+        # Get presynaptic activity based on projection direction
+        if self.projection.direction in ['forward', 'F']:
+            if self.forward_only:
+                pre_activity = torch.clamp(self.projection.pre.forward_activity, min=0, max=1)
+            else:
+                pre_activity = torch.clamp(self.projection.pre.activity, min=0, max=1)
+        elif self.projection.direction in ['recurrent', 'R']:
+            if self.forward_only:
+                pre_activity = torch.clamp(self.projection.pre.forward_prev_activity, min=0, max=1)
+            else:
+                pre_activity = torch.clamp(self.projection.pre.prev_activity, min=0, max=1)
+        
+        # Compute Oja's rule update: Δw = η * (y*x - y^2*w)
+        # First term: standard Hebbian term (outer product of post and pre activities)
+        hebbian_term = torch.outer(post_activity, pre_activity)
+        
+        # Second term: weight decay proportional to y^2*w (normalization term)
+        # post_activity.unsqueeze(1) creates column vector for broadcasting
+        decay_term = (post_activity.unsqueeze(1) ** 2) * self.projection.weight.data
+        
+        # Combined update rule
+        delta_weight = (hebbian_term - decay_term).detach().clone()
+        
+        # Apply weight update
+        self.projection.weight.data += self.learning_rate * delta_weight
+
+
 class Supervised_BCM_4(LearningRule):
     def __init__(self, projection, theta_tau, k, sign=1, max_pop_fraction=0.025, stochastic=False, learning_rate=None,
                  relu_gate=False):

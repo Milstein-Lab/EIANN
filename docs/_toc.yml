@@ -9,10 +9,12 @@ parts:
     chapters:
     - file: installation
     - file: 1_eiann_basics
-    # - file: tutorial_2
-    - glob: autoapi/*
-      title: Auto-generated API
 
+  - caption: Python API  
+    chapters:
+    - file: yaml_glossary
+    - glob: autoapi/EIANN/*
+      
 
 # - file: modules_reference
 #   chapters:

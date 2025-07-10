@@ -205,7 +205,7 @@ def plot_train_loss_history(network, title=None, train_step_range=None):
     train_steps = np.arange(train_step_range[0], train_step_range[1])
 
     fig = plt.figure()
-    plt.plot(train_steps, network.loss_history[train_step_range[0]:train_step_range[1]])
+    plt.plot(train_steps, network.loss_history[train_step_range[0]:train_step_range[1]], linewidth=0.5)
     plt.ylabel('Train loss')
     plt.xlabel('Training steps')
     fig.suptitle('Train loss%s' % title_str)
@@ -237,29 +237,16 @@ def plot_validate_loss_history(network, title=None, train_step_range=None):
 
     fig = plt.figure()
     plt.plot(train_steps, val_loss_history)
-    # plt.plot(network.val_history_train_steps, network.val_loss_history)
     plt.xlabel('Training steps')
     plt.ylabel('Validation loss')
-    plt.xlim(train_step_range[0], train_step_range[1])
+    # plt.xlim(train_step_range[0], train_step_range[1])
     fig.suptitle('Validation loss%s' % title_str)
     fig.tight_layout()
     plt.show(block=False)
 
 
 def plot_loss_history(network):
-    """
-    Assumes network has been trained and a val_loss_history has been stored.
-    :param network:
-    """
-    assert len(network.val_loss_history) > 0, 'Network must contain a stored val_loss_history'
-    fig = plt.figure()
-    plt.plot(network.loss_history, label='Training loss')
-    plt.plot(network.val_history_train_steps, network.val_loss_history, label='Validation loss', color='red')
-    plt.legend()
-    plt.xlabel('Training steps')
-    plt.ylabel('Validation loss')
-    fig.tight_layout()
-    fig.show()
+    plot_validate_loss_history(network)
     
 
 def plot_accuracy_history(network):
@@ -271,8 +258,10 @@ def plot_accuracy_history(network):
     fig = plt.figure()
     plt.plot(network.val_history_train_steps, network.val_accuracy_history)
     plt.xlabel('Training steps')
-    plt.ylabel('Validation accuracy')
-    fig.show()
+    plt.ylabel("Accuracy (%)")
+    fig.tight_layout()
+    fig.suptitle('Validation accuracy')
+    plt.show(block=False)
 
 
 def plot_error_history(network):
@@ -284,14 +273,17 @@ def plot_error_history(network):
     error_rate = 100 - network.val_accuracy_history
     train_steps = network.val_history_train_steps
 
-    fig = plt.figure()
-    plt.plot(train_steps, error_rate)
-    plt.yscale('log')
-    plt.ylim(top=100)
-    plt.yticks([10, 100], labels=['10%', '100%'])
-    plt.xlabel('Train steps')
-    plt.ylabel('Error Rate (%)')
-    fig.show()
+    fig,ax = plt.subplots()
+    ax.plot(train_steps, error_rate)
+    ax.set_yscale('log')
+    ax.set_ylim(top=100)
+    ax.set_yticks([10, 30, 50, 100], labels=['10', '30', '50', '100'])
+    ax.tick_params(axis='y', which='minor', labelleft=False)
+    ax.tick_params(axis='both', which='minor', length=3, color='k')
+    ax.set_xlabel('Train steps')
+    ax.set_ylabel('Error Rate (%)')
+    fig.tight_layout()
+    plt.show(block=False)
 
 
 def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None, store_history=False, plot=False):
