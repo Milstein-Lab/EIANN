@@ -35,7 +35,7 @@ conda activate eiann
 pip install -r requirements.txt
 ```
 ```
-pip install -e . --use-pep517
+pip install -e .
 ```
 
 ## ⏱ Using EIANN
