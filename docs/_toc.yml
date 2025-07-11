@@ -9,6 +9,7 @@ parts:
     chapters:
     - file: installation
     - file: 1_eiann_basics
+    - file: 2_training_feedforward_network
 
   - caption: Python API  
     chapters:

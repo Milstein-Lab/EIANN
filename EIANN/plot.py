@@ -189,7 +189,7 @@ def plot_EIANN_1_hidden_autoenc_config_summary(network, test_dataloader, sorted_
     fig3.show()
 
 
-def plot_train_loss_history(network, title=None, train_step_range=None):
+def plot_train_loss_history(network, title=None, train_step_range=None, ax=None):
     """
     Plot loss history from training
     :param network:
@@ -204,16 +204,20 @@ def plot_train_loss_history(network, title=None, train_step_range=None):
         train_step_range = [0, len(network.loss_history)]
     train_steps = np.arange(train_step_range[0], train_step_range[1])
 
-    fig = plt.figure()
-    plt.plot(train_steps, network.loss_history[train_step_range[0]:train_step_range[1]], linewidth=0.5)
-    plt.ylabel('Train loss')
-    plt.xlabel('Training steps')
-    fig.suptitle('Train loss%s' % title_str)
-    fig.tight_layout()
-    plt.show(block=False)
+    if ax is None:
+        fig = plt.figure()
+        plt.plot(train_steps, network.loss_history[train_step_range[0]:train_step_range[1]], linewidth=0.5)
+        plt.ylabel('Train loss')
+        plt.xlabel('Training steps')
+        fig.suptitle('Train loss%s' % title_str)
+        fig.tight_layout()
+        plt.show(block=False)
+    else:
+        ax.plot(train_steps, network.loss_history[train_step_range[0]:train_step_range[1]], linewidth=0.5, label='Train loss')
+        ax.set_xlabel('Training steps')
 
 
-def plot_validate_loss_history(network, title=None, train_step_range=None):
+def plot_validate_loss_history(network, title=None, train_step_range=None, ax=None):
     """
     Assumes network has been trained and a val_loss_history has been stored.
     :param network:
@@ -235,18 +239,30 @@ def plot_validate_loss_history(network, title=None, train_step_range=None):
         train_steps = network.val_history_train_steps[train_steps_idx]
         val_loss_history = network.val_loss_history[train_steps_idx]
 
-    fig = plt.figure()
-    plt.plot(train_steps, val_loss_history)
-    plt.xlabel('Training steps')
-    plt.ylabel('Validation loss')
-    # plt.xlim(train_step_range[0], train_step_range[1])
-    fig.suptitle('Validation loss%s' % title_str)
-    fig.tight_layout()
-    plt.show(block=False)
+    if ax is None:
+        fig = plt.figure()
+        plt.plot(train_steps, val_loss_history)
+        plt.xlabel('Training steps')
+        plt.ylabel('Validation loss')
+        # plt.xlim(train_step_range[0], train_step_range[1])
+        fig.suptitle('Validation loss%s' % title_str)
+        fig.tight_layout()
+        plt.show(block=False)
+    else: 
+        ax.plot(train_steps, val_loss_history, label='Validation loss', color='r')
+        ax.set_xlabel('Training steps')
 
 
 def plot_loss_history(network):
-    plot_validate_loss_history(network)
+    fig, ax = plt.subplots()
+    plot_train_loss_history(network, ax=ax)
+    plot_validate_loss_history(network, ax=ax)
+    ax.set_ylabel("Loss")
+    legend = ax.legend(handlelength=1, handletextpad=0.5)
+    for line in legend.get_lines():
+        line.set_linewidth(2)
+    fig.tight_layout()
+    fig.suptitle(f"Loss history (criterion: {str(network.criterion)})")
     
 
 def plot_accuracy_history(network):

@@ -96,7 +96,7 @@ def convert_layer_config_dict(layer_config_dict):
     return layer_config_dict       
 
 
-def save_network(network, path=None, dir='saved_networks', file_name_base=None, disp=True):
+def save_network(network, path=None, dir='saved_networks', file_name_base=None, disp=True, overwrite=False):
     if path is None:
         if file_name_base is None:
             file_name_base = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -107,7 +107,11 @@ def save_network(network, path=None, dir='saved_networks', file_name_base=None, 
         os.makedirs(dir, exist_ok=True)
     
     if os.path.exists(path):
-        print(f"WARNING: File '{path}' already exists. Overwriting...")
+        if overwrite is True:
+            print(f"WARNING: File '{path}' already exists. Overwriting...")
+        else:
+            print(f"WARNING: File '{path}' already exists, new file not saved. Use overwrite=True to overwrite.")
+            return
 
     with open(path, 'wb') as f:
         dill.dump(network, f)
@@ -115,9 +119,9 @@ def save_network(network, path=None, dir='saved_networks', file_name_base=None, 
         print(f"Saved network to '{path}'")
 
 
-def load_network(filepath):
-    print(f"Loading network from '{filepath}'")
-    with open(filepath, 'rb') as f:
+def load_network(path):
+    print(f"Loading network from '{path}'")
+    with open(path, 'rb') as f:
         network = dill.load(f)
     for layer in network:
         for population in layer:
@@ -126,7 +130,7 @@ def load_network(filepath):
             for projection in population:
                 for attr_name in projection.attribute_history_dict:
                     projection.register_attribute_history(attr_name)
-    print(f"Network successfully loaded from '{filepath}'")
+    print(f"Network successfully loaded from '{path}'")
     return network
     
 
@@ -175,9 +179,9 @@ def save_network_dict(network, path=None, dir='saved_networks', file_name_base=N
         print(f'Model saved to {path}')
 
 
-def load_network_dict(network, filepath):
-    print(f"Loading model data from '{filepath}'...")
-    with open(filepath, 'rb') as file:
+def load_network_dict(network, path):
+    print(f"Loading model data from '{path}'...")
+    with open(path, 'rb') as file:
         data_dict = pickle.load(file)
 
     print('Loading parameters into the network...')
@@ -191,7 +195,7 @@ def load_network_dict(network, filepath):
             population.__dict__.update(population_data)
 
     network.load_state_dict(data_dict['final_state_dict'])
-    print(f"Model successfully loaded from '{filepath}'")
+    print(f"Model successfully loaded from '{path}'")
 
 
 def build_clone_network(network, backprop=True):

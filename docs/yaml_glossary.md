@@ -36,8 +36,6 @@ layer_config:
 - `bias_bounds`: Tuple of min/max values for clipping the bias.
 - `bias_learning_rule`: Callable name for the learning rule applied to the bias.
 - `bias_learning_rule_kwargs`: Additional parameters for the bias learning rule.
-- `custom_update`: Custom update function name (overrides built-in behavior).
-- `custom_update_kwargs`: Parameters passed to the custom update function.
 - `output_pop`: Marks this population as the output target for loss calculation.
 
 
@@ -48,32 +46,34 @@ Defines all projections (i.e., weighted connections) between neuron populations.
 ### Structure
 ```yaml
 projection_config:
-  PostLayer:
-    PostPopulation:
-      PreLayer:
-        PrePopulation:
-          weight_init: str
-          weight_init_args: tuple
-          weight_constraint: str
-          weight_constraint_kwargs: dict
-          weight_bounds: [float, float]
-          direction: str
-          update_phase: str
-          compartment: str
-          learning_rule: str
-          learning_rule_kwargs: dict
+
+  PostLayer.PostPopulation:
+    PreLayer.PrePopulation:
+      weight_init: str
+      weight_init_args: tuple
+      weight_constraint: str
+      weight_constraint_kwargs: dict
+      weight_bounds: [float, float]
+      direction: str
+      update_phase: str
+      compartment: str
+      learning_rule: str
+      learning_rule_kwargs: dict
 ```
 
 ### Parameters
 - `weight_init`: Name of the weight initializer function (e.g. "half_kaiming").
-- `weight_init_args`: Arguments passed to the initializer (e.g. scaling factor).
-- `weight_constraint`: Optional constraint on the weight matrix (e.g. "normalize_weight").
+- `weight_init_args`: Arguments passed to the initializer. If a single number is provided, it is used as scaling factor when initializing weights.
+- `weight_constraint`: Optional constraint on the weight matrix. Options:
+  [`normalize_weight`](https://milstein-lab.github.io/EIANN/autoapi/EIANN/learning_rules/weight_functions/index.html#EIANN.rules.weight_functions.normalize_weight),
+  [`clone_weight`](https://milstein-lab.github.io/EIANN/autoapi/EIANN/learning_rules/weight_functions/index.html#EIANN.rules.weight_functions.clone_weight),
+  [`no_autapses`](https://milstein-lab.github.io/EIANN/autoapi/EIANN/learning_rules/weight_functions/index.html#EIANN.rules.weight_functions.no_autapses)
 - `weight_constraint_kwargs`: Parameters for the weight constraint.
-- `weight_bounds`: Tuple of [min, max] values to clip weights.
-- `direction`: 'F' or 'R'; forward or recurrent connection direction.
-- `update_phase`: 'F', 'B', 'A', etc.; determines phase when the weight is updated.
-- `compartment`: Specifies target compartment ('soma' or 'dend').
-- `learning_rule`: Name of the function used to update weights (e.g. "BP_like_2L", "Hebb_WeightNorm").
+- `weight_bounds`: Tuple of [min, max] values to clip weights. "Null" means no clipping.
+- `direction`: Forward or Recurrent connection type. Recurrent means the connection uses activities from the previous time step. Options: 'forward','F', 'recurrent','R'
+- `update_phase`: Informs the learning rule to determine which phase of activations to use for weight updates. Options: 'forward' (default option),'F', 'backward','B', 'all','A'
+- `compartment`: Specifies target compartment ('soma' or 'dendrite').
+- `learning_rule`: Name of the function used to update weights (e.g. "Backprop", "BCM", "Hebb_WeightNorm").
 - `learning_rule_kwargs`: Keyword arguments passed to the learning rule.
 
 
@@ -104,8 +104,8 @@ training_kwargs:
 - `criterion`: Loss function name (e.g. "MSELoss").
 - `criterion_kwargs`: Additional arguments passed to the loss function.
 - `seed`: Random seed for reproducibility.
-- `device`: Hardware device ("cpu" or "cuda").
-- `tau`: Time constant for network dynamics (e.g. leaky integration).
+- `device`: Hardware device ("cpu" or "cuda"). [Note: This functionality has not been fully tested for "cuda"]
+- `tau`: Decay time constant for unit leak dynamics. tau=1 represents complete decay in each step (i.e. no persistent state)
 - `forward_steps`: Number of simulation steps per forward pass.
-- `backward_steps`: Number of steps for backprop or backward phase (if applicable).
+- `backward_steps`: Number of steps for backprop or backward phase (if applicable). In the case of Backprop, results in truncated BPTT.
 - `verbose`: Enables logging or debug outputs during training.
