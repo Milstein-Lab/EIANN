@@ -511,8 +511,7 @@ class Network(nn.Module):
                     self.val_accuracy_history.append(accuracy.item())
                     self.val_history_train_steps.append(train_step)
                     if type(epoch_iter) is tqdm: # Display the current loss and accuracy on the progress bar
-                        epoch_iter.set_description(f"Validation Loss: {self.val_loss_history[-1]:.4f}, Accuracy: {self.val_accuracy_history[-1]:.2f}%, \n Epoch")
-                
+                        epoch_iter.set_description(f"Validation Loss: {self.val_loss_history[-1]:.4f}, Accuracy: {self.val_accuracy_history[-1]:.2f}% - Epoch")
                 train_step += 1
 
             epoch_sample_order = torch.concat(epoch_sample_order)
@@ -1018,7 +1017,7 @@ class NetworkBuilder:
             projection_builder.type(pop_type, init_scale)
         
         return projection_builder
-    
+        
     def set_learning_rule_for_layer(self, 
                                     target_layer: str,
                                     rule: Optional[str], 
@@ -1035,6 +1034,7 @@ class NetworkBuilder:
         Returns:
             Self for method chaining
         """
+        # Update projections TO this layer
         if target_layer in self._projections:
             for target_pop in self._projections[target_layer]:
                 for source_layer in self._projections[target_layer][target_pop]:
@@ -1050,14 +1050,25 @@ class NetworkBuilder:
                             rule_kwargs.update(kwargs)
                             projection['learning_rule_kwargs'] = rule_kwargs
         
+        # Update bias learning rules for populations IN this layer
+        if target_layer in self._layers:
+            for pop_name, pop_config in self._layers[target_layer].items():
+                if pop_config.get('include_bias', False):
+                    if rule is not None:
+                        pop_config['bias_learning_rule'] = rule
+                    if learning_rate is not None:
+                        if 'bias_learning_rule_kwargs' not in pop_config:
+                            pop_config['bias_learning_rule_kwargs'] = {}
+                        pop_config['bias_learning_rule_kwargs']['learning_rate'] = learning_rate
+        
         return self
-    
+
     def set_learning_rule_for_population(self, 
-                                         target_layer: str,
-                                         target_population: str,
-                                         rule: Optional[str], 
-                                         learning_rate: Optional[float] = None,
-                                         **kwargs) -> 'NetworkBuilder':
+                                        target_layer: str,
+                                        target_population: str,
+                                        rule: Optional[str], 
+                                        learning_rate: Optional[float] = None,
+                                        **kwargs) -> 'NetworkBuilder':
         """Set learning rule for all projections TO a specific population.
         
         Args:
@@ -1070,6 +1081,7 @@ class NetworkBuilder:
         Returns:
             Self for method chaining
         """
+        # Update projections TO this population
         if (target_layer in self._projections and 
             target_population in self._projections[target_layer]):
             
@@ -1086,12 +1098,25 @@ class NetworkBuilder:
                         rule_kwargs.update(kwargs)
                         projection['learning_rule_kwargs'] = rule_kwargs
         
+        # Update bias learning rule for this specific population
+        if (target_layer in self._layers and 
+            target_population in self._layers[target_layer]):
+            
+            pop_config = self._layers[target_layer][target_population]
+            if pop_config.get('include_bias', False):
+                if rule is not None:
+                    pop_config['bias_learning_rule'] = rule
+                if learning_rate is not None:
+                    if 'bias_learning_rule_kwargs' not in pop_config:
+                        pop_config['bias_learning_rule_kwargs'] = {}
+                    pop_config['bias_learning_rule_kwargs']['learning_rate'] = learning_rate
+        
         return self
-    
+
     def set_learning_rule(self, 
-                          rule: Optional[str], 
-                          learning_rate: Optional[float] = None,
-                          **kwargs) -> 'NetworkBuilder':
+                        rule: Optional[str], 
+                        learning_rate: Optional[float] = None,
+                        **kwargs) -> 'NetworkBuilder':
         """Set learning rule for ALL projections in the network.
         
         Args:
@@ -1119,9 +1144,20 @@ class NetworkBuilder:
                                 rule_kwargs['learning_rate'] = learning_rate
                             rule_kwargs.update(kwargs)
                             projection['learning_rule_kwargs'] = rule_kwargs
+        
+        # Update bias learning rules for ALL populations
+        for layer_name, layer_config in self._layers.items():
+            for pop_name, pop_config in layer_config.items():
+                if pop_config.get('include_bias', False):
+                    if rule is not None:
+                        pop_config['bias_learning_rule'] = rule
+                    if learning_rate is not None:
+                        if 'bias_learning_rule_kwargs' not in pop_config:
+                            pop_config['bias_learning_rule_kwargs'] = {}
+                        pop_config['bias_learning_rule_kwargs']['learning_rate'] = learning_rate
                         
         return self
-    
+
     def get_layer_config(self) -> Dict[str, Any]:
         """Get the layer configuration dictionary."""
         return deepcopy(self._layers)
@@ -1295,7 +1331,11 @@ class LayerBuilder:
     def population(self, 
                    pop_name: str, 
                    size: int, 
-                   activation: Optional[str] = None) -> 'LayerBuilder':
+                   activation: Optional[str] = None,
+                   bias: bool = False,
+                   bias_learning_rule: Optional[str] = "Backprop",
+                   bias_learning_rate: Optional[float] = None,
+                   ) -> 'LayerBuilder':
         """Add a population to the current layer."""
         if self._layer_name not in self._network_builder._layers:
             self._network_builder._layers[self._layer_name] = {}
@@ -1303,6 +1343,11 @@ class LayerBuilder:
         pop_config = {'size': size}
         if activation is not None:
             pop_config['activation'] = activation
+        
+        if bias:
+            pop_config['include_bias'] = bias
+            pop_config['bias_learning_rule'] = bias_learning_rule
+            pop_config['bias_learning_rule_kwargs'] = {'learning_rate': bias_learning_rate}
             
         self._network_builder._layers[self._layer_name][pop_name] = pop_config
         return self
