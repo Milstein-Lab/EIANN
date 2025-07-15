@@ -221,7 +221,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
                       samples_per_epoch=context.train_steps, store_history=context.store_history,
                       store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
-                      status_bar=context.status_bar, debug=context.debug)
+                      status_bar=context.status_bar)
         
     # reorder output units if using unsupervised learning rule
     if not context.supervised:
