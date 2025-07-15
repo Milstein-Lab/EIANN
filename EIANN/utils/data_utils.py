@@ -290,18 +290,24 @@ def get_project_root():
     return current_path
 
 
-def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1):
+def get_MNIST_dataloaders(sub_dataloader_size=1000, classes=None, batch_size=1, data_dir=None):
     """
     Load MNIST dataset into custom dataloaders with sample index
+    :param sub_dataloader_size:
+    :param classes:
+    :param batch_size:
+    :param data_dir:
+    :return:
     """
-
+    if data_dir is None:
+        root_dir = get_project_root()
+        data_dir = root_dir + '/EIANN/data/datasets/'
     # Load dataset
-    root_dir = get_project_root()
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                      torchvision.transforms.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root=root_dir+'/EIANN/data/datasets/', train=True, download=True,
+    MNIST_train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True,
                                                      transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root=root_dir+'/EIANN/data/datasets/', train=False, download=True,
+    MNIST_test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True,
                                                     transform=tensor_flatten)
 
     # Add index to train & test data

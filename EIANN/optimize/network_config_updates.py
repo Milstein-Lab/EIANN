@@ -1266,6 +1266,128 @@ def update_EIANN_config_2_hidden_Top_Layer_Supervised_Hebb_WeightNorm_7(x, conte
         I_I_learning_rate
 
 
+def update_EIANN_config_2_hidden_Top_Layer_Supervised_Hebb_WeightNorm_Eckmann_1(x, context):
+    """
+
+        :param x:
+        :param context:
+        """
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    H_I_size = int(param_dict['H_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+    
+    context.layer_config['H1']['SomaI']['size'] = H_I_size
+    context.layer_config['H2']['SomaI']['size'] = H_I_size
+    context.layer_config['Output']['SomaI']['size'] = Output_I_size
+    
+    H_E_E_learning_rate = param_dict['H_E_E_learning_rate']
+    Output_E_H2_E_learning_rate = param_dict['Output_E_H2_E_learning_rate']
+    E_I_learning_rate = param_dict['E_I_learning_rate']
+    I_E_learning_rate = param_dict['I_E_learning_rate']
+    I_I_learning_rate = param_dict['I_I_learning_rate']
+    
+    H1_E_Input_E_weight_scale = param_dict['H1_E_Input_E_weight_scale'] * \
+                                math.sqrt(context.layer_config['Input']['E']['size']) / 2
+    H1_E_H1_E_weight_scale = param_dict['H1_E_H1_E_weight_scale'] * \
+                                math.sqrt(context.layer_config['H1']['E']['size']) / 2
+    H1_E_H1_SomaI_weight_scale = param_dict['H1_E_H1_SomaI_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H1']['SomaI']['size']) / 2
+    H1_SomaI_H1_E_weight_scale = param_dict['H1_SomaI_H1_E_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H1']['E']['size']) / 2
+    H1_SomaI_Input_E_weight_scale = param_dict['H1_SomaI_Input_E_weight_scale'] * \
+                                    math.sqrt(context.layer_config['Input']['E']['size']) / 2
+    H1_SomaI_H1_SomaI_weight_scale = param_dict['H1_SomaI_H1_SomaI_weight_scale'] * \
+                                     math.sqrt(context.layer_config['H1']['SomaI']['size']) / 2
+    
+    H2_E_H1_E_weight_scale = param_dict['H2_E_H1_E_weight_scale'] * \
+                             math.sqrt(context.layer_config['H1']['E']['size']) / 2
+    H2_E_H2_E_weight_scale = param_dict['H2_E_H2_E_weight_scale'] * \
+                             math.sqrt(context.layer_config['H2']['E']['size']) / 2
+    H2_E_H2_SomaI_weight_scale = param_dict['H2_E_H2_SomaI_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H2']['SomaI']['size']) / 2
+    H2_SomaI_H2_E_weight_scale = param_dict['H2_SomaI_H2_E_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H2']['E']['size']) / 2
+    H2_SomaI_H1_E_weight_scale = param_dict['H2_SomaI_H1_E_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H1']['E']['size']) / 2
+    H2_SomaI_H2_SomaI_weight_scale = param_dict['H2_SomaI_H2_SomaI_weight_scale'] * \
+                                     math.sqrt(context.layer_config['H2']['SomaI']['size']) / 2
+    
+    Output_E_H2_E_init_weight_scale = param_dict['Output_E_H2_E_init_weight_scale']
+    Output_E_Output_I_weight_scale = param_dict['Output_E_Output_I_weight_scale'] * \
+                                     math.sqrt(context.layer_config['Output']['SomaI']['size']) / 2
+    Output_I_Output_E_weight_scale = param_dict['Output_I_Output_E_weight_scale'] * \
+                                     math.sqrt(context.layer_config['Output']['E']['size']) / 2
+    Output_I_H2_E_weight_scale = param_dict['Output_I_H2_E_weight_scale'] * \
+                                 math.sqrt(context.layer_config['H2']['E']['size']) / 2
+    Output_I_Output_I_weight_scale = param_dict['Output_I_Output_I_weight_scale'] * \
+                                     math.sqrt(context.layer_config['Output']['SomaI']['size']) / 2
+    
+    context.projection_config['H1']['E']['Input']['E']['weight_constraint_kwargs']['scale'] = H1_E_Input_E_weight_scale
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_E_learning_rate
+    context.projection_config['H1']['E']['H1']['E']['weight_constraint_kwargs']['scale'] = H1_E_H1_E_weight_scale
+    context.projection_config['H1']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_E_learning_rate
+    
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_constraint_kwargs']['scale'] = (
+        H1_E_H1_SomaI_weight_scale)
+    context.projection_config['H1']['E']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_constraint_kwargs']['scale'] = (
+        H1_SomaI_Input_E_weight_scale)
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_constraint_kwargs']['scale'] = (
+        H1_SomaI_H1_E_weight_scale)
+    context.projection_config['H1']['SomaI']['Input']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_constraint_kwargs']['scale'] = \
+        H1_SomaI_H1_SomaI_weight_scale
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+    
+    context.projection_config['H2']['E']['H1']['E']['weight_constraint_kwargs']['scale'] = H2_E_H1_E_weight_scale
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_E_learning_rate
+    context.projection_config['H2']['E']['H2']['E']['weight_constraint_kwargs']['scale'] = H2_E_H2_E_weight_scale
+    context.projection_config['H2']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_E_learning_rate
+    
+    context.projection_config['H2']['E']['H2']['SomaI']['weight_constraint_kwargs']['scale'] = (
+        H2_E_H2_SomaI_weight_scale)
+    context.projection_config['H2']['E']['H2']['SomaI']['learning_rule_kwargs']['learning_rate'] = E_I_learning_rate
+    
+    context.projection_config['H2']['SomaI']['H1']['E']['weight_constraint_kwargs']['scale'] = (
+        H2_SomaI_H1_E_weight_scale)
+    context.projection_config['H2']['SomaI']['H2']['E']['weight_constraint_kwargs']['scale'] = (
+        H2_SomaI_H2_E_weight_scale)
+    context.projection_config['H2']['SomaI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H2']['SomaI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = I_E_learning_rate
+    context.projection_config['H2']['SomaI']['H2']['SomaI']['weight_constraint_kwargs']['scale'] = \
+        H2_SomaI_H2_SomaI_weight_scale
+    context.projection_config['H2']['SomaI']['H2']['SomaI']['learning_rule_kwargs']['learning_rate'] = I_I_learning_rate
+    
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_H2_E_learning_rate
+    
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_constraint_kwargs']['scale'] = \
+        Output_E_Output_I_weight_scale
+    context.projection_config['Output']['E']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = \
+        E_I_learning_rate
+    
+    context.projection_config['Output']['SomaI']['H2']['E']['weight_constraint_kwargs']['scale'] = \
+        Output_I_H2_E_weight_scale
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_constraint_kwargs']['scale'] = \
+        Output_I_Output_E_weight_scale
+    context.projection_config['Output']['SomaI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['SomaI']['Output']['E']['learning_rule_kwargs']['learning_rate'] = \
+        I_E_learning_rate
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_constraint_kwargs']['scale'] = \
+        Output_I_Output_I_weight_scale
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['learning_rule_kwargs']['learning_rate'] = \
+        I_I_learning_rate
+
+
 def update_EIANN_config_2_hidden_Supervised_Hebb_WeightNorm_4(x, context):
     """
     H1.SomaI, H2.SomaI, and Output.SomaI are not learned.

@@ -298,7 +298,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       samples_per_epoch=context.train_steps, store_history=context.store_history,
                       store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
-                      status_bar=context.status_bar, debug=context.debug)
+                      status_bar=context.status_bar)
     
     if plot:
         try:
@@ -381,7 +381,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.compute_receptive_fields:
             # Compute receptive fields
             population = network.H1.E
-            receptive_fields = utils.compute_maxact_receptive_fields(population)
+            receptive_fields = utils.compute_maxact_receptive_fields(population, test_dataloader=test_dataloader)
         else:
             receptive_fields = network.H1.E.Input.E.weight.detach()
         

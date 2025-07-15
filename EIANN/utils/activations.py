@@ -7,7 +7,6 @@ import numpy as np
 import EIANN.external as external
 
 
-
 def set_activation(network, activation, **kwargs):
     # Set callable activation function
     if isinstance(activation, str):
@@ -24,6 +23,10 @@ def set_activation(network, activation, **kwargs):
         if i > 0:
             for population in layer:
                 population.activation = activation_f
+
+
+def polynomial(x, n):
+    return x ** n
 
 
 def srelu(x, min=0, max=1):

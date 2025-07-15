@@ -510,7 +510,7 @@ class Network(nn.Module):
                                output.shape[0]
                     self.val_accuracy_history.append(accuracy.item())
                     self.val_history_train_steps.append(train_step)
-                    if type(epoch_iter) is tqdm: # Display the current loss and accuracy on the progress bar
+                    if status_bar: # Display the current loss and accuracy on the progress bar
                         epoch_iter.set_description(f"Validation Loss: {self.val_loss_history[-1]:.4f}, Accuracy: {self.val_accuracy_history[-1]:.2f}%, \n Epoch")
                 
                 train_step += 1
