@@ -253,10 +253,10 @@ def plot_validate_loss_history(network, title=None, train_step_range=None, ax=No
         ax.set_xlabel('Training steps')
 
 
-def plot_loss_history(network):
+def plot_loss_history(network, train_step_range=None):
     fig, ax = plt.subplots()
-    plot_train_loss_history(network, ax=ax)
-    plot_validate_loss_history(network, ax=ax)
+    plot_train_loss_history(network, ax=ax, train_step_range=train_step_range)
+    plot_validate_loss_history(network, ax=ax, train_step_range=train_step_range)
     ax.set_ylabel("Loss")
     legend = ax.legend(handlelength=1, handletextpad=0.5)
     for line in legend.get_lines():

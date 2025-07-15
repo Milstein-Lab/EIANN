@@ -8,8 +8,13 @@ parts:
   - caption: Using EIANN
     chapters:
     - file: installation
-    - file: 1_eiann_basics
-    - file: 2_training_feedforward_network
+    - file: Using_EIANN/1_eiann_basics
+    - file: Using_EIANN/2_training_feedforward_network
+
+  - caption: Galloni et al. 2025
+    chapters:
+    - file: ../EIANN/notebooks/explore_MNIST
+    - file: ../EIANN/notebooks/explore_spirals
 
   - caption: Python API  
     chapters:
