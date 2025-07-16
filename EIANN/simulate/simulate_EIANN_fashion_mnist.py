@@ -7,6 +7,8 @@ from copy import deepcopy
 import numpy as np
 import h5py
 import gc
+import click
+import matplotlib.pyplot as plt
 
 from EIANN import Network
 from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
@@ -15,23 +17,19 @@ from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epo
                          get_binned_mean_population_attribute_history_dict)
 from EIANN.plot import (plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields,
                         plot_representation_metrics)
-from nested.utils import Context, str_to_bool
-from nested.optimize_utils import update_source_contexts
-from EIANN.optimize.network_config_updates import *
+from nested.utils import Context, get_unknown_click_arg_dict, str_to_bool
+from nested.parallel import get_parallel_interface
+from nested.optimize_utils import nested_parallel_init_contexts_interactive
+import EIANN.optimize.nested_optimize_EIANN_fashion_mnist
+from EIANN.optimize.nested_optimize_EIANN_fashion_mnist import get_random_seeds
 import EIANN.utils as utils
 
 
 context = Context()
 
 
-def config_controller():
-    if 'debug' not in context():
-        context.debug = False
-    else:
-        context.debug = str_to_bool(context.debug)
-
-
 def config_worker():
+    EIANN.optimize.nested_optimize_EIANN_fashion_mnist.context = context
     context.seed_start = int(context.seed_start)
     context.num_instances = int(context.num_instances)
     context.network_id = int(context.network_id)
@@ -98,16 +96,11 @@ def config_worker():
         if context.label is None:
             context.export_network_config_file_path = f"{context.output_dir}/{network_name}_optimized.yaml"
         else:
-            context.export_network_config_file_path = \
-                f"{context.output_dir}/{network_name}_{context.label}_optimized.yaml"
+            context.export_network_config_file_path = f"{context.output_dir}/{network_name}_{context.label}_optimized.yaml"
     if 'retrain' not in context():
         context.retrain = True
     else:
         context.retrain = str_to_bool(context.retrain)
-    if not context.retrain:
-        if 'data_file_path' not in context() or not os.path.exists(context.data_file_path):
-            raise Exception('nested_optimize_EIANN_spiral_2_hidden: missing valid data_file_path to load network from '
-                            'file')
     if 'plot_initial' not in context():
         context.plot_initial = False
     else:
@@ -144,12 +137,6 @@ def config_worker():
             if context.store_history_interval is None:
                 context.store_history_interval = context.val_interval
     
-    if 'data_file_path' in context():
-        context.base_data_file_path = context.data_file_path
-    else:
-        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-        context.base_data_file_path = f"{context.output_dir}/{network_name}.pkl"
-    
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
@@ -163,9 +150,9 @@ def config_worker():
     tensor_flatten = T.Compose([
         T.ToTensor(),
         T.Lambda(torch.flatten)])
-    FMNIST_train_dataset = torchvision.datasets.FashionMNIST(root=context.output_dir + '/datasets/FMNIST_data/', 
+    FMNIST_train_dataset = torchvision.datasets.FashionMNIST(root=context.output_dir + '/datasets/FMNIST_data/',
                                                              train=True, download=download, transform=tensor_flatten)
-    FMNIST_test_dataset = torchvision.datasets.FashionMNIST(root=context.output_dir + '/datasets/FMNIST_data/', 
+    FMNIST_test_dataset = torchvision.datasets.FashionMNIST(root=context.output_dir + '/datasets/FMNIST_data/',
                                                             train=False, download=download, transform=tensor_flatten)
 
     # Add index to train & test data
@@ -185,58 +172,17 @@ def config_worker():
         torch.utils.data.DataLoader(FMNIST_train[0:-10000], shuffle=True, generator=context.data_generator)
     context.val_dataloader = torch.utils.data.DataLoader(FMNIST_train[-10000:], batch_size=10000, shuffle=False)
     context.test_dataloader = torch.utils.data.DataLoader(FMNIST_test, batch_size=10000, shuffle=False)
-
-
-def get_mean_forward_dend_loss(network, num_steps, abs=True):
-    """
     
-    :param network:
-    :param num_steps: int
-    :param: abs: bool
-    :return: tensor
-    """
-    attr_name = 'forward_dendritic_state'
-    all_pop_attr_history_list = []
-    
-    for pop_name, pop in network.populations.items():
-        attr_history = pop.get_attribute_history(attr_name)
-        if attr_history is None:
-            continue
-        attr_history = attr_history.detach().clone()
-        if abs:
-            attr_history = torch.abs(attr_history)
-        all_pop_attr_history_list.append(attr_history)
-    
-    all_pop_attr_history_tensor = torch.concatenate(all_pop_attr_history_list, dim=1)
-    mean_attr_history = torch.mean(all_pop_attr_history_tensor, dim=1)
-    
-    return torch.mean(mean_attr_history[-num_steps:]).item()
 
-
-def get_random_seeds():
-    network_seeds = [int.from_bytes((context.network_id, context.task_id, instance_id), byteorder='big')
-                     for instance_id in range(context.seed_start, context.seed_start + context.num_instances)]
-    data_seeds = [int.from_bytes((context.network_id, instance_id), byteorder='big')
-                     for instance_id in range(context.data_seed_start, context.data_seed_start + context.num_instances)]
-    if context.debug:
-        print('network_seeds:', network_seeds, 'data_seeds:', data_seeds)
-        sys.stdout.flush()
-    return [network_seeds, data_seeds]
-
-
-def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False):
+def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     """
 
-    :param x: array of float
     :param seed: int
     :param data_seed: int
-    :param model_id: str
+    :param data_file_path: str (path)
     :param export: bool
     :param plot: bool
-    :return: dict
     """
-    update_source_contexts(x, context)
-    
     data_generator = context.data_generator
     train_sub_dataloader = context.train_sub_dataloader
     val_dataloader = context.val_dataloader
@@ -246,30 +192,23 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
     
-    if export:
-        config_dict = {'layer_config': context.layer_config,
-                       'projection_config': context.projection_config,
-                       'training_kwargs': context.training_kwargs}
-        write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
-        if context.disp:
-            print('nested_optimize_EIANN_fashion_mnist: pid: %i exported network config to %s' %
-                  (os.getpid(), context.export_network_config_file_path))
-    
     if plot:
-        try:
-            network.Output.E.H1.E.initial_weight = network.Output.E.H1.E.weight.data.detach().clone()
-            network.H1.E.Output.E.initial_weight = network.H1.E.Output.E.weight.data.detach().clone()
-        except:
-            pass
         if context.plot_initial:
             title = 'Initial (%i, %i)' % (seed, data_seed)
             plot_batch_accuracy(network, test_dataloader, population='all', title=title)
     
-    if not context.retrain:
-        network = utils.load_network(context.data_file_path)
+    if data_file_path is None:
+        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+        if context.label is None:
+            data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}.pkl"
+        else:
+            data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}_{context.label}.pkl"
+    
+    if os.path.exists(data_file_path) and not context.retrain:
+        network = utils.load_network(data_file_path)
         if context.disp:
             print('nested_optimize_EIANN_fashion_mnist: pid: %i loaded network history from %s' %
-                  (os.getpid(), context.data_file_path))
+                  (os.getpid(), data_file_path))
     else:
         data_generator.manual_seed(data_seed)
         if context.debug:
@@ -281,14 +220,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                       store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar)
-    
-    if plot:
-        try:
-            from EIANN.plot import plot_FB_weight_alignment
-            plot_FB_weight_alignment(network.Output.E.H1.E, network.H1.E.Output.E)
-        except:
-            pass
-
+        
     # reorder output units if using unsupervised learning rule
     if not context.supervised:
         if context.eval_accuracy == 'final':
@@ -312,46 +244,6 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
             recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
     
-    # Select for stability by computing mean accuracy in a window after the best validation step
-    val_stepsize = int(context.val_interval[2])
-    num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
-    
-    if context.eval_accuracy == 'final':
-        final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
-        final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
-        
-        results = {'loss': final_loss,
-                   'accuracy': final_argmax_accuracy}
-    elif context.eval_accuracy == 'best':
-        if min_loss_idx + num_val_steps_accuracy_window > len(
-                sorted_val_loss_history):  # if best loss too close to the end
-            best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
-            best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
-        else:
-            best_accuracy_window = \
-                torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
-            best_loss_window = torch.mean(
-                sorted_val_loss_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
-        
-        results = {'loss': best_loss_window,
-                   'accuracy': best_accuracy_window}
-    else:
-        raise Exception('nested_optimize_EIANN_fashion_mnist: eval_accuracy must be final or best, not %s' %
-                        context.eval_accuracy)
-
-    if np.isnan(results['loss']) or np.isinf(results['loss']):
-        if context.debug and context.interactive:
-            context.update(locals())
-        return dict()
-    
-    if context.include_dend_loss_objective:
-        if context.store_history_interval is None:
-            dend_loss_window = int(context.num_training_steps_accuracy_window)
-        else:
-            dend_loss_window = num_val_steps_accuracy_window
-        mean_forward_dend_loss = get_mean_forward_dend_loss(network, dend_loss_window)
-        results['mean_forward_dend_loss'] = mean_forward_dend_loss
-    
     if plot:
         title = 'Final (%i, %i)' % (seed, data_seed)
         plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
@@ -374,7 +266,6 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if 'H1' in network.layers:
             metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
             plot_representation_metrics(metrics_dict)
-        
         test_loss_history, test_accuracy_history = \
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
                                                    plot=plot, status_bar=context.status_bar)
@@ -382,24 +273,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if context.constrain_equilibration_dynamics or context.debug:
         residuals = check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
                                                  store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
-        if context.include_equilibration_dynamics_objective:
-            results['dynamics_residuals'] = residuals
-        elif residuals > 0. and not context.debug:
-            if context.interactive:
-                context.update(locals())
-            return dict()
+        if residuals > 0. and context.disp:
+            print('Failed equilibration dynamics test (%i, %i)' % (seed, data_seed))
+            sys.stdout.flush()
     
     if export:
-        base_data_file_path_prefix = context.base_data_file_path.split('.')[0]
-        if context.label is None:
-            this_data_file_path = f"{base_data_file_path_prefix}_{seed}_{data_seed}.pkl"
-        else:
-            this_data_file_path = f"{base_data_file_path_prefix}_{seed}_{data_seed}_{context.label}.pkl"
-        
-        utils.save_network(network, path=this_data_file_path, disp=False)
+        utils.save_network(network, path=data_file_path, disp=False)
         if context.disp:
-            print('nested_optimize_EIANN_fashion_mnist: pid: %i exported network history to %s' %
-                  (os.getpid(), this_data_file_path))
+            print('simulate_EIANN_fashion_mnist: pid: %i exported network history to %s' %
+                  (os.getpid(), data_file_path))
     
     if not context.interactive:
         del network
@@ -407,32 +289,82 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     else:
         context.update(locals())
 
-    return results
+
+@click.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True, ))
+@click.option("--config-file-path", required=True,
+              type=click.Path(exists=True, file_okay=True, dir_okay=False),
+              default='config/fmnist/simulate_EIANN_fashion_mnist_supervised_config.yaml')
+@click.option("--network-config-file-path", required=True,
+              type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.option("--data-file-path", '-d', multiple=True,
+              type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.option("--output-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), default='../data/fmnist/extended')
+@click.option("--export", is_flag=True)
+@click.option("--retrain", type=bool, default=True)
+@click.option("--label", type=str, default=None)
+@click.option("--plot", is_flag=True)
+@click.option("--interactive", is_flag=True)
+@click.option("--debug", is_flag=True)
+@click.option("--disp", is_flag=True)
+@click.option("--framework", type=str, default='serial')
+@click.pass_context
+def main(cli, config_file_path, network_config_file_path, data_file_path, output_dir, export, retrain, label, plot,
+         interactive, debug, disp, framework):
+    """
+    To execute on a single process:
+    python -i simulate_EIANN_fashion_mnist.py --plot --interactive --config-file-path=$PATH_TO_CONFIG_YAML \
+        --network-config-file-path=$PATH_TO_NETWORK_CONFIG_YAML
+
+    To execute using MPI parallelism with 1 controller process and N - 1 worker processes:
+    mpirun -n N python -i -m mpi4py.futures simulate_EIANN_fashion_mnist.py --plot --interactive --framework=mpi \
+        --config-file-path=$PATH_TO_CONFIG_YAML --network-config-file-path=$PATH_TO_NETWORK_CONFIG_YAML
+
+    :param cli: contains unrecognized args as list of str
+    :param config_file_path: str (path to .yaml file)
+    :param network_config_file_path: str (path to .yaml file)
+    :param data_file_path: tuple of str (path to .pkl file)
+    :param output_dir: str (path to dir)
+    :param export: bool
+    :param retrain: bool
+    :param label: str
+    :param plot: bool
+    :param interactive: bool
+    :param debug: bool
+    :param disp: bool
+    :param framework: str
+    """
+    # requires a global variable context: :class:'Context'
+    context.update(locals())
+    kwargs = get_unknown_click_arg_dict(cli.args)
+    
+    context.interface = get_parallel_interface(framework=framework, **kwargs)
+    context.interface.start(disp=disp)
+    context.interface.ensure_controller()
+    nested_parallel_init_contexts_interactive(context, config_file_path=config_file_path,
+                                              network_config_file_path=network_config_file_path, output_dir=output_dir,
+                                              retrain=retrain, debug=debug, label=label, disp=disp, plot=plot, **kwargs)
+    
+    if data_file_path:
+        context.num_instances = len(data_file_path)
+        data_file_path_list = list(data_file_path)
+    else:
+        data_file_path_list = [None] * context.num_instances
+    
+    network_seeds, data_seeds = context.interface.execute(get_random_seeds)
+    sequences = [network_seeds, data_seeds, data_file_path_list, [export] * context.num_instances,
+                 [plot] * context.num_instances]
+
+    context.interface.map(simulate, *sequences)
+
+    if plot:
+        context.interface.show()
+        plt.show()
+
+    if context.interactive:
+        context.update(locals())
+    else:
+        context.interface.stop()
 
 
-def filter_features(primitives, current_features, model_id=None, export=False, plot=False):
-
-    features = {}
-    for instance_features in primitives:
-        for key, val in instance_features.items():
-            if np.isnan(val) or np.isinf(val):
-                return dict()
-            if key not in features:
-                features[key] = []
-            features[key].append(val)
-    for key, val in features.items():
-        features[key] = np.mean(val)
-
-    return features
-
-
-def get_objectives(features, model_id=None, export=False, plot=False):
-    objectives = {}
-    for key, val in features.items():
-        if 'accuracy' in key:
-            objectives[key] = 100. - val
-        elif key == 'mean_forward_dend_loss':
-            objectives[key] = np.abs(val)
-        else:
-            objectives[key] = val
-    return features, objectives
+if __name__ == '__main__':
+    main(standalone_mode=False)
