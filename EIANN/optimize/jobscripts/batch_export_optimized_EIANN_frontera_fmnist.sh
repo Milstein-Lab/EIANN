@@ -44,7 +44,7 @@ do
   ibrun -n 6 -o $o python -m mpi4py.futures -m nested.analyze \
     --config-file-path=$CONFIG_DIR/${config_files[$i]} \
     --param-file-path=$PARAM_FILE_PATH \
-    --model-key=${model_keys[$i]}
+    --model-key=${model_keys[$i]} \
     --output-dir=$SCRATCH/data/EIANN --disp --label=complete --export \
     --full_analysis --store_history --framework=mpi &
   ((o+=6))
