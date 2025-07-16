@@ -13,9 +13,34 @@ from EIANN.utils import data_utils, network_utils
 import EIANN.plot as pt
 
     
-def compute_test_activity(network, test_dataloader, class_average:bool, sort:bool):
+def compute_test_activity(network, test_dataloader, class_average, sort):
     """
-    Compute activity for all populations in the network on the test dataloader
+    Compute activity for all populations in the network on the test dataloader.
+
+    Parameters
+    ----------
+    network : EIANN._network.Network
+        The neural network model to evaluate.
+    dataloader : torch.utils.data.DataLoader
+        DataLoader providing test data. Must contain a single large batch.
+    class_average : bool
+        If True, average activity across patterns for each class label.
+    sort : bool
+        If True, sort patterns by label and neurons by preferred input.
+
+    Returns
+    -------
+    pop_activity_dict : dict[str, torch.Tensor]
+        Dictionary mapping population names to their activity matrices.
+    pattern_labels : torch.Tensor
+        Tensor of pattern labels (sorted if `sort=True`).
+    unit_labels_dict : dict[str, torch.Tensor]
+        Dictionary mapping population names to their sorted unit labels.
+
+    Notes
+    -----
+    - If `class_average` is True, activity is averaged across patterns for each class.
+    - If `sort` is True, patterns and units are sorted by label and preferred input, respectively.
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
     idx, data, target = next(iter(test_dataloader))
@@ -95,12 +120,40 @@ def compute_test_accuracy(output, labels):
     return percent_correct 
 
 
-def compute_test_activity_dynamics(network, test_dataloader):
-    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
-    idx, data, target = next(iter(test_dataloader))
+def compute_test_activity_dynamics(network, dataloader, plot=False, normalize=True):
+    """
+    Computes and plots the activity dynamics of a neural network on a test dataset.
+
+    This function assumes the test dataloader contains a single large batch. It performs a forward pass
+    through the network, storing the activity dynamics of each population. The dynamics are returned as
+    a dictionary mapping population names to their activity tensors.
+
+    Parameters
+    ----------
+    network : object
+        The neural network model with populations and a `forward` method supporting `no_grad` and `store_dynamics` arguments.
+    test_dataloader : DataLoader
+        A PyTorch DataLoader containing a single batch of test data.
+    plot : bool, optional
+        If True, plots the network dynamics using `pt.plot_network_dynamics`. Default is False.
+
+    Returns
+    -------
+    pop_dynamics_dict : dict
+        Dictionary mapping population names (str) to their activity dynamics (torch.Tensor).
+
+    Raises
+    ------
+    AssertionError
+        If `test_dataloader` does not contain exactly one batch.
+    """
+    assert len(dataloader)==1, 'Dataloader must have a single large batch'
+    idx, data, target = next(iter(dataloader))
     network.forward(data, no_grad=True, store_dynamics=True)
     reversed_populations = list(reversed(network.populations.values())) # start with the output population
     pop_dynamics_dict = {population.fullname: torch.stack(population.forward_steps_activity) for population in reversed_populations}
+    if plot:
+        pt.plot_network_dynamics(pop_dynamics_dict, normalize=normalize)
     return pop_dynamics_dict
 
 
@@ -504,7 +557,24 @@ def compute_sparsity(population_activity):
 
 def compute_selectivity(population_activity):
     """
-    Selectivity metric from (Vinje & Gallant 2000): https://www.science.org/doi/10.1126/science.287.5456.1273
+    Compute the selectivity metric for a population of neural activities.
+
+    This metric is based on Vinje & Gallant (2000) and quantifies how selectively each unit responds across different input patterns.
+
+    Parameters
+    ----------
+    population_activity : torch.Tensor
+        A 2D tensor of shape (num_patterns, num_units), where each row corresponds to the activity of all units for a given input pattern.
+
+    Returns
+    -------
+    selectivity : torch.Tensor
+        A 1D tensor of shape (num_units,) containing the selectivity value for each unit. Values range from 0 (non-selective) to 1 (highly selective).
+
+    References
+    ----------
+    Vinje, W. E., & Gallant, J. L. (2000). Sparse coding and decorrelation in primary visual cortex during natural vision. Science, 287(5456), 1273-1276.
+    https://www.science.org/doi/10.1126/science.287.5456.1273
     """
     num_patterns = population_activity.shape[0] #dims: 0=batch/samples, 1=units
     activity_fraction = (torch.sum(population_activity, dim=0) / num_patterns)**2 / torch.sum(population_activity**2 / num_patterns, dim=0)
@@ -514,6 +584,30 @@ def compute_selectivity(population_activity):
 
 
 def compute_discriminability(population_activity):
+    """
+    Computes the discriminability of population activity patterns using cosine similarity.
+
+    This function calculates the pairwise cosine similarity between activity patterns,
+    sets the similarity to 1 for silent patterns (where the sum of activity is zero),
+    and returns the discriminability (1 - similarity) for all unique pattern pairs.
+
+    Parameters
+    ----------
+    population_activity : torch.Tensor
+        A 2D tensor of shape (n_patterns, n_neurons) representing the activity of a population,
+        where each row corresponds to a pattern and each column to a neuron.
+
+    Returns
+    -------
+    discriminability : numpy.ndarray
+        A 1D array containing the discriminability values (1 - similarity) for all unique pairs
+        of activity patterns (excluding diagonal and above-diagonal pairs).
+
+    Notes
+    -----
+    Silent patterns (rows with all zeros) are assigned a similarity of 1 with all other patterns,
+    resulting in a discriminability of 0 for those pairs.
+    """
     silent_pattern_idx = np.where(torch.sum(population_activity, dim=1) == 0.)[0]
     similarity_matrix = cosine_similarity(population_activity)
     similarity_matrix[silent_pattern_idx,:] = 1
@@ -524,15 +618,36 @@ def compute_discriminability(population_activity):
     return discriminability
 
 
-def compute_representational_similarity_matrix(pop_activity_dict, population='all'):
+def compute_representational_similarity_matrix(pop_activity_dict, pattern_labels, unit_labels_dict, population='all', plot=False):
     """
-    Compute the representational similarity matrix between patterns and between units.
+    Compute representational similarity matrices between patterns and between units.
+
+    This function calculates the cosine similarity between activity patterns and between units
+    (neurons) for the given population activity data. It returns two dictionaries containing
+    similarity matrices for each population.
+
+    Parameters
+    ----------
+    pop_activity_dict : dict
+        Dictionary mapping population names to their activity matrices of shape (n_patterns, n_units). Can be obtained from the :func:`eiann.utils.compute_test_activity` function.
+    population : str, optional
+        Name of the population to analyze. If 'all', computes similarity matrices for all populations.
+        Otherwise, computes for the specified population only. Default is 'all'.
+
+    Returns
+    -------
+    pattern_similarity_matrix_dict : dict
+        Dictionary mapping population names to their pattern similarity matrices of shape (n_patterns, n_patterns).
+    neuron_similarity_matrix_dict : dict
+        Dictionary mapping population names to their neuron similarity matrices of shape (n_units, n_units).
     """
     pattern_similarity_matrix_dict = {}
     neuron_similarity_matrix_dict = {}
 
     if population == 'all':
         pop_activity_dict = pop_activity_dict
+    elif population in ['E', 'SomaI', 'DendI']:
+        pop_activity_dict = {pop_name: pop_activity_dict[pop_name] for pop_name in pop_activity_dict if population in pop_name and 'Input' not in pop_name}
     else:
         pop_activity_dict = {population: pop_activity_dict[population]}
 
@@ -540,14 +655,42 @@ def compute_representational_similarity_matrix(pop_activity_dict, population='al
         pattern_similarity_matrix_dict[pop_name] = cosine_similarity(pop_activity)
         neuron_similarity_matrix_dict[pop_name] = cosine_similarity(pop_activity.T)
 
+    if plot:
+        pt.plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neuron_similarity_matrix_dict, pattern_labels, unit_labels_dict)
+
     return pattern_similarity_matrix_dict, neuron_similarity_matrix_dict
 
 
-def compute_within_class_representational_similarity(network, test_dataloader, population='all'):
+def compute_within_class_representational_similarity(network, dataloader, population='all'):
     """
-    Compute cosine similarity between patterns and between units
+    Computes within-class and between-class representational similarity for patterns and units in an EIANN network.
+    This function calculates cosine similarity matrices for both patterns and units, then extracts within-class and between-class similarities
+    for each population and class label. The similarities are returned as dictionaries keyed by population names.
+    Parameters
+    ----------
+    network : EIANN._network.Network
+        The neural network model to evaluate.
+    test_dataloader : torch.utils.data.DataLoader
+        DataLoader providing test data for evaluation.
+    population : str or list of str, optional
+        Population(s) to analyze. Default is 'all'.
+    Returns
+    -------
+    within_class_pattern_similarity_dict : dict
+        Dictionary mapping population names to lists of within-class pattern similarity values for each class.
+    between_class_pattern_similarity_dict : dict
+        Dictionary mapping population names to lists of between-class pattern similarity values for each class.
+    within_class_unit_similarity_dict : dict
+        Dictionary mapping population names to lists of within-class unit similarity values for each class.
+    between_class_unit_similarity_dict : dict
+        Dictionary mapping population names to lists of between-class unit similarity values for each class.
+    Notes
+    -----
+    - Pattern similarity is computed between activity patterns (e.g., samples).
+    - Unit similarity is computed between units (e.g., neurons) within populations.
+    - Cosine similarity is used as the similarity metric.
     """
-    percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = compute_test_activity(network, test_dataloader, class_average=False, sort=True)
+    pop_activity_dict, pattern_labels, unit_labels_dict = compute_test_activity(network, dataloader, class_average=False, sort=True)
     pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = compute_representational_similarity_matrix(pop_activity_dict, population)
 
     within_class_pattern_similarity_dict = {}
@@ -867,19 +1010,38 @@ def compute_diag_fisher(network, train_dataloader_CL1_full):
     return diag_fisher
 
 
-def compute_representation_metrics(population, test_dataloader, receptive_fields=None, plot=False, export=False,
+def compute_representation_metrics(population, dataloader, receptive_fields=None, plot=False, export=False,
                                    export_path=None, overwrite=False, dimensions=None):
     """
-    Compute representation metrics for a population of neurons
-    :param population: Population object
-    :param test_dataloader:
-    :param receptive_fields: (optional) receptive fields for each neuron
-    :param plot: bool
-    :param export: bool
-    :param export_path: str (path)
-    :param overwrite: bool
-    :param dimensions: tuple of int
-    :return: dictionary of metrics
+    Compute representation metrics for a population of neurons.
+
+    Parameters
+    ----------
+    population : Population
+        Population object whose representation metrics are to be computed.
+    dataloader : torch.utils.data.DataLoader
+        Dataloader providing test data.
+    receptive_fields : array-like, optional
+        Receptive fields for each neuron (default: None).
+    plot : bool, optional
+        If True, plot the computed metrics (default: False).
+    export : bool, optional
+        If True, export the metrics to file (default: False).
+    export_path : str, optional
+        Path to export the metrics (default: None).
+    overwrite : bool, optional
+        If True, overwrite existing exported data (default: False).
+    dimensions : tuple of int, optional
+        Dimensions of the receptive fields (default: None).
+
+    Returns
+    -------
+    metrics_dict : dict
+        Dictionary containing computed metrics:
+            - 'sparsity': Sparsity of population activity.
+            - 'selectivity': Selectivity of population activity.
+            - 'discriminability': Discriminability of population activity.
+            - 'structure': Structure of receptive fields (if provided).
     """
 
     if export and overwrite is False:
@@ -890,7 +1052,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
             return metrics_dict
 
     network = population.network
-    idx, data, target = next(iter(test_dataloader))
+    idx, data, target = next(iter(dataloader))
     data.to(network.device)
     network.forward(data, no_grad=True)
 
@@ -903,7 +1065,7 @@ def compute_representation_metrics(population, test_dataloader, receptive_fields
     # Compute structure
     if receptive_fields is not None:
         # receptive_fields = receptive_fields[active_units_idx]
-        structure = compute_rf_structure(receptive_fields, dimensions=dimensions)
+        structure = compute_rf_structure(receptive_fields, dimensions=dimensions, method='moran')
     else:
         structure = []
 

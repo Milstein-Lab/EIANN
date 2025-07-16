@@ -253,7 +253,7 @@ def plot_validate_loss_history(network, title=None, train_step_range=None, ax=No
         ax.set_xlabel('Training steps')
 
 
-def plot_loss_history(network, train_step_range=None):
+def plot_loss_history(network, train_step_range=None, ylim=None):
     fig, ax = plt.subplots()
     plot_train_loss_history(network, ax=ax, train_step_range=train_step_range)
     plot_validate_loss_history(network, ax=ax, train_step_range=train_step_range)
@@ -261,6 +261,8 @@ def plot_loss_history(network, train_step_range=None):
     legend = ax.legend(handlelength=1, handletextpad=0.5)
     for line in legend.get_lines():
         line.set_linewidth(2)
+    if ylim is not None:
+        ax.set_ylim(ylim)
     fig.tight_layout()
     fig.suptitle(f"Loss history (criterion: {str(network.criterion)})")
     
@@ -342,34 +344,54 @@ def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None,
 
 
 def plot_representation_metrics(metrics_dict):
+    """
+    Plot histograms of representation metrics for a neural population. The input dictionary can be generated using :func:`eiann.utils.compute_representation_metrics`.
 
-    fig, ax = plt.subplots(2,2,figsize=[12,5])
-    ax[0,0].hist(metrics_dict['sparsity'],50)
-    ax[0,0].set_title('Sparsity distribution')
-    ax[0,0].set_ylabel('num patterns')
-    ax[0,0].set_xlabel('(1 - fraction active units)')
+    Parameters
+    ----------
+    metrics_dict : dict
+        Dictionary containing representation metrics with the following keys:
+            - 'sparsity': array-like, sparsity values for patterns.
+            - 'selectivity': array-like, selectivity values for units.
+            - 'discriminability': array-like, discriminability values for pattern pairs.
+            - 'structure': array-like, spatial autocorrelation (Moran's I) values for receptive fields (optional).
 
-    ax[0,1].hist(metrics_dict['selectivity'],50)
-    ax[0,1].set_title('Selectivity distribution')
-    ax[0,1].set_ylabel('num units')
-    ax[0,1].set_xlabel('(1 - fraction active patterns)')
+    Returns
+    -------
+    None
+        This function generates plots and does not return any value.
+    """
 
-    ax[1,0].set_title('Discriminability distribution')
-    ax[1,0].hist(metrics_dict['discriminability'], 50)
-    ax[1,0].set_ylabel('pattern pairs')
-    ax[1,0].set_xlabel('(1 - cosine similarity)')
+    fig, axes = plt.subplots(2,2,figsize=[12,5])
+    ax = axes[0,0]
+    ax.hist(metrics_dict['sparsity'],50)
+    ax.set_title('Sparsity distribution')
+    ax.set_ylabel('num patterns')
+    ax.set_xlabel('Sparsity ($1 -$ fraction active units)')
 
-    if metrics_dict['structure'] is not None:
-        ax[1,1].hist(metrics_dict['structure'], 50)
-        ax[1,1].set_title('Structure')
-        ax[1,1].set_ylabel('num units')
-        ax[1,1].set_xlabel('(1 - similarity to random noise)')
-        plt.tight_layout()
+    ax = axes[0,1]
+    ax.hist(metrics_dict['selectivity'],50)
+    ax.set_title('Selectivity distribution')
+    ax.set_ylabel('num units')
+    ax.set_xlabel('Selectivity ($1 -$ fraction active patterns)')
+
+    ax = axes[1,0]
+    ax.set_title('Discriminability distribution')
+    ax.hist(metrics_dict['discriminability'], 50)
+    ax.set_ylabel('pattern pairs')
+    ax.set_xlabel('Discriminability ($1 -$ cosine similarity)')
+
+    if len(metrics_dict['structure'])>0:
+        ax = axes[1,1]
+        ax.hist(metrics_dict['structure'], 50)
+        ax.set_title("Receptive field structure distribution")
+        ax.set_ylabel('num units')
+        ax.set_xlabel("Spatial autocorrelation (Moran's I)")
     else:
-        ax[1,1].axis('off')
+        ax.axis('off')
 
     plt.tight_layout()
-    fig.show()
+    plt.show(block=False)
 
 
 def plot_cumulative_distribution(distribution_all_seeds, ax=None, label=None, color=None):
@@ -433,44 +455,75 @@ def plot_MNIST_examples(network, dataloader):
     fig.show()
 
 
-def plot_network_dynamics(pop_dynamics_dict, axes=None):
+def plot_network_dynamics(pop_dynamics_dict, axes=None, normalize=True):
     """
     Plot the activity dynamics of each population in the network. Dynamics must first be computed for a given network and dataloader:
     pop_dynamics_dict = utils.compute_test_activity_dynamics(network, test_dataloader)
     """
     if axes is None:
         fig = plt.figure(figsize=(8, 2))
-        axes = gs.GridSpec(1, 2, figure=fig, wspace=0.5, hspace=0.5)
+        axes = gs.GridSpec(1, 2, figure=fig, wspace=0.2, hspace=0.5)
     else:
         fig = axes.figure
     ax_E = fig.add_subplot(axes[0])
     ax_I = fig.add_subplot(axes[1])
 
+    def _get_neural_dynamics(pop_dynamics_tensor):
+        """
+        Calculate the average activity dynamics of a population across all samples, accounting for sparsity
+        (i.e. over-weighting samples where the units are active)
+        """
+        num_units = pop_dynamics.shape[2]
+        
+        # For each neuron, get activity-weighted average dynamics
+        activity_weighted = []
+        for unit in range(num_units):
+            unit_data = pop_dynamics[:, :, unit]  # [timesteps, samples]
+            
+            sample_activity = unit_data.sum(dim=0) # Get overall activity level for each sample (sum across timesteps)
+            active_samples = sample_activity > sample_activity.quantile(0.8)
+            
+            if active_samples.sum() > 0:
+                # Weight by sample activity level
+                weights = sample_activity[active_samples]
+                weights = weights / weights.sum()
+                
+                # Weighted average across active samples
+                weighted_dynamics = (unit_data[:, active_samples] * weights).sum(dim=1)
+                activity_weighted.append(weighted_dynamics)
+        avg_activity_dynamics = torch.stack(activity_weighted).mean(dim=0)
+        return avg_activity_dynamics
+    
     E_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in pop_dynamics_dict.items() if 'E' in pop_name and 'Input' not in pop_name}
     for i, (pop_name, pop_dynamics) in enumerate(E_populations.items()):
-        avg_dynamics = torch.mean(pop_dynamics, dim=(1,2))
-        avg_dynamics = avg_dynamics/avg_dynamics[-1]
+        avg_dynamics = _get_neural_dynamics(pop_dynamics)
+        if normalize:
+            avg_dynamics = avg_dynamics / avg_dynamics[-1]
         ax_E.plot(avg_dynamics, color='r', alpha=1/(1+i), label=pop_name)
-    ax_E.set_ylim([0, 3])
-    ax_E.set_xlabel('Forward timestep')
-    ax_E.set_ylabel('Activity dynamics (norm.)')
-    # ax_E.set_title('E populations')
     legend = ax_E.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.25), frameon=False, framealpha=0.5, handlelength=0.8, handletextpad=0.5, columnspacing=1)
     for line in legend.get_lines():
         line.set_linewidth(3)
 
     I_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in pop_dynamics_dict.items() if 'SomaI' in pop_name}
     for i, (pop_name, pop_dynamics) in enumerate(I_populations.items()):
-        avg_dynamics = torch.mean(pop_dynamics, dim=(1,2))
-        avg_dynamics = avg_dynamics/avg_dynamics[-1]
+        avg_dynamics = _get_neural_dynamics(pop_dynamics)
+        if normalize:
+            avg_dynamics = avg_dynamics/avg_dynamics[-1]
         ax_I.plot(avg_dynamics, color='b', alpha=1/(1+i), label=pop_name)
-    ax_I.set_ylim([0, 3])
-    ax_I.set_xlabel('Forward timestep')
-    ax_I.set_ylabel('Activity dynamics (norm.)')
-    # ax_I.set_title('I populations')
     legend = ax_I.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.25), frameon=False, framealpha=0.5, handlelength=0.8, handletextpad=0.5, columnspacing=1)
     for line in legend.get_lines():
         line.set_linewidth(3)
+
+    ax_E.set_ylim([0, 3])
+    ax_I.set_ylim([0, 3])
+    ax_E.set_xlabel('Forward timestep')
+    ax_I.set_xlabel('Forward timestep')
+    if normalize:
+        ax_E.set_ylabel("Average activity \n(normalized)")
+        ax_I.set_ylabel("Average activity \n(normalized)")
+    else:
+        ax_E.set_ylabel(f"Average activity")
+        ax_I.set_ylabel(f"Average activity")
 
 
 def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, population, units, t, axes=None, colors=None):
@@ -992,19 +1045,19 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, title=title, ax=ax)
 
 
-def plot_rsm(pop_activity_dict, pattern_labels, unit_labels_dict, population='all'):
+def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neuron_similarity_matrix_dict, pattern_labels, unit_labels_dict):
     """
     Plot the representational similarity matrix (RSM) and related unit similarity matrix for a given population.
     """
 
-    # percent_correct, pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
+    # pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
 
-    if population in ['E', 'SomaI', 'DendI']:
-        pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population='all')
-        pattern_similarity_matrix_dict = {pop_name: pattern_similarity_matrix_dict[pop_name] for pop_name in pattern_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
-        neuron_similarity_matrix_dict = {pop_name: neuron_similarity_matrix_dict[pop_name] for pop_name in neuron_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
-    else:
-        pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population=population)
+    # if population in ['E', 'SomaI', 'DendI']:
+    #     pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population='all')
+    #     pattern_similarity_matrix_dict = {pop_name: pattern_similarity_matrix_dict[pop_name] for pop_name in pattern_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
+    #     neuron_similarity_matrix_dict = {pop_name: neuron_similarity_matrix_dict[pop_name] for pop_name in neuron_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
+    # else:
+    #     pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population=population)
 
     for pop_name in pattern_similarity_matrix_dict:
         pattern_similarity_matrix = pattern_similarity_matrix_dict[pop_name]
