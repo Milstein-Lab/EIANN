@@ -27,12 +27,11 @@ jobs:
         
     - name: Install dependencies
       run: |
-        pip install --upgrade pip
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
         pip install jupyter-book
         pip install sphinx-autoapi
         pip install sphinx-togglebutton
-        pip install matplotlib
-        # Install the EIANN package so AutoAPI can import it
         pip install -e .
         
     - name: Build the book
