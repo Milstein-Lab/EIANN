@@ -88,34 +88,59 @@ repository:
 # Advanced and power-user settings
 sphinx:
   extra_extensions:
-    - autoapi.extension
-    - sphinx.ext.napoleon
-    - sphinx.ext.viewcode  # This provides [source] links
-    - sphinx.ext.intersphinx
-    - sphinx_togglebutton   
-    - sphinx.ext.autosummary
-    # Remove sphinx.ext.linkcode for now
+  - 'sphinx.ext.autodoc'
+  - 'sphinx.ext.autosectionlabel'
+  - 'sphinx.ext.autosummary'
+  - 'sphinx.ext.intersphinx'
+  - 'sphinx.ext.viewcode'
+  - 'matplotlib.sphinxext.mathmpl'
+  - 'matplotlib.sphinxext.plot_directive'
+
   config:
-    # AutoAPI configuration
-    autoapi_dirs: ['../EIANN']
-    autoapi_type: 'python'
-    autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
-    autoapi_add_toctree_entry: true
-    autoapi_keep_files: true  
-    autoapi_generate_api_docs: true 
-    autoapi_ignore: 
-      - '*generate_figures.py'
-      - '*external.py'
-      - '*optimize*'
-      - '*simulate*'
+    autosummary_generate: true
+    autosectionlabel_prefix_document: true
+    intersphinx_mapping:
+      python:
+      - 'https://docs.python.org/3'
+      - null
+      matplotlib:
+      - 'http://matplotlib.sourceforge.net/'
+      - null
+      torch:
+      - "https://pytorch.org/docs/stable/"
+      - null
+    hoverxref_intersphinx:
+     - "sphinxproof"
+
+  # extra_extensions:
+  #   - autoapi.extension
+  #   - sphinx.ext.napoleon
+  #   - sphinx.ext.viewcode
+  #   - sphinx.ext.intersphinx
+  #   - sphinx_togglebutton   
+  #   - sphinx.ext.autosummary
+
+  # config:
+  #   # AutoAPI configuration
+  #   autoapi_dirs: ['../EIANN']
+  #   autoapi_type: 'python'
+  #   autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
+  #   autoapi_add_toctree_entry: true
+  #   autoapi_keep_files: true  
+  #   autoapi_generate_api_docs: true 
+  #   autoapi_ignore: 
+  #     - '*generate_figures.py'
+  #     - '*external.py'
+  #     - '*optimize*'
+  #     - '*simulate*'
     
-    # Other configurations
-    nb_merge_streams: true
-    html_show_sourcelink: true
-    viewcode_enable_epub: false
-    add_module_names: false
-    viewcode_follow_imported_members: true
-    html_copy_source: true
+  #   # Other configurations
+  #   nb_merge_streams: true
+  #   html_show_sourcelink: true
+  #   viewcode_enable_epub: false
+  #   add_module_names: false
+  #   viewcode_follow_imported_members: true
+  #   html_copy_source: true
 
 # sphinx:
 #   extra_extensions:
