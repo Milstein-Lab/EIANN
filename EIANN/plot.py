@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 import math
-import itertools
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -9,16 +8,12 @@ import matplotlib.gridspec as gs
 
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
-from skimage import metrics
 import scipy.stats as stats
-import h5py
-import os
 
 from tqdm.autonotebook import tqdm
 from copy import copy
 
 import EIANN.utils as ut
-
 
 def update_plot_defaults():
     plt.rcParams.update({'font.size': 12,
@@ -345,7 +340,7 @@ def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None,
 
 def plot_representation_metrics(metrics_dict):
     """
-    Plot histograms of representation metrics for a neural population. The input dictionary can be generated using :func:`eiann.utils.compute_representation_metrics`.
+    Plot histograms of representation metrics for a neural population. The input dictionary can be generated using :func:`EIANN.utils.representation_analysis.compute_representation_metrics`.
 
     Parameters
     ----------
@@ -1049,15 +1044,6 @@ def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neur
     """
     Plot the representational similarity matrix (RSM) and related unit similarity matrix for a given population.
     """
-
-    # pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
-
-    # if population in ['E', 'SomaI', 'DendI']:
-    #     pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population='all')
-    #     pattern_similarity_matrix_dict = {pop_name: pattern_similarity_matrix_dict[pop_name] for pop_name in pattern_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
-    #     neuron_similarity_matrix_dict = {pop_name: neuron_similarity_matrix_dict[pop_name] for pop_name in neuron_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
-    # else:
-    #     pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population=population)
 
     for pop_name in pattern_similarity_matrix_dict:
         pattern_similarity_matrix = pattern_similarity_matrix_dict[pop_name]

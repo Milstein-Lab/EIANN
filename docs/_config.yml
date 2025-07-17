@@ -90,46 +90,78 @@ sphinx:
   extra_extensions:
     - autoapi.extension
     - sphinx.ext.napoleon
-    - sphinx.ext.viewcode
+    - sphinx.ext.viewcode  # This provides [source] links
     - sphinx.ext.intersphinx
-    - sphinx_togglebutton     
+    - sphinx_togglebutton   
+    - sphinx.ext.autosummary
+    # Remove sphinx.ext.linkcode for now
   config:
-    autoapi_dirs: ['../EIANN']  # This points to EIANN/EIANN/ directory
+    # AutoAPI configuration
+    autoapi_dirs: ['../EIANN']
     autoapi_type: 'python'
     autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
     autoapi_add_toctree_entry: true
-    nb_merge_streams: true    
     autoapi_ignore: 
       - '*generate_figures.py'
       - '*external.py'
       - '*optimize*'
       - '*simulate*'
+    
+    # Other configurations
+    nb_merge_streams: true
+    html_show_sourcelink: true
+    viewcode_enable_epub: false
+    add_module_names: false
 
-    # Napoleon settings for NumPy-style docstrings
-    napoleon_google_docstring: false
-    napoleon_numpy_docstring: true
-    napoleon_include_init_with_doc: false
-    napoleon_include_private_with_doc: false
-    napoleon_include_special_with_doc: true
-    napoleon_use_admonition_for_examples: false
-    napoleon_use_admonition_for_notes: false
-    napoleon_use_admonition_for_references: false
-    napoleon_use_ivar: false
-    napoleon_use_param: true
-    napoleon_use_rtype: true
-    napoleon_preprocess_types: false
-    napoleon_type_aliases: null
-    napoleon_attr_annotations: true
+# sphinx:
+#   extra_extensions:
+#     - autoapi.extension
+#     - sphinx.ext.napoleon
+#     - sphinx.ext.viewcode
+#     - sphinx.ext.intersphinx
+#     - sphinx_togglebutton   
+#     - sphinx.ext.autosummary
+#     - sphinx.ext.linkcode
+#   config:
+#     autoapi_dirs: ['../EIANN']  # This points to EIANN/EIANN/ directory
+#     autoapi_type: 'python'
+#     autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
+#     autoapi_add_toctree_entry: true
+#     nb_merge_streams: true    
+#     autoapi_ignore: 
+#       - '*generate_figures.py'
+#       - '*external.py'
+#       - '*optimize*'
+#       - '*simulate*'
+
+#     linkcode_resolve: linkcode_resolve
+#     html_show_sourcelink: true
+
+#     # Napoleon settings for NumPy-style docstrings
+#     napoleon_google_docstring: false
+#     napoleon_numpy_docstring: true
+#     napoleon_include_init_with_doc: false
+#     napoleon_include_private_with_doc: false
+#     napoleon_include_special_with_doc: true
+#     napoleon_use_admonition_for_examples: false
+#     napoleon_use_admonition_for_notes: false
+#     napoleon_use_admonition_for_references: false
+#     napoleon_use_ivar: false
+#     napoleon_use_param: true
+#     napoleon_use_rtype: true
+#     napoleon_preprocess_types: false
+#     napoleon_type_aliases: null
+#     napoleon_attr_annotations: true
   
-    # Intersphinx for linking to other docs
-    intersphinx_mapping:
-      numpy: ['https://numpy.org/doc/stable/', null]
-      scipy: ['https://docs.scipy.org/doc/scipy/', null]
-      matplotlib: ['https://matplotlib.org/stable/', null]
+#     # Intersphinx for linking to other docs
+#     intersphinx_mapping:
+#       numpy: ['https://numpy.org/doc/stable/', null]
+#       scipy: ['https://docs.scipy.org/doc/scipy/', null]
+#       matplotlib: ['https://matplotlib.org/stable/', null]
       
-  # local_extensions:   # A list of local extensions to load by sphinx specified by "name: path" items
-  # recursive_update: false # A boolean indicating whether to overwrite the Sphinx config (true) or recursively update (false)
+#   # local_extensions:   # A list of local extensions to load by sphinx specified by "name: path" items
+#   # recursive_update: false # A boolean indicating whether to overwrite the Sphinx config (true) or recursively update (false)
 
-  # Add your package to Python path
-  sys_path:
-    - '../EIANN'  # Path to your EIANN package from docs folder
+#   # Add your package to Python path
+#   sys_path:
+#     - '../EIANN'  # Path to your EIANN package from docs folder
