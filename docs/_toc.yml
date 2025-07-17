@@ -20,7 +20,6 @@ parts:
   - caption: Python API  
     chapters:
     - file: yaml_glossary
-    # - file: eiann.utils
     - glob: autoapi/EIANN/*
       
 

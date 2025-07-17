@@ -129,7 +129,6 @@ sphinx:
       - '*external.py'
       - '*optimize*'
       - '*simulate*'
-    # autosummary_generate: true
     autosectionlabel_prefix_document: true
 
     # Other configurations
