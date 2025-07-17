@@ -26,7 +26,7 @@ def set_activation(network, activation, **kwargs):
 
 
 def polynomial(x, n):
-    return x ** n
+    return torch.clamp(x, 0.) ** n
 
 
 def srelu(x, min=0, max=1):
