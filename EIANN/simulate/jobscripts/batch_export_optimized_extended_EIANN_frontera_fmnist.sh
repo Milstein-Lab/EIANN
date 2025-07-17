@@ -31,7 +31,7 @@ arraylength=${#config_files[@]}
 declare o=0
 for ((i=0; i<${arraylength}; i++))
 do
-  ibrun -n 6 -o $o python -m mpi4py.futures simulate/simulate_EIANN_fashion_mnist.py \
+  ibrun -n 6 -o $o python -m mpi4py.futures simulate_EIANN_fashion_mnist.py \
     --network-config-file-path=$CONFIG_DIR/${config_files[$i]} \
     --output-dir=$SCRATCH/data/EIANN --disp --label=extended --export \
     --framework=mpi &
