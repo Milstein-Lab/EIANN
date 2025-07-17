@@ -39,15 +39,16 @@ parse:
 # HTML-specific settings
 html:
   favicon                   : ""  # A path to a favicon image
-  use_edit_page_button      : false  # Whether to add an "edit this page" button to pages. If `true`, repository information in repository: must be filled in
-  use_repository_button     : false  # Whether to add a link to your repository button
-  use_issues_button         : false  # Whether to add an "open an issue" button
+  use_edit_page_button      : true  # Whether to add an "edit this page" button to pages. If `true`, repository information in repository: must be filled in
+  use_repository_button     : true  # Whether to add a link to your repository button
+  use_issues_button         : true  # Whether to add an "open an issue" button
   use_multitoc_numbering    : true   # Continuous numbering across parts/chapters
   extra_footer              : ""  # Will be displayed underneath the footer.
   home_page_in_navbar       : true  # Whether to include your home page in the left Navigation Bar
   baseurl                   : ""  # The base URL where your book will be hosted. Used for creating image previews and social links. e.g.: https://mypage.com/mybook/
   use_figure_caption: true
   hide_code_all: false
+  path_to_docs: "docs/"
   analytics:
     plausible_analytics_domain: ""
     plausible_analytics_url: "https://plausible.io/js/script.js"
@@ -86,111 +87,83 @@ repository:
 
 #######################################################################################
 # Advanced and power-user settings
+
+myst_enable_extensions:
+- "amsmath"
+- "colon_fence"
+- "deflist"
+- "dollarmath"
+- "html_admonition"
+- "html_image"
+- "linkify"
+- "replacements"
+- "smartquotes"
+- "substitution"
+- "tasklist"
+
 sphinx:
   extra_extensions:
-  - 'sphinx.ext.autodoc'
-  - 'sphinx.ext.autosectionlabel'
-  - 'sphinx.ext.autosummary'
-  - 'sphinx.ext.intersphinx'
-  - 'sphinx.ext.viewcode'
-  - 'matplotlib.sphinxext.mathmpl'
-  - 'matplotlib.sphinxext.plot_directive'
+    - autoapi.extension
+    - sphinx.ext.napoleon
+    - sphinx.ext.viewcode
+    - sphinx.ext.intersphinx
+    - sphinx_togglebutton   
+    - sphinx.ext.autosummary
 
-  config:
+    # - sphinx.ext.autodoc
+    # - sphinx.ext.autosectionlabel
+    # - matplotlib.sphinxext.mathmpl
+    # - matplotlib.sphinxext.plot_directive
+
+  config: 
+    # AutoAPI configuration
+    autoapi_dirs: ['../EIANN']  # This points to EIANN/EIANN/ directory
+    autoapi_type: 'python'
+    autoapi_keep_files: false 
+    autoapi_generate_api_docs: true 
+    autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
+    autoapi_add_toctree_entry: true
+    nb_merge_streams: true    
+    html_show_sourcelink: true    
+    autoapi_ignore: 
+      - '*generate_figures.py'
+      - '*external.py'
+      - '*optimize*'
+      - '*simulate*'
     autosummary_generate: true
     autosectionlabel_prefix_document: true
-    intersphinx_mapping:
-      python:
-      - 'https://docs.python.org/3'
-      - null
-      matplotlib:
-      - 'http://matplotlib.sourceforge.net/'
-      - null
-      torch:
-      - "https://pytorch.org/docs/stable/"
-      - null
-    hoverxref_intersphinx:
-     - "sphinxproof"
 
-  # extra_extensions:
-  #   - autoapi.extension
-  #   - sphinx.ext.napoleon
-  #   - sphinx.ext.viewcode
-  #   - sphinx.ext.intersphinx
-  #   - sphinx_togglebutton   
-  #   - sphinx.ext.autosummary
+    # Other configurations
+    viewcode_enable_epub: false
+    add_module_names: false
+    viewcode_follow_imported_members: true
+    html_copy_source: true
 
-  # config:
-  #   # AutoAPI configuration
-  #   autoapi_dirs: ['../EIANN']
-  #   autoapi_type: 'python'
-  #   autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
-  #   autoapi_add_toctree_entry: true
-  #   autoapi_keep_files: true  
-  #   autoapi_generate_api_docs: true 
-  #   autoapi_ignore: 
-  #     - '*generate_figures.py'
-  #     - '*external.py'
-  #     - '*optimize*'
-  #     - '*simulate*'
-    
-  #   # Other configurations
-  #   nb_merge_streams: true
-  #   html_show_sourcelink: true
-  #   viewcode_enable_epub: false
-  #   add_module_names: false
-  #   viewcode_follow_imported_members: true
-  #   html_copy_source: true
-
-# sphinx:
-#   extra_extensions:
-#     - autoapi.extension
-#     - sphinx.ext.napoleon
-#     - sphinx.ext.viewcode
-#     - sphinx.ext.intersphinx
-#     - sphinx_togglebutton   
-#     - sphinx.ext.autosummary
-#     - sphinx.ext.linkcode
-#   config:
-#     autoapi_dirs: ['../EIANN']  # This points to EIANN/EIANN/ directory
-#     autoapi_type: 'python'
-#     autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
-#     autoapi_add_toctree_entry: true
-#     nb_merge_streams: true    
-#     autoapi_ignore: 
-#       - '*generate_figures.py'
-#       - '*external.py'
-#       - '*optimize*'
-#       - '*simulate*'
-
-#     linkcode_resolve: linkcode_resolve
-#     html_show_sourcelink: true
-
-#     # Napoleon settings for NumPy-style docstrings
-#     napoleon_google_docstring: false
-#     napoleon_numpy_docstring: true
-#     napoleon_include_init_with_doc: false
-#     napoleon_include_private_with_doc: false
-#     napoleon_include_special_with_doc: true
-#     napoleon_use_admonition_for_examples: false
-#     napoleon_use_admonition_for_notes: false
-#     napoleon_use_admonition_for_references: false
-#     napoleon_use_ivar: false
-#     napoleon_use_param: true
-#     napoleon_use_rtype: true
-#     napoleon_preprocess_types: false
-#     napoleon_type_aliases: null
-#     napoleon_attr_annotations: true
+    # Napoleon settings for NumPy-style docstrings
+    napoleon_google_docstring: false
+    napoleon_numpy_docstring: true
+    napoleon_include_init_with_doc: false
+    napoleon_include_private_with_doc: false
+    napoleon_include_special_with_doc: true
+    napoleon_use_admonition_for_examples: false
+    napoleon_use_admonition_for_notes: false
+    napoleon_use_admonition_for_references: false
+    napoleon_use_ivar: false
+    napoleon_use_param: true
+    napoleon_use_rtype: true
+    napoleon_preprocess_types: false
+    napoleon_type_aliases: null
+    napoleon_attr_annotations: true
   
-#     # Intersphinx for linking to other docs
-#     intersphinx_mapping:
-#       numpy: ['https://numpy.org/doc/stable/', null]
-#       scipy: ['https://docs.scipy.org/doc/scipy/', null]
-#       matplotlib: ['https://matplotlib.org/stable/', null]
-      
-#   # local_extensions:   # A list of local extensions to load by sphinx specified by "name: path" items
-#   # recursive_update: false # A boolean indicating whether to overwrite the Sphinx config (true) or recursively update (false)
+    # Intersphinx for linking to other docs
+    intersphinx_mapping:
+      numpy: ['https://numpy.org/doc/stable/', null]
+      scipy: ['https://docs.scipy.org/doc/scipy/', null]
+      matplotlib: ['https://matplotlib.org/stable/', null]
+      torch: ['https://pytorch.org/docs/stable/', null]
+    hoverxref_intersphinx:
+      - "sphinxproof"      
 
-#   # Add your package to Python path
-#   sys_path:
-#     - '../EIANN'  # Path to your EIANN package from docs folder
+  # Add your package to Python path
+  sys_path:
+    - '../EIANN'
