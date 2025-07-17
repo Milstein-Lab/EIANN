@@ -1335,7 +1335,7 @@ class LayerBuilder:
                    bias: bool = False,
                    bias_learning_rule: Optional[str] = "Backprop",
                    bias_learning_rate: Optional[float] = None,
-                   ) -> 'LayerBuilder':
+                   tau: Optional[float] = None) -> 'LayerBuilder':
         """Add a population to the current layer."""
         if self._layer_name not in self._network_builder._layers:
             self._network_builder._layers[self._layer_name] = {}
@@ -1348,6 +1348,9 @@ class LayerBuilder:
             pop_config['include_bias'] = bias
             pop_config['bias_learning_rule'] = bias_learning_rule
             pop_config['bias_learning_rule_kwargs'] = {'learning_rate': bias_learning_rate}
+            
+        if tau is not None:
+            pop_config['tau'] = tau
             
         self._network_builder._layers[self._layer_name][pop_name] = pop_config
         return self

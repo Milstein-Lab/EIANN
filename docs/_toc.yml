@@ -10,6 +10,7 @@ parts:
     - file: installation
     - file: Using_EIANN/1_eiann_basics
     - file: Using_EIANN/2_training_feedforward_network
+    - file: Using_EIANN/3_visualizing_network_properties
 
   - caption: Galloni et al. 2025
     chapters:
