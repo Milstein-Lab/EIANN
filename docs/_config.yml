@@ -101,6 +101,8 @@ sphinx:
     autoapi_type: 'python'
     autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
     autoapi_add_toctree_entry: true
+    autoapi_keep_files: true  
+    autoapi_generate_api_docs: true 
     autoapi_ignore: 
       - '*generate_figures.py'
       - '*external.py'
@@ -112,6 +114,8 @@ sphinx:
     html_show_sourcelink: true
     viewcode_enable_epub: false
     add_module_names: false
+    viewcode_follow_imported_members: true
+    html_copy_source: true
 
 # sphinx:
 #   extra_extensions:
