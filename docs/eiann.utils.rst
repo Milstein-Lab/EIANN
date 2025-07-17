@@ -12,9 +12,11 @@ Building blocks for spiking neural networks based on `PyTorch <https://pytorch.o
 Representation Analysis
 ----------
 
-.. automodule:: EIANN.utils.representation_analysis
+.. automodule:: EIANN.utils
 .. autosummary::
     :toctree: generated
     :nosignatures:
+    :recursive:
 
-    compute_representation_metrics
+    representation_analysis
+    

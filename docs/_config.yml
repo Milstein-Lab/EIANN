@@ -109,11 +109,10 @@ sphinx:
     - sphinx.ext.intersphinx
     - sphinx_togglebutton   
     - sphinx.ext.autosummary
-
-    # - sphinx.ext.autodoc
-    # - sphinx.ext.autosectionlabel
-    # - matplotlib.sphinxext.mathmpl
-    # - matplotlib.sphinxext.plot_directive
+    - sphinx.ext.autodoc
+    - sphinx.ext.autosectionlabel
+    - matplotlib.sphinxext.mathmpl
+    - matplotlib.sphinxext.plot_directive
 
   config: 
     # AutoAPI configuration
