@@ -334,6 +334,52 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
         return train_dataloader, val_dataloader, test_dataloader, data_generator
 
 
+def get_FashionMNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None):
+    """
+    Load MNIST dataset into custom dataloaders with sample index
+    :param sub_dataloader_size:
+    :param classes:
+    :param batch_size:
+    :param data_dir:
+    :return:
+    """
+    if data_dir is None:
+        root_dir = get_project_root()
+        data_dir = root_dir + '/EIANN/data/datasets/'
+        
+    # Load dataset
+    tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
+                                                     torchvision.transforms.Lambda(torch.flatten)])
+    train_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=True, download=True,
+                                                     transform=tensor_flatten)
+    test_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=False, download=True,
+                                                    transform=tensor_flatten)
+
+    # Add index to train & test data
+    fmnist_train = []
+    for idx,(data,label) in enumerate(train_dataset):
+        target = torch.eye(len(train_dataset.classes))[label]
+        fmnist_train.append((idx, data, target))
+
+    fmnist_test = []
+    for idx,(data,target) in enumerate(test_dataset):
+        target = torch.eye(len(test_dataset.classes))[target]
+        fmnist_test.append((idx, data, target))
+        
+    # Put data in dataloader
+    data_generator = torch.Generator()
+    train_dataloader = torch.utils.data.DataLoader(fmnist_train[0:50_000], batch_size=50_000)
+    val_dataloader = torch.utils.data.DataLoader(fmnist_train[-10_000:], batch_size=10_000, shuffle=False)
+    test_dataloader = torch.utils.data.DataLoader(fmnist_test, batch_size=10_000, shuffle=False)
+    if sub_dataloader_size is not None:
+        train_sub_dataloader = torch.utils.data.DataLoader(fmnist_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=batch_size)
+        return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
+    else:
+        return train_dataloader, val_dataloader, test_dataloader, data_generator
+
+
+
+
 
 def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0, offset=0.):
         """
