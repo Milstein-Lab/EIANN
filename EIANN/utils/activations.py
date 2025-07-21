@@ -25,7 +25,7 @@ def set_activation(network, activation, **kwargs):
                 population.activation = activation_f
 
 
-def polynomial(x, a, n):
+def polynomial(x, a=1., n=2.):
     return a * torch.clamp(x, 0.) ** n
 
 
