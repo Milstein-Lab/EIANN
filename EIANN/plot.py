@@ -676,24 +676,47 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
                           num_units=None, num_cols=None, num_rows=None, activity_threshold=1e-10, cmap='custom',
                           ax_list=None, dimensions=None, class_labels=True, title=None):
     """
-    Plot receptive fields of hidden units, optionally weighted by their activity. Units are sorted by their tuning
-    structure. The receptive fields are normalized so the max=1 (while values at 0 are preserved). The colormap is
-    custom so that negative values are blue and positive values are gray.
+    Plot receptive fields of hidden units, optionally weighted by their activity.
 
-    :param receptive_fields:
-    :param scale:
-    :param sort:
-    :param preferred_classes:
-    :param average_pop_activity:
-    :param num_units:
-    :param num_cols:
-    :param num_rows:
-    :param activity_threshold: float
-    :param cmap:
-    :param ax_list:
-    :param dimensions: tuple of int
-    :param class_labels: bool
-    :param title: str
+    Units are sorted by their tuning structure. The receptive fields are normalized 
+    so the max=1 (while values at 0 are preserved). The colormap is custom so that 
+    negative values are blue and positive values are gray/black.
+
+    Parameters
+    ----------
+    receptive_fields : array_like
+        Receptive field data to plot.
+    scale : int or torch.Tensor, default=1
+        Scaling factor for receptive fields. If tensor, uses diagonal values.
+    sort : bool, default=False
+        Whether to sort units by their tuning structure.
+    preferred_classes : array_like, optional
+        Class preferences for each unit.
+    average_pop_activity : array_like, optional
+        Average population activity data.
+    num_units : int, optional
+        Number of units to display.
+    num_cols : int, optional
+        Number of columns in the plot grid.
+    num_rows : int, optional
+        Number of rows in the plot grid.
+    activity_threshold : float, default=1e-10
+        Threshold for filtering active units.
+    cmap : str, default='custom'
+        Colormap to use for plotting.
+    ax_list : list, optional
+        List of matplotlib axes to use for plotting.
+    dimensions : tuple of int, optional
+        Dimensions of receptive field (width, height). Defaults to (28, 28).
+    class_labels : bool, default=True
+        Whether to display class labels on plots.
+    title : str, optional
+        Title for the figure.
+
+    Returns
+    -------
+    matplotlib.image.AxesImage or None
+        Returns AxesImage object if ax_list is provided, otherwise None.
     """
     if not isinstance(receptive_fields, torch.Tensor):
         receptive_fields = torch.tensor(receptive_fields)
@@ -849,8 +872,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         fig_width, fig_height = fig.get_size_inches()
         cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
         cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
-        fig.show()
-        # plt.show()
+        plt.show(block=False)
         # return fig
     else:
         return im

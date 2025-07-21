@@ -14,7 +14,7 @@ parts:
 
   - caption: Galloni et al 2025
     chapters:
-    - file: Galloni_etal_2025/explore_MNIST
+    - file: Galloni_etal_2025/feedforward_ANN_backprop
     # - file: Galloni_etal_2025/explore_spirals
 
   - caption: Python API  
