@@ -629,7 +629,7 @@ def compute_representational_similarity_matrix(pop_activity_dict, pattern_labels
     Parameters
     ----------
     pop_activity_dict : dict
-        Dictionary mapping population names to their activity matrices of shape (n_patterns, n_units). Can be obtained from the :func:`eiann.utils.compute_test_activity` function.
+        Dictionary mapping population names to their activity matrices of shape (n_patterns, n_units). Can be obtained from the :func:`compute_test_activity` function.
     population : str, optional
         Name of the population to analyze. If 'all', computes similarity matrices for all populations.
         Otherwise, computes for the specified population only. Default is 'all'.

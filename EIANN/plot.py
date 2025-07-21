@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 import math
-import itertools
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -9,16 +8,12 @@ import matplotlib.gridspec as gs
 
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
-from skimage import metrics
 import scipy.stats as stats
-import h5py
-import os
 
 from tqdm.autonotebook import tqdm
 from copy import copy
 
 import EIANN.utils as ut
-
 
 def update_plot_defaults():
     plt.rcParams.update({'font.size': 12,
@@ -345,7 +340,7 @@ def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None,
 
 def plot_representation_metrics(metrics_dict):
     """
-    Plot histograms of representation metrics for a neural population. The input dictionary can be generated using :func:`eiann.utils.compute_representation_metrics`.
+    Plot histograms of representation metrics for a neural population. The input dictionary can be generated using :func:`EIANN.utils.representation_analysis.compute_representation_metrics`.
 
     Parameters
     ----------
@@ -368,25 +363,29 @@ def plot_representation_metrics(metrics_dict):
     ax.set_title('Sparsity distribution')
     ax.set_ylabel('num patterns')
     ax.set_xlabel('Sparsity ($1 -$ fraction active units)')
+    ax.set_xlim(0,1)
 
     ax = axes[0,1]
     ax.hist(metrics_dict['selectivity'],50)
     ax.set_title('Selectivity distribution')
     ax.set_ylabel('num units')
     ax.set_xlabel('Selectivity ($1 -$ fraction active patterns)')
+    ax.set_xlim(0,1)
 
     ax = axes[1,0]
     ax.set_title('Discriminability distribution')
     ax.hist(metrics_dict['discriminability'], 50)
     ax.set_ylabel('pattern pairs')
     ax.set_xlabel('Discriminability ($1 -$ cosine similarity)')
+    ax.set_xlim(0,1)
 
+    ax = axes[1,1]
     if len(metrics_dict['structure'])>0:
-        ax = axes[1,1]
         ax.hist(metrics_dict['structure'], 50)
         ax.set_title("Receptive field structure distribution")
         ax.set_ylabel('num units')
         ax.set_xlabel("Spatial autocorrelation (Moran's I)")
+        ax.set_xlim(min(0,np.min(metrics_dict['structure'])), 1)
     else:
         ax.axis('off')
 
@@ -1050,15 +1049,6 @@ def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neur
     Plot the representational similarity matrix (RSM) and related unit similarity matrix for a given population.
     """
 
-    # pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
-
-    # if population in ['E', 'SomaI', 'DendI']:
-    #     pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population='all')
-    #     pattern_similarity_matrix_dict = {pop_name: pattern_similarity_matrix_dict[pop_name] for pop_name in pattern_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
-    #     neuron_similarity_matrix_dict = {pop_name: neuron_similarity_matrix_dict[pop_name] for pop_name in neuron_similarity_matrix_dict if population in pop_name and 'Input' not in pop_name}
-    # else:
-    #     pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = ut.compute_representational_similarity_matrix(pop_activity_dict, population=population)
-
     for pop_name in pattern_similarity_matrix_dict:
         pattern_similarity_matrix = pattern_similarity_matrix_dict[pop_name]
         neuron_similarity_matrix = neuron_similarity_matrix_dict[pop_name]
@@ -1086,20 +1076,18 @@ def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neur
 
         ax = fig.add_subplot(axes[1])
         im = ax.imshow(neuron_similarity_matrix, interpolation='none')
-        # cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
-        # cbar = plt.colorbar(im, cax=cax)
-        # cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
-        ax.set_xlabel('Neurons (sorted by argmax)')
-        ax.set_ylabel('Neurons (sorted by argmax)')
+        cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.01, ax.get_position().height])
+        cbar = plt.colorbar(im, cax=cax)
+        cbar.set_label('Cosine similarity', rotation=270, labelpad=15)
+        ax.set_xlabel('Neurons')
+        ax.set_ylabel('Neurons')
         ax.set_title('Neuron cosine similarity')
         num_units = neuron_similarity_matrix.shape[0]
         if pop_name == 'OutputE':
             x_ticks = np.arange(0, num_units)
             ax.set_xticks(x_ticks)
-            # ax.set_xticklabels(range(0, num_units, 10))
             y_ticks = np.arange(0, num_units)
             ax.set_yticks(y_ticks)
-            # ax.set_yticklabels(range(0, num_units, 10))
 
         unit_labels = unit_labels_dict[pop_name]
         nan_idx = torch.isnan(unit_labels)
@@ -1111,7 +1099,7 @@ def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neur
                 if len(class_idx) > 0:
                     class_boundary_start = class_idx[0]
                     class_boundary_end = class_idx[-1]+1
-                    ax.add_patch(matplotlib.patches.Rectangle((class_boundary_start-0.5, class_boundary_start-0.5), class_boundary_end - class_boundary_start, class_boundary_end - class_boundary_start, fill=False, edgecolor=cmap(i), linewidth=3, facecolor=cmap(i)))
+                    ax.add_patch(matplotlib.patches.Rectangle((class_boundary_start-0.5, class_boundary_start-0.5), class_boundary_end - class_boundary_start, class_boundary_end - class_boundary_start, fill=False, edgecolor=cmap(i), linewidth=2, facecolor=cmap(i)))
                     # class_boundary = class_idx[-1] + 0.5
                     # ax.vlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
                     # ax.hlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
@@ -1680,21 +1668,33 @@ def compute_loss(network, state_dict, test_dataloader):
     return loss
 
 
-def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, vmax=1.2, plot_line_loss=False):
+def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, vmax_scale=1.2, plot_line_loss=False):
     """
-    Plots the loss landscape (with respect to the given test dataloader) of a network in the PC space defined by the first two 
-    principal components of the weight history. The loss is computed for a grid of points in the PC space, as well as for the 
-    weight trajectory of the network through the landscape.
+    Plot the loss landscape of a network in the PC space defined by the first two principal components of the parameter history.
 
-    :param test_dataloader: dataloader with (data,target) to use for computing loss.
-    :param network1: EIANN network
-    :param network2: EIANN network
-    :param num_points: number of points in each dimension of the PC space grid
-    :param extension: fraction of PC space to extend the grid beyond the range of the weight history
-    :param vmax: maximum value for the loss heatmap
-    :param plot_line_loss: if True, plot the loss for the weight history of the network
-    
-    :return:
+    The loss is computed for a grid of points in the PC space, as well as for the parameter trajectory of the network through the landscape.
+
+    Parameters
+    ----------
+    test_dataloader : DataLoader
+        Dataloader with (data, target) to use for computing loss.
+    network1 : EIANN network
+        The primary network whose loss landscape is to be plotted.
+    network2 : EIANN network, optional
+        A second network for comparison. If provided, both networks' trajectories are shown.
+    num_points : int, default=20
+        Number of points in each dimension of the PC space grid.
+    extension : float, default=0.2
+        Fraction of PC space to extend the grid beyond the range of the parameter history.
+    vmax_scale : float, default=1.2
+        Scaling factor for the maximum value of the loss heatmap.
+    plot_line_loss : bool, default=False
+        If True, plot the loss for the parameter history of the network.
+
+    Returns
+    -------
+    None
+        This function generates plots and does not return any value.
     """
     flat_param_history, param_metadata = get_flat_param_history(network1.param_history)
     history_len1 = flat_param_history.shape[0]
@@ -1774,9 +1774,9 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
     else:
         fig = plt.figure()
         if network2 is None: # Set color scale
-            vmax_net = vmax*torch.max(network1.val_loss_history)
+            vmax_net = vmax_scale*torch.max(network1.val_loss_history)
         else:
-            vmax_net = vmax*torch.max(torch.cat([network1.val_loss_history, network2.val_loss_history]))
+            vmax_net = vmax_scale*torch.max(torch.cat([network1.val_loss_history, network2.val_loss_history]))
         vmax_grid = torch.max(loss_grid)
         vmax = torch.min(vmax_grid,vmax_net)
 
@@ -1786,24 +1786,25 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         plt.colorbar(im)
         # contour = plt.contour(PC1_mesh, PC2_mesh, loss_grid, levels=10, cmap='viridis')
         # plt.colorbar(contour) 
-        plt.scatter(PC1, PC2, s=0.1, color='k')
+        plt.scatter(PC1, PC2, s=10, color='k')
+        plt.plot(PC1, PC2, color='k', linewidth=1)
 
         if network2 is None:
-            plt.scatter(PC1[0], PC2[0], s=80, color='b', edgecolor='k', label='Start')
-            plt.scatter(PC1[-1], PC2[-1], s=80, color='orange', edgecolor='k', label='End')
+            plt.scatter(PC1[0], PC2[0], s=80, color='deepskyblue', edgecolor='k', label='Start', zorder=10)
+            plt.scatter(PC1[-1], PC2[-1], s=80, color='orange', edgecolor='k', label='End', zorder=10)
 
         else:
-            plt.scatter(PC1_network1[0], PC2_network1[0], s=80, color='b', edgecolor='k', label='Start')
-            plt.scatter(PC1_network2[0], PC2_network2[0], s=80, color='b', edgecolor='k')
+            plt.scatter(PC1_network1[0], PC2_network1[0], s=80, color='b', edgecolor='k', label='Start', zorder=10)
+            plt.scatter(PC1_network2[0], PC2_network2[0], s=80, color='b', edgecolor='k', zorder=10)
 
             if not hasattr(network1, 'name'):
                 network1.name = '1'
             if not hasattr(network2, 'name'):
                 network2.name = '2'
             plt.scatter(PC1_network1[-1], PC2_network1[-1], s=80, color='orange', edgecolor='k',
-                        label=f'End {network1.name}')
+                        label=f'End {network1.name}', zorder=10)
             plt.scatter(PC1_network2[-1], PC2_network2[-1], s=80, color='cyan', edgecolor='k',
-                        label=f'End {network2.name}')
+                        label=f'End {network2.name}', zorder=10)
 
         plt.legend()
         plt.xlabel(f'PC1 \n({percent_exp_var[0]}% var. explained)')

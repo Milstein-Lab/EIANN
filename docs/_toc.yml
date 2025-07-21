@@ -12,10 +12,10 @@ parts:
     - file: Using_EIANN/2_training_feedforward_network
     - file: Using_EIANN/3_visualizing_network_properties
 
-  - caption: Galloni et al. 2025
+  - caption: Galloni et al 2025
     chapters:
-    - file: ../EIANN/notebooks/explore_MNIST
-    - file: ../EIANN/notebooks/explore_spirals
+    - file: Galloni_etal_2025/explore_MNIST
+    # - file: Galloni_etal_2025/explore_spirals
 
   - caption: Python API  
     chapters:
