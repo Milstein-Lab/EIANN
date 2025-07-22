@@ -14,8 +14,8 @@ parts:
 
   - caption: Galloni et al 2025
     chapters:
-    - file: Galloni_etal_2025/feedforward_ANN_backprop
-    # - file: Galloni_etal_2025/explore_spirals
+    - file: Galloni_etal_2025/1_feedforward_ANN_backprop
+    - file: Galloni_etal_2025/2_EIANN_learned_somaI_backprop
 
   - caption: Python API  
     chapters:

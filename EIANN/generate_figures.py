@@ -2050,7 +2050,7 @@ def main(figure, recompute):
         saved_network_path_prefix += "FMNIST/"
         figure_name = "FigT5_fmnist_table"
         model_list = ["fmnist_DTP_TCWN_hebbdend", "fmnist_DTP_WT_hebbdend", "fmnist_BTSP_TCWN_hebbdend", "fmnist_BTSP_WT_nobias_hebbdend", "fmnist_vanBP_nobias", "fmnist_bpDale_nobias"]
-        generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix, config_path_prefix="network_config/fmnist/", save=figure_name, recompute=recompute)
+        generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/fmnist/", save=figure_name, recompute=recompute)
 
 
     if figure in ["all", "hyperparams"]:

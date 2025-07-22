@@ -873,7 +873,6 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
         cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
         cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
         plt.show(block=False)
-        # return fig
     else:
         return im
 
@@ -1805,7 +1804,8 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax,
                         extent=[np.min(PC1_range), np.max(PC1_range),
                                 np.max(PC2_range), np.min(PC2_range)])
-        plt.colorbar(im)
+        cbar = plt.colorbar(im)
+        cbar.set_label('Loss', rotation=270, labelpad=15)
         # contour = plt.contour(PC1_mesh, PC2_mesh, loss_grid, levels=10, cmap='viridis')
         # plt.colorbar(contour) 
         plt.scatter(PC1, PC2, s=10, color='k')
