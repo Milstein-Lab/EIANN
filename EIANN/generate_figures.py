@@ -706,17 +706,6 @@ def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                        top=0.95, bottom=0.6,
                        wspace=0.7, hspace=0.2,
                        width_ratios=[2.5,1,1])
-    
-    # fig = plt.figure(figsize=(5.5, 4))
-    # axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                   
-    #                    left=0.049,right=0.95,
-    #                    top=0.95, bottom=0.08,
-    #                    wspace=0.2, hspace=0.35)
-    # metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,                     
-    #                    left=0.049,right=0.95,
-    #                    top=0.95, bottom=0.25,
-    #                    wspace=0.5, hspace=0.3,
-    #                    width_ratios=[1.5, 1, 1, 1])
 
     ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
     ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
