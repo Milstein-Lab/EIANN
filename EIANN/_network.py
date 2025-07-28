@@ -443,7 +443,6 @@ class Network(nn.Module):
                 if sample_count >= samples_per_epoch:
                     break
                 
-                # sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
                 if not sample_data.device == self.device:
                     sample_data = sample_data.to(self.device)
@@ -780,6 +779,9 @@ class Population(object):
     def bias_history(self):
         return self.get_param_history('bias')
 
+    @property
+    def activity_dynamics(self):
+        return torch.stack(self.forward_steps_activity) if self.forward_steps_activity else None
 
 class Input(Population):
     def __init__(self, network, layer, name, size, *args, **kwargs):

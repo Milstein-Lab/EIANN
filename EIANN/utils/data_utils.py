@@ -332,6 +332,7 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
 
     seed = str(seed)
     if os.path.exists(file_path):
+        print(f'Loading {data_key} from file: {file_path}')
         with h5py.File(file_path, 'r') as hdf5_file:            
             if network_name in hdf5_file:
                 if seed in hdf5_file[network_name]:
@@ -340,9 +341,15 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
                             data = convert_hdf5_group_to_dict(hdf5_file[network_name][seed][data_key])
                         elif isinstance(hdf5_file[network_name][seed][data_key], h5py.Dataset):
                             data = hdf5_file[network_name][seed][data_key][()]
-                        print(f'{data_key} loaded from file: {file_path}')
                         return data
-    print(f'{data_key} not found in file: {file_path}')
+                    else:
+                        print(f'Data key {data_key} not found in seed {seed} of network {network_name} in file: {file_path}')
+                else:
+                    print(f'Seed {seed} not found in network {network_name} in file: {file_path}')
+            else:
+                print(f'Network {network_name} not found in file: {file_path}')
+    else:
+        print(f'File not found: {file_path}')
     return None
 
 
@@ -439,7 +446,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
         
     # Put data in dataloader
     data_generator = torch.Generator()
-    train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=50_000)
+    train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=1)
     val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10_000:], batch_size=10_000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10_000, shuffle=False)
     if sub_dataloader_size is not None:
@@ -492,7 +499,7 @@ def get_FashionMNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_di
         
     # Put data in dataloader
     data_generator = torch.Generator()
-    train_dataloader = torch.utils.data.DataLoader(fmnist_train[0:50_000], batch_size=50_000)
+    train_dataloader = torch.utils.data.DataLoader(fmnist_train[0:50_000], batch_size=1)
     val_dataloader = torch.utils.data.DataLoader(fmnist_train[-10_000:], batch_size=10_000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(fmnist_test, batch_size=10_000, shuffle=False)
     if sub_dataloader_size is not None:

@@ -1208,6 +1208,7 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
             within_class_similarity = []
             between_class_similarity = []
             for seed in model_dict['seeds']:
+                # Calculate the receptive field similarity for each unit (the histogram will pool data across all model seeds)
                 unit_labels_dict = data_dict[seed]['unit_labels_dict']
                 unit_labels = unit_labels_dict[population][:]
                 idx = np.argsort(unit_labels)
@@ -1215,11 +1216,11 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
                 receptive_fields = np.array(data_dict[seed][f"maxact_receptive_fields_{population}"])
                 sorted_receptive_fields = receptive_fields[idx]
                 rf_similarity = cosine_similarity(sorted_receptive_fields)
-                np.fill_diagonal(rf_similarity, 0)
+                np.fill_diagonal(rf_similarity, 0) # remove self-similarity
                 
+                # Plot the receptive field similarity matrix for the example seed
                 if seed == example_seed:
                     masked_rf_similarity = np.ma.masked_array(rf_similarity, mask=~np.tril(np.ones(rf_similarity.shape), k=-1).astype(bool))
-                    # im = ax.imshow(masked_rf_similarity, interpolation="nearest", vmin=0, vmax=1)
                     im = ax.imshow(masked_rf_similarity, interpolation="nearest", cmap='bwr', vmin=-1, vmax=1)
                     ax.set_xlabel(f"{population} unit")
                     ax.set_ylabel(f"{population} unit")
@@ -1230,6 +1231,7 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
                         # cax.set_yticks([0, 1])
                         cax.set_ylabel('Receptive field\ncosine similarity', rotation=270, labelpad=5)
                 
+                # Calculate within-class and between-class receptive field similarity (accumulate across all seeds)
                 for label in range(10):
                     class_idx = np.where(unit_labels == label)[0]
                     within_class_values = np.max(rf_similarity[class_idx,:][:, class_idx], axis=1)

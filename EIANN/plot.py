@@ -25,7 +25,7 @@ def update_plot_defaults():
                      'ytick.major.size': 6,
                      'ytick.major.width': 1.2,
                      'legend.frameon': False,
-                     'legend.handletextpad': 0.1,
+                     'legend.handletextpad': 0.5,
                      'figure.figsize': [10.0, 3.0],
                      'svg.fonttype': 'none',
                      'text.usetex': False})
@@ -1435,6 +1435,181 @@ def plot_learning_rule_diagram(axes_list=None):
     ax.set_xticklabels([])    
     ax.set_xlabel('$Relative~time~(samples)$', math_fontfamily=mathfont, fontsize=8, labelpad=8)
     ax.set_title('BTSP', fontsize=8)
+
+
+def plot_receptive_field_similarity(receptive_fields, average_pop_activity, unit_labels):
+    fig = plt.figure(figsize=(7, 6))
+
+    axes = gs.GridSpec(nrows=2, ncols=2, figure=fig,
+                        left=0.07,right=0.94,
+                        top=0.93, bottom = 0.1,
+                        wspace=0.5, hspace=0.3,
+                        height_ratios=[1.4, 1],)
+
+    # Example receptive fields
+    num_units = 50
+    temp_ax = fig.add_subplot(axes[:, 0])
+    pos = temp_ax.get_position()
+    rf_axes = fig.add_gridspec(10,5,left=pos.x0, right=pos.x1, bottom=pos.y0, top=pos.y1, wspace=0.1, hspace=0.1)
+    ax_list = []
+    for j in range(num_units):
+        _ax = fig.add_subplot(rf_axes[j])
+        ax_list.append(_ax)
+        
+    preferred_classes = np.argmax(average_pop_activity, axis=0)
+    im = plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes, class_labels=False)
+    height = _ax.get_position().y1 - _ax.get_position().y0
+    width = _ax.get_position().x1 - _ax.get_position().x0
+    cax = fig.add_axes([_ax.get_position().x1+width/5, _ax.get_position().y0, width/5, 1.5*height])
+    fig.colorbar(im, cax=cax, orientation='vertical')
+    for label in range(10):
+        temp_ax.text(x=-0.06, y=label*0.101+0.04, s=str(9-label), ha='center', va='center')
+    temp_ax.set_title('Unit tuning\n(label of max avg. activity)', x=-0.22, rotation=90, y=0.45, ha='center', va='center')
+    temp_ax.axis('off')
+
+    # Draw an arrow below the x-axis
+    new_ax = fig.add_axes([temp_ax.get_position().x0, temp_ax.get_position().y0-0.035, temp_ax.get_position().x1-temp_ax.get_position().x0, 0.05])
+    new_ax.set_ylim(-0.5, 0.5)
+    new_ax.axis('off')
+    new_ax.arrow(0, 0, 1, 0, head_width=0.3, head_length=0.1, facecolor='k', edgecolor='k', linewidth=1)     
+    new_ax.text(0.5, -0.5, "Example units", ha='center', va='center')                          
+
+    # Receptive field similarity (for each unit)
+    ax = fig.add_subplot(axes[0, 1])
+    within_class_similarity = []
+    between_class_similarity = []
+    unit_labels = unit_labels[:]
+    idx = np.argsort(unit_labels)
+    unit_labels = unit_labels[idx]
+    sorted_receptive_fields = receptive_fields[idx]
+    rf_similarity = cosine_similarity(sorted_receptive_fields)
+    np.fill_diagonal(rf_similarity, 0)
+    
+    # Plot the receptive field similarity as a heatmap
+    masked_rf_similarity = np.ma.masked_array(rf_similarity, mask=~np.tril(np.ones(rf_similarity.shape), k=-1).astype(bool))
+    im = ax.imshow(masked_rf_similarity, interpolation="nearest", cmap='bwr', vmin=-1, vmax=1)
+    ax.set_xlabel(f"unit")
+    ax.set_ylabel(f"unit")
+    cax = fig.add_axes([ax.get_position().x1+0.005, ax.get_position().y0, 0.01, ax.get_position().height])
+    fig.colorbar(im, cax=cax, orientation='vertical')
+    cax.set_yticks([-1, 1])
+    cax.set_ylabel('Receptive field\ncosine similarity', rotation=270, labelpad=5)
+    
+    for label in range(10):
+        class_idx = np.where(unit_labels == label)[0]
+        within_class_values = np.max(rf_similarity[class_idx,:][:, class_idx], axis=1)
+        between_class_values = np.max(rf_similarity[class_idx,:][:, ~class_idx], axis=1)
+        within_class_similarity.extend(within_class_values)
+        between_class_similarity.extend(between_class_values)
+        if len(class_idx) > 0: # Add triangle to indicate units within the same class
+            class_boundary_start = class_idx[0]
+            class_boundary_end = class_idx[-1]+1
+            top = (class_boundary_start-0.5, class_boundary_start-0.5)
+            bottom = (class_boundary_start-0.5, class_boundary_end-0.5)
+            right = (class_boundary_end-0.5, class_boundary_end-0.5)
+            ax.add_patch(matplotlib.patches.Polygon([bottom, top, right], fill=False, edgecolor='k', linewidth=0.3))
+    
+    # Histogram of receptive field similarity
+    ax = fig.add_subplot(axes[1, 1])
+    ax.hist(between_class_similarity, bins=30, density=True)
+    ax.set_xlabel('Max out-of-class similarity')
+    ax.set_ylabel('Density')
+    ax.set_xlim(min(-0.2, np.min(between_class_similarity)), max(1, np.max(between_class_similarity)))
+
+
+def plot_within_class_representational_similarity(within_class_pattern_similarity_dict, between_class_pattern_similarity_dict, within_class_unit_similarity_dict, between_class_unit_similarity_dict):
+    """
+    Plot histograms comparing within-class and between-class representational similarity distributions.
+    
+    Creates a 2x2 subplot layout showing pattern similarity and unit similarity distributions 
+    for neural network populations. Each subplot displays overlaid histograms comparing 
+    within-class (blue) and between-class (red) similarity values to visualize how well 
+    the network separates different classes in its internal representations.
+
+    Parameters
+    ----------
+    within_class_pattern_similarity_dict : dict
+        Dictionary mapping population names to lists of within-class pattern similarity 
+        values for each class. Each key corresponds to a population name (e.g., 'H1E', 'H2E') 
+        and each value is a list where each element contains similarity values for one class.
+    between_class_pattern_similarity_dict : dict
+        Dictionary mapping population names to lists of between-class pattern similarity 
+        values for each class. Structure matches within_class_pattern_similarity_dict but 
+        contains similarities between patterns of different classes.
+    within_class_unit_similarity_dict : dict
+        Dictionary mapping population names to lists of within-class unit similarity 
+        values for each class. Each key corresponds to a population name and each value 
+        is a list where each element contains unit similarity values for one class.
+    between_class_unit_similarity_dict : dict
+        Dictionary mapping population names to lists of between-class unit similarity 
+        values for each class. Structure matches within_class_unit_similarity_dict but 
+        contains similarities between units responding to different classes.
+
+    Returns
+    -------
+    None
+        This function displays plots using matplotlib but does not return any values.
+
+    Notes
+    -----
+    - The function specifically looks for populations named 'H1E' and 'H2E' in the input dictionaries.
+    - Histograms are plotted with 100 bins and normalized to show probability density.
+    - Pattern similarity refers to similarity between activity patterns (samples).
+    - Unit similarity refers to similarity between individual units/neurons within populations.
+    - Within-class similarities are expected to be higher than between-class similarities 
+      for well-trained networks that successfully separate different classes.
+    - The function assumes 10 class labels (0-9) when aggregating similarity values.
+
+    Examples
+    --------
+    >>> # Assuming you have computed similarity dictionaries from compute_within_class_representational_similarity
+    >>> within_pat_sim, between_pat_sim, within_unit_sim, between_unit_sim = compute_within_class_representational_similarity(network, dataloader)
+    >>> plot_within_class_representational_similarity(within_pat_sim, between_pat_sim, within_unit_sim, between_unit_sim)
+    """
+    populations = [pop for pop in ['H1E', 'H2E'] if pop in within_class_pattern_similarity_dict]
+    fig, axes = plt.subplots(2, 2, figsize=(12, 6))
+    from matplotlib.lines import Line2D
+    for i,population in enumerate(populations):
+        within_class_pattern_similarity = []
+        between_class_pattern_similarity = []
+        within_class_unit_similarity = []
+        between_class_unit_similarity = []
+        for label in range(10):
+            within_class_pattern_similarity.extend(within_class_unit_similarity_dict[population][label])
+            between_class_pattern_similarity.extend(between_class_unit_similarity_dict[population][label])
+            within_class_unit_similarity.extend(within_class_pattern_similarity_dict[population][label])
+            between_class_unit_similarity.extend(between_class_pattern_similarity_dict[population][label])
+
+        ax = axes[i,0]
+        print(f"Plotting pattern similarity for population: {population}")
+        ax.hist(between_class_pattern_similarity, alpha=0.5, bins=100, density=True, color='red')
+        ax.hist(within_class_pattern_similarity, alpha=0.5, bins=100, density=True, color='blue')
+        ax.set_xlabel('Similarity')
+        ax.set_ylabel('Density')
+        if i == 0:
+            ax.set_title(f"Pattern Similarity Distribution \n {population}")
+        else:
+            ax.set_title(population)
+        legend_lines = [Line2D([0], [0], color='red', lw=3, alpha=0.5),
+                        Line2D([0], [0], color='blue', lw=3, alpha=0.5)]
+        ax.legend(legend_lines, ['Between class', 'Within class'], handlelength=1, handletextpad=0.5)
+
+        ax = axes[i,1]
+        print(f"Plotting unit similarity for population: {population}")
+        ax.hist(between_class_unit_similarity, alpha=0.5, bins=100, density=True, color='red')
+        ax.hist(within_class_unit_similarity, alpha=0.5, bins=100, density=True, color='blue')
+        ax.set_xlabel('Similarity')
+        ax.set_ylabel('Density')
+        if i == 0:
+            ax.set_title(f"Unit Similarity Distribution \n {population}")
+        else:
+            ax.set_title(population)
+        legend_lines = [Line2D([0], [0], color='red', lw=3, alpha=0.5),
+                        Line2D([0], [0], color='blue', lw=3, alpha=0.5)]
+        ax.legend(legend_lines, ['Between class', 'Within class'], handlelength=1, handletextpad=0.5)
+
+    plt.tight_layout()
+    plt.show(block=False)
 
 
 
