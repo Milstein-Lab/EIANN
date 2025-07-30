@@ -783,6 +783,7 @@ class Population(object):
     def activity_dynamics(self):
         return torch.stack(self.forward_steps_activity) if self.forward_steps_activity else None
 
+
 class Input(Population):
     def __init__(self, network, layer, name, size, *args, **kwargs):
         self.network = network

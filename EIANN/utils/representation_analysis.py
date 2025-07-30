@@ -723,7 +723,7 @@ def compute_within_class_representational_similarity(network, dataloader, popula
 
     if plot:
         pt.plot_within_class_representational_similarity(within_class_pattern_similarity_dict, between_class_pattern_similarity_dict, 
-                                                within_class_unit_similarity_dict, between_class_unit_similarity_dict)
+                                                         within_class_unit_similarity_dict, between_class_unit_similarity_dict)
     
     return within_class_pattern_similarity_dict, between_class_pattern_similarity_dict, within_class_unit_similarity_dict, between_class_unit_similarity_dict
 
