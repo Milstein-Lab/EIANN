@@ -217,7 +217,10 @@ class Network(nn.Module):
             store_num_steps = self.forward_steps
         
         for population in self.populations.values():
-            population.reinit(self.device, batch_size=sample.shape[0])
+            if sample.ndim == 1:
+                population.reinit(self.device, batch_size=1)
+            else: 
+                population.reinit(self.device, batch_size=sample.shape[0])
     
         if not hasattr(self, 'input_pop'):
             self.input_pop = next(iter(list(self)[0]))
