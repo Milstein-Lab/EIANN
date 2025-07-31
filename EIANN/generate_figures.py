@@ -296,7 +296,7 @@ def generate_hyperparams_csv(model_dict_all, model_list, save):
     # df = df.groupby("Param name", as_index=False).mean(numeric_only=True)
     df = df.fillna("-")
 
-    out_file = f"{save}.csv"
+    out_file = f"data/{save}.csv"
     df.to_csv(out_file, index=False)
     print(f"Saved hyperparams table to {out_file}")
 
@@ -2016,24 +2016,24 @@ def main(figure, recompute):
         generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
     if figure in ["all", "T3"]:
-        # csv_filename = "FigT3_mnist_hyperparams.csv"
+        # csv_filename = "data/FigT3_mnist_hyperparams.csv"
         # figure_name = "FigT3_mnist_hyperparams_all"
         # generate_hyperparams_table(csv_filename, save=figure_name)
 
-        csv_filename = "FigT3_mnist_hyperparams1.csv"
+        csv_filename = "data/FigT3_mnist_hyperparams1.csv"
         figure_name = "FigT3_mnist_hyperparams1"
         generate_hyperparams_table(csv_filename, save=figure_name)
 
-        csv_filename = "FigT3_mnist_hyperparams2.csv"
+        csv_filename = "data/FigT3_mnist_hyperparams2.csv"
         figure_name = "FigT3_mnist_hyperparams2"
         generate_hyperparams_table(csv_filename, save=figure_name)
 
-        csv_filename = "FigT3_mnist_hyperparams3.csv"
+        csv_filename = "data/FigT3_mnist_hyperparams3.csv"
         figure_name = "FigT3_mnist_hyperparams3"
         generate_hyperparams_table(csv_filename, save=figure_name)
 
     if figure in ["all", "T4"]:
-        csv_filename = "FigT4_spiral_hyperparams.csv"
+        csv_filename = "data/FigT4_spiral_hyperparams.csv"
         figure_name = "FigT4_spiral_hyperparams"
         generate_hyperparams_table(csv_filename, save=figure_name)
 
