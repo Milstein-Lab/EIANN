@@ -474,8 +474,7 @@ class Network(nn.Module):
                 self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
                 
                 for backward in self.backward_methods:
-                    backward(self, output, sample_target, store_history=this_train_step_store_history,
-                             store_dynamics=store_dynamics)
+                    backward(self, output, sample_target, store_history=this_train_step_store_history, store_dynamics=store_dynamics)
                 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
