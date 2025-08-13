@@ -1,12 +1,14 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.nn import MSELoss, BCELoss, CrossEntropyLoss
 from torch.optim import Adam, SGD
-import numpy as np
+
 from copy import deepcopy
 from collections import defaultdict
 from functools import partial
 from typing import Optional, Dict, Any, Union, Tuple, List
+
 
 import EIANN.utils as ut
 import EIANN.rules as rules
@@ -112,14 +114,8 @@ class Network(nn.Module):
                     for pre_pop_name, projection_kwargs in \
                             projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
                         pre_pop = pre_layer.populations[pre_pop_name]
-                        if 'projection_type' in projection_kwargs:
-                            if projection_kwargs['projection_type'] in ['Conv2D', 'conv2D', 'conv2d']:
-                                projection = Conv2DProjection(pre_pop, post_pop, device=device, **projection_kwargs)
-                            elif projection_kwargs['projection_type'] in ['Linear', 'linear']:
-                                projection = Projection(pre_pop, post_pop, device=device, **projection_kwargs)
-                            else:
-                                raise NotImplementedError('EIANN.Network: projection type: %s not implemented' %
-                                                          projection_kwargs['projection_type'])
+                        if hasattr(pre_pop, 'image_dim') and pre_pop.image_dim is not None:
+                            projection = Conv2DProjection(pre_pop, post_pop, device=device, **projection_kwargs)
                         else:
                             projection = Projection(pre_pop, post_pop, device=device, **projection_kwargs)
                         post_pop.append_projection(projection)
@@ -151,7 +147,8 @@ class Network(nn.Module):
                 for post_pop in post_layer:
                     total_fan_in = 0
                     for projection in post_pop:
-                        fan_in = projection.pre.size
+                        fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(projection.weight)
+                        # fan_in = projection.pre.size
                         total_fan_in += fan_in
                         if projection.weight_init is not None:
                             if projection.weight_init == 'half_kaiming':
@@ -812,18 +809,20 @@ class Population(object):
 
 
 class Conv2DPopulation(Population):
-    def __init__(self, network, layer, name, size, population_type, activation='linear', activation_kwargs=None,
-                 tau=None, include_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None,
-                 bias_learning_rule=None, bias_learning_rule_kwargs=None, custom_update=None, custom_update_kwargs=None,
-                 output_pop=False, image_dim=None, kernel_size=5, image_source=None, **kwargs):
+    def __init__(self, network, layer, name, size=None, channels=None, population_type=None, activation='linear',
+                 activation_kwargs=None, tau=None, include_bias=False, bias_init=None, bias_init_args=None,
+                 bias_bounds=None, bias_learning_rule=None, bias_learning_rule_kwargs=None, custom_update=None,
+                 custom_update_kwargs=None, output_pop=False, image_dim=None, kernel_size=5, image_source=None,
+                 **kwargs):
         """
         Class for population of neurons that receive projections of type Conv2DProjection from one or more populations
-        of type Conv2DPopulation.
+        with activity formatted as multichannel images.
         Currently automatic calculation of output image_dim assumes default stride, padding, and dilation.
         :param network: :class:'Network'
         :param layer: :class:'Layer'
         :param name: str
         :param size: int
+        :param channels: int
         :param population_type: str
         :param activation: str; name of imported callable
         :param activation_kwargs: dict
@@ -842,6 +841,13 @@ class Conv2DPopulation(Population):
         """
         # Constants
         self.kernel_size = kernel_size
+        self.channels = channels
+        if size is None:
+            if channels is None:
+                raise Exception('Conv2DPopulation: either size or channels must be specified')
+            size = channels
+        elif channels is not None:
+            size = channels
         if image_dim is None:
             if image_source is not None:
                 try:
@@ -986,11 +992,18 @@ class FlattenPopulation(Population):
 
 
 class Input(Population):
-    def __init__(self, network, layer, name, size, *args, image_dim=None, **kwargs):
+    def __init__(self, network, layer, name, size=None, channels=None, image_dim=None, **kwargs):
         self.network = network
         self.layer = layer
         self.name = name
         self.fullname = layer.name + self.name
+        self.channels = channels
+        if size is None:
+            if channels is None:
+                raise Exception('Input population: either size or channels must be specified')
+            size = channels
+        elif channels is not None:
+            size = channels
         self.size = size
         self.image_dim = image_dim
         self.projections = {}
