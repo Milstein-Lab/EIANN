@@ -12,8 +12,136 @@ from collections import defaultdict
 from EIANN.utils import data_utils, network_utils
 import EIANN.plot as pt
 
+ 
+def compute_raw_test_activity(network, test_dataloader):
+    """
+    Compute raw activity for all populations in the network on the test dataloader.
+
+    Parameters
+    ----------
+    network : EIANN._network.Network
+        The neural network model to evaluate.
+    test_dataloader : torch.utils.data.DataLoader
+        DataLoader providing test data. Must contain a single large batch.
+
+    Returns
+    -------
+    pop_activity_dict : dict[str, torch.Tensor]
+        Dictionary mapping population names to their raw activity matrices.
+    pattern_labels : torch.Tensor
+        Tensor of pattern labels.
+    """
+    if len(test_dataloader) != 1:
+        raise ValueError('Dataloader must have a single large batch')
+
+    idx, data, target = next(iter(test_dataloader))
+    network.forward(data, no_grad=True)
+    pattern_labels = torch.argmax(target, dim=1)
+
+    reversed_populations = list(reversed(network.populations.values()))  # start with the output population
+    pop_activity_dict = {}
+
+    for population in reversed_populations:
+        pop_activity_dict[population.fullname] = population.activity.clone()
     
-def compute_test_activity(network, test_dataloader, class_average, sort):
+    return pop_activity_dict, pattern_labels
+
+
+def apply_class_averaging(pop_activity_dict, pattern_labels, target):
+    """
+    Apply class averaging to population activities.
+
+    Parameters
+    ----------
+    pop_activity_dict : dict[str, torch.Tensor]
+        Dictionary mapping population names to their activity matrices.
+    pattern_labels : torch.Tensor
+        Tensor of pattern labels.
+    target : torch.Tensor
+        Target tensor to determine number of classes.
+
+    Returns
+    -------
+    pop_activity_dict : dict[str, torch.Tensor]
+        Dictionary with class-averaged activity matrices.
+    averaged_pattern_labels : torch.Tensor
+        Tensor of class labels (0 to num_classes-1).
+    """
+    num_labels = target.shape[1]
+    averaged_pattern_labels = torch.arange(num_labels)
+    
+    averaged_pop_activity_dict = {}
+    
+    for pop_name, pop_activity in pop_activity_dict.items():
+        num_units = pop_activity.shape[1]
+        avg_pop_activity = torch.zeros(num_labels, num_units)
+        
+        for label in range(num_labels):
+            label_idx = torch.where(pattern_labels == label)
+            avg_pop_activity[label] = torch.mean(pop_activity[label_idx], dim=0)
+        
+        averaged_pop_activity_dict[pop_name] = avg_pop_activity
+    
+    return averaged_pop_activity_dict, averaged_pattern_labels
+
+
+def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=None):
+    """
+    Apply sorting to patterns and units in population activities.
+
+    Parameters
+    ----------
+    network : EIANN._network.Network
+        The neural network model.
+    pop_activity_dict : dict[str, torch.Tensor]
+        Dictionary mapping population names to their activity matrices.
+    pattern_labels : torch.Tensor
+        Tensor of pattern labels.
+
+    Returns
+    -------
+    sorted_pop_activity_dict : dict[str, torch.Tensor]
+        Dictionary with sorted activity matrices.
+    sorted_pattern_labels : torch.Tensor
+        Sorted pattern labels.
+    unit_labels_dict : dict[str, torch.Tensor]
+        Dictionary containing unit argmax labels for each population.
+    """    
+    sorted_pattern_labels, pattern_sort_idx = torch.sort(pattern_labels)    
+    reversed_populations = list(reversed(network.populations.values()))
+    
+    sorted_pop_activity_dict = {}
+    unit_labels_dict = {}    
+    for population in reversed_populations:
+        pop_activity = pop_activity_dict[population.fullname].clone()
+        
+        # Sort patterns (rows) by label
+        pop_activity = pop_activity[pattern_sort_idx]
+        
+        # Sort neurons (columns) by argmax of activity
+        if population is network.output_pop:
+            if sorted_output_idx is not None:
+                unit_sort_idx = sorted_output_idx
+            else:
+                unit_sort_idx = torch.arange(0, network.output_pop.size)
+            unit_labels = sorted_pattern_labels[torch.argmax(pop_activity, dim=0)]
+        else:
+            silent_unit_idx = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
+            active_unit_idx = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
+            preferred_input_active = sorted_pattern_labels[torch.argmax(pop_activity[:, active_unit_idx], dim=0)]
+            unit_labels, sort_idx = torch.sort(preferred_input_active)
+            unit_sort_idx = torch.cat([active_unit_idx[sort_idx], silent_unit_idx])
+            unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_idx)) * torch.nan])
+        
+        pop_activity = pop_activity[:, unit_sort_idx]
+        
+        sorted_pop_activity_dict[population.fullname] = pop_activity
+        unit_labels_dict[population.fullname] = unit_labels
+    
+    return sorted_pop_activity_dict, sorted_pattern_labels, unit_labels_dict
+
+
+def compute_test_activity(network, test_dataloader, class_average=False, sort=False):
     """
     Compute activity for all populations in the network on the test dataloader.
 
@@ -21,7 +149,7 @@ def compute_test_activity(network, test_dataloader, class_average, sort):
     ----------
     network : EIANN._network.Network
         The neural network model to evaluate.
-    dataloader : torch.utils.data.DataLoader
+    test_dataloader : torch.utils.data.DataLoader
         DataLoader providing test data. Must contain a single large batch.
     class_average : bool
         If True, average activity across patterns for each class label.
@@ -36,82 +164,19 @@ def compute_test_activity(network, test_dataloader, class_average, sort):
         Tensor of pattern labels (sorted if `sort=True`).
     unit_labels_dict : dict[str, torch.Tensor]
         Dictionary mapping population names to their sorted unit labels.
-
-    Notes
-    -----
-    - If `class_average` is True, activity is averaged across patterns for each class.
-    - If `sort` is True, patterns and units are sorted by label and preferred input, respectively.
-    """
-    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
-    idx, data, target = next(iter(test_dataloader))
-    network.forward(data, no_grad=True)
-    pattern_labels = torch.argmax(target, dim=1)
-    sorted_pattern_labels, pattern_sort_idx = torch.sort(pattern_labels) 
+    """    
+    pop_activity_dict, pattern_labels = compute_raw_test_activity(network, test_dataloader)    
+    
     if class_average:
-        num_labels = target.shape[1]
-        sorted_pattern_labels = torch.arange(num_labels)
-
-    # Compute sorted/averaged test activity for each population
-    reversed_populations = list(reversed(network.populations.values())) # start with the output population
-    pop_activity_dict = {}
-    unit_labels_dict = {}    
-    for i, population in enumerate(reversed_populations):
-        pop_activity = population.activity
-
-        if class_average: 
-            # Average activity across the patterns (rows) for each class label
-            num_units = pop_activity.shape[1]
-            avg_pop_activity = torch.zeros(num_labels, num_units)
-            for label in range(num_labels):
-                label_idx = torch.where(pattern_labels == label)
-                avg_pop_activity[label] = torch.mean(pop_activity[label_idx], dim=0)
-            pop_activity = avg_pop_activity
-
-        if sort:
-            if not class_average:
-                # Sort patterns (rows) of pop_activity by label
-                pop_activity = pop_activity[pattern_sort_idx]
-
-            # Sort neurons (columns) by argmax of activity
-            if population is network.output_pop:
-                unit_sort_idx = torch.arange(0, network.output_pop.size)
-                unit_labels = pattern_labels[torch.argmax(pop_activity, dim=0)]
-            else:
-                silent_unit_idx = torch.where(torch.sum(pop_activity, dim=0) == 0)[0]
-                active_unit_idx = torch.where(torch.sum(pop_activity, dim=0) > 0)[0]
-                preferred_input_active = sorted_pattern_labels[torch.argmax(pop_activity[:,active_unit_idx], dim=0)]
-                unit_labels, sort_idx = torch.sort(preferred_input_active)
-                unit_sort_idx = torch.cat([active_unit_idx[sort_idx], silent_unit_idx])
-                unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_idx))*torch.nan])
-            pop_activity = pop_activity[:,unit_sort_idx]
-        else:
-            unit_labels = sorted_pattern_labels[torch.argmax(pop_activity, dim=0)]
-            
-        pop_activity_dict[population.fullname] = pop_activity
-        unit_labels_dict[population.fullname] = unit_labels
+        _, _, target = next(iter(test_dataloader))
+        pop_activity_dict, pattern_labels = apply_class_averaging(pop_activity_dict, pattern_labels, target)
     
     if sort:
-        pattern_labels = sorted_pattern_labels
-        # return pop_activity_dict, pattern_labels, unit_labels_dict, pattern_sort_idx, unit_sort_idx
-
+        pop_activity_dict, pattern_labels, unit_labels_dict = apply_sorting(network, pop_activity_dict, pattern_labels)
+    else:
+        unit_labels_dict = {pop_name: pattern_labels[torch.argmax(pop_activity, dim=0)] for pop_name, pop_activity in pop_activity_dict.items()}
+    
     return pop_activity_dict, pattern_labels, unit_labels_dict
-
-
-def compute_average_activity(pop_activity_dict, pattern_labels):
-    """
-    Compute average activity for each population
-    """
-    # Compute average activity for each population
-    avg_pop_activity_dict = {}
-    for pop_name, pop_activity in pop_activity_dict.items():
-        avg_pop_activity = []
-        for class_label in torch.unique(pattern_labels):
-            class_idx = torch.where(pattern_labels == class_label)
-            avg_class_activity = torch.mean(pop_activity[class_idx], dim=0)
-            avg_pop_activity.append(avg_class_activity)
-        avg_pop_activity_dict[pop_name] = torch.stack(avg_pop_activity)
-
-    return avg_pop_activity_dict
 
 
 def compute_test_accuracy(output, labels):
@@ -1350,8 +1415,45 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
 
 
 def compute_dendritic_state_dynamics(network):
+    """
+    Compute dendritic state dynamics from parameter and activity history of a network.
+
+    Parameters
+    ----------
+    network : EIANN.Network object
+        Neural network object containing populations, parameter history, and activity history.
+        Must be trained with store_history=True and store_params=True
+
+    Returns
+    -------
+    dict
+        Dictionary containing dendritic dynamics data for each population.
+        Structure:
+        {population_name: {'forward_dendritic_state_history_dynamics': ndarray,
+                            'backward_dendritic_state_history_dynamics': ndarray,
+                            'activity_history': ndarray,
+                            'backward_activity_history': ndarray}}
+
+    Notes
+    -----
+    This function iterates through the network's parameter history and computes
+    dendritic state dynamics for each population that has dendritic states.
+
+    For each population:
+    - Initializes forward and backward dendritic state history dynamics tensors
+    - For output populations: uses stored backward dendritic state history
+    - For other populations: computes dynamics by summing projections from:
+        - Forward projections: using pre-population activity history
+        - Recurrent projections: handling temporal offsets between forward/backward phases
+
+    Only processes projections targeting 'dend' or 'dendrite' compartments.
+    Requires pre-populations to have backward_activity_history for proper computation.
+    """
     print('Computing dendritic state dynamics from param and activity history...')
     dendritic_dynamics_dict = {}
+
+    if len(network.param_history_steps) == 0:
+        raise ValueError("Network must be trained with store_history=True and store_params=True")
 
     for i, (param_step, state_dict) in tqdm(enumerate(zip(network.param_history_steps, network.prev_param_history))):
         network.load_state_dict(state_dict)

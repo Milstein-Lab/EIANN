@@ -26,6 +26,8 @@ def update_plot_defaults():
                      'ytick.major.width': 1.2,
                      'legend.frameon': False,
                      'legend.handletextpad': 0.5,
+                     'legend.handlelength': 1.2,
+                     'legend.labelspacing': 0.3,
                      'figure.figsize': [10.0, 3.0],
                      'svg.fonttype': 'none',
                      'text.usetex': False})
@@ -526,6 +528,44 @@ def plot_network_dynamics(pop_dynamics_dict, axes=None, normalize=True):
 
 
 def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, population, units, t, axes=None, colors=None):
+    """
+    Plot dendritic state and activity dynamics for a given population at a specific training step.
+
+    Parameters
+    ----------
+    param_history_steps : array_like
+        Array of parameter history steps from training.
+    dendritic_dynamics_dict : dict
+        Dictionary containing dendritic dynamics data for different populations.
+        Can be generated using EIANN.utils.compute_dendritic_state_dynamics(network).
+        Expected structure:
+        {population: {'forward_dendritic_state_history_dynamics': array,
+                    'backward_dendritic_state_history_dynamics': array,
+                    'activity_history': array,
+                    'backward_activity_history': array}}
+    population : str
+        Population identifier to plot dynamics for.
+    units : array_like
+        Unit indices to include in the plot.
+    t : int or float
+        Training step time point to visualize.
+    axes : list of matplotlib.axes.Axes, optional
+        List of 3 axes objects for plotting. If None, new axes are created.
+        Default is None.
+    colors : list, optional
+        List of colors for plotting different units. If None, uses Set1 colormap.
+        Default is None.
+
+    Notes
+    -----
+    Creates a 2-panel plot showing:
+    1. Forward and backward dendritic state dynamics around the nudge time
+    2. Forward and backward activity dynamics around the nudge time  
+
+    The function automatically finds the closest saved training step if the exact
+    step `t` is not available in `param_history_steps`.
+    """
+
     forward_dendritic_state_history_dynamics =  dendritic_dynamics_dict[population]['forward_dendritic_state_history_dynamics']
     backward_dendritic_state_history_dynamics = dendritic_dynamics_dict[population]['backward_dendritic_state_history_dynamics']
     activity_history = dendritic_dynamics_dict[population]['activity_history']
@@ -1042,27 +1082,39 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
 
 def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_output_idx=None, title=None, ax=None):
     """
-    Compute total accuracy (% correct) on given dataset
-    :param network:
-    :param test_dataloader:
-    :param population: :class:'Population' or str 'all'
-    :param sorted_output_idx: tensor of int
-    :param title: str
-    """
-    # percent_correct, average_pop_activity_dict,_,_ = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True, sorted_output_idx=sorted_output_idx)
+    Compute total accuracy (% correct) on given dataset and plot batch accuracy.
 
-    # Calculate accuracy
-    pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=False)
+    Parameters
+    ----------
+    network : EIANN._network.Network
+        The neural network model to evaluate.
+    test_dataloader : torch.utils.data.DataLoader
+        DataLoader providing test data. Must contain a single large batch.
+    population : str, optional
+        Population name to plot, by default 'OutputE'. Can also be 'all'.
+    sorted_output_idx : torch.Tensor, optional
+        Tensor of indices for sorting output population units, by default None.
+    title : str, optional
+        Plot title, by default None.
+    ax : matplotlib.axes.Axes, optional
+        Matplotlib axes to plot on, by default None.
+    """
+    # Compute raw activities
+    pop_activity_dict, pattern_labels = ut.compute_raw_test_activity(network, test_dataloader)
+    
+    # Calculate accuracy using raw output activity
+    output_activity = pop_activity_dict[network.output_pop.fullname]
     if sorted_output_idx is not None:
-        pop_activity_dict[network.output_pop.fullname] = pop_activity_dict[network.output_pop.fullname][:, sorted_output_idx]
-    output = pop_activity_dict[network.output_pop.fullname]
-    percent_correct = ut.compute_test_accuracy(output, pattern_labels)
+        output_activity = output_activity[:, sorted_output_idx]
+    percent_correct = ut.compute_test_accuracy(output_activity, pattern_labels)
     print(f'Batch accuracy = {percent_correct}%')
 
-    # Get average activity
-    average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=True)
+    # Get class-averaged and sorted activities for plotting
+    _, _, target = next(iter(test_dataloader))    
+    averaged_pop_activity_dict, averaged_pattern_labels = ut.apply_class_averaging(pop_activity_dict, pattern_labels, target)    
+    sorted_pop_activity_dict, sorted_pattern_labels, unit_labels_dict = ut.apply_sorting(network, averaged_pop_activity_dict, averaged_pattern_labels, sorted_output_idx)
 
-    plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, title=title, ax=ax)
+    plot_batch_accuracy_from_data(sorted_pop_activity_dict, population=population, title=title, ax=ax)
 
 
 def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neuron_similarity_matrix_dict, pattern_labels, unit_labels_dict):
