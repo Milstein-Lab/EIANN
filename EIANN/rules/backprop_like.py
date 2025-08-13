@@ -6,6 +6,8 @@ import math
 class BP_like_2E(LearningRule):
     def __init__(self, projection, max_pop_fraction=1., stochastic=False, learning_rate=None, relu_gate=False):
         """
+        Initialize BP_like_2E learning rule.
+
         Output units are nudged to target. Hidden dendrites locally compute an error as the difference between
         excitation and inhibition. Weight updates are proportional to local error and (forward) presynaptic firing rate.
         If unit selection is stochastic, hidden units are selected for a weight update with a probability proportional
@@ -14,11 +16,19 @@ class BP_like_2E(LearningRule):
         when selected for a weight update. Nudges to somatic state are applied instantaneously, rather than being
         subject to slow equilibration. Nudged activity is only passed top-down, but not laterally, with no
         equilibration.
-        :param projection: :class:'nn.Linear'
-        :param max_pop_fraction: float in [0, 1]
-        :param stochastic: bool
-        :param learning_rate: float
-        :param relu_gate: bool
+
+        Parameters
+        ----------
+        projection : EIANN.Projection object (inherits from torch.nn.Linear)
+            The neural projection/connection.
+        max_pop_fraction : float, default=1.0
+            Maximum fraction of population to update, must be in [0, 1].
+        stochastic : bool, default=False
+            Whether to use stochastic unit selection.
+        learning_rate : float, optional
+            Learning rate for weight updates.
+        relu_gate : bool, default=False
+            Whether to apply ReLU gating.
         """
         super().__init__(projection, learning_rate)
         self.max_pop_fraction = max_pop_fraction
@@ -41,8 +51,13 @@ class BP_like_2E(LearningRule):
     def backward_nudge_activity(cls, layer, store_dynamics=False):
         """
         Update somatic state and activity for all populations that receive a nudge.
-        :param layer:
-        :param store_dynamics: bool
+
+        Parameters
+        ----------
+        layer : EIANN.Layer object
+            The network layer to update.
+        store_dynamics : bool, default=False
+            Whether to store activity dynamics during the backward pass.
         """
         for post_pop in layer:
             if post_pop.backward_projections or post_pop is post_pop.network.output_pop:
@@ -55,8 +70,12 @@ class BP_like_2E(LearningRule):
     @classmethod
     def backward_update_layer_dendritic_state(cls, layer):
         """
-        Update dendritic state for all populations that receive projections that target the dendritic
-        compartment.
+        Update dendritic state for all populations that receive projections targeting the dendritic compartment.
+
+        Parameters
+        ----------
+        layer : object
+            The network layer to update.
         """
         for post_pop in layer:
             if post_pop.backward_projections:
@@ -79,23 +98,31 @@ class BP_like_2E(LearningRule):
     def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
-        :param network:
-        :param output:
-        :param target:
-        :param store_history: bool
-        :param store_dynamics: bool
+
+        Parameters
+        ----------
+        network : EIANN.Network object (inherits from torch.nn.Module)
+            The neural network.
+        output : torch.Tensor
+            Output of the network.forward() method
+        target : torch.Tensor
+            Target values.
+        store_history : bool, default=False
+            Whether to store computation history.
+        store_dynamics : bool, default=False
+            Whether to store activity dynamics.
         """
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # initialize populations that are updated during the backward phase
+        # Initialize populations that are updated during the backward phase
         for layer in reversed_layers:
             for pop in layer:
                 if pop.backward_projections or pop is output_pop:
                     if store_dynamics:
                         pop.backward_steps_activity = []
-                # initialize dendritic state variables
+                # Initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
@@ -103,11 +130,11 @@ class BP_like_2E(LearningRule):
                         break
         
         for layer in reversed_layers:
-            # update dendritic state variables
+            # Update dendritic state variables
             cls.backward_update_layer_dendritic_state(layer)
             for pop in layer:
                 for projection in pop:
-                    # compute plateau events and nudge somatic state
+                    # Compute plateau events and nudge somatic state
                     if projection.learning_rule.__class__ == cls:
                         if pop is output_pop:
                             local_loss = torch.clamp(target - output_pop.activity, min=-1, max=1)
@@ -145,8 +172,8 @@ class BP_like_2E(LearningRule):
                             pop.dend_to_soma[pos_event_indexes] = local_loss[pos_event_indexes]
                             pop.dend_to_soma[neg_event_indexes] = local_loss[neg_event_indexes]
                         break
-            # update activities
-            cls.backward_nudge_activity(layer, store_dynamics=store_dynamics)
+            # Update activities
+            cls.backward_nudge_activity(layer, store_dynamics=store_dynamics) 
         
         if store_history:
             for layer in network:
@@ -165,9 +192,10 @@ class BP_like_2E(LearningRule):
 
 
 class BP_like_2L(LearningRule):
-    def __init__(self, projection, max_pop_fraction=1., stochastic=False, learning_rate=None, relu_gate=False,
-                 forward_only=False):
+    def __init__(self, projection, max_pop_fraction=1., stochastic=False, learning_rate=None, relu_gate=False, forward_only=False):
         """
+        Initialize BP_like_2L learning rule.
+
         Output units are nudged to target. Hidden dendrites locally compute an error as the difference between
         excitation and inhibition. Weight updates are proportional to local error and presynaptic firing rate (after
         backward phase equilibration).
@@ -176,12 +204,21 @@ class BP_like_2L(LearningRule):
         maximum fraction of hidden units are updated at each train step. Hidden units are "nudged" by dendritic state
         when selected for a weight update. Nudges to somatic state are applied instantaneously, rather than being
         subject to slow equilibration. During nudging, activities are re-equilibrated across all layers.
-        :param projection: :class:'nn.Linear'
-        :param max_pop_fraction: float in [0, 1]
-        :param stochastic: bool
-        :param learning_rate: float
-        :param relu_gate: bool
-        :param forward_only: bool; whether to consult forward activity in weight update
+
+        Parameters
+        ----------
+        projection : EIANN.Projection object (inherits from torch.nn.Linear)
+            The neural projection/connection.
+        max_pop_fraction : float, default=1.0
+            Maximum fraction of population to update, must be in [0, 1].
+        stochastic : bool, default=False
+            Whether to use stochastic unit selection.
+        learning_rate : float, optional
+            Learning rate for weight updates.
+        relu_gate : bool, default=False
+            Whether to apply ReLU gating.
+        forward_only : bool, default=False
+            Whether to consult forward activity in weight update.
         """
         super().__init__(projection, learning_rate)
         self.max_pop_fraction = max_pop_fraction
@@ -209,17 +246,24 @@ class BP_like_2L(LearningRule):
     @classmethod
     def backward_update_layer_activity(cls, layer, store_dynamics=False):
         """
-        Update somatic state and activity for all populations that receive projections with update_phase in
+        Update somatic state and activity for populations with backward projections.
+
+        Updates somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
-        :param layer:
-        :param store_dynamics: bool
+
+        Parameters
+        ----------
+        layer : EIANN.Layer object
+            The network layer to update.
+        store_dynamics : bool, default=False
+            Whether to store activity dynamics during the backward pass.
         """
         for post_pop in layer:
             post_pop.prev_activity = post_pop.activity
         
         for post_pop in layer:
-            if post_pop.backward_projections or post_pop is post_pop.network.output_pop:
-                # update somatic state and activity
+            if post_pop.backward_projections or post_pop is post_pop.network.output_pop or store_dynamics:
+                # Update somatic state and activity
                 delta_state = -post_pop.state + post_pop.bias
                 for projection in post_pop:
                     pre_pop = projection.pre
@@ -239,12 +283,16 @@ class BP_like_2L(LearningRule):
     @classmethod
     def backward_update_layer_dendritic_state(cls, layer):
         """
-        Update dendritic state for all populations that receive projections that target the dendritic
-        compartment.
+        Update dendritic state for all populations that receive projections targeting the dendritic compartment.
+
+        Parameters
+        ----------
+        layer : EIANN.Layer object
+            The network layer to update.
         """
         for post_pop in layer:
             if post_pop.backward_projections:
-                # update dendritic state
+                # Update dendritic state
                 init_dend_state = False
                 for projection in post_pop:
                     pre_pop = projection.pre
@@ -263,23 +311,30 @@ class BP_like_2L(LearningRule):
     def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
-        :param network:
-        :param output:
-        :param target:
-        :param store_history: bool
-        :param store_dynamics: bool
+
+        Parameters
+        ----------
+        network : EIANN.Network object (inherits from torch.nn.Module)
+            The neural network.
+        output : torch.Tensor
+            Output from the network.forward() method
+        target : torch.Tensor
+            Target values.
+        store_history : bool, default=False
+            Whether to store computation history.
+        store_dynamics : bool, default=False
+            Whether to store activity dynamics.
         """
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         output_pop = network.output_pop
         
-        # initialize populations that are updated during the backward phase
+        # Initialize populations that are updated during the backward phase
         for layer in reversed_layers:
             for pop in layer:
-                if pop.backward_projections or pop is output_pop:
-                    if store_dynamics:
-                        pop.backward_steps_activity = []
-                # initialize dendritic state variables
+                if store_dynamics:
+                    pop.backward_steps_activity = []
+                # Initialize dendritic state variables
                 for projection in pop:
                     if cls.shared_backward_methods(projection.learning_rule):
                         pop.plateau = torch.zeros(pop.size, device=network.device)
@@ -288,12 +343,12 @@ class BP_like_2L(LearningRule):
         
         for t in range(network.forward_steps):
             for layer in reversed_layers:
-                # update dendritic state variables
+                # Update dendritic state variables
                 cls.backward_update_layer_dendritic_state(layer)
                 if t == 0:
                     for pop in layer:
                         for projection in pop:
-                            # compute plateau events and nudge somatic state
+                            # Compute plateau events and nudge somatic state
                             if cls.shared_backward_methods(projection.learning_rule):
                                 if pop is output_pop:
                                     local_loss = torch.clamp(target - output_pop.activity, min=-1, max=1)
@@ -330,7 +385,7 @@ class BP_like_2L(LearningRule):
                                     pop.dend_to_soma[pos_event_indexes] = local_loss[pos_event_indexes]
                                     pop.dend_to_soma[neg_event_indexes] = local_loss[neg_event_indexes]
                                 break
-                # update activities
+                # Update activities
                 cls.backward_update_layer_activity(layer, store_dynamics=store_dynamics)
         
         if store_history:
@@ -352,12 +407,19 @@ class BP_like_2L(LearningRule):
 class Top_Layer_BP_like_2L(LearningRule):
     def __init__(self, projection, learning_rate=None, relu_gate=True):
         """
-        Output units are nudged to target. Weight updates are proportional to local error and presynaptic firing rate (after
-        backward phase equilibration).
+        Initialize Top_Layer_BP_like_2L learning rule.
 
-        :param projection: :class:'nn.Linear'
-        :param learning_rate: float
-        :param relu_gate: bool
+        Output units are nudged to target. Weight updates are proportional to local error and presynaptic firing rate 
+        (after backward phase equilibration).
+
+        Parameters
+        ----------
+        projection : EIANN.Projection (inherits from torch.nn.Linear)
+            The neural projection/connection.
+        learning_rate : float, optional
+            Learning rate for weight updates.
+        relu_gate : bool, default=True
+            Whether to apply ReLU gating.
         """
         super().__init__(projection, learning_rate)
         self.relu_gate = relu_gate
@@ -377,10 +439,17 @@ class Top_Layer_BP_like_2L(LearningRule):
     @classmethod
     def backward_update_layer_activity(cls, layer, store_dynamics=False):
         """
-        Update somatic state and activity for all populations that receive projections with update_phase in
+        Update somatic state and activity for populations with backward projections.
+
+        Updates somatic state and activity for all populations that receive projections with update_phase in
         ['B', 'backward', 'A', 'all'].
-        :param layer:
-        :param store_dynamics: bool
+
+        Parameters
+        ----------
+        layer : EIANN.Layer object
+            The network layer to update.
+        store_dynamics : bool, default=False
+            Whether to store activity dynamics during the backward pass.
         """
         for post_pop in layer:
             post_pop.prev_activity = post_pop.activity
@@ -408,21 +477,29 @@ class Top_Layer_BP_like_2L(LearningRule):
     def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         """
         Integrate top-down inputs and update dendritic state variables.
-        :param network:
-        :param output:
-        :param target:
-        :param store_history: bool
-        :param store_dynamics: bool
+
+        Parameters
+        ----------
+        network : EIANN.Network object (inherits from torch.nn.Module)
+            The neural network.
+        output : torch.Tensor
+            Output from the network.forward() method
+        target : torch.Tensor
+            Target values.
+        store_history : bool, default=False
+            Whether to store computation history.
+        store_dynamics : bool, default=False
+            Whether to store activity dynamics.
         """
         output_pop = network.output_pop
         output_layer = output_pop.layer
         
-        # initialize populations that are updated during the backward phase
+        # Initialize populations that are updated during the backward phase
         for pop in output_layer:
             if pop.backward_projections or pop is output_pop:
                 if store_dynamics:
                     pop.backward_steps_activity = []
-                # initialize dendritic state variables
+                # Initialize dendritic state variables
                 for projection in pop:
                     if projection.learning_rule.__class__ == cls:
                         pop.plateau = torch.zeros(pop.size, device=network.device)
@@ -433,7 +510,7 @@ class Top_Layer_BP_like_2L(LearningRule):
             if t == 0:
                 for pop in output_layer:
                     for projection in pop:
-                        # compute plateau events and nudge somatic state
+                        # Compute plateau events and nudge somatic state
                         if projection.learning_rule.__class__ == cls:
                             if pop is output_pop:
                                 local_loss = torch.clamp(target - output_pop.activity, min=-1, max=1)

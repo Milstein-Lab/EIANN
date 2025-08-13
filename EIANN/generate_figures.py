@@ -132,12 +132,13 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         network.input_pop = next(iter(input_layer))
 
     # Load dataset
-    if 'mnist' in config_path:
-        all_dataloaders = ut.get_MNIST_dataloaders(sub_dataloader_size=1000)
-        train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
-    elif 'spiral' in config_path:
+    if "mnist" in config_path and "fmnist" not in config_path:
+        all_dataloaders = ut.get_MNIST_dataloaders()
+    elif "fmnist" in config_path:
+        all_dataloaders = ut.get_FashionMNIST_dataloaders()
+    elif "spiral" in config_path:
         all_dataloaders = ut.get_spiral_dataloaders(batch_size='full_dataset')
-        train_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
+    train_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
 
     ##################################################################
     ## Generate plot data
@@ -170,9 +171,11 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     # Angle vs Backprop
     if set(['angle_vs_bp','angle_vs_bp_stochastic']).intersection(variables_to_recompute):
         stored_history_step_size = torch.diff(network.param_history_steps)[-1]
-        if 'mnist' in config_path:
+        if "mnist" in config_path and "fmnist" not in config_path:
             comparison_config_path = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
-        elif 'spiral' in config_path:
+        elif "fmnist" in config_path:
+            comparison_config_path = os.path.join(os.path.dirname(config_path), "20250606_EIANN_2_hidden_fmnist_bpDale_relu_SGD_config_G_zero_bias_complete_optimized.yaml")
+        elif "spiral" in config_path:
             comparison_config_path = os.path.join(os.path.dirname(config_path), "20250108_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config_complete_optimized.yaml")
         comparison_network = ut.build_EIANN_from_config(comparison_config_path, network_seed=network_seed)
         if not ut.network_architectures_match(network, comparison_network):
@@ -239,7 +242,7 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
 
         if not os.path.exists(hdf5_path):
             # If the hdf5 is not available in local data directory, check in Box drive
@@ -293,7 +296,7 @@ def generate_hyperparams_csv(model_dict_all, model_list, save):
     # df = df.groupby("Param name", as_index=False).mean(numeric_only=True)
     df = df.fillna("-")
 
-    out_file = f"{save}.csv"
+    out_file = f"data/{save}.csv"
     df.to_csv(out_file, index=False)
     print(f"Saved hyperparams table to {out_file}")
 
@@ -642,7 +645,7 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
     model_key = "bpLike_WT_hebbdend_eq"
     model_dict = model_dict_all[model_key]
     network_name = model_dict['config'].split('.')[0] + "_dynamics"
-    hdf5_path = f"data/plot_data_{network_name}.h5"
+    hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
 
     # Open hdf5 and check if the dynamics data already exists      
     if not os.path.exists(hdf5_path):
@@ -703,17 +706,6 @@ def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                        top=0.95, bottom=0.6,
                        wspace=0.7, hspace=0.2,
                        width_ratios=[2.5,1,1])
-    
-    # fig = plt.figure(figsize=(5.5, 4))
-    # axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                   
-    #                    left=0.049,right=0.95,
-    #                    top=0.95, bottom=0.08,
-    #                    wspace=0.2, hspace=0.35)
-    # metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,                     
-    #                    left=0.049,right=0.95,
-    #                    top=0.95, bottom=0.25,
-    #                    wspace=0.5, hspace=0.3,
-    #                    width_ratios=[1.5, 1, 1, 1])
 
     ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
     ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
@@ -725,7 +717,7 @@ def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -809,7 +801,7 @@ def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     for col, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
 
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
@@ -875,7 +867,7 @@ def generate_fig4(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -944,7 +936,7 @@ def fig4_spirals(model_dict_all, model_list_spirals, model_list_metrics, spiral_
     for model_idx, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -998,7 +990,7 @@ def generate_fig5(model_dict_all, model_list, config_path_prefix="network_config
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -1035,7 +1027,7 @@ def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="
     for i, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -1077,7 +1069,7 @@ def generate_figS1(model_dict_all, model_list, config_path_prefix="network_confi
     for i, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")    
@@ -1114,7 +1106,7 @@ def generate_figS2(model_dict_all, model_list_heatmaps, model_list_metrics, conf
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
 
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
@@ -1170,7 +1162,7 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['display_name']}")
@@ -1216,6 +1208,7 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
             within_class_similarity = []
             between_class_similarity = []
             for seed in model_dict['seeds']:
+                # Calculate the receptive field similarity for each unit (the histogram will pool data across all model seeds)
                 unit_labels_dict = data_dict[seed]['unit_labels_dict']
                 unit_labels = unit_labels_dict[population][:]
                 idx = np.argsort(unit_labels)
@@ -1223,11 +1216,11 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
                 receptive_fields = np.array(data_dict[seed][f"maxact_receptive_fields_{population}"])
                 sorted_receptive_fields = receptive_fields[idx]
                 rf_similarity = cosine_similarity(sorted_receptive_fields)
-                np.fill_diagonal(rf_similarity, 0)
+                np.fill_diagonal(rf_similarity, 0) # remove self-similarity
                 
+                # Plot the receptive field similarity matrix for the example seed
                 if seed == example_seed:
                     masked_rf_similarity = np.ma.masked_array(rf_similarity, mask=~np.tril(np.ones(rf_similarity.shape), k=-1).astype(bool))
-                    # im = ax.imshow(masked_rf_similarity, interpolation="nearest", vmin=0, vmax=1)
                     im = ax.imshow(masked_rf_similarity, interpolation="nearest", cmap='bwr', vmin=-1, vmax=1)
                     ax.set_xlabel(f"{population} unit")
                     ax.set_ylabel(f"{population} unit")
@@ -1238,6 +1231,7 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
                         # cax.set_yticks([0, 1])
                         cax.set_ylabel('Receptive field\ncosine similarity', rotation=270, labelpad=5)
                 
+                # Calculate within-class and between-class receptive field similarity (accumulate across all seeds)
                 for label in range(10):
                     class_idx = np.where(unit_labels == label)[0]
                     within_class_values = np.max(rf_similarity[class_idx,:][:, class_idx], axis=1)
@@ -1286,7 +1280,7 @@ def generate_model_summary_table(model_dict_all, model_list, config_path_prefix=
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         network_table_vals = [model_dict[col] for col in columns.keys() if col in model_dict]
         with h5py.File(hdf5_path, 'r') as f:
             # print(f"Generating table for {network_name}")
@@ -1413,7 +1407,7 @@ def compare_RSM_properties(model_dict_all, model_list_heatmaps, model_list_metri
     for row, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -1491,7 +1485,7 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -1560,7 +1554,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + network_name + f"_{seed}.pkl"
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
@@ -1569,7 +1563,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
 
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
@@ -1649,7 +1643,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
     for model_idx, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/plot_data_{network_name}.h5"
+        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -2022,26 +2016,32 @@ def main(figure, recompute):
         generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
     if figure in ["all", "T3"]:
-        # csv_filename = "FigT3_mnist_hyperparams.csv"
+        # csv_filename = "data/FigT3_mnist_hyperparams.csv"
         # figure_name = "FigT3_mnist_hyperparams_all"
         # generate_hyperparams_table(csv_filename, save=figure_name)
 
-        csv_filename = "FigT3_mnist_hyperparams1.csv"
+        csv_filename = "data/FigT3_mnist_hyperparams1.csv"
         figure_name = "FigT3_mnist_hyperparams1"
         generate_hyperparams_table(csv_filename, save=figure_name)
 
-        csv_filename = "FigT3_mnist_hyperparams2.csv"
+        csv_filename = "data/FigT3_mnist_hyperparams2.csv"
         figure_name = "FigT3_mnist_hyperparams2"
         generate_hyperparams_table(csv_filename, save=figure_name)
 
-        csv_filename = "FigT3_mnist_hyperparams3.csv"
+        csv_filename = "data/FigT3_mnist_hyperparams3.csv"
         figure_name = "FigT3_mnist_hyperparams3"
         generate_hyperparams_table(csv_filename, save=figure_name)
 
     if figure in ["all", "T4"]:
-        csv_filename = "FigT4_spiral_hyperparams.csv"
+        csv_filename = "data/FigT4_spiral_hyperparams.csv"
         figure_name = "FigT4_spiral_hyperparams"
         generate_hyperparams_table(csv_filename, save=figure_name)
+
+    if figure in ["all", "T5"]:
+        saved_network_path_prefix += "FMNIST/"
+        figure_name = "FigT5_fmnist_table"
+        model_list = ["fmnist_DTP_TCWN_hebbdend", "fmnist_DTP_WT_hebbdend", "fmnist_BTSP_TCWN_hebbdend", "fmnist_BTSP_WT_nobias_hebbdend", "fmnist_vanBP_nobias", "fmnist_bpDale_nobias"]
+        generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/fmnist/", save=figure_name, recompute=recompute)
 
 
     if figure in ["all", "hyperparams"]:

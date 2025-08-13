@@ -239,7 +239,10 @@ class Network(nn.Module):
             store_num_steps = self.forward_steps
         
         for population in self.populations.values():
-            population.reinit(self.device, batch_size=sample.shape[0])
+            if sample.ndim == 1:
+                population.reinit(self.device, batch_size=1)
+            else:
+                population.reinit(self.device, batch_size=sample.shape[0])
     
         if not hasattr(self, 'input_pop'):
             self.input_pop = next(iter(list(self)[0]))
@@ -455,7 +458,6 @@ class Network(nn.Module):
                 if sample_count >= samples_per_epoch:
                     break
                 
-                # sample_data = torch.squeeze(sample_data)
                 sample_target = torch.squeeze(sample_target)
                 if not sample_data.device == self.device:
                     sample_data = sample_data.to(self.device)
@@ -484,8 +486,7 @@ class Network(nn.Module):
                 self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
                 
                 for backward in self.backward_methods:
-                    backward(self, output, sample_target, store_history=this_train_step_store_history,
-                             store_dynamics=store_dynamics)
+                    backward(self, output, sample_target, store_history=this_train_step_store_history, store_dynamics=store_dynamics)
                 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
@@ -804,6 +805,10 @@ class Population(object):
     @property
     def bias_history(self):
         return self.get_param_history('bias')
+
+    @property
+    def activity_dynamics(self):
+        return torch.stack(self.forward_steps_activity) if self.forward_steps_activity else None
 
 
 class Conv2DPopulation(Population):

@@ -24,10 +24,19 @@ except:
 
 def nested_convert_scalars(data):
     """
-    Crawls a nested dictionary, and converts any scalar objects from numpy types to python types.
-    :param data: dict
-    :return: dict
+    Crawl a nested dictionary and recursively convert all NumPy scalar types to native Python types in the nested structure.
+
+    Parameters
+    ----------
+    data : any
+        A potentially nested structure (dict, list, tuple) containing scalars.
+
+    Returns
+    -------
+    any
+        The same structure with NumPy scalars converted to native Python types.
     """
+
     if isinstance(data, dict):
         converted_data = dict()
         for key in data:
@@ -49,11 +58,16 @@ def nested_convert_scalars(data):
 
 def write_to_yaml(file_path, data, convert_scalars=True):
     """
+    Write a dictionary to a YAML file.
 
-    :param file_path: str (should end in '.yaml')
-    :param data: dict
-    :param convert_scalars: bool
-    :return:
+    Parameters
+    ----------
+    file_path : str
+        Path to the output YAML file. Should end with '.yaml'.
+    data : dict
+        Dictionary to write to the file.
+    convert_scalars : bool, optional
+        Whether to convert NumPy scalar types to native Python types before writing. Default is True.
     """
     import yaml
     with open(file_path, 'w') as outfile:
@@ -64,10 +78,24 @@ def write_to_yaml(file_path, data, convert_scalars=True):
 
 def read_from_yaml(file_path, Loader=None):
     """
-    Import a python dict from .yaml
-    :param file_path: str (should end in '.yaml')
-    :param Loader: :class:'yaml.Loader'
-    :return: dict
+    Read a dictionary from a YAML file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the YAML file to read.
+    Loader : yaml.Loader or None, optional
+        YAML loader to use. Defaults to `yaml.FullLoader`.
+
+    Returns
+    -------
+    dict
+        Dictionary parsed from the YAML file.
+
+    Raises
+    ------
+    Exception
+        If the specified file does not exist.
     """
     if Loader is None:
         Loader = yaml.FullLoader
@@ -81,10 +109,16 @@ def read_from_yaml(file_path, Loader=None):
 
 def export_metrics_data(metrics_dict, model_name, path):
     """
-    Exports data from metrics_dict to hdf5 file.
-    :param metrics_dict: dictionary of metrics computed on EIANN network
-    :param model_name: string of model name for top_level hdf5 group
-    :param file_name: string name of file to save to
+    Export metrics data to an HDF5 file under a specific model group.
+
+    Parameters
+    ----------
+    metrics_dict : dict
+        Dictionary of metrics to export.
+    model_name : str
+        Name of the model used as the top-level group in the HDF5 file.
+    path : str
+        Path to the HDF5 file. If missing '.hdf5', it will be appended.
     """
 
     if '.hdf5' not in path:
@@ -107,9 +141,17 @@ def export_metrics_data(metrics_dict, model_name, path):
  
 def import_metrics_data(filename):
     """
-    Imports metrics data from hdf5 file
-    :param file_name: string name of hdf5 file
-    :return sim_dict: dictionary of values
+    Import metrics data from an HDF5 file into a nested dictionary.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the HDF5 file.
+
+    Returns
+    -------
+    dict
+        Nested dictionary of metrics by model and metric name.
     """
     metrics_dict = {}
     with h5py.File(filename, 'r') as file:
@@ -123,10 +165,17 @@ def import_metrics_data(filename):
 
 def hdf5_to_dict(file_path):
     """
-    Load an HDF5 file and convert it to a nested Python dictionary.
+    Convert the contents of an HDF5 file into a nested dictionary.
 
-    :param file_path (str): Path to the HDF5 file.
-    :return dict: nested Python dictionary with identical structure as the HDF5 file.
+    Parameters
+    ----------
+    file_path : str
+        Path to the HDF5 file.
+
+    Returns
+    -------
+    dict
+        Nested Python dictionary representing the HDF5 file structure.
     """
     # Initial call to convert the top-level group in the HDF5 file
     # (necessary because the top-level group is not a h5py.Group object)
@@ -145,10 +194,17 @@ def hdf5_to_dict(file_path):
 
 def convert_hdf5_group_to_dict(group):
     """
-    Helper function to recursively convert an HDF5 group to a nested Python dictionary.
+    Helper function to recursively convert an HDF5 group to a nested dictionary.
 
-    :param group (h5py.Group): The HDF5 group to convert.
-    :return dict: Nested Python dictionary with identical structure as the HDF5 group.
+    Parameters
+    ----------
+    group : h5py.Group
+        The HDF5 group to convert.
+
+    Returns
+    -------
+    dict
+        Dictionary representing the structure and datasets within the group.
     """
     data_dict = {}
     # Loop over the keys in the HDF5 group
@@ -165,10 +221,14 @@ def convert_hdf5_group_to_dict(group):
 
 def dict_to_hdf5(data_dict, file_path):
     """
-    Save a nested Python dictionary to an HDF5 file.
+    Save a nested dictionary to an HDF5 file.
 
-    :param data_dict (dict): Nested Python dictionary to save.
-    :param file_path (str): Path to the HDF5 file.
+    Parameters
+    ----------
+    data_dict : dict
+        Dictionary to save to the file.
+    file_path : str
+        Destination path for the HDF5 file.
     """
     with h5py.File(file_path, 'w') as f:
         # Initial call to save the top-level dictionary to the HDF5 file
@@ -177,10 +237,14 @@ def dict_to_hdf5(data_dict, file_path):
 
 def convert_dict_to_hdf5_group(data_dict, group):
     """
-    Recursive function to save a nested Python dictionary to an HDF5 group.
+    Recursively write a nested dictionary to an HDF5 group.
 
-    :param data_dict (dict): Nested Python dictionary to save.
-    :param group (h5py.Group): The HDF5 group to save the dictionary to.
+    Parameters
+    ----------
+    data_dict : dict
+        Dictionary to write to the HDF5 group.
+    group : h5py.Group
+        Target HDF5 group for storing the dictionary data.
     """
     for key, value in data_dict.items():
         if isinstance(value, dict):
@@ -192,42 +256,24 @@ def convert_dict_to_hdf5_group(data_dict, group):
             group.create_dataset(key, data=value, track_order=True)
 
 
-def load_plot_data(network_name, seed, data_key, file_path=None):
-    """
-    Load plot data from a hdf5 file
-    :param file_path: str
-    :param network_name: str
-    :param seed: int
-    """
-    if file_path is None:
-        root_dir = get_project_root()
-        file_path = root_dir+'/EIANN/data/plot_data.h5'
-
-    seed = str(seed)
-    if os.path.exists(file_path):
-        with h5py.File(file_path, 'r') as hdf5_file:            
-            if network_name in hdf5_file:
-                if seed in hdf5_file[network_name]:
-                    if data_key in hdf5_file[network_name][seed]:
-                        if isinstance(hdf5_file[network_name][seed][data_key], h5py.Group):
-                            data = convert_hdf5_group_to_dict(hdf5_file[network_name][seed][data_key])
-                        elif isinstance(hdf5_file[network_name][seed][data_key], h5py.Dataset):
-                            data = hdf5_file[network_name][seed][data_key][()]
-                        print(f'{data_key} loaded from file: {file_path}')
-                        return data
-    print(f'{data_key} not found in file: {file_path}')
-    return None
-
-
 def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite=False):
     """
-    Save plot data to an hdf5 file
-    :param network_name: str
-    :param seed: int
-    :param plot_name: str
-    :param data: array
-    :param file_path: str
-    :param overwrite: bool
+    Save plot data for a specific network and seed into an HDF5 file.
+
+    Parameters
+    ----------
+    network_name : str
+        Name of the network.
+    seed : int
+        Seed identifier for the data.
+    data_key : str
+        Key under which to store the data.
+    data : array-like or dict
+        Data to be saved.
+    file_path : str, optional
+        Path to the HDF5 file. If None, a default path is used.
+    overwrite : bool, optional
+        Whether to overwrite existing data at the specified key.
     """
     if file_path is None:
         root_dir = get_project_root()
@@ -260,9 +306,65 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
             print(f'{data_key} saved to file: {file_path}')
 
 
+def load_plot_data(network_name, seed, data_key, file_path=None):
+    """
+    Load plot data for a specific network and seed from an HDF5 file.
+
+    Parameters
+    ----------
+    network_name : str
+        Name of the network.
+    seed : int
+        Seed identifier for the data.
+    data_key : str
+        Key under which the data is stored.
+    file_path : str, optional
+        Path to the HDF5 file. If None, a default path is used.
+
+    Returns
+    -------
+    any or None
+        The loaded data if present, otherwise None.
+    """
+    if file_path is None:
+        root_dir = get_project_root()
+        file_path = root_dir+'/EIANN/data/plot_data.h5'
+
+    seed = str(seed)
+    if os.path.exists(file_path):
+        print(f'Loading {data_key} from file: {file_path}')
+        with h5py.File(file_path, 'r') as hdf5_file:            
+            if network_name in hdf5_file:
+                if seed in hdf5_file[network_name]:
+                    if data_key in hdf5_file[network_name][seed]:
+                        if isinstance(hdf5_file[network_name][seed][data_key], h5py.Group):
+                            data = convert_hdf5_group_to_dict(hdf5_file[network_name][seed][data_key])
+                        elif isinstance(hdf5_file[network_name][seed][data_key], h5py.Dataset):
+                            data = hdf5_file[network_name][seed][data_key][()]
+                        return data
+                    else:
+                        print(f'Data key {data_key} not found in seed {seed} of network {network_name} in file: {file_path}')
+                else:
+                    print(f'Seed {seed} not found in network {network_name} in file: {file_path}')
+            else:
+                print(f'Network {network_name} not found in file: {file_path}')
+    else:
+        print(f'File not found: {file_path}')
+    return None
+
+
 def delete_plot_data(variable_name, file_name, file_path_prefix="../data/"):
     """
-    Deletes the specified data from an hdf5 file.
+    Delete a specific variable from an HDF5 file.
+
+    Parameters
+    ----------
+    variable_name : str
+        Name of the variable to delete.
+    file_name : str
+        Name of the HDF5 file.
+    file_path_prefix : str, optional
+        Path prefix for the file location. Default is '../data/'.
     """
     file_path = file_path_prefix + file_name
     if os.path.exists(file_path):
@@ -277,6 +379,19 @@ def delete_plot_data(variable_name, file_name, file_path_prefix="../data/"):
 
 
 def get_project_root():
+    """
+    Find the root directory of the project containing the 'EIANN' folder.
+
+    Returns
+    -------
+    str
+        Absolute path to the project root directory.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the 'EIANN' directory cannot be found.
+    """
     # Assuming the current script is somewhere within the project directory
     current_path = os.path.abspath(__file__)
     
@@ -284,20 +399,27 @@ def get_project_root():
     while not os.path.isdir(os.path.join(current_path, 'EIANN')):
         current_path = os.path.dirname(current_path)
         if current_path == os.path.dirname(current_path):
-            raise FileNotFoundError("Project root directory 'EIANN' not found")
-    
-    # return os.path.join(current_path, 'EIANN')
+            raise FileNotFoundError("Project root directory 'EIANN' not found")    
     return current_path
 
 
 def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None):
     """
-    Load MNIST dataset into custom dataloaders with sample index
-    :param sub_dataloader_size:
-    :param classes:
-    :param batch_size:
-    :param data_dir:
-    :return:
+    Load MNIST dataset and return custom dataloaders that include sample indices.
+
+    Parameters
+    ----------
+    sub_dataloader_size : int, optional
+        If set, creates a separate dataloader with this many samples.
+    batch_size : int, optional
+        Batch size for the sub-dataloader.
+    data_dir : str, optional
+        Path to the dataset directory. If None, a default path is used.
+
+    Returns
+    -------
+    tuple
+        Tuple of DataLoaders: (train, [train_sub], val, test, generator).
     """
     if data_dir is None:
         root_dir = get_project_root()
@@ -324,7 +446,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
         
     # Put data in dataloader
     data_generator = torch.Generator()
-    train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=50_000)
+    train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=1)
     val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10_000:], batch_size=10_000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10_000, shuffle=False)
     if sub_dataloader_size is not None:
@@ -336,12 +458,21 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
 
 def get_FashionMNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None):
     """
-    Load MNIST dataset into custom dataloaders with sample index
-    :param sub_dataloader_size:
-    :param classes:
-    :param batch_size:
-    :param data_dir:
-    :return:
+    Load FashionMNIST dataset and return custom dataloaders that include sample indices.
+
+    Parameters
+    ----------
+    sub_dataloader_size : int, optional
+        If set, creates a separate dataloader with this many samples.
+    batch_size : int, optional
+        Batch size for the sub-dataloader.
+    data_dir : str, optional
+        Path to the dataset directory. If None, a default path is used.
+
+    Returns
+    -------
+    tuple
+        Tuple of DataLoaders: (train, [train_sub], val, test, generator).
     """
     if data_dir is None:
         root_dir = get_project_root()
@@ -368,7 +499,7 @@ def get_FashionMNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_di
         
     # Put data in dataloader
     data_generator = torch.Generator()
-    train_dataloader = torch.utils.data.DataLoader(fmnist_train[0:50_000], batch_size=50_000)
+    train_dataloader = torch.utils.data.DataLoader(fmnist_train[0:50_000], batch_size=1)
     val_dataloader = torch.utils.data.DataLoader(fmnist_train[-10_000:], batch_size=10_000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(fmnist_test, batch_size=10_000, shuffle=False)
     if sub_dataloader_size is not None:
@@ -378,47 +509,70 @@ def get_FashionMNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_di
         return train_dataloader, val_dataloader, test_dataloader, data_generator
 
 
-
-
-
 def generate_spiral_data(arm_size=500, K=4, sigma=0.16, seed=0, offset=0.):
-        """
-        Generate points of spiral dataset
-        - arm_size: number of points in each arm 
-        - K: number of arms
-        - sigma: noise level
-        - seed: random seed
-        """
-        np.random.seed(seed)
-        torch.manual_seed(seed)
+    """
+    Generate a synthetic spiral dataset.
 
-        t = torch.linspace(0, 1, arm_size) # Generate linearly spaced values from 0 to 1, used as the parameter that varies along the length of the spiral
-        X = torch.zeros(K*arm_size, 2)
-        y = torch.zeros(K*arm_size)
+    Parameters
+    ----------
+    arm_size : int, optional
+        Number of points per spiral arm. Default is 500.
+    K : int, optional
+        Number of spiral arms. Default is 4.
+    sigma : float, optional
+        Noise level. Default is 0.16.
+    seed : int, optional
+        Random seed. Default is 0.
+    offset : float, optional
+        Offset to apply to spiral coordinates. Default is 0.
 
-        # arm_index is the offset or phase shift, allowing the function to generate points for each arm in the spiral
-        for arm_index in range(K):
-            X[arm_index*arm_size:(arm_index+1)*arm_size, 0] = (
-                    t*(torch.sin(2*np.pi/K*(2*t+arm_index)) + sigma*torch.randn(arm_size))) + offset
-            X[arm_index*arm_size:(arm_index+1)*arm_size, 1] = (
-                    t*(torch.cos(2*np.pi/K*(2*t+arm_index)) + sigma*torch.randn(arm_size))) + offset
-            y[arm_index*arm_size:(arm_index+1)*arm_size] = arm_index    
+    Returns
+    -------
+    list of tuples
+        Each element is (index, data_tensor, one_hot_target).
+    """
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
-        all_data = []
-        for index, (data, label) in enumerate(zip(X, y)):
-            target = torch.eye(K)[int(label)]
-            all_data.append((index, data, target))
+    t = torch.linspace(0, 1, arm_size) # Generate linearly spaced values from 0 to 1, used as the parameter that varies along the length of the spiral
+    X = torch.zeros(K*arm_size, 2)
+    y = torch.zeros(K*arm_size)
 
-        return all_data
+    # arm_index is the offset or phase shift, allowing the function to generate points for each arm in the spiral
+    for arm_index in range(K):
+        X[arm_index*arm_size:(arm_index+1)*arm_size, 0] = (
+                t*(torch.sin(2*np.pi/K*(2*t+arm_index)) + sigma*torch.randn(arm_size))) + offset
+        X[arm_index*arm_size:(arm_index+1)*arm_size, 1] = (
+                t*(torch.cos(2*np.pi/K*(2*t+arm_index)) + sigma*torch.randn(arm_size))) + offset
+        y[arm_index*arm_size:(arm_index+1)*arm_size] = arm_index    
+
+    all_data = []
+    for index, (data, label) in enumerate(zip(X, y)):
+        target = torch.eye(K)[int(label)]
+        all_data.append((index, data, target))
+
+    return all_data
 
     
 def get_spiral_dataloaders(batch_size=1, points_per_spiral_arm=2000, seed=0):
     """
-    Generate and load spiral dataset into train, validation, and test dataloaders.
-    - batch_size: number of samples in each batch
-    - N: number of points in the spiral
+    Generate spiral dataset and return dataloaders.
+
+    Parameters
+    ----------
+    batch_size : int or str, optional
+        Batch size for training. Use 'all' or 'full_dataset' to load all data in one batch.
+    points_per_spiral_arm : int, optional
+        Number of points per spiral arm. Default is 2000.
+    seed : int, optional
+        Random seed. Default is 0.
+
+    Returns
+    -------
+    tuple
+        Tuple of DataLoaders: (train, val, test, generator).
     """
-    
+
     # Split data into train, validation, and test sets
     train_data = generate_spiral_data(arm_size=int(0.7*points_per_spiral_arm), seed=seed)
     val_data = generate_spiral_data(arm_size=int(0.15*points_per_spiral_arm), seed=seed+1)

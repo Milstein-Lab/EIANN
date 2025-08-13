@@ -661,11 +661,12 @@ def compute_representational_similarity_matrix(pop_activity_dict, pattern_labels
     return pattern_similarity_matrix_dict, neuron_similarity_matrix_dict
 
 
-def compute_within_class_representational_similarity(network, dataloader, population='all'):
+def compute_within_class_representational_similarity(network, dataloader, population='all', plot=False):
     """
     Computes within-class and between-class representational similarity for patterns and units in an EIANN network.
     This function calculates cosine similarity matrices for both patterns and units, then extracts within-class and between-class similarities
     for each population and class label. The similarities are returned as dictionaries keyed by population names.
+
     Parameters
     ----------
     network : EIANN._network.Network
@@ -691,7 +692,7 @@ def compute_within_class_representational_similarity(network, dataloader, popula
     - Cosine similarity is used as the similarity metric.
     """
     pop_activity_dict, pattern_labels, unit_labels_dict = compute_test_activity(network, dataloader, class_average=False, sort=True)
-    pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = compute_representational_similarity_matrix(pop_activity_dict, population)
+    pattern_similarity_matrix_dict, neuron_similarity_matrix_dict = compute_representational_similarity_matrix(pop_activity_dict, pattern_labels, unit_labels_dict, population, plot=False)
 
     within_class_pattern_similarity_dict = {}
     between_class_pattern_similarity_dict = {}
@@ -720,6 +721,10 @@ def compute_within_class_representational_similarity(network, dataloader, popula
             between_similarity_matrix = neuron_similarity_matrix_dict[pop_name][unit_labels_dict[pop_name] != class_label, :][:, unit_labels_dict[pop_name] == class_label]
             between_class_unit_similarity_dict[pop_name].append(between_similarity_matrix.flatten())
 
+    if plot:
+        pt.plot_within_class_representational_similarity(within_class_pattern_similarity_dict, between_class_pattern_similarity_dict, 
+                                                         within_class_unit_similarity_dict, between_class_unit_similarity_dict)
+    
     return within_class_pattern_similarity_dict, between_class_pattern_similarity_dict, within_class_unit_similarity_dict, between_class_unit_similarity_dict
 
 
