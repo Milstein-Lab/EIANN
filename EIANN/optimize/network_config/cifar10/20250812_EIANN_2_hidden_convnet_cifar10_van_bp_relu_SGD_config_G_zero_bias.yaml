@@ -1,12 +1,12 @@
 layer_config:
     Input:
         E:
-            size: 3
+            channels: 3
             image_dim: 32
     H1:
         E:
             population_type: Conv2D
-            size: 30
+            channels: 30
             kernel_size: 5
             image_source: Input.E
             activation: relu
@@ -17,7 +17,7 @@ layer_config:
     H2:
         E:
             population_type: Conv2D
-            size: 30
+            channels: 30
             kernel_size: 5
             image_source: H1.MaxPoolE
             activation: relu
@@ -26,7 +26,7 @@ layer_config:
             kernel_size: 2
             source: H2.E
         FlatE:
-            population_type: flatten
+            population_type: Flatten
             source: H2.MaxPoolE
     Output:
         E:
@@ -37,26 +37,24 @@ projection_config:
         E:
             Input:
                 E:
-                    projection_type: Conv2D
-#                    weight_init: scaled_kaiming
-#                    weight_init_args: !!python/tuple
-#                    - 2.957309048541877
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 2.957309048541877
                     direction: F
                     learning_rule: Backprop
-#                    learning_rule_kwargs:
-#                        learning_rate: 0.1652392249674756
+                    learning_rule_kwargs:
+                        learning_rate: 0.1652392249674756
     H2:
         E:
             H1:
                 MaxPoolE:
-                    projection_type: Conv2D
-#                    weight_init: scaled_kaiming
-#                    weight_init_args: !!python/tuple
-#                    - 0.30688143784094596
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.30688143784094596
                     direction: F
                     learning_rule: Backprop
-#                    learning_rule_kwargs:
-#                        learning_rate: 0.1652392249674756
+                    learning_rule_kwargs:
+                        learning_rate: 0.1652392249674756
     Output:
         E:
             H2:
@@ -66,8 +64,8 @@ projection_config:
                     - 2.093606302139006
                     direction: F
                     learning_rule: Backprop
-#                    learning_rule_kwargs:
-#                        learning_rate: 0.02168234235499228
+                    learning_rule_kwargs:
+                        learning_rate: 0.02168234235499228
 training_kwargs:
     tau: 1
     forward_steps: 1
