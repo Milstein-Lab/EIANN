@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
-from torch.nn import MSELoss, BCELoss
+from torch.nn import MSELoss, BCELoss, CrossEntropyLoss
 from torch.optim import Adam, SGD
 import numpy as np
 from copy import deepcopy
 from collections import defaultdict
 from functools import partial
+from typing import Optional, Dict, Any, Union, Tuple, List
 
 import EIANN.utils as ut
 import EIANN.rules as rules
@@ -79,6 +80,18 @@ class Network(nn.Module):
             for j, (pop_name, pop_kwargs) in enumerate(pop_config.items()):
                 if i == 0 and j == 0:
                     pop = Input(self, layer, pop_name, **pop_kwargs)
+                elif 'population_type' in pop_kwargs:
+                    if pop_kwargs['population_type'] in ['Conv2D', 'conv2D', 'conv2d']:
+                        pop = Conv2DPopulation(self, layer, pop_name, **pop_kwargs)
+                    elif pop_kwargs['population_type'] in ['Flatten', 'flatten']:
+                        pop = FlattenPopulation(self, layer, pop_name, **pop_kwargs)
+                    elif pop_kwargs['population_type'] in ['MaxPool2D', 'maxpool2D', 'maxpool2d']:
+                        pop = MaxPool2DPopulation(self, layer, pop_name, **pop_kwargs)
+                    elif pop_kwargs['population_type'] == 'default':
+                        pop = Population(self, layer, pop_name, **pop_kwargs)
+                    else:
+                        raise Exception('EIANN.Network: pop: %s; invalid population_type: %s' %
+                                        (pop_name, pop_kwargs['population_type']))
                 else:
                     pop = Population(self, layer, pop_name, **pop_kwargs)
                 layer.append_population(pop)
@@ -99,7 +112,16 @@ class Network(nn.Module):
                     for pre_pop_name, projection_kwargs in \
                             projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
                         pre_pop = pre_layer.populations[pre_pop_name]
-                        projection = Projection(pre_pop, post_pop, device=device, **projection_kwargs)
+                        if 'projection_type' in projection_kwargs:
+                            if projection_kwargs['projection_type'] in ['Conv2D', 'conv2D', 'conv2d']:
+                                projection = Conv2DProjection(pre_pop, post_pop, device=device, **projection_kwargs)
+                            elif projection_kwargs['projection_type'] in ['Linear', 'linear']:
+                                projection = Projection(pre_pop, post_pop, device=device, **projection_kwargs)
+                            else:
+                                raise NotImplementedError('EIANN.Network: projection type: %s not implemented' %
+                                                          projection_kwargs['projection_type'])
+                        else:
+                            projection = Projection(pre_pop, post_pop, device=device, **projection_kwargs)
                         post_pop.append_projection(projection)
                         post_pop.incoming_projections[projection.name] = projection
                         pre_pop.outgoing_projections[projection.name] = projection
@@ -217,7 +239,7 @@ class Network(nn.Module):
             store_num_steps = self.forward_steps
         
         for population in self.populations.values():
-                population.reinit(self.device, batch_size=sample.shape[0])
+            population.reinit(self.device, batch_size=sample.shape[0])
     
         if not hasattr(self, 'input_pop'):
             self.input_pop = next(iter(list(self)[0]))
@@ -235,17 +257,7 @@ class Network(nn.Module):
                 for i, post_layer in enumerate(self):
                     for post_pop in post_layer:
                         if i > 0:
-                            delta_state = -post_pop.state + post_pop.bias
-                            for projection in post_pop:
-                                pre_pop = projection.pre
-                                if projection.compartment not in ['dend', 'dendrite']:
-                                    if projection.update_phase in ['forward', 'all', 'F', 'A']:
-                                        if projection.direction in ['forward', 'F']:
-                                            delta_state = delta_state + projection(pre_pop.activity)
-                                        elif projection.direction in ['recurrent', 'R']:
-                                            delta_state = delta_state + projection(pre_pop.prev_activity)
-                            post_pop.state = post_pop.state + delta_state / post_pop.tau
-                            post_pop.activity = post_pop.activation(post_pop.state)
+                            post_pop.forward()
                         if store_dynamics and t >= (self.forward_steps - store_num_steps):
                             post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
 
@@ -728,6 +740,19 @@ class Population(object):
             self.append_attribute_history(param_name, this_param)
         return self.get_attribute_history(param_name)
     
+    def forward(self):
+        delta_state = -self.state + self.bias
+        for projection in self:
+            pre_pop = projection.pre
+            if projection.compartment not in ['dend', 'dendrite']:
+                if projection.update_phase in ['forward', 'all', 'F', 'A']:
+                    if projection.direction in ['forward', 'F']:
+                        delta_state = delta_state + projection(pre_pop.activity)
+                    elif projection.direction in ['recurrent', 'R']:
+                        delta_state = delta_state + projection(pre_pop.prev_activity)
+        self.state = self.state + delta_state / self.tau
+        self.activity = self.activation(self.state)
+    
     def reinit(self, device, batch_size=1):
         """
         Method for resetting state variables of a population
@@ -781,13 +806,188 @@ class Population(object):
         return self.get_param_history('bias')
 
 
+class Conv2DPopulation(Population):
+    def __init__(self, network, layer, name, size, population_type, activation='linear', activation_kwargs=None,
+                 tau=None, include_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None,
+                 bias_learning_rule=None, bias_learning_rule_kwargs=None, custom_update=None, custom_update_kwargs=None,
+                 output_pop=False, image_dim=None, kernel_size=5, image_source=None, **kwargs):
+        """
+        Class for population of neurons that receive projections of type Conv2DProjection from one or more populations
+        of type Conv2DPopulation.
+        Currently automatic calculation of output image_dim assumes default stride, padding, and dilation.
+        :param network: :class:'Network'
+        :param layer: :class:'Layer'
+        :param name: str
+        :param size: int
+        :param population_type: str
+        :param activation: str; name of imported callable
+        :param activation_kwargs: dict
+        :param include_bias: bool
+        :param bias_init: str; name of imported callable
+        :param bias_init_args: dict
+        :param bias_bounds: tuple of float
+        :param bias_learning_rule: str; name of imported callable
+        :param bias_learning_rule_kwargs: dict
+        :param custom_update: str; name of imported callable
+        :param custom_update_kwargs: dict
+        :param output_pop: bool; a single population must be designated as the output population to compute network loss
+        :param image_dim: int; height and width of image for convolutional kernels
+        :param kernel_size: int; height and width of kernels, incoming convolutional projections will inherit this value
+        :param image_source: str; name of population with reference input image_dim
+        """
+        # Constants
+        self.kernel_size = kernel_size
+        if image_dim is None:
+            if image_source is not None:
+                try:
+                    source_layer_name, source_pop_name = image_source.split('.')
+                    source_pop = network.layers[source_layer_name].populations[source_pop_name]
+                    source_image_dim = source_pop.image_dim
+                except:
+                    raise Exception('Population: invalid source image reference population: %s' % image_source)
+            if source_image_dim is not None:
+                image_dim = source_image_dim - (self.kernel_size - 1)
+        self.image_dim = image_dim
+        
+        super().__init__(network, layer, name, size, activation=activation, activation_kwargs=activation_kwargs,
+                         tau=tau, include_bias=include_bias, bias_init=bias_init, bias_init_args=bias_init_args,
+                         bias_bounds=bias_bounds, bias_learning_rule=bias_learning_rule,
+                         bias_learning_rule_kwargs=bias_learning_rule_kwargs, custom_update=custom_update,
+                         custom_update_kwargs=custom_update_kwargs, output_pop=output_pop)
+    
+    def forward(self):
+        delta_state = -self.state + self.bias.unsqueeze(-1).unsqueeze(-1)
+        for projection in self:
+            pre_pop = projection.pre
+            if projection.compartment not in ['dend', 'dendrite']:
+                if projection.update_phase in ['forward', 'all', 'F', 'A']:
+                    if projection.direction in ['forward', 'F']:
+                        delta_state = delta_state + projection(pre_pop.activity)
+                    elif projection.direction in ['recurrent', 'R']:
+                        delta_state = delta_state + projection(pre_pop.prev_activity)
+        self.state = self.state + delta_state / self.tau
+        self.activity = self.activation(self.state)
+    
+    def reinit(self, device, batch_size=1):
+        """
+        Method for resetting state variables of a population
+        :param device:
+        """
+        if self.image_dim is None:
+            if batch_size > 1:
+                self.state = torch.zeros((batch_size, self.size), device=device)
+            else:
+                self.state = torch.zeros(self.size, device=device)
+            self.state += self.bias
+        else:
+            if batch_size > 1:
+                self.state = torch.zeros((batch_size, self.size, self.image_dim, self.image_dim), device=device)
+            else:
+                self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=device)
+            self.state += self.bias.unsqueeze(-1).unsqueeze(-1)
+        self.activity = self.activation(self.state).to(device)
+        self.forward_steps_activity = []
+
+
+class MaxPool2DPopulation(Population):
+    def __init__(self, network, layer, name, population_type, custom_update=None, custom_update_kwargs=None,
+                 output_pop=False, kernel_size=2, source=None, **kwargs):
+        """
+        Class for population of neurons that performs a MaxPool2D operation on the output of a Conv2DPopulation.
+        Currently automatic calculation of output image_dim assumes default stride, padding, and dilation.
+        :param network: :class:'Network'
+        :param layer: :class:'Layer'
+        :param name: str
+        :param population_type: str
+        :param custom_update: str; name of imported callable
+        :param custom_update_kwargs: dict
+        :param output_pop: bool; a single population must be designated as the output population to compute network loss
+        :param kernel_size: int; height and width of pool kernel
+        :param source: str; name of population with reference input image_dim
+        """
+        # Constants
+        self.kernel_size = kernel_size
+        self.pool = nn.MaxPool2d(kernel_size, **kwargs)
+        try:
+            source_layer_name, source_pop_name = source.split('.')
+            source_pop = network.layers[source_layer_name].populations[source_pop_name]
+            source_image_dim = source_pop.image_dim
+            assert(source_image_dim is not None)
+        except:
+            raise Exception('FlattenPopulation: invalid source population: %s' % source)
+        self.source_pop = source_pop
+        self.image_dim = source_image_dim // self.kernel_size
+        size = self.source_pop.size
+        
+        super().__init__(network, layer, name, size, custom_update=custom_update,
+                         custom_update_kwargs=custom_update_kwargs, output_pop=output_pop)
+    
+    def forward(self):
+        self.activity = self.pool(self.source_pop.activity)
+    
+    def reinit(self, device, batch_size=1):
+        """
+        Method for resetting state variables of a population
+        :param device:
+        """
+        if self.image_dim is None:
+            if batch_size > 1:
+                self.state = torch.zeros((batch_size, self.size), device=device)
+            else:
+                self.state = torch.zeros(self.size, device=device)
+            self.state += self.bias
+        else:
+            if batch_size > 1:
+                self.state = torch.zeros((batch_size, self.size, self.image_dim, self.image_dim), device=device)
+            else:
+                self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=device)
+            self.state += self.bias.unsqueeze(-1).unsqueeze(-1)
+        self.activity = self.activation(self.state).to(device)
+        self.forward_steps_activity = []
+
+
+class FlattenPopulation(Population):
+    def __init__(self, network, layer, name, population_type, custom_update=None, custom_update_kwargs=None,
+                 output_pop=False, source=None, **kwargs):
+        """
+        Class for population of neurons that performs a flatten operation on the output of a Conv2DPopulation or
+        MaxPool2DPopulation.
+        :param network: :class:'Network'
+        :param layer: :class:'Layer'
+        :param name: str
+        :param population_type: str
+        :param custom_update: str; name of imported callable
+        :param custom_update_kwargs: dict
+        :param output_pop: bool; a single population must be designated as the output population to compute network loss
+        :param source: str; name of Conv2DPopulation to flatten
+        """
+        # Constants
+        try:
+            source_layer_name, source_pop_name = source.split('.')
+            source_pop = network.layers[source_layer_name].populations[source_pop_name]
+            source_image_dim = source_pop.image_dim
+            assert(source_image_dim is not None)
+        except:
+            raise Exception('FlattenPopulation: invalid source population: %s' % source)
+        self.source_pop = source_pop
+        size = source_pop.size * source_pop.image_dim * source_pop.image_dim
+        
+        super().__init__(network, layer, name, size, custom_update=custom_update,
+                         custom_update_kwargs=custom_update_kwargs, output_pop=output_pop)
+    
+    def forward(self):
+        # last 3 dimensions are (size, source_image_dim, source_image_dim)
+        self.activity = torch.flatten(self.source_pop.activity, -3)
+
+
 class Input(Population):
-    def __init__(self, network, layer, name, size, *args, **kwargs):
+    def __init__(self, network, layer, name, size, *args, image_dim=None, **kwargs):
         self.network = network
         self.layer = layer
         self.name = name
-        self.fullname = layer.name+self.name
+        self.fullname = layer.name + self.name
         self.size = size
+        self.image_dim = image_dim
         self.projections = {}
         self.backward_projections = []
         self.outgoing_projections = {}
@@ -951,10 +1151,169 @@ class Projection(nn.Linear):
     @property
     def weight_history(self):
         return self.get_weight_history()
+
+
+class Conv2DProjection(nn.Conv2d):
+    def __init__(self, pre_pop, post_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
+                 weight_constraint_kwargs=None, weight_bounds=None, direction='forward', update_phase='forward',
+                 compartment=None, learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None,
+                 kernel_size=None, stride=1, padding=0, dilation=1, groups=1, padding_mode='zeros', **kwargs):
+        """
+
+        :param pre_pop: :class:'Population'
+        :param post_pop: :class:'Population'
+        :param weight_init: str
+        :param weight_init_args: tuple
+        :param weight_constraint: str
+        :param weight_constraint_kwargs: dict
+        :param weight_bounds: tuple of float
+        :param direction: str in ['forward', 'recurrent', 'F', 'R']
+        :param update_phase: str in ['forward', 'backward', 'F', B']
+        :param compartment: None or str in ['soma', 'dend', 'dendrite']
+        :param learning_rule: str
+        :param learning_rule_kwargs: dict
+        :param device:
+        :param dtype:
+        :param kernel_size: int
+        :param stride: int
+        :param padding: int
+        :param dilation: int
+        :param groups: int
+        :param padding_mode: str
+        """
+        if kernel_size is None:
+            kernel_size = post_pop.kernel_size
+        self.kernel_size = kernel_size
+        
+        super().__init__(pre_pop.size, post_pop.size, kernel_size=kernel_size, stride=stride, padding=padding,
+                         dilation=dilation, groups=groups, padding_mode=padding_mode, bias=False, device=device,
+                         dtype=dtype)
+        
+        self.pre = pre_pop
+        self.post = post_pop
+        self.name = f'{post_pop.layer.name}{post_pop.name}_{pre_pop.layer.name}{pre_pop.name}'
+        
+        # Initialize weight parameters
+        self.weight_init = weight_init
+        if weight_init_args is None:
+            weight_init_args = ()
+        elif weight_init is None:
+            raise RuntimeError('Projection: weight_init_args provided for unspecified method')
+        self.weight_init_args = weight_init_args
+        
+        if weight_constraint is None:
+            self.constrain_weight = None
+        else:
+            if isinstance(weight_constraint, str):
+                self.weight_constraint_name = weight_constraint
+                if hasattr(rules, weight_constraint):
+                    weight_constraint = getattr(rules, weight_constraint)
+                elif hasattr(external, weight_constraint):
+                    weight_constraint = getattr(external, weight_constraint)
+            if not callable(weight_constraint):
+                raise RuntimeError \
+                    ('Projection: weight_constraint: %s must be imported and callable' %
+                     weight_constraint)
+            else:
+                self.weight_constraint_name = weight_constraint.__name__
+            if weight_constraint_kwargs is None:
+                weight_constraint_kwargs = {}
+            self.constrain_weight = \
+                lambda projection=self, kwargs=weight_constraint_kwargs: \
+                    weight_constraint(projection, **weight_constraint_kwargs)
+        
+        self.weight_bounds = weight_bounds
+        
+        if direction not in ['forward', 'recurrent', 'F', 'R']:
+            raise RuntimeError('Projection: direction (%s) must be forward or recurrent' % direction)
+        self.direction = direction
+        if update_phase not in ['forward', 'backward', 'all', 'F', 'B', 'A']:
+            raise RuntimeError('Projection: update_phase (%s) must be forward, backward, or all' % update_phase)
+        if update_phase in ['backward', 'B', 'all', 'A']:
+            self.post.backward_projections.append(self)
+        self.update_phase = update_phase
+        
+        if compartment is not None and compartment not in ['soma', 'dend', 'dendrite']:
+            raise RuntimeError('Projection: compartment (%s) must be None, soma, dend, or dendrite' % compartment)
+        self.compartment = compartment
+        
+        if self.compartment in ['dend', 'dendrite']:
+            self.post.register_attribute_history('forward_dendritic_state')
+        
+        # Set learning rule as callable of the projection
+        if learning_rule_kwargs is None:
+            learning_rule_kwargs = {}
+        if learning_rule is None:
+            learning_rule_class = rules.LearningRule
+            self.weight.is_learned = False
+        else:
+            self.weight.is_learned = True
+            try:
+                if isinstance(learning_rule, str):
+                    if hasattr(rules, learning_rule):
+                        learning_rule_class = getattr(rules, learning_rule)
+                    elif hasattr(external, learning_rule):
+                        learning_rule_class = getattr(external, learning_rule)
+                elif callable(learning_rule):
+                    learning_rule_class = learning_rule
+                if not issubclass(learning_rule_class, rules.LearningRule):
+                    raise Exception
+            except:
+                raise RuntimeError \
+                    ('Projection: learning_rule: %s must be imported and instance of LearningRule' % learning_rule)
+        
+        # learning rules with parameters that require gradient tracking must set requires_grad to True
+        self.weight.requires_grad = False
+        self.learning_rule = learning_rule_class(self, **learning_rule_kwargs)
+        
+        self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
     
+    def register_attribute_history(self, attr_name):
+        attr_history_name = attr_name + '_history'
+        if not hasattr(self.__class__, attr_history_name):
+            setattr(self.__class__, attr_history_name, property(lambda parent: parent.get_attribute_history(attr_name)))
+    
+    def append_attribute_history(self, attr_name, vals):
+        self.attribute_history_dict[attr_name]['buffer'].append(vals)
+    
+    def get_attribute_history(self, attr_name):
+        if self.attribute_history_dict[attr_name]['buffer']:
+            if isinstance(self.attribute_history_dict[attr_name]['buffer'][0], torch.Tensor):
+                temp_history = torch.stack(self.attribute_history_dict[attr_name]['buffer'])
+            elif isinstance(self.attribute_history_dict[attr_name]['buffer'][0], list):
+                temp_history = \
+                    torch.stack(
+                        [torch.stack(val_list) for val_list in self.attribute_history_dict[attr_name]['buffer']])
+            self.attribute_history_dict[attr_name]['buffer'] = []
+        else:
+            return self.attribute_history_dict[attr_name]['history']
+        if self.attribute_history_dict[attr_name]['history'] is None:
+            self.attribute_history_dict[attr_name]['history'] = temp_history
+        else:
+            self.attribute_history_dict[attr_name]['history'] = torch.cat(
+                [self.attribute_history_dict[attr_name]['history'], temp_history])
+        
+        return self.attribute_history_dict[attr_name]['history']
+    
+    def get_weight_history(self):
+        cached_weight_history = self.get_attribute_history('weight')
+        if len(self.post.network.param_history) == 0:
+            return cached_weight_history
+        if cached_weight_history is None:
+            start = 0
+        elif len(cached_weight_history) == len(self.post.network.param_history):
+            return cached_weight_history
+        else:
+            start = len(cached_weight_history)
+        for t in range(start, len(self.post.network.param_history)):
+            this_weight = self.post.network.param_history[t][f'module_dict.{self.name}.weight']
+            self.append_attribute_history('weight', this_weight)
+        return self.get_attribute_history('weight')
+    
+    @property
+    def weight_history(self):
+        return self.get_weight_history()
 
-
-from typing import Optional, Dict, Any, Union, Tuple, List
 
 class NetworkBuilder:
     """Builder for biologically inspired neural networks with layers, populations, and projections."""
