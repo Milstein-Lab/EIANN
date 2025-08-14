@@ -155,18 +155,30 @@ def config_worker():
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
     
+    if 'criterion' in context():
+        context.training_kwargs['criterion'] = context.criterion
+    
     # Load dataset
     if context.interactive:
         download = True
     else:
         download = False
-    tensor_flatten = T.Compose([
-        T.ToTensor(),
-        T.Lambda(torch.flatten)])
+    
+    if 'flatten_data' not in context():
+        context.flatten_data = True
+    else:
+        context.flatten_data = str_to_bool(context.flatten_data)
+    
+    if context.flatten_data:
+        tensor_transform = T.Compose([
+            T.ToTensor(),
+            T.Lambda(torch.flatten)])
+    else:
+        tensor_transform = T.ToTensor()
     CIFAR10_train_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data/',
-                                                             train=True, download=download, transform=tensor_flatten)
+                                                             train=True, download=download, transform=tensor_transform)
     CIFAR10_test_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data/',
-                                                            train=False, download=download, transform=tensor_flatten)
+                                                            train=False, download=download, transform=tensor_transform)
 
     # Add index to train & test data
     CIFAR10_train = []
