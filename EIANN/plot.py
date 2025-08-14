@@ -1111,8 +1111,8 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
 
     # Get class-averaged and sorted activities for plotting
     _, _, target = next(iter(test_dataloader))    
-    averaged_pop_activity_dict, averaged_pattern_labels = ut.apply_class_averaging(pop_activity_dict, pattern_labels, target)    
-    sorted_pop_activity_dict, sorted_pattern_labels, unit_labels_dict = ut.apply_sorting(network, averaged_pop_activity_dict, averaged_pattern_labels, sorted_output_idx)
+    averaged_pop_activity_dict, averaged_pattern_labels = ut.apply_class_averaging(pop_activity_dict, pattern_labels, target, population)    
+    sorted_pop_activity_dict, sorted_pattern_labels, unit_labels_dict = ut.apply_sorting(network, averaged_pop_activity_dict, averaged_pattern_labels, sorted_output_idx, population)
 
     plot_batch_accuracy_from_data(sorted_pop_activity_dict, population=population, title=title, ax=ax)
 

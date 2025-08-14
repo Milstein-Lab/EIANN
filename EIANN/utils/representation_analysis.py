@@ -47,7 +47,7 @@ def compute_raw_test_activity(network, test_dataloader):
     return pop_activity_dict, pattern_labels
 
 
-def apply_class_averaging(pop_activity_dict, pattern_labels, target):
+def apply_class_averaging(pop_activity_dict, pattern_labels, target, population=None):
     """
     Apply class averaging to population activities.
 
@@ -72,6 +72,9 @@ def apply_class_averaging(pop_activity_dict, pattern_labels, target):
     
     averaged_pop_activity_dict = {}
     
+    if population is not None:
+        pop_activity_dict = {population: pop_activity_dict[population]}
+
     for pop_name, pop_activity in pop_activity_dict.items():
         num_units = pop_activity.shape[1]
         avg_pop_activity = torch.zeros(num_labels, num_units)
@@ -85,7 +88,7 @@ def apply_class_averaging(pop_activity_dict, pattern_labels, target):
     return averaged_pop_activity_dict, averaged_pattern_labels
 
 
-def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=None):
+def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=None, population=None):
     """
     Apply sorting to patterns and units in population activities.
 
@@ -97,6 +100,10 @@ def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=
         Dictionary mapping population names to their activity matrices.
     pattern_labels : torch.Tensor
         Tensor of pattern labels.
+    sorted_output_idx : torch.Tensor, optional
+        Pre-sorted indices for output population units, by default None.
+    population : str, optional
+        Full name of the population to sort, by default None.
 
     Returns
     -------
@@ -109,7 +116,9 @@ def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=
     """    
     sorted_pattern_labels, pattern_sort_idx = torch.sort(pattern_labels)    
     reversed_populations = list(reversed(network.populations.values()))
-    
+    if population is not None:
+        reversed_populations = [pop for pop in reversed_populations if pop.fullname == population]
+
     sorted_pop_activity_dict = {}
     unit_labels_dict = {}    
     for population in reversed_populations:
@@ -134,7 +143,6 @@ def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=
             unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_idx)) * torch.nan])
         
         pop_activity = pop_activity[:, unit_sort_idx]
-        
         sorted_pop_activity_dict[population.fullname] = pop_activity
         unit_labels_dict[population.fullname] = unit_labels
     
