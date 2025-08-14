@@ -1,10 +1,19 @@
 bounds:
+    Conv_learning_rate:
+        - 0.0001
+        - 1.
     H_learning_rate:
         - 0.0001
         - 1.
     Output_learning_rate:
         - 0.0001
         - 1.
+    Conv1_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2_init_weight_scale:
+        - 0.01
+        - 10.
     H1_init_weight_scale:
         - 0.01
         - 10.
@@ -45,8 +54,11 @@ stages:
       get_objectives: get_objectives
 optimization_title: EIANN_2_hidden_convnet_cifar10_van_bp_relu_SGD_G_zero_bias
 x0:
+    Conv_learning_rate: 0.5
     H_learning_rate: 0.5
     Output_learning_rate: 0.5
+    Conv1_init_weight_scale: 1.
+    Conv2_init_weight_scale: 1.
     H1_init_weight_scale: 1.
     H2_init_weight_scale: 1.
     Output_init_weight_scale: 1.2
