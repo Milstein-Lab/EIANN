@@ -18,22 +18,39 @@ import EIANN.external as external
 class Network(nn.Module):
     def __init__(self, layer_config, projection_config, learning_rate=None, optimizer=SGD, optimizer_kwargs=None,
                  criterion=MSELoss, criterion_kwargs=None, seed=None, device='cpu', tau=1, forward_steps=1,
-                 backward_steps=1, verbose=False):
+                 backward_steps=1, verbose=False):  
         """
-        :param layer_config: nested dict
-        :param projection_config: nested dict
-        :param learning_rate: float; applies to weights and biases in absence of projection-specific learning rates
-        :param optimizer: callable
-        :param optimizer_kwargs: dict
-        :param criterion: callable
-        :param criterion_kwargs: dict
-        :param seed: int or sequence of int
-        :param device: str
-        :param tau: int
-        :param forward_steps: int
-        :param backward_steps: int
-        :param verbose: bool
-        """    
+        Initialize a neural network with configurable layers and projections.
+
+        Parameters
+        ----------
+        layer_config : dict
+            Nested dictionary defining layer structure and population configurations.
+        projection_config : dict
+            Nested dictionary defining connections between populations.
+        learning_rate : float, optional
+            Learning rate applied to weights and biases in absence of projection-specific rates.
+        optimizer : callable, default SGD
+            Optimizer class or function for parameter updates.
+        optimizer_kwargs : dict, optional
+            Additional keyword arguments for the optimizer.
+        criterion : callable, default MSELoss
+            Loss function for training.
+        criterion_kwargs : dict, optional
+            Additional keyword arguments for the criterion.
+        seed : int or sequence of int, optional
+            Random seed for reproducibility.
+        device : str, default 'cpu'
+            Device to run computations on ('cpu' or 'cuda').
+        tau : int, default 1
+            Time constant parameter.
+        forward_steps : int, default 1
+            Number of forward integration steps.
+        backward_steps : int, default 1
+            Number of backward integration steps.
+        verbose : bool, default False
+            Whether to print detailed information during initialization.
+        """
         super().__init__()
         self.device = torch.device(device)
         self.layer_config = layer_config
@@ -225,12 +242,26 @@ class Network(nn.Module):
 
     def forward(self, sample, store_history=False, store_dynamics=False, store_num_steps=None, no_grad=False):
         """
-        :param sample: tensor
-        :param store_history: bool
-        :param store_dynamics: bool
-        :param store_num_steps: int
-        :param no_grad: bool
-        :return: tensor
+        Perform forward pass through the network.
+
+        Parameters
+        ----------
+        sample : torch.Tensor
+            Input data sample.
+        store_history : bool, default False
+            Whether to store activity history during forward pass.
+        store_dynamics : bool, default False
+            Whether to store step-by-step dynamics.
+        store_num_steps : int, optional
+            Number of steps to store when store_dynamics is True. 
+            Defaults to forward_steps if None.
+        no_grad : bool, default False
+            Whether to disable gradient computation.
+
+        Returns
+        -------
+        torch.Tensor
+            Output activity from the network's output population.
         """
         if store_num_steps is None:
             store_num_steps = self.forward_steps
@@ -270,44 +301,23 @@ class Network(nn.Module):
 
         return self.output_pop.activity
 
-    def test(self, dataloader, store_history=False, store_dynamics=False, status_bar=False):
-        """
-
-        :param dataloader: :class:'DataLoader';
-            returns index (int), sample_data (tensor of float), and sample_target (tensor of float)
-        :param store_history: bool
-        :param store_dynamics: bool
-        :param status_bar: bool
-        :return: float
-        """
-        if status_bar:
-            from tqdm.autonotebook import tqdm
-
-        if status_bar:
-            dataloader_iter = tqdm(dataloader, desc='Samples')
-        else:
-            dataloader_iter = dataloader
-
-        on_device = False
-
-        for sample_idx, sample_data, sample_target in dataloader_iter:
-            sample_data = torch.squeeze(sample_data)
-            sample_target = torch.squeeze(sample_target)
-            if not on_device:
-                if sample_data.device == self.device:
-                    on_device = True
-                else:
-                    sample_data = sample_data.to(self.device)
-                    sample_target = sample_target.to(self.device)
-
-            output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
-            loss = self.criterion(output, sample_target)
-
-        return loss.item()
-
     def update_forward_state(self, store_history=False, store_dynamics=False, store_num_steps=None):
         """
         Clone forward neuronal activities and initialize forward dendritic states.
+
+        This method prepares the network state for backward passes by storing
+        forward activities and computing dendritic states for populations with
+        dendritic compartments.
+
+        Parameters
+        ----------
+        store_history : bool, default False
+            Whether to store dendritic state history.
+        store_dynamics : bool, default False
+            Whether to store step-by-step dendritic dynamics.
+        store_num_steps : int, optional
+            Number of steps to store when store_dynamics is True.
+            Defaults to forward_steps if None.
         """
         if store_num_steps is None:
             store_num_steps = self.forward_steps
@@ -342,24 +352,45 @@ class Network(nn.Module):
                     post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state_steps.detach().clone())
                 else:
                     post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state.detach().clone())
-                       
+  
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
               store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
               store_params_interval=None, save_to_file=None, status_bar=False):
         """
-        Starting at validate_start, probe with the validate_data every validate_interval until >= validate_stop
-        :param train_dataloader:
-        :param val_dataloader:
-        :param epochs:
-        :param val_interval: tuple of int (start_index, stop_index, interval)
-        :param samples_per_epoch: int
-        :param store_history: bool
-        :param store_dynamics: bool
-        :param store_params: bool
-        :param store_history_interval: tuple of int (start_index, stop_index, interval)
-        :param store_params_interval: tuple of int (start_index, stop_index, interval)
-        :param save_to_file: None or file_path
-        :param status_bar: bool
+        Train the network on training data with optional validation.
+
+        Parameters
+        ----------
+        train_dataloader : torch.utils.data.DataLoader
+            DataLoader for training data returning (index, sample_data, sample_target).
+        val_dataloader : torch.utils.data.DataLoader, optional
+            DataLoader for validation data (must contain single large batch).
+        epochs : int, default 1
+            Number of training epochs.
+        val_interval : tuple of int, default (0, -1, 50)
+            Validation interval as (start_index, stop_index, interval).
+        samples_per_epoch : int, optional
+            Number of samples per epoch. Defaults to length of train_dataloader.
+        store_history : bool, default False
+            Whether to store activity history during training.
+        store_dynamics : bool, default False
+            Whether to store step-by-step dynamics during training.
+        store_params : bool, default False
+            Whether to store parameter history during training.
+        store_history_interval : tuple of int, optional
+            Interval for storing history as (start_index, stop_index, interval).
+        store_params_interval : tuple of int, optional
+            Interval for storing parameters as (start_index, stop_index, interval).
+        save_to_file : str, optional
+            File path to save the trained network.
+        status_bar : bool, default False
+            Whether to display tqdm progress bars during training.
+
+        Notes
+        -----
+        Starting at validate_start, validation is performed every validate_interval
+        steps until >= validate_stop. The validation dataloader must contain a 
+        single batch with all validation data.
         """
         self.reset_history()
         if samples_per_epoch is None:
@@ -487,23 +518,21 @@ class Network(nn.Module):
                 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
-                    # if i > 0:
                     for post_pop in post_layer:
                         if post_pop.include_bias:
                             post_pop.bias_learning_rule.step()
                         for projection in post_pop:
                             projection.learning_rule.step()
-                
+
                 self.constrain_weights_and_biases()
 
-                # update learning rule parameters
+                # Update learning rule parameters
                 for i, post_layer in enumerate(self):
-                    # if i > 0:
-                        for post_pop in post_layer:
-                            if post_pop.include_bias:
-                                post_pop.bias_learning_rule.update()
-                            for projection in post_pop:
-                                projection.learning_rule.update()
+                    for post_pop in post_layer:
+                        if post_pop.include_bias:
+                            post_pop.bias_learning_rule.update()
+                        for projection in post_pop:
+                            projection.learning_rule.update()
 
                 # Store history of weights and biases
                 if store_params and train_step in store_params_range:
@@ -543,12 +572,62 @@ class Network(nn.Module):
         if save_to_file is not None:
             ut.save_network(self, path=save_to_file)
 
+    def test(self, dataloader, store_history=False, store_dynamics=False, status_bar=False):
+        """
+        Evaluate the network on test data without parameter updates.
+
+        Parameters
+        ----------
+        dataloader : torch.utils.data.DataLoader
+            DataLoader that returns (index, sample_data: torch.Tensor, sample_target: torch.Tensor) tuples.
+        store_history : bool, default False
+            Whether to store activity history during testing.
+        store_dynamics : bool, default False
+            Whether to store step-by-step dynamics during testing.
+        status_bar : bool, default False
+            Whether to display a progress bar during testing.
+
+        Returns
+        -------
+        float
+            Final loss value on the test dataset.
+        """
+        if status_bar:
+            from tqdm.autonotebook import tqdm
+
+        if status_bar:
+            dataloader_iter = tqdm(dataloader, desc='Samples')
+        else:
+            dataloader_iter = dataloader
+
+        on_device = False
+
+        for sample_idx, sample_data, sample_target in dataloader_iter:
+            sample_data = torch.squeeze(sample_data)
+            sample_target = torch.squeeze(sample_target)
+            if not on_device:
+                if sample_data.device == self.device:
+                    on_device = True
+                else:
+                    sample_data = sample_data.to(self.device)
+                    sample_target = sample_target.to(self.device)
+
+            output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
+            loss = self.criterion(output, sample_target)
+
+        return loss.item()
+           
     def __iter__(self):
         for layer in self.layers.values():
             yield layer
 
 
 class AttrDict:
+    """
+    This class allows for iteration over the attributes of a class instance
+    as if it were a dictionary, enabling the use of `for key in instance`.
+    It is useful for accessing attributes dynamically.
+    """
     def __iter__(self):
         for key in self.__dict__:
             yield key
