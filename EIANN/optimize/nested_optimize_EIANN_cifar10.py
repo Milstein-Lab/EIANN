@@ -275,7 +275,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             pass
         if context.plot_initial:
             title = 'Initial (%i, %i)' % (seed, data_seed)
-            plot_batch_accuracy(network, test_dataloader, population='all', title=title)
+            plot_batch_accuracy(network, test_dataloader, title=title)  # population='all',
     
     if not context.retrain:
         network = utils.load_network(context.data_file_path)
@@ -366,8 +366,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     
     if plot:
         title = 'Final (%i, %i)' % (seed, data_seed)
-        plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
-                            title=title)
+        plot_batch_accuracy(network, test_dataloader, sorted_output_idx=sorted_output_idx, title=title)  # population='all',
         plot_train_loss_history(network)
         plot_validate_loss_history(network)
     

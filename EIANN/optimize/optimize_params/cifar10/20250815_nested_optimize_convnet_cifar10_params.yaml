@@ -1,0 +1,24 @@
+van_bp_MSE_zero_bias:
+    #    accuracy: 44.997
+    #    loss: 0.070901886
+    Conv_learning_rate: 0.03959168725351663
+    H_learning_rate: 0.03669720816951168
+    Output_learning_rate: 0.0023582329268524702
+    Conv1_init_weight_scale: 0.9657275293887625
+    Conv2_init_weight_scale: 0.669621841299719
+    H1_init_weight_scale: 0.5573183919333478
+    H2_init_weight_scale: 3.2697045047953135
+    Output_init_weight_scale: 2.2420018100436403
+
+van_bp_CE_learned_bias_test:
+    Conv_bias_learning_rate: 0.03959168725351663
+    H_bias_learning_rate: 0.03669720816951168
+    Output_bias_learning_rate: 0.0023582329268524702
+    Conv_learning_rate: 0.03959168725351663
+    H_learning_rate: 0.03669720816951168
+    Output_learning_rate: 0.0023582329268524702
+    Conv1_init_weight_scale: 0.9657275293887625
+    Conv2_init_weight_scale: 0.669621841299719
+    H1_init_weight_scale: 0.5573183919333478
+    H2_init_weight_scale: 3.2697045047953135
+    Output_init_weight_scale: 2.2420018100436403
