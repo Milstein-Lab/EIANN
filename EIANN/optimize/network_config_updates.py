@@ -701,6 +701,38 @@ def update_EIANN_config_2_hidden_convnet_van_bp_relu_SGD_G_zero_bias(x, context)
     context.training_kwargs['optimizer'] = 'SGD'
 
 
+def update_EIANN_config_2_hidden_2_fixed_conv_convnet_van_bp_relu_SGD_G_zero_bias(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    Conv1_init_weight_scale = param_dict['H1_init_weight_scale']
+    Conv2_init_weight_scale = param_dict['H2_init_weight_scale']
+    
+    H_learning_rate = param_dict['H_learning_rate']
+    H1_init_weight_scale = param_dict['H1_init_weight_scale']
+    H2_init_weight_scale = param_dict['H2_init_weight_scale']
+    
+    Output_learning_rate = param_dict['Output_learning_rate']
+    Output_init_weight_scale = param_dict['Output_init_weight_scale']
+    
+    context.projection_config['Conv1']['E']['Input']['E']['weight_init_args'] = (Conv1_init_weight_scale,)
+    
+    context.projection_config['Conv2']['E']['Conv1']['MaxPoolE']['weight_init_args'] = (Conv2_init_weight_scale,)
+    
+    context.projection_config['H1']['E']['Conv2']['FlatE']['learning_rule_kwargs']['learning_rate'] = (
+        H_learning_rate)
+    context.projection_config['H1']['E']['Conv2']['FlatE']['weight_init_args'] = (H1_init_weight_scale,)
+    
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = (
+        H_learning_rate)
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
+        Output_learning_rate)
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_init_weight_scale,)
+    
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
 def update_EIANN_config_2_hidden_convnet_van_bp_relu_SGD_G_learned_bias(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
     
