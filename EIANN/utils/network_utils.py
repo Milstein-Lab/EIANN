@@ -119,8 +119,15 @@ def save_network(network, path=None, dir='saved_networks', file_name_base=None, 
         print(f"Saved network to '{path}'")
 
 
-def load_network(path):
-    print(f"Loading network from '{path}'")
+def load_network(path, disp=True):
+    """
+    
+    :param path: str (path)
+    :param disp: bool
+    :return: :class:'Network'
+    """
+    if disp:
+        print(f"Loading network from '{path}'")
     with open(path, 'rb') as f:
         network = dill.load(f)
     for layer in network:
@@ -130,7 +137,8 @@ def load_network(path):
             for projection in population:
                 for attr_name in projection.attribute_history_dict:
                     projection.register_attribute_history(attr_name)
-    print(f"Network successfully loaded from '{path}'")
+    if disp:
+        print(f"Network successfully loaded from '{path}'")
     return network
     
 

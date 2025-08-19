@@ -164,38 +164,70 @@ def config_worker():
     else:
         download = False
     
-    if 'flatten_data' not in context():
-        context.flatten_data = True
+    if 'preprocessed_data_file_name' in context():
+        preprocessed_data_file_path = '%s/%s' % (context.output_dir, context.preprocessed_data_file_name)
+        
+        # Load dataset
+        with h5py.File(preprocessed_data_file_path, 'r') as f:
+            group = 'train_sub_data'
+            CIFAR10_train = []
+            for i in range(len(f[group]['idx'])):
+                idx = f[group]['idx'][i]
+                data = f[group]['data'][i]
+                target = f[group]['target'][i]
+                CIFAR10_train.append((idx, data, target))
+            
+            group = 'val_data'
+            CIFAR10_val = []
+            for i in range(len(f[group]['idx'])):
+                idx = f[group]['idx'][i]
+                data = f[group]['data'][i]
+                target = f[group]['target'][i]
+                CIFAR10_val.append((idx, data, target))
+            
+            group = 'test_data'
+            CIFAR10_test = []
+            for i in range(len(f[group]['idx'])):
+                idx = f[group]['idx'][i]
+                data = f[group]['data'][i]
+                target = f[group]['target'][i]
+                CIFAR10_test.append((idx, data, target))
     else:
-        context.flatten_data = str_to_bool(context.flatten_data)
+        if 'flatten_data' not in context():
+            context.flatten_data = True
+        else:
+            context.flatten_data = str_to_bool(context.flatten_data)
+        
+        if context.flatten_data:
+            tensor_transform = T.Compose([
+                T.ToTensor(),
+                T.Lambda(torch.flatten)])
+        else:
+            tensor_transform = T.ToTensor()
+        CIFAR10_train_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data/',
+                                                                 train=True, download=download, transform=tensor_transform)
+        CIFAR10_test_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data/',
+                                                                train=False, download=download, transform=tensor_transform)
     
-    if context.flatten_data:
-        tensor_transform = T.Compose([
-            T.ToTensor(),
-            T.Lambda(torch.flatten)])
-    else:
-        tensor_transform = T.ToTensor()
-    CIFAR10_train_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data/',
-                                                             train=True, download=download, transform=tensor_transform)
-    CIFAR10_test_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data/',
-                                                            train=False, download=download, transform=tensor_transform)
-
-    # Add index to train & test data
-    CIFAR10_train = []
-    for idx, (data, target) in enumerate(CIFAR10_train_dataset):
-        target = torch.eye(len(CIFAR10_train_dataset.classes))[target]
-        CIFAR10_train.append((idx, data, target))
-
-    CIFAR10_test = []
-    for idx, (data, target) in enumerate(CIFAR10_test_dataset):
-        target = torch.eye(len(CIFAR10_test_dataset.classes))[target]
-        CIFAR10_test.append((idx, data, target))
+        # Add index to train & test data
+        CIFAR10_train = []
+        for idx, (data, target) in enumerate(CIFAR10_train_dataset):
+            target = torch.eye(len(CIFAR10_train_dataset.classes))[target]
+            CIFAR10_train.append((idx, data, target))
+        CIFAR10_val = CIFAR10_train[-10000:]
+        CIFAR10_train = CIFAR10_train[:-10000]
+        
+        CIFAR10_test = []
+        for idx, (data, target) in enumerate(CIFAR10_test_dataset):
+            target = torch.eye(len(CIFAR10_test_dataset.classes))[target]
+            CIFAR10_test.append((idx, data, target))
 
     # Put data in dataloader
     context.data_generator = torch.Generator()
+    
     context.train_sub_dataloader = \
-        torch.utils.data.DataLoader(CIFAR10_train[0:-10000], shuffle=True, generator=context.data_generator)
-    context.val_dataloader = torch.utils.data.DataLoader(CIFAR10_train[-10000:], batch_size=10000, shuffle=False)
+        torch.utils.data.DataLoader(CIFAR10_train, shuffle=True, generator=context.data_generator)
+    context.val_dataloader = torch.utils.data.DataLoader(CIFAR10_val, batch_size=10000, shuffle=False)
     context.test_dataloader = torch.utils.data.DataLoader(CIFAR10_test, batch_size=10000, shuffle=False)
 
 

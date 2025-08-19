@@ -1,24 +1,29 @@
 van_bp_MSE_zero_bias:
-    #    accuracy: 44.997
-    #    loss: 0.070901886
-    Conv_learning_rate: 0.03959168725351663
-    H_learning_rate: 0.03669720816951168
-    Output_learning_rate: 0.0023582329268524702
-    Conv1_init_weight_scale: 0.9657275293887625
-    Conv2_init_weight_scale: 0.669621841299719
-    H1_init_weight_scale: 0.5573183919333478
-    H2_init_weight_scale: 3.2697045047953135
-    Output_init_weight_scale: 2.2420018100436403
+    #    accuracy: 46.905403
+    #    loss: 0.06862997
+    # After 10 full epochs:
+    #    accuracy: 65.861
+    #    loss: 0.053413533
+    Conv_learning_rate: 0.007856875877783522
+    H_learning_rate: 0.5909176541280713
+    Output_learning_rate: 0.00019699067730831238
+    Conv1_init_weight_scale: 0.33634568178363095
+    Conv2_init_weight_scale: 0.13797916342436384
+    H1_init_weight_scale: 1.5106954534660328
+    H2_init_weight_scale: 1.109821313043916
+    Output_init_weight_scale: 2.474238202969777
 
-van_bp_CE_learned_bias_test:
-    Conv_bias_learning_rate: 0.03959168725351663
-    H_bias_learning_rate: 0.03669720816951168
-    Output_bias_learning_rate: 0.0023582329268524702
-    Conv_learning_rate: 0.03959168725351663
-    H_learning_rate: 0.03669720816951168
-    Output_learning_rate: 0.0023582329268524702
-    Conv1_init_weight_scale: 0.9657275293887625
-    Conv2_init_weight_scale: 0.669621841299719
-    H1_init_weight_scale: 0.5573183919333478
-    H2_init_weight_scale: 3.2697045047953135
-    Output_init_weight_scale: 2.2420018100436403
+van_bp_CE_learned_bias:
+    #    accuracy: 47.409
+    #    loss: 1.4577496
+    Conv_learning_rate: 0.0007288423235372171
+    H_learning_rate: 0.022558397177325565
+    Output_learning_rate: 0.000376196726670953
+    Conv_bias_learning_rate: 0.001558916800176573
+    H_bias_learning_rate: 0.013831343597804314
+    Output_bias_learning_rate: 0.0007667380430562746
+    Conv1_init_weight_scale: 4.516898939805729
+    Conv2_init_weight_scale: 4.549654150798158
+    H1_init_weight_scale: 2.3424589800634275
+    H2_init_weight_scale: 2.6249189531556794
+    Output_init_weight_scale: 2.4204345978035384
