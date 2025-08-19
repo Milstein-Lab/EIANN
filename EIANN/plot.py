@@ -1103,7 +1103,7 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     pop_activity_dict, pattern_labels = ut.compute_raw_test_activity(network, test_dataloader)
     
     # Calculate accuracy using raw output activity
-    output_activity = pop_activity_dict[network.output_pop.fullname]
+    output_activity = pop_activity_dict[network.output_pop.fullname].clone()
     if sorted_output_idx is not None:
         output_activity = output_activity[:, sorted_output_idx]
     percent_correct = ut.compute_test_accuracy(output_activity, pattern_labels)
@@ -2043,13 +2043,15 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         vmax_grid = torch.max(loss_grid)
         vmax = torch.min(vmax_grid,vmax_net)
 
-        im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax,
-                        extent=[np.min(PC1_range), np.max(PC1_range),
-                                np.max(PC2_range), np.min(PC2_range)])
-        cbar = plt.colorbar(im)
-        cbar.set_label('Loss' if scale == 'linear' else 'Loss (log scale)', rotation=270, labelpad=15)
-        # contour = plt.contour(PC1_mesh, PC2_mesh, loss_grid, levels=10, cmap='viridis')
-        # plt.colorbar(contour) 
+        # im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax,
+        #                 extent=[np.min(PC1_range), np.max(PC1_range),
+        #                         np.max(PC2_range), np.min(PC2_range)])
+        # cbar = plt.colorbar(im)
+        # cbar.set_label('Loss' if scale == 'linear' else 'Loss (log scale)', rotation=270, labelpad=15)
+        
+        contour = plt.contour(PC1_mesh, PC2_mesh, loss_grid, levels=10, cmap='viridis')
+        plt.colorbar(contour) 
+        
         plt.scatter(PC1, PC2, s=10, color='k')
         plt.plot(PC1, PC2, color='k', linewidth=1)
 
