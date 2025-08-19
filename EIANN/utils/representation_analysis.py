@@ -71,8 +71,8 @@ def apply_class_averaging(pop_activity_dict, pattern_labels, target, population=
     averaged_pattern_labels = torch.arange(num_labels)
     
     averaged_pop_activity_dict = {}
-    
-    if population is not None:
+
+    if population is not None and population in pop_activity_dict:
         pop_activity_dict = {population: pop_activity_dict[population]}
 
     for pop_name, pop_activity in pop_activity_dict.items():
@@ -115,14 +115,11 @@ def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=
         Dictionary containing unit argmax labels for each population.
     """    
     sorted_pattern_labels, pattern_sort_idx = torch.sort(pattern_labels)    
-    reversed_populations = list(reversed(network.populations.values()))
-    if population is not None:
-        reversed_populations = [pop for pop in reversed_populations if pop.fullname == population]
 
     sorted_pop_activity_dict = {}
     unit_labels_dict = {}    
-    for population in reversed_populations:
-        pop_activity = pop_activity_dict[population.fullname].clone()
+    for pop_name, pop_activity in pop_activity_dict.items():
+        pop_activity = pop_activity.clone()
         
         # Sort patterns (rows) by label
         pop_activity = pop_activity[pattern_sort_idx]
@@ -143,9 +140,9 @@ def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=
             unit_labels = torch.cat([unit_labels, torch.zeros(len(silent_unit_idx)) * torch.nan])
         
         pop_activity = pop_activity[:, unit_sort_idx]
-        sorted_pop_activity_dict[population.fullname] = pop_activity
-        unit_labels_dict[population.fullname] = unit_labels
-    
+        sorted_pop_activity_dict[pop_name] = pop_activity
+        unit_labels_dict[pop_name] = unit_labels
+
     return sorted_pop_activity_dict, sorted_pattern_labels, unit_labels_dict
 
 
@@ -774,6 +771,7 @@ def compute_within_class_representational_similarity(network, dataloader, popula
     num_classes = len(np.unique(pattern_labels))
 
     for pop_name in pattern_similarity_matrix_dict:
+        print(f"Computing representational similarity for population: {pop_name}")
         within_class_pattern_similarity_dict[pop_name] = []
         between_class_pattern_similarity_dict[pop_name] = []
         within_class_unit_similarity_dict[pop_name] = []

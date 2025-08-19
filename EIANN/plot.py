@@ -1109,6 +1109,19 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     percent_correct = ut.compute_test_accuracy(output_activity, pattern_labels)
     print(f'Batch accuracy = {percent_correct}%')
 
+    if isinstance(population, str):
+        if population == 'E':
+            pop_activity_dict = {pop: pop_activity_dict[pop] for pop in pop_activity_dict if 'E' in pop and 'Input' not in pop}
+        elif population == 'I':
+            pop_activity_dict = {pop: pop_activity_dict[pop] for pop in pop_activity_dict if 'I' in pop and 'Input' not in pop}
+        elif population != 'all':
+            pop_activity_dict = {population: pop_activity_dict[population]}
+    elif isinstance(population, list):
+        pop_activity_dict = {pop: pop_activity_dict[pop] for pop in population}
+    else:
+        assert hasattr(population, 'fullname'), 'Population must be a string, list of strings, or EIANN.Population object'
+        pop_activity_dict = {population.fullname: pop_activity_dict[population.fullname]}
+
     # Get class-averaged and sorted activities for plotting
     _, _, target = next(iter(test_dataloader))    
     averaged_pop_activity_dict, averaged_pattern_labels = ut.apply_class_averaging(pop_activity_dict, pattern_labels, target, population)    
@@ -1633,7 +1646,6 @@ def plot_within_class_representational_similarity(within_class_pattern_similarit
             between_class_unit_similarity.extend(between_class_pattern_similarity_dict[population][label])
 
         ax = axes[i,0]
-        print(f"Plotting pattern similarity for population: {population}")
         ax.hist(between_class_pattern_similarity, alpha=0.5, bins=100, density=True, color='red')
         ax.hist(within_class_pattern_similarity, alpha=0.5, bins=100, density=True, color='blue')
         ax.set_xlabel('Similarity')
@@ -1647,7 +1659,6 @@ def plot_within_class_representational_similarity(within_class_pattern_similarit
         ax.legend(legend_lines, ['Between class', 'Within class'], handlelength=1, handletextpad=0.5)
 
         ax = axes[i,1]
-        print(f"Plotting unit similarity for population: {population}")
         ax.hist(between_class_unit_similarity, alpha=0.5, bins=100, density=True, color='red')
         ax.hist(within_class_unit_similarity, alpha=0.5, bins=100, density=True, color='blue')
         ax.set_xlabel('Similarity')
@@ -1916,7 +1927,7 @@ def compute_loss(network, state_dict, test_dataloader):
     return loss
 
 
-def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, vmax_scale=1.2, plot_line_loss=False):
+def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, vmax_scale=1.2, plot_line_loss=False, scale='linear'):
     """
     Plot the loss landscape of a network in the PC space defined by the first two principal components of the parameter history.
 
@@ -1990,6 +2001,9 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
     losses = torch.tensor(losses)
     loss_grid = losses.reshape([PC1_range.size, PC2_range.size])
 
+    if scale == 'log':
+        loss_grid = torch.log(loss_grid + 1e-10)
+
     # plot_3D_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
 
     if network2 is not None:
@@ -2015,7 +2029,8 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax, vmin=vmin,
                         extent=[np.min(PC1_range), np.max(PC1_range),
                                 np.max(PC2_range), np.min(PC2_range)])
-        plt.colorbar(im)
+        cbar = plt.colorbar(im)
+        cbar.set_label('Loss' if scale == 'linear' else 'Loss (log scale)', rotation=270, labelpad=15)
         plt.scatter(PC1, PC2, c=loss_history, cmap='Reds', edgecolors='k', linewidths=0., vmax=vmax, vmin=vmin)
         plt.xlabel('PC1')
         plt.ylabel('PC2')
@@ -2032,7 +2047,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
                         extent=[np.min(PC1_range), np.max(PC1_range),
                                 np.max(PC2_range), np.min(PC2_range)])
         cbar = plt.colorbar(im)
-        cbar.set_label('Loss', rotation=270, labelpad=15)
+        cbar.set_label('Loss' if scale == 'linear' else 'Loss (log scale)', rotation=270, labelpad=15)
         # contour = plt.contour(PC1_mesh, PC2_mesh, loss_grid, levels=10, cmap='viridis')
         # plt.colorbar(contour) 
         plt.scatter(PC1, PC2, s=10, color='k')
