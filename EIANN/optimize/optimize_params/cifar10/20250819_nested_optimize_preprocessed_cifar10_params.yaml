@@ -1,0 +1,20 @@
+van_bp_MSE_zero_bias:
+    #    accuracy: 62.677204
+    #    loss: 0.05335737
+    H_learning_rate: 0.028516265650084298
+    Output_learning_rate: 0.004014791862037713
+    H1_init_weight_scale: 0.11410137540025253
+    H2_init_weight_scale: 3.119651276168655
+    Output_init_weight_scale: 4.747471538399289
+van_bp_0_hidden_MSE_zero_bias:
+    #    accuracy: 61.373207
+    #    loss: 0.056978952
+    Output_learning_rate: 0.042895800764281705
+    Output_init_weight_scale: 0.022276811253462404
+van_bp_2_fixed_hidden_MSE_zero_bias:
+    #    accuracy: 48.7146
+    #    loss: 0.069032505
+    Output_learning_rate: 0.08626789055332001
+    H1_init_weight_scale: 3.92943917506342
+    H2_init_weight_scale: 1.2025782378882737
+    Output_init_weight_scale: 0.2425287578488507

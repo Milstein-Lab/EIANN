@@ -16,6 +16,18 @@ van_bp_learned_bias:
     H1_init_weight_scale: 3.5469375011216586
     H2_init_weight_scale: 0.2562808025623144
     Output_init_weight_scale: 3.198209295450327
+van_bp_0_hidden_zero_bias:
+    #    accuracy: 71.1352
+    #    loss: 0.042909853
+    Output_learning_rate: 0.0016869881759913501
+    Output_init_weight_scale: 0.010453189114680224
+van_bp_2_fixed_hidden_zero_bias:
+    #    accuracy: 70.3098
+    #    loss: 0.044908423
+    Output_learning_rate: 0.02738169902913041
+    H1_init_weight_scale: 2.2639002958165
+    H2_init_weight_scale: 0.7152195070857138
+    Output_init_weight_scale: 0.14910491500745882
 bpDale_G_zero_bias:
     #    accuracy: 81.92539978027344
     #    dynamics_residuals: 0.0
