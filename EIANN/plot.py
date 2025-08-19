@@ -1124,8 +1124,8 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
 
     # Get class-averaged and sorted activities for plotting
     _, _, target = next(iter(test_dataloader))    
-    averaged_pop_activity_dict, averaged_pattern_labels = ut.apply_class_averaging(pop_activity_dict, pattern_labels, target, population)    
-    sorted_pop_activity_dict, sorted_pattern_labels, unit_labels_dict = ut.apply_sorting(network, averaged_pop_activity_dict, averaged_pattern_labels, sorted_output_idx, population)
+    averaged_pop_activity_dict, averaged_pattern_labels = ut.apply_class_averaging(pop_activity_dict, pattern_labels, target)    
+    sorted_pop_activity_dict, sorted_pattern_labels, unit_labels_dict = ut.apply_sorting(network, averaged_pop_activity_dict, averaged_pattern_labels, sorted_output_idx)
 
     plot_batch_accuracy_from_data(sorted_pop_activity_dict, population=population, title=title, ax=ax)
 
@@ -1927,7 +1927,7 @@ def compute_loss(network, state_dict, test_dataloader):
     return loss
 
 
-def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, vmax_scale=1.2, plot_line_loss=False, scale='linear'):
+def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20, extension=0.2, vmax_scale=1.2, plot_line_loss=False, scale='linear', plot_type="heatmap"):
     """
     Plot the loss landscape of a network in the PC space defined by the first two principal components of the parameter history.
 
@@ -2043,15 +2043,15 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         vmax_grid = torch.max(loss_grid)
         vmax = torch.min(vmax_grid,vmax_net)
 
-        # im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax,
-        #                 extent=[np.min(PC1_range), np.max(PC1_range),
-        #                         np.max(PC2_range), np.min(PC2_range)])
-        # cbar = plt.colorbar(im)
-        # cbar.set_label('Loss' if scale == 'linear' else 'Loss (log scale)', rotation=270, labelpad=15)
-        
-        contour = plt.contour(PC1_mesh, PC2_mesh, loss_grid, levels=10, cmap='viridis')
-        plt.colorbar(contour) 
-        
+        if plot_type == "heatmap":
+            im = plt.imshow(loss_grid, cmap='Reds', vmax=vmax, extent=[np.min(PC1_range), np.max(PC1_range),
+                                                                       np.max(PC2_range), np.min(PC2_range)])
+        elif plot_type == "contour":
+            im = plt.contour(PC1_mesh, PC2_mesh, loss_grid, levels=10, cmap='viridis')
+            plt.gca().set_aspect(1)
+        cbar = plt.colorbar(im)
+        cbar.set_label('Loss' if scale == 'linear' else 'Loss (log scale)', rotation=270, labelpad=15)
+
         plt.scatter(PC1, PC2, s=10, color='k')
         plt.plot(PC1, PC2, color='k', linewidth=1)
 

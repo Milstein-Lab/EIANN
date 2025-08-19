@@ -47,7 +47,7 @@ def compute_raw_test_activity(network, test_dataloader):
     return pop_activity_dict, pattern_labels
 
 
-def apply_class_averaging(pop_activity_dict, pattern_labels, target, population=None):
+def apply_class_averaging(pop_activity_dict, pattern_labels, target):
     """
     Apply class averaging to population activities.
 
@@ -72,9 +72,6 @@ def apply_class_averaging(pop_activity_dict, pattern_labels, target, population=
     
     averaged_pop_activity_dict = {}
 
-    if population is not None and population in pop_activity_dict:
-        pop_activity_dict = {population: pop_activity_dict[population]}
-
     for pop_name, pop_activity in pop_activity_dict.items():
         num_units = pop_activity.shape[1]
         avg_pop_activity = torch.zeros(num_labels, num_units)
@@ -88,7 +85,7 @@ def apply_class_averaging(pop_activity_dict, pattern_labels, target, population=
     return averaged_pop_activity_dict, averaged_pattern_labels
 
 
-def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=None, population=None):
+def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=None):
     """
     Apply sorting to patterns and units in population activities.
 
@@ -118,6 +115,7 @@ def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=
 
     sorted_pop_activity_dict = {}
     unit_labels_dict = {}    
+
     for pop_name, pop_activity in pop_activity_dict.items():
         pop_activity = pop_activity.clone()
         
@@ -125,7 +123,7 @@ def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=
         pop_activity = pop_activity[pattern_sort_idx]
         
         # Sort neurons (columns) by argmax of activity
-        if population is network.output_pop:
+        if pop_name == network.output_pop.fullname:
             if sorted_output_idx is not None:
                 unit_sort_idx = sorted_output_idx
             else:
