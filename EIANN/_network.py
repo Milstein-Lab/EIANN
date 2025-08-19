@@ -407,7 +407,7 @@ class Network(nn.Module):
         val_range = torch.arange(val_end_index, val_start_index - 1, -val_step_size).flip(0)
         if val_start_index == 0 and 0 not in val_range:
             val_range = torch.cat((torch.tensor([0]), val_range))
-        print(val_range)
+        
         # Load validation data and initialize intermediate variables
         if val_dataloader is not None:
             assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
