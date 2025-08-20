@@ -51,3 +51,46 @@ HebbWN_Eckmann_2:
     Output_E_H2_E_init_weight_scale: 0.35209494784253526
     Output_E_H2_E_learning_rate: 0.02238514244330842
     H_I_size: 100.0
+
+HebbWN_bpDale_F:
+    H1_E_Input_E_weight_scale: 0.6882890833528094
+    H2_E_H1_E_weight_scale: 0.6216390192158828
+    H_E_E_learning_rate: 0.005530094753086432
+    E_I_learning_rate: 0.038760606777246964
+    I_E_learning_rate: 0.0006671745202106725
+    I_I_learning_rate: 0.05227404145574587
+    H1_E_H1_SomaI_weight_scale: 1.594970026886656
+    H1_SomaI_H1_E_weight_scale: 1.2715338206123512
+    H1_SomaI_Input_E_weight_scale: 0.9681787265051122
+    H1_SomaI_H1_SomaI_weight_scale: 1.6279835247143868
+    H2_E_H2_SomaI_weight_scale: 0.7035819178066309
+    H2_SomaI_H2_E_weight_scale: 0.6547279324207896
+    H2_SomaI_H1_E_weight_scale: 0.547173834668121
+    H2_SomaI_H2_SomaI_weight_scale: 0.7556385970941635
+    Output_E_H2_E_init_weight_scale: 1.1091168830399416
+    Output_E_H2_E_learning_rate: 0.01925228325960693
+    Output_E_Output_I_init_weight_scale: 0.08730523633568034
+    Output_I_Output_E_init_weight_scale: 0.6866785526730501
+    Output_I_H2_E_init_weight_scale: 0.4996581429693039
+    Output_I_Output_I_init_weight_scale: 1.82449562953772
+    H_I_size: 50.0
+    Output_I_size: 10.0
+
+HebbWN_van_bp:
+    H1_E_Input_E_weight_scale: 0.6882890833528094
+    H2_E_H1_E_weight_scale: 0.6216390192158828
+    H_E_E_learning_rate: 0.005530094753086432
+    E_I_learning_rate: 0.038760606777246964
+    I_E_learning_rate: 0.0006671745202106725
+    I_I_learning_rate: 0.05227404145574587
+    H1_E_H1_SomaI_weight_scale: 1.594970026886656
+    H1_SomaI_H1_E_weight_scale: 1.2715338206123512
+    H1_SomaI_Input_E_weight_scale: 0.9681787265051122
+    H1_SomaI_H1_SomaI_weight_scale: 1.6279835247143868
+    H2_E_H2_SomaI_weight_scale: 0.7035819178066309
+    H2_SomaI_H2_E_weight_scale: 0.6547279324207896
+    H2_SomaI_H1_E_weight_scale: 0.547173834668121
+    H2_SomaI_H2_SomaI_weight_scale: 0.7556385970941635
+    Output_E_H2_E_init_weight_scale: 1.1091168830399416
+    Output_E_H2_E_learning_rate: 0.01925228325960693
+    H_I_size: 50.0
