@@ -1,4 +1,5 @@
 van_bp_MSE_zero_bias:
+    # long preprocessing (10 epochs)
     #    accuracy: 62.677204
     #    loss: 0.05335737
     H_learning_rate: 0.028516265650084298
@@ -18,3 +19,26 @@ van_bp_2_fixed_hidden_MSE_zero_bias:
     H1_init_weight_scale: 3.92943917506342
     H2_init_weight_scale: 1.2025782378882737
     Output_init_weight_scale: 0.2425287578488507
+short_van_bp_MSE_zero_bias:
+    # short preprocessing (20000 steps)
+    #    accuracy: 52.595398
+    #    loss: 0.063245244
+    H_learning_rate: 0.014884605556675657
+    Output_learning_rate: 0.015199495857167263
+    H1_init_weight_scale: 0.15503831392405243
+    H2_init_weight_scale: 4.7675039015397385
+    Output_init_weight_scale: 8.305425640718052
+short_van_bp_0_hidden_MSE_zero_bias:
+    # short preprocessing (20000 steps)
+    #    accuracy: 51.323997
+    #    loss: 0.06587356
+    Output_learning_rate: 0.3757327270265706
+    Output_init_weight_scale: 0.10173187758345914
+short_van_bp_2_fixed_hidden_MSE_zero_bias:
+    # short preprocessing (20000 steps)
+    #    accuracy: 43.0524
+    #    loss: 0.073148265
+    Output_learning_rate: 0.34220711659217
+    H1_init_weight_scale: 2.7632831316800757
+    H2_init_weight_scale: 2.4397483668696376
+    Output_init_weight_scale: 0.2738590963056665
