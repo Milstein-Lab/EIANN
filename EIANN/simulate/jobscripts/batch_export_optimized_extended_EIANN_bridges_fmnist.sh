@@ -11,7 +11,7 @@
 #SBATCH --mail-user=milstein@cabm.rutgers.edu
 #SBATCH --mail-type=ALL
 
-cd $WORK/EIANN/EIANN/simulate
+cd $PROJECT/EIANN/EIANN/simulate
 
 export CONFIG_DIR=../network_config/fmnist
 
