@@ -1,3 +1,4 @@
+#!/bin/bash -l
 #SBATCH -J batch_export_optimized_extended_EIANN_fmnist
 #SBATCH -o /ocean/projects/bio240068p/aaronmil/logs/EIANN/batch_export_optimized_extended_EIANN_fmnist.%j.o
 #SBATCH -e /ocean/projects/bio240068p/aaronmil/logs/EIANN/batch_export_optimized_extended_EIANN_fmnist.%j.e
