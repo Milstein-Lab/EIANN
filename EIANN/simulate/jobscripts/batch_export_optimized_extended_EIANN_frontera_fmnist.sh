@@ -4,7 +4,7 @@
 #SBATCH -e /scratch1/06441/aaronmil/logs/EIANN/batch_export_optimized_extended_EIANN_fmnist.%j.e
 #SBATCH -p normal
 #SBATCH -N 1
-#SBATCH -n 36
+#SBATCH -n 12
 #SBATCH -t 2:00:00
 #SBATCH --mail-user=milstein@cabm.rutgers.edu
 #SBATCH --mail-type=ALL
@@ -18,12 +18,8 @@ export CONFIG_DIR=../network_config/fmnist
 export MPI4PY_RC_RECV_MPROBE=false
 
 declare -a config_files=(
-  20250606_EIANN_2_hidden_fmnist_van_bp_relu_SGD_config_G_zero_bias_complete_optimized.yaml
-  20250606_EIANN_2_hidden_fmnist_bpDale_relu_SGD_config_G_zero_bias_complete_optimized.yaml
-  20250607_EIANN_2_hidden_fmnist_DTP_config_5J_zero_bias_complete_optimized.yaml
-  20250619_EIANN_2_hidden_fmnist_BTSP_config_5L_learn_TD_HTCWN_3_zero_bias_complete_optimized.yaml
-  20250619_EIANN_2_hidden_fmnist_BTSP_config_5L_zero_bias_complete_optimized.yaml
-  20250619_EIANN_2_hidden_fmnist_DTP_config_5J_learn_TD_HTCWN_2_zero_bias_complete_optimized.yaml
+  20250819_EIANN_0_hidden_fmnist_van_bp_relu_SGD_config_G_zero_bias_optimized.yaml
+  20250819_EIANN_2_fixed_hidden_fmnist_van_bp_relu_SGD_config_G_zero_bias_optimized.yaml
 )
 
 arraylength=${#config_files[@]}

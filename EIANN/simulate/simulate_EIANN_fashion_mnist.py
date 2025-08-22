@@ -282,6 +282,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
         if context.disp:
             print('simulate_EIANN_fashion_mnist: pid: %i exported network history to %s' %
                   (os.getpid(), data_file_path))
+            sys.stdout.flush()
     
     if not context.interactive:
         del network
