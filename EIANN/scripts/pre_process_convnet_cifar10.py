@@ -14,18 +14,26 @@ import EIANN.utils as utils
               type=click.Path(exists=True, file_okay=True, dir_okay=False),
               default='../data/cifar10/20250812_EIANN_2_hidden_convnet_cifar10_van_bp_relu_SGD_MSE_config_G_zero_bias_66049_257_10_epochs.pkl')
 @click.option("--population", type=str, default='Conv2FlatE')
+@click.option("--flatten", is_flag=True)
+@click.option("--label", type=str, default=None)
 @click.option("--output-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), default='../data/cifar10')
 @click.option("--interactive", is_flag=True)
 @click.option("--disp", is_flag=True)
-def main(data_file_path, population, output_dir, interactive, disp):
+def main(data_file_path, population, flatten, label, output_dir, interactive, disp):
     """
     :param data_file_path: str (path to .pkl file containing exported trained Network)
     :param population: str
+    :param flatten: bool
+    :param label: str
     :param output_dir: str (path to dir)
     :param interactive: bool
     :param disp: bool
     """
-    export_file_path = data_file_path.rsplit('.', 1)[0] + '_preprocessed_data.h5'
+    if label is None:
+        label = '_'
+    else:
+        label = '_' + label + '_'
+    export_file_path = data_file_path.rsplit('.', 1)[0] + label + 'preprocessed_data.h5'
     
     # Load trained network
     network = utils.load_network(data_file_path, disp)
@@ -61,26 +69,38 @@ def main(data_file_path, population, output_dir, interactive, disp):
     
     idx, data, target = next(iter(train_sub_dataloader))
     network.forward(data, no_grad=True)
+    if flatten:
+        data = network.populations[population].activity.detach().flatten(1).numpy()
+    else:
+        data = network.populations[population].activity.detach().numpy()
     with h5py.File(export_file_path, 'w') as f:
         group = f.create_group('train_sub_data')
         group.create_dataset('idx', data=idx.numpy())
-        group.create_dataset('data', data=network.populations[population].activity.detach().numpy())
+        group.create_dataset('data', data=data)
         group.create_dataset('target', data=target.numpy())
     
     idx, data, target = next(iter(val_dataloader))
     network.forward(data, no_grad=True)
+    if flatten:
+        data = network.populations[population].activity.detach().flatten(1).numpy()
+    else:
+        data = network.populations[population].activity.detach().numpy()
     with h5py.File(export_file_path, 'a') as f:
         group = f.create_group('val_data')
         group.create_dataset('idx', data=idx.numpy())
-        group.create_dataset('data', data=network.populations[population].activity.detach().numpy())
+        group.create_dataset('data', data=data)
         group.create_dataset('target', data=target.numpy())
 
     idx, data, target = next(iter(test_dataloader))
     network.forward(data, no_grad=True)
+    if flatten:
+        data = network.populations[population].activity.detach().flatten(1).numpy()
+    else:
+        data = network.populations[population].activity.detach().numpy()
     with h5py.File(export_file_path, 'a') as f:
         group = f.create_group('test_data')
         group.create_dataset('idx', data=idx.numpy())
-        group.create_dataset('data', data=network.populations[population].activity.detach().numpy())
+        group.create_dataset('data', data=data)
         group.create_dataset('target', data=target.numpy())
     
     if disp:

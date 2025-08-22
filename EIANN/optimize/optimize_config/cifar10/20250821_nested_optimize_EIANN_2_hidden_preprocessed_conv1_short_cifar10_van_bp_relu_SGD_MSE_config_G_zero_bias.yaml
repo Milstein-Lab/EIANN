@@ -1,0 +1,51 @@
+bounds:
+    H_learning_rate:
+        - 0.0001
+        - 1.
+    Output_learning_rate:
+        - 0.0001
+        - 1.
+    H1_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_init_weight_scale:
+        - 0.01
+        - 10.
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 20000
+    epochs: 1
+    network_config_file_path: optimize/network_config/cifar10/20250821_EIANN_2_hidden_preprocessed_conv1_cifar10_van_bp_relu_SGD_MSE_config_G_zero_bias.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: False
+    preprocessed_data_file_name: 20250812_EIANN_2_hidden_convnet_cifar10_van_bp_relu_SGD_MSE_config_G_zero_bias_66049_257_complete_Conv1FlatE_preprocessed_data.h5
+update_context:
+    - source: optimize.nested_optimize_EIANN_cifar10
+      function: update_EIANN_config_2_hidden_van_bp_relu_SGD_G
+stages:
+    - source: optimize.nested_optimize_EIANN_cifar10
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_preprocessed_conv1_short_cifar10_van_bp_relu_SGD_MSE_G_zero_bias
+x0:
+    H_learning_rate: 0.5
+    Output_learning_rate: 0.5
+    H1_init_weight_scale: 1.
+    H2_init_weight_scale: 1.
+    Output_init_weight_scale: 1.2
