@@ -42,3 +42,10 @@ short_van_bp_2_fixed_hidden_MSE_zero_bias:
     H1_init_weight_scale: 2.7632831316800757
     H2_init_weight_scale: 2.4397483668696376
     Output_init_weight_scale: 0.2738590963056665
+conv1_short_van_bp_2_fixed_hidden_MSE_zero_bias:
+    #    accuracy: 38.041603
+    #    loss: 0.07724126
+    Output_learning_rate: 0.42021513419513895
+    H1_init_weight_scale: 1.1865083885853762
+    H2_init_weight_scale: 1.7710527228793589
+    Output_init_weight_scale: 0.12141265661522138
