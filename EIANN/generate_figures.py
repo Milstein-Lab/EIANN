@@ -242,7 +242,7 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, save
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
 
         if not os.path.exists(hdf5_path):
             # If the hdf5 is not available in local data directory, check in Box drive
@@ -645,7 +645,7 @@ def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mni
     model_key = "bpLike_WT_hebbdend_eq"
     model_dict = model_dict_all[model_key]
     network_name = model_dict['config'].split('.')[0] + "_dynamics"
-    hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+    hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
 
     # Open hdf5 and check if the dynamics data already exists      
     if not os.path.exists(hdf5_path):
@@ -717,7 +717,7 @@ def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -801,7 +801,7 @@ def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     for col, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
 
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
@@ -867,7 +867,7 @@ def generate_fig4(model_dict_all, model_list_heatmaps, model_list_metrics, confi
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -936,7 +936,7 @@ def fig4_spirals(model_dict_all, model_list_spirals, model_list_metrics, spiral_
     for model_idx, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -990,7 +990,7 @@ def generate_fig5(model_dict_all, model_list, config_path_prefix="network_config
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -1027,7 +1027,7 @@ def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="
     for i, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -1069,7 +1069,7 @@ def generate_figS1(model_dict_all, model_list, config_path_prefix="network_confi
     for i, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")    
@@ -1106,7 +1106,7 @@ def generate_figS2(model_dict_all, model_list_heatmaps, model_list_metrics, conf
         config_path = config_path_prefix + model_dict['config']
         pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
 
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
@@ -1159,10 +1159,13 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
     all_models = list(dict.fromkeys(model_list))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
 
+    if "bpLike_WT_hebbdend" in model_dict_all: # Update model label for this figure
+        model_dict_all["bpLike_WT_hebbdend"]["display_name"] = "Dendritic Target \nPropagation (LDS)"
+        
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['display_name']}")
@@ -1205,19 +1208,30 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
 
             # Receptive field similarity (for each unit)
             ax = fig.add_subplot(axes[1, i])
-            within_class_similarity = []
-            between_class_similarity = []
+            between_class_similarity = {label: [] for label in range(10)}
+            between_class_similarity_all = []
             for seed in model_dict['seeds']:
                 # Calculate the receptive field similarity for each unit (the histogram will pool data across all model seeds)
                 unit_labels_dict = data_dict[seed]['unit_labels_dict']
                 unit_labels = unit_labels_dict[population][:]
                 idx = np.argsort(unit_labels)
                 unit_labels = unit_labels[idx]
-                receptive_fields = np.array(data_dict[seed][f"maxact_receptive_fields_{population}"])
-                sorted_receptive_fields = receptive_fields[idx]
+
+                # receptive_fields = np.array(data_dict[seed][f"maxact_receptive_fields_{population}"])
+                # sorted_receptive_fields = receptive_fields[idx]
+                
+                # Alternative 1: compare unit activities (class averaged)
+                average_pop_activity = np.array(data_dict[seed]['average_pop_activity_dict'][population][:]).T
+                sorted_receptive_fields = average_pop_activity[idx]
+
+                # # Alternative 2: compare unit activities (full)
+                # pop_activity_dict = data_dict[seed]['sorted_activity_dict']
+                # unit_labels = data_dict[seed]['sorted_unit_labels_dict'][population][:]
+                # sorted_receptive_fields = np.array(pop_activity_dict[population][:]).T
+
                 rf_similarity = cosine_similarity(sorted_receptive_fields)
                 np.fill_diagonal(rf_similarity, 0) # remove self-similarity
-                
+
                 # Plot the receptive field similarity matrix for the example seed
                 if seed == example_seed:
                     masked_rf_similarity = np.ma.masked_array(rf_similarity, mask=~np.tril(np.ones(rf_similarity.shape), k=-1).astype(bool))
@@ -1234,10 +1248,15 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
                 # Calculate within-class and between-class receptive field similarity (accumulate across all seeds)
                 for label in range(10):
                     class_idx = np.where(unit_labels == label)[0]
-                    within_class_values = np.max(rf_similarity[class_idx,:][:, class_idx], axis=1)
-                    between_class_values = np.max(rf_similarity[class_idx,:][:, ~class_idx], axis=1)
-                    within_class_similarity.extend(within_class_values)
-                    between_class_similarity.extend(between_class_values)
+                    # within_class_values = np.max(rf_similarity[class_idx,:][:, class_idx], axis=1)
+                    # between_class_values = np.max(rf_similarity[class_idx,:][:, ~class_idx], axis=1)
+                    
+                    max_activity_outside_class = np.max(sorted_receptive_fields[class_idx][:, np.arange(10)!=label], axis=1)
+                    mean_activity_outside_class = np.mean(sorted_receptive_fields[class_idx][:, np.arange(10)!=label], axis=1)
+                    confusion_ratio = max_activity_outside_class / (mean_activity_outside_class + 1e-10)
+
+                    between_class_similarity_all.extend(confusion_ratio)
+                    between_class_similarity[label].extend(confusion_ratio)
                     if len(class_idx) > 0: # Add triangle to indicate units within the same class
                         class_boundary_start = class_idx[0]
                         class_boundary_end = class_idx[-1]+1
@@ -1248,13 +1267,27 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
                             # cmap = plt.colormaps['tab20']
                             # ax.add_patch(matplotlib.patches.Polygon([bottom, top, right], fill=False, edgecolor=cmap(i), linewidth=0.3))
                             ax.add_patch(matplotlib.patches.Polygon([bottom, top, right], fill=False, edgecolor='k', linewidth=0.3))
-                
-            # Histogram of receptive field similarity
+            
+            # Bar graph of mean within and between class similarities for each class
             ax = fig.add_subplot(axes[2, i])
-            ax.hist(between_class_similarity, bins=30, density=True)
-            ax.set_xlabel('Max out-of-class similarity')
-            ax.set_ylabel('Density')
-            ax.set_xlim(min(-0.2, np.min(between_class_similarity)), max(1, np.max(between_class_similarity)))
+            for label in range(10):
+                mean_val = np.mean(between_class_similarity[label])
+                std_val = np.std(between_class_similarity[label])
+                ax.bar(label + 0.2, mean_val, width=0.4, label='Between-class' if label==0 else None, color='steelblue', alpha=0.8)
+                ax.errorbar(label + 0.2, mean_val, yerr=std_val, fmt='none', ecolor='gray', capsize=0, linewidth=0.5)
+            ax.set_ylabel('Confusion ratio \n(max/mean act. out-of-class)')
+            ax.set_xticks(range(10))
+            ax.set_xticklabels(range(10))
+            ax.set_ylim(0, 8)
+            # if i==0:
+            #     ax.legend(loc='upper left', fontsize=6, ncol=2, bbox_to_anchor=(0., -0.1))
+
+            # # Histogram of receptive field similarity
+            # ax = fig.add_subplot(axes[2, i])
+            # ax.hist(between_class_similarity_all, bins=30, density=True)
+            # ax.set_xlabel('Max out-of-class similarity')
+            # ax.set_ylabel('Density')
+            # ax.set_xlim(min(-0.2, np.min(between_class_similarity_all)), max(1, np.max(between_class_similarity_all)))
 
     if save:
         fig.savefig(f"figures/{save}_{population}.png", dpi=300)
@@ -1280,7 +1313,7 @@ def generate_model_summary_table(model_dict_all, model_list, config_path_prefix=
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         network_table_vals = [model_dict[col] for col in columns.keys() if col in model_dict]
         with h5py.File(hdf5_path, 'r') as f:
             # print(f"Generating table for {network_name}")
@@ -1407,7 +1440,7 @@ def compare_RSM_properties(model_dict_all, model_list_heatmaps, model_list_metri
     for row, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -1485,7 +1518,7 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
     for model_key in all_models:
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
@@ -1554,7 +1587,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         for seed in model_dict['seeds']:
             saved_network_path = saved_network_path_prefix + network_name + f"_{seed}.pkl"
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
@@ -1563,7 +1596,7 @@ def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="networ
     for i,model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
 
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
@@ -1643,7 +1676,7 @@ def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metr
     for model_idx, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/Figure_data_hdf5/plot_data_{network_name}.h5"
+        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
         with h5py.File(hdf5_path, 'r') as f:
             data_dict = f[network_name]
             print(f"Generating plots for {model_dict['label']}")
