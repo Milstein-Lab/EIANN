@@ -65,9 +65,9 @@ projection_config:
 - `weight_init`: Name of the weight initializer function (e.g. "half_kaiming").
 - `weight_init_args`: Arguments passed to the initializer. If a single number is provided, it is used as scaling factor when initializing weights.
 - `weight_constraint`: Optional constraint on the weight matrix. Options:
-  [`normalize_weight`](https://milstein-lab.github.io/EIANN/autoapi/EIANN/learning_rules/weight_functions/index.html#EIANN.rules.weight_functions.normalize_weight),
-  [`clone_weight`](https://milstein-lab.github.io/EIANN/autoapi/EIANN/learning_rules/weight_functions/index.html#EIANN.rules.weight_functions.clone_weight),
-  [`no_autapses`](https://milstein-lab.github.io/EIANN/autoapi/EIANN/learning_rules/weight_functions/index.html#EIANN.rules.weight_functions.no_autapses)
+  [`normalize_weight`](https://milstein-lab.github.io/EIANN/autoapi/EIANN/learning_rules/weight_constraints/index.html#EIANN.rules.weight_constraints.normalize_weight),
+  [`clone_weight`](https://milstein-lab.github.io/EIANN/autoapi/EIANN/learning_rules/weight_constraints/index.html#EIANN.rules.weight_constraints.clone_weight),
+  [`no_autapses`](https://milstein-lab.github.io/EIANN/autoapi/EIANN/learning_rules/weight_constraints/index.html#EIANN.rules.weight_constraints.no_autapses)
 - `weight_constraint_kwargs`: Parameters for the weight constraint.
 - `weight_bounds`: Tuple of [min, max] values to clip weights. "Null" means no clipping.
 - `direction`: Forward or Recurrent connection type. Recurrent means the connection uses activities from the previous time step. Options: 'forward','F', 'recurrent','R'

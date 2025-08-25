@@ -16,20 +16,22 @@ from copy import copy
 import EIANN.utils as ut
 
 def update_plot_defaults():
-    plt.rcParams.update({'font.size': 12,
+    plt.rcParams.update({'font.size': 7,
                      'axes.spines.right': False,
                      'axes.spines.top': False,
-                     'axes.linewidth':1.2,
-                     'xtick.major.size': 6,
-                     'xtick.major.width': 1.2,
-                     'ytick.major.size': 6,
-                     'ytick.major.width': 1.2,
+                     'axes.linewidth': 0.5,
+                     'xtick.major.size': 3,
+                     'xtick.major.width': 0.5,
+                     'ytick.major.size': 3,
+                     'ytick.major.width': 0.5,
                      'legend.frameon': False,
                      'legend.handletextpad': 0.5,
                      'legend.handlelength': 1.2,
                      'legend.labelspacing': 0.3,
-                     'figure.figsize': [10.0, 3.0],
+                     'figure.figsize': [4, 1.5],
                      'svg.fonttype': 'none',
+                     'figure.dpi': 200,
+                     'font.sans-serif': 'Avenir',
                      'text.usetex': False})
 
 
@@ -217,7 +219,6 @@ def plot_train_loss_history(network, title=None, train_step_range=None, ax=None)
 def plot_validate_loss_history(network, title=None, train_step_range=None, ax=None):
     """
     Assumes network has been trained and a val_loss_history has been stored.
-    :param network:
     """
     assert len(network.val_loss_history) > 0, 'Network must contain a stored val_loss_history'
 
@@ -251,9 +252,15 @@ def plot_validate_loss_history(network, title=None, train_step_range=None, ax=No
 
 
 def plot_loss_history(network, train_step_range=None, ylim=None):
+    """
+    Plot training and validation loss history
+    """
     fig, ax = plt.subplots()
+
     plot_train_loss_history(network, ax=ax, train_step_range=train_step_range)
-    plot_validate_loss_history(network, ax=ax, train_step_range=train_step_range)
+    if hasattr(network, 'val_loss_history'):
+        plot_validate_loss_history(network, ax=ax, train_step_range=train_step_range)
+
     ax.set_ylabel("Loss")
     legend = ax.legend(handlelength=1, handletextpad=0.5)
     for line in legend.get_lines():
@@ -614,19 +621,7 @@ def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, 
     ax.set_xlim(-10, 10)
     ax.set_xlabel('Time from nudge')
     ax.set_ylabel('Activity')
-
-    # ax = axes[2]
-    # # ax.hlines(0, 0, param_history_steps[-1], color='r',alpha=1, linewidth=1)
-    # mean_forward_dend = np.mean(np.abs(forward_dendritic_state_history_dynamics[:,-1,:]), axis=1)
-    # mean_backward_dend = np.mean(np.abs(backward_dendritic_state_history_dynamics[:,0,:]), axis=1)
-    # ax.plot(param_history_steps, mean_forward_dend, label='forward',  alpha=0.5, linewidth=1.5, color='k')
-    # ax.plot(param_history_steps, mean_backward_dend, label='backward', alpha=0.6, linewidth=1.5, color='r')
-    # legend = ax.legend()
-    # for line in legend.get_lines():
-    #     line.set_linewidth(2)
-    # ax.set_xlabel('Train step')
-    # ax.set_ylabel('|Dend state|')
-
+    
 
 def plot_sparsity_history(network):
     rows = len(network.layers)
