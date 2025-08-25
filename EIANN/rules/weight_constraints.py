@@ -33,8 +33,8 @@ def clone_weight(projection, source=None, sign=1, scale=1, source2=None, transpo
 
 
 def normalize_weight(projection, scale, autapses=False, axis=1):
-    if not autapses and projection.pre is projection.post:
-        projection.weight.data.fill_diagonal_(0.)
+    if not autapses:
+        no_autapses(projection)
     weight_sum = torch.sum(torch.abs(projection.weight.data), axis=axis).unsqueeze(1)
     valid_rows = torch.nonzero(weight_sum, as_tuple=True)[0]
     projection.weight.data[valid_rows,:] /= weight_sum[valid_rows,:]
@@ -46,13 +46,13 @@ def no_autapses(projection):
         projection.weight.data.fill_diagonal_(0.)
 
 
-def receptive_field_mask(projection, receptive_field_size, img_height=28, img_width=28, normalize_weight=False, **kwargs):
+def receptive_field_mask(projection, receptive_field_size, img_height=28, img_width=28, apply_weight_norm=False, **kwargs):
     if not hasattr(projection, 'weight_mask'):
         projection.weight_mask = _create_receptive_field_mask(n_hidden=projection.weight.shape[0], input_size=projection.weight.shape[1], img_height=img_height, img_width=img_width, rf_size=receptive_field_size)
 
     projection.weight.data *= projection.weight_mask
 
-    if normalize_weight:
+    if apply_weight_norm:
         normalize_weight(projection, **kwargs)
 
 
