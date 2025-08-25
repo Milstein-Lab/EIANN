@@ -8,4 +8,4 @@ from .backprop_like import *
 from .hebbian import *
 from .btsp import *
 from .dendritic_loss import *
-from .weight_functions import *
+from .weight_constraints import *

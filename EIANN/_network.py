@@ -199,33 +199,33 @@ class Network(nn.Module):
 
         for projection in self.projections.values():
             if projection.weight_init in ['clone', 'clone_weight']:
-                rules.weight_functions.clone_weight(projection, **projection.weight_init_args)
+                rules.weight_constraints.clone_weight(projection, **projection.weight_init_args)
                 if projection.weight_bounds is not None:
                     projection.weight.data = projection.weight.data.clamp(*projection.weight_bounds)
                 if projection.constrain_weight is not None:
                     projection.constrain_weight()
 
     def constrain_weights_and_biases(self):
-        for i, post_layer in enumerate(self):
-            # if i > 0:
-                for post_pop in post_layer:
-                    if post_pop.include_bias and post_pop.bias_bounds is not None:
-                        post_pop.bias.data = post_pop.bias.data.clamp(*post_pop.bias_bounds)
-                    for projection in post_pop:
-                        if projection.weight_bounds is not None:
-                            projection.weight.data = projection.weight.data.clamp(*projection.weight_bounds)
-                        if (projection.constrain_weight is not None and
-                                projection.weight_constraint_name != 'clone_weight'):
-                            projection.constrain_weight()
+        for layer in self:
+            for population in layer:
+                if population.include_bias and population.bias_bounds is not None:
+                    population.bias.data = population.bias.data.clamp(*population.bias_bounds)
+                    
+                for projection in population:
+                    # Apply weight bounds (e.g. Dale's Law)
+                    if projection.weight_bounds is not None:
+                        projection.weight.data = projection.weight.data.clamp(*projection.weight_bounds)
+
+                    # Apply other weight constraints
+                    if projection.constrain_weight is not None and projection.weight_constraint_name != 'clone_weight':
+                        projection.constrain_weight()
         
         # After all constraints have been applied, clone weights
-        for i, post_layer in enumerate(self):
-            # if i > 0:
-                for post_pop in post_layer:
-                    for projection in post_pop:
-                        if (projection.constrain_weight is not None and
-                                projection.weight_constraint_name == 'clone_weight'):
-                            projection.constrain_weight()
+        for layer in self:
+            for population in layer:
+                for projection in population:
+                    if projection.constrain_weight is not None and projection.weight_constraint_name == 'clone_weight':
+                        projection.constrain_weight()
 
     def reset_history(self):
         self.sample_order = []
@@ -1102,7 +1102,7 @@ class Input(Population):
 
 class Projection(nn.Linear):
     def __init__(self, pre_pop, post_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
-                 weight_constraint_kwargs=None, weight_bounds=None, direction='forward', update_phase='forward',
+                 weight_constraint_kwargs={}, weight_bounds=None, direction='forward', update_phase='forward',
                  compartment=None, learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None):
         """
 
@@ -1139,30 +1139,27 @@ class Projection(nn.Linear):
             self.constrain_weight = None
         else:
             if isinstance(weight_constraint, str):
-                self.weight_constraint_name = weight_constraint
+                # Get the weight constraint function as a callable
                 if hasattr(rules, weight_constraint):
                     weight_constraint = getattr(rules, weight_constraint)
                 elif hasattr(external, weight_constraint):
                     weight_constraint = getattr(external, weight_constraint)
-            if not callable(weight_constraint):
-                raise RuntimeError \
-                    ('Projection: weight_constraint: %s must be imported and callable' %
-                     weight_constraint)
-            else:
-                self.weight_constraint_name = weight_constraint.__name__
-            if weight_constraint_kwargs is None:
-                weight_constraint_kwargs = {}
-            self.constrain_weight = \
-                lambda projection=self, kwargs=weight_constraint_kwargs: \
-                    weight_constraint(projection, **weight_constraint_kwargs)
+            
+            if not callable(weight_constraint):                 
+                raise RuntimeError('Projection: weight_constraint: %s must be imported and callable' % weight_constraint)
+            
+            self.weight_constraint_name = weight_constraint.__name__
+            self.constrain_weight = lambda projection=self, kwargs=weight_constraint_kwargs: weight_constraint(projection, **weight_constraint_kwargs)
 
         self.weight_bounds = weight_bounds
 
         if direction not in ['forward', 'recurrent', 'F', 'R']:
             raise RuntimeError('Projection: direction (%s) must be forward or recurrent' % direction)
         self.direction = direction
+
         if update_phase not in ['forward', 'backward', 'all', 'F', 'B', 'A']:
             raise RuntimeError('Projection: update_phase (%s) must be forward, backward, or all' % update_phase)
+        
         if update_phase in ['backward', 'B', 'all', 'A']:
             self.post.backward_projections.append(self)
         self.update_phase = update_phase
