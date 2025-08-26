@@ -1,6 +1,5 @@
 
 import torch
-from torch.utils.data import DataLoader
 import numpy as np
 import itertools
 import matplotlib.pyplot as plt
@@ -428,10 +427,8 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
     # Load dataset
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                      torchvision.transforms.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True,
-                                                     transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True,
-                                                    transform=tensor_flatten)
+    MNIST_train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True, transform=tensor_flatten)
+    MNIST_test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True, transform=tensor_flatten)
 
     # Add index to train & test data
     MNIST_train = []
@@ -446,9 +443,16 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
         
     # Put data in dataloader
     data_generator = torch.Generator()
-    train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=1)
+
+    if batch_size in ['all', 'full_dataset']:
+        batch_size = 50_000
+        train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=batch_size, shuffle=False, generator=data_generator)
+    else:
+        train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=batch_size, shuffle=True, generator=data_generator)
+
     val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10_000:], batch_size=10_000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10_000, shuffle=False)
+    
     if sub_dataloader_size is not None:
         train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=batch_size)
         return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
@@ -499,11 +503,60 @@ def get_FashionMNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_di
         
     # Put data in dataloader
     data_generator = torch.Generator()
-    train_dataloader = torch.utils.data.DataLoader(fmnist_train[0:50_000], batch_size=1)
+    if batch_size in ['all', 'full_dataset']:
+        batch_size = 50_000
+        train_dataloader = torch.utils.data.DataLoader(fmnist_train[0:50_000], batch_size=batch_size, shuffle=False, generator=data_generator)
+    else:
+        train_dataloader = torch.utils.data.DataLoader(fmnist_train[0:50_000], batch_size=batch_size, shuffle=True, generator=data_generator)
+
     val_dataloader = torch.utils.data.DataLoader(fmnist_train[-10_000:], batch_size=10_000, shuffle=False)
     test_dataloader = torch.utils.data.DataLoader(fmnist_test, batch_size=10_000, shuffle=False)
+
     if sub_dataloader_size is not None:
         train_sub_dataloader = torch.utils.data.DataLoader(fmnist_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=batch_size)
+        return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
+    else:
+        return train_dataloader, val_dataloader, test_dataloader, data_generator
+
+
+def get_cifar10_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None):
+    if data_dir is None:
+        root_dir = get_project_root()
+        data_dir = root_dir + '/EIANN/data/datasets/'
+
+    tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
+                                                     torchvision.transforms.Lambda(torch.flatten)])
+
+    CIFAR10_train_dataset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=tensor_flatten)
+    CIFAR10_test_dataset = torchvision.datasets.CIFAR10(root=data_dir, train=False, download=True, transform=tensor_flatten)
+
+    # Add index to train & test data
+    CIFAR10_train = []
+    for idx, (data, target) in enumerate(CIFAR10_train_dataset):
+        target = torch.eye(len(CIFAR10_train_dataset.classes))[target]
+        CIFAR10_train.append((idx, data, target))
+    CIFAR10_train = CIFAR10_train[:-10_000]
+    CIFAR10_val = CIFAR10_train[-10_000:]
+    
+    CIFAR10_test = []
+    for idx, (data, target) in enumerate(CIFAR10_test_dataset):
+        target = torch.eye(len(CIFAR10_test_dataset.classes))[target]
+        CIFAR10_test.append((idx, data, target))
+
+    # Put data in dataloader
+    data_generator = torch.Generator()
+
+    if batch_size in ['all', 'full_dataset']:
+        batch_size = len(CIFAR10_train)
+        train_dataloader = torch.utils.data.DataLoader(CIFAR10_train, batch_size=batch_size, shuffle=False, generator=data_generator)
+    else:
+        train_dataloader = torch.utils.data.DataLoader(CIFAR10_train, batch_size=batch_size, shuffle=True, generator=data_generator)
+
+    val_dataloader = torch.utils.data.DataLoader(CIFAR10_val, batch_size=10_000, shuffle=False)
+    test_dataloader = torch.utils.data.DataLoader(CIFAR10_test, batch_size=10_000, shuffle=False)
+
+    if sub_dataloader_size is not None:
+        train_sub_dataloader = torch.utils.data.DataLoader(CIFAR10_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=batch_size)
         return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
     else:
         return train_dataloader, val_dataloader, test_dataloader, data_generator
@@ -581,11 +634,11 @@ def get_spiral_dataloaders(batch_size=1, points_per_spiral_arm=2000, seed=0):
     data_generator = torch.Generator().manual_seed(seed)
     if batch_size in ['all', 'full_dataset']:
         batch_size = len(train_data)
-        train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=False, generator=data_generator)
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=False, generator=data_generator)
     else:
-        train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, generator=data_generator)
-    val_loader = DataLoader(val_data, batch_size=len(val_data), shuffle=False, num_workers=0)
-    test_loader = DataLoader(test_data, batch_size=len(test_data), shuffle=False, num_workers=0)
+        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True, generator=data_generator)
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=len(val_data), shuffle=False, num_workers=0)
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=len(test_data), shuffle=False, num_workers=0)
 
     return train_loader, val_loader, test_loader, data_generator
 
