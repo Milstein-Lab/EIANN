@@ -411,7 +411,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     #         receptive_fields = network.H1.E.Input.E.weight.detach()
     #
     #     if plot:
-    #         plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
+            plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
     
     if context.full_analysis:
         # if 'H1' in network.layers:

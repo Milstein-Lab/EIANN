@@ -160,40 +160,45 @@ class Network(nn.Module):
 
     def init_weights_and_biases(self):
         for i, post_layer in enumerate(self):
-            # if i > 0:
-                for post_pop in post_layer:
-                    total_fan_in = 0
-                    for projection in post_pop:
-                        fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(projection.weight)
-                        # fan_in = projection.pre.size
-                        total_fan_in += fan_in
-                        if projection.weight_init is not None:
-                            if projection.weight_init == 'half_kaiming':
-                                ut.half_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args,
-                                                   bounds=projection.weight_bounds)
-                            elif projection.weight_init == 'scaled_kaiming':
-                                ut.scaled_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args)
-                            elif projection.weight_init in ['clone', 'clone_weight']:
-                                pass
-                            else:
-                                try:
-                                    getattr(projection.weight.data,
-                                            projection.weight_init)(*projection.weight_init_args)
-                                except:
-                                    raise RuntimeError('Network.init_weights_and_biases: callable for weight_init: %s '
-                                                       'must be half_kaiming, scaled_kaiming, clone, or a method of '
-                                                       'Tensor' % projection.weight_init)
-                    if post_pop.include_bias:
-                        if post_pop.bias_init is None:
-                            ut.scaled_kaiming_init(post_pop.bias.data, total_fan_in)
-                        elif post_pop.bias_init == 'scaled_kaiming':
-                            ut.scaled_kaiming_init(post_pop.bias.data, total_fan_in, *post_pop.bias_init_args)
+            for post_pop in post_layer:
+                total_fan_in = 0
+                for projection in post_pop:
+                    fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(projection.weight)
+                    if projection.weight_init is not None:
+                        if (projection.constrain_weight is not None and
+                                projection.weight_constraint_name == 'receptive_field_mask'):
+                            image_dims = projection.weight_constraint_kwargs['image_dims']
+                            receptive_field_size = projection.weight_constraint_kwargs['receptive_field_size']
+                            fan_in = receptive_field_size ** 2
+                            if len(image_dims) > 2:
+                                fan_in *= image_dims[0]
+                        if projection.weight_init == 'half_kaiming':
+                            ut.half_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args,
+                                               bounds=projection.weight_bounds)
+                        elif projection.weight_init == 'scaled_kaiming':
+                            ut.scaled_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args)
+                        elif projection.weight_init in ['clone', 'clone_weight']:
+                            pass
                         else:
                             try:
-                                getattr(post_pop.bias.data, post_pop.bias_init)(*post_pop.bias_init_args)
+                                getattr(projection.weight.data,
+                                        projection.weight_init)(*projection.weight_init_args)
                             except:
-                                raise RuntimeError('Network.init_weights_and_biases: callable for bias_init: %s '
-                                                   'must be scaled_kaiming, or a method of Tensor' % post_pop.bias_init)
+                                raise RuntimeError('Network.init_weights_and_biases: callable for weight_init: %s '
+                                                   'must be half_kaiming, scaled_kaiming, clone, or a method of '
+                                                   'Tensor' % projection.weight_init)
+                    total_fan_in += fan_in
+                if post_pop.include_bias:
+                    if post_pop.bias_init is None:
+                        ut.scaled_kaiming_init(post_pop.bias.data, total_fan_in)
+                    elif post_pop.bias_init == 'scaled_kaiming':
+                        ut.scaled_kaiming_init(post_pop.bias.data, total_fan_in, *post_pop.bias_init_args)
+                    else:
+                        try:
+                            getattr(post_pop.bias.data, post_pop.bias_init)(*post_pop.bias_init_args)
+                        except:
+                            raise RuntimeError('Network.init_weights_and_biases: callable for bias_init: %s '
+                                               'must be scaled_kaiming, or a method of Tensor' % post_pop.bias_init)
 
         self.constrain_weights_and_biases()
 
@@ -1146,10 +1151,13 @@ class Projection(nn.Linear):
                     weight_constraint = getattr(external, weight_constraint)
             
             if not callable(weight_constraint):                 
-                raise RuntimeError('Projection: weight_constraint: %s must be imported and callable' % weight_constraint)
+                raise RuntimeError('Projection: weight_constraint: %s must be imported and callable' %
+                                   weight_constraint)
             
             self.weight_constraint_name = weight_constraint.__name__
-            self.constrain_weight = lambda projection=self, kwargs=weight_constraint_kwargs: weight_constraint(projection, **weight_constraint_kwargs)
+            self.weight_constraint_kwargs = weight_constraint_kwargs
+            self.constrain_weight = lambda projection=self, kwargs=weight_constraint_kwargs: (
+                weight_constraint(projection, **weight_constraint_kwargs))
 
         self.weight_bounds = weight_bounds
 

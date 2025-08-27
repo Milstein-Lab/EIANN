@@ -49,3 +49,16 @@ conv1_short_van_bp_2_fixed_hidden_MSE_zero_bias:
     H1_init_weight_scale: 1.1865083885853762
     H2_init_weight_scale: 1.7710527228793589
     Output_init_weight_scale: 0.12141265661522138
+conv1_short_van_bp_0_hidden_MSE_zero_bias:
+    #    accuracy: 48.5254
+    #    loss: 0.06886647
+    Output_learning_rate: 0.008753167928761216
+    Output_init_weight_scale: 0.01672071837071505
+conv1_short_van_bp_MSE_zero_bias:
+    #    accuracy: 49.4174
+    #    loss: 0.066072844
+    H_learning_rate: 0.016927958564561883
+    Output_learning_rate: 0.007383353383870381
+    H1_init_weight_scale: 0.5101370552634467
+    H2_init_weight_scale: 0.8597162260765777
+    Output_init_weight_scale: 5.72445035516384
