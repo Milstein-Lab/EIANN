@@ -2,12 +2,12 @@
 # Learn more at https://jupyterbook.org/customize/toc.html
 
 format: jb-book
-root: intro
+root: index
 
 parts:
   - caption: Using EIANN
     chapters:
-    - file: installation
+    - file: Using_EIANN/installation
     - file: Using_EIANN/1_eiann_basics
     - file: Using_EIANN/2_training_feedforward_network
     - file: Using_EIANN/3_visualizing_network_properties
