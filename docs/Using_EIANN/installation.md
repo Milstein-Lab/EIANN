@@ -21,7 +21,7 @@ EIANN is written in Python. This guide will help you install EIANN and its depen
 
 4. **Install EIANN in development mode**:
    ```bash
-   pip install -e . --use-pep517
+   pip install -e .
    ```
 
 
