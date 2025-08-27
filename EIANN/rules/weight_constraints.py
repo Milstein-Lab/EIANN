@@ -46,7 +46,7 @@ def no_autapses(projection):
         projection.weight.data.fill_diagonal_(0.)
 
 
-def receptive_field_mask(projection, receptive_field_size, image_dims=[1, 28, 28], apply_weight_norm=False, **kwargs):
+def receptive_field_mask(projection, receptive_field_size, image_dims=(28, 28), apply_weight_norm=False, **kwargs):
     """
     Enforce receptive fields for a projection by pruning (zeroing) weights outside the receptive field for each unit.
     """
