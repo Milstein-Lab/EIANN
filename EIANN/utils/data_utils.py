@@ -422,7 +422,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
     """
     if data_dir is None:
         root_dir = get_project_root()
-        data_dir = root_dir + '/EIANN/data/datasets/'
+        data_dir = root_dir + '/EIANN/data/datasets/MNIST'
         
     # Load dataset
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
@@ -480,7 +480,7 @@ def get_FashionMNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_di
     """
     if data_dir is None:
         root_dir = get_project_root()
-        data_dir = root_dir + '/EIANN/data/datasets/'
+        data_dir = root_dir + '/EIANN/data/datasets/FashionMNIST'
         
     # Load dataset
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
@@ -522,7 +522,7 @@ def get_FashionMNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_di
 def get_cifar10_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None):
     if data_dir is None:
         root_dir = get_project_root()
-        data_dir = root_dir + '/EIANN/data/datasets/'
+        data_dir = root_dir + '/EIANN/data/datasets/CIFAR10'
 
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                      torchvision.transforms.Lambda(torch.flatten)])
