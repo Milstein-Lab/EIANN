@@ -159,14 +159,13 @@ class Network(nn.Module):
         self.reset_history()
 
     def init_weights_and_biases(self):
-        for i, post_layer in enumerate(self):
+        for post_layer in self:
             for post_pop in post_layer:
                 total_fan_in = 0
                 for projection in post_pop:
                     fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(projection.weight)
                     if projection.weight_init is not None:
-                        if (projection.constrain_weight is not None and
-                                projection.weight_constraint_name == 'receptive_field_mask'):
+                        if projection.weight_constraint_name=='receptive_field_mask' and 'image_dims' in projection.weight_constraint_kwargs:
                             image_dims = projection.weight_constraint_kwargs['image_dims']
                             receptive_field_size = projection.weight_constraint_kwargs['receptive_field_size']
                             fan_in = receptive_field_size ** 2
@@ -1142,6 +1141,7 @@ class Projection(nn.Linear):
 
         if weight_constraint is None:
             self.constrain_weight = None
+            self.weight_constraint_name = None
         else:
             if isinstance(weight_constraint, str):
                 # Get the weight constraint function as a callable
