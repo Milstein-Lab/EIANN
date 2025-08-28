@@ -20,7 +20,6 @@ parts:
     - file: Galloni_etal_2025/4_EIANN_learned_somaI_Hebbian
     - file: Galloni_etal_2025/5_EIANN_DendTargetProp_LDS
     - file: Galloni_etal_2025/6_EIANN_DendTargetProp_BTSP
-    - file: ../EIANN/notebooks/explore_MNIST
 
   - caption: Python API  
     chapters:
