@@ -668,21 +668,42 @@ class Population(object):
                  output_pop=False):
         """
         Class for population of neurons
-        :param network: :class:'Network'
-        :param layer: :class:'Layer'
-        :param name: str
-        :param size: int
-        :param activation: str; name of imported callable
-        :param activation_kwargs: dict
-        :param include_bias: bool
-        :param bias_init: str; name of imported callable
-        :param bias_init_args: dict
-        :param bias_bounds: tuple of float
-        :param bias_learning_rule: str; name of imported callable
-        :param bias_learning_rule_kwargs: dict
-        :param custom_update: str; name of imported callable
-        :param custom_update_kwargs: dict
-        :param output_pop: bool; a single population must be designated as the output population to compute network loss
+
+        Parameters
+        ----------
+        network : EIANN.Network object
+            The network object this population belongs to
+        layer : EIANN.Layer object
+            The layer object this population belongs to
+        name : str
+            Name identifier for the population
+        size : int
+            Number of neurons in the population
+        activation : str, optional
+            Name of imported callable activation function, by default 'linear'
+        activation_kwargs : dict, optional
+            Keyword arguments for the activation function, by default None
+        tau : float, optional
+            Time constant for the population. If None, uses network tau, by default None
+        include_bias : bool, optional
+            Whether to include bias terms, by default False
+        bias_init : str, optional
+            Name of imported callable for bias initialization, by default None
+        bias_init_args : dict, optional
+            Arguments for bias initialization function, by default None
+        bias_bounds : tuple of float, optional
+            Bounds for bias values, by default None
+        bias_learning_rule : str, optional
+            Name of imported callable for bias learning rule, by default None
+        bias_learning_rule_kwargs : dict, optional
+            Keyword arguments for bias learning rule, by default None
+        custom_update : str, optional
+            Name of imported callable for custom updates, by default None
+        custom_update_kwargs : dict, optional
+            Keyword arguments for custom update function, by default None
+        output_pop : bool, optional
+            Whether this population is the output population for computing network loss.
+            A single population must be designated as the output population, by default False
         """
         # Constants
         self.network = network
@@ -839,7 +860,6 @@ class Population(object):
     def reinit(self, device, batch_size=1):
         """
         Method for resetting state variables of a population
-        :param device:
         """
         if batch_size > 1:
             self.state = torch.zeros((batch_size, self.size), device=device)
@@ -850,15 +870,11 @@ class Population(object):
         self.forward_steps_activity = []
 
     def reset_history(self):
-        """
-
-        """
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
     
     def append_projection(self, projection):
         """
         Register Projection parameters as Network module parameters. Enables convenient attribute access syntax.
-        :param projection: :class:'Projection'
         """
         if projection.learning_rule.__class__.backward not in self.network.backward_methods:
             if not any([projection.learning_rule.__class__.backward.__func__ is backward_method.__func__

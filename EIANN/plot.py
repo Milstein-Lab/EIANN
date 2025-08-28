@@ -20,6 +20,7 @@ def update_plot_defaults():
                      'axes.spines.right': False,
                      'axes.spines.top': False,
                      'axes.linewidth': 0.5,
+                     'lines.linewidth': 0.5,
                      'xtick.major.size': 3,
                      'xtick.major.width': 0.5,
                      'ytick.major.size': 3,
