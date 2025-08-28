@@ -165,8 +165,11 @@ class Network(nn.Module):
                 for projection in post_pop:
                     fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(projection.weight)
                     if projection.weight_init is not None:
-                        if projection.weight_constraint_name=='receptive_field_mask' and 'image_dims' in projection.weight_constraint_kwargs:
-                            image_dims = projection.weight_constraint_kwargs['image_dims']
+                        if projection.weight_constraint_name == 'receptive_field_mask':
+                            if 'image_dims' in projection.weight_constraint_kwargs:
+                                image_dims = projection.weight_constraint_kwargs['image_dims']
+                            else:
+                                image_dims = (28, 28)  # default to mnist dimensions
                             receptive_field_size = projection.weight_constraint_kwargs['receptive_field_size']
                             fan_in = receptive_field_size ** 2
                             if len(image_dims) > 2:
