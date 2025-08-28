@@ -206,7 +206,7 @@ class Network(nn.Module):
 
         for projection in self.projections.values():
             if projection.weight_init in ['clone', 'clone_weight']:
-                rules.weight_constraints.clone_weight(projection, **projection.weight_init_args)
+                rules.weight_functions.clone_weight(projection, **projection.weight_init_args)
                 if projection.weight_bounds is not None:
                     projection.weight.data = projection.weight.data.clamp(*projection.weight_bounds)
                 if projection.constrain_weight is not None:
