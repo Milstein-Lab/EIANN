@@ -40,3 +40,5 @@ fmnist_BTSP_TCWN_hebbdend,20250619_EIANN_2_hidden_fmnist_BTSP_config_5L_learn_TD
 fmnist_BTSP_WT_nobias_hebbdend,20250619_EIANN_2_hidden_fmnist_BTSP_config_5L_zero_bias_complete_optimized.yaml, ,BTSP,Symmetric B=W (BTSP),black,Dend EIANN,2,Dend Target Prop,BTSP,Symmetric ($B=W^T$),Zero
 fmnist_vanBP_nobias,20250606_EIANN_2_hidden_fmnist_van_bp_relu_SGD_config_G_zero_bias_complete_optimized.yaml, ,Feedforward ANN,Backprop (ANN),black,ANN,2,Backprop,Gradient descent,Symmetric ($B=W^T$),Zero
 fmnist_bpDale_nobias,20250606_EIANN_2_hidden_fmnist_bpDale_relu_SGD_config_G_zero_bias_complete_optimized.yaml, ,Backprop,Backprop (EIANN),black,EIANN,2,Backprop,Gradient descent,Symmetric ($B=W^T$),Zero
+fmnist_0hidden_vanBP_nobias,20250819_EIANN_0_hidden_fmnist_van_bp_relu_SGD_config_G_zero_bias_optimized.yaml, ,Linear readout,Linear readout,black,ANN,0,Backprop,Gradient descent,Symmetric ($B=W^T$),Zero
+fmnist_fixed_vanBP_nobias,20250819_EIANN_2_fixed_hidden_fmnist_van_bp_relu_SGD_config_G_zero_bias_optimized.yaml, ,Fixed Hidden,Fixed Hidden,black,ANN,2,Backprop,Gradient descent,Symmetric ($B=W^T$),Zero

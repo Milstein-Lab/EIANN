@@ -133,9 +133,9 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
     # Load dataset
     if "mnist" in config_path and "fmnist" not in config_path:
-        all_dataloaders = ut.get_MNIST_dataloaders()
+        all_dataloaders = ut.get_MNIST_dataloaders(batch_size='full_dataset')
     elif "fmnist" in config_path:
-        all_dataloaders = ut.get_FashionMNIST_dataloaders()
+        all_dataloaders = ut.get_FashionMNIST_dataloaders(batch_size='full_dataset')
     elif "spiral" in config_path:
         all_dataloaders = ut.get_spiral_dataloaders(batch_size='full_dataset')
     train_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
@@ -2057,23 +2057,26 @@ def main(figure, recompute):
         figure_name = "FigT3_mnist_hyperparams1"
         generate_hyperparams_table(csv_filename, save=figure_name)
 
-        csv_filename = "data/FigT3_mnist_hyperparams2.csv"
-        figure_name = "FigT3_mnist_hyperparams2"
-        generate_hyperparams_table(csv_filename, save=figure_name)
-
-        csv_filename = "data/FigT3_mnist_hyperparams3.csv"
-        figure_name = "FigT3_mnist_hyperparams3"
-        generate_hyperparams_table(csv_filename, save=figure_name)
-
     if figure in ["all", "T4"]:
-        csv_filename = "data/FigT4_spiral_hyperparams.csv"
-        figure_name = "FigT4_spiral_hyperparams"
+        csv_filename = "data/FigT3_mnist_hyperparams2.csv"
+        figure_name = "FigT4_mnist_hyperparams2"
         generate_hyperparams_table(csv_filename, save=figure_name)
 
     if figure in ["all", "T5"]:
+        csv_filename = "data/FigT3_mnist_hyperparams3.csv"
+        figure_name = "FigT5_mnist_hyperparams3"
+        generate_hyperparams_table(csv_filename, save=figure_name)
+
+    if figure in ["all", "T6"]:
+        csv_filename = "data/FigT4_spiral_hyperparams.csv"
+        figure_name = "FigT6_spiral_hyperparams"
+        generate_hyperparams_table(csv_filename, save=figure_name)
+
+    if figure in ["all", "T7"]:
         saved_network_path_prefix += "FMNIST/"
-        figure_name = "FigT5_fmnist_table"
-        model_list = ["fmnist_DTP_TCWN_hebbdend", "fmnist_DTP_WT_hebbdend", "fmnist_BTSP_TCWN_hebbdend", "fmnist_BTSP_WT_nobias_hebbdend", "fmnist_vanBP_nobias", "fmnist_bpDale_nobias"]
+        figure_name = "FigT7_fmnist_table"
+        model_list = ["fmnist_DTP_TCWN_hebbdend", "fmnist_DTP_WT_hebbdend", "fmnist_BTSP_TCWN_hebbdend", "fmnist_BTSP_WT_nobias_hebbdend", 
+                      "fmnist_vanBP_nobias", "fmnist_bpDale_nobias", "fmnist_0hidden_vanBP_nobias", "fmnist_fixed_vanBP_nobias"]
         generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/fmnist/", save=figure_name, recompute=recompute)
 
 

@@ -425,8 +425,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
         data_dir = root_dir + '/EIANN/data/datasets/MNIST'
         
     # Load dataset
-    tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
-                                                     torchvision.transforms.Lambda(torch.flatten)])
+    tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Lambda(torch.flatten)])
     MNIST_train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True, transform=tensor_flatten)
     MNIST_test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True, transform=tensor_flatten)
 
