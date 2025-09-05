@@ -1,3 +1,4 @@
+import itertools
 import torch
 import numpy as np
 import math
@@ -586,7 +587,7 @@ def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, 
     cmap= plt.get_cmap('Set1')
     colors = [cmap(i) for i in range(len(units))]
     if axes is None:
-        fig = plt.figure(figsize=(10, 6))
+        fig = plt.figure(figsize=(3, 6))
         gs_axes = gs.GridSpec(nrows=3, ncols=1,
                            left=0.1, right=0.98,
                            top=0.83, bottom=0.1,
@@ -597,8 +598,8 @@ def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, 
     backward_x = np.arange(0, 15) +0.5
 
     ax = axes[0]
-    ax.hlines(0, -15, 15, color='gray',alpha=1, linewidth=1, linestyle='--')
-    ax.vlines(0, -0.1, 0.1, color='red',alpha=1, linewidth=1, linestyle='--')
+    ax.axhline(0,0,1, color='gray',alpha=1, linewidth=1, linestyle='--')
+    ax.axvline(0,0,1, color='red',alpha=1, linewidth=1, linestyle='--')
     for unit,c in zip(units,colors):
         ax.plot(forward_x, forward_dendritic_state_history_dynamics[t_idx,:,unit], color=c, linewidth=1)
         ax.plot(backward_x, backward_dendritic_state_history_dynamics[t_idx,:,unit], color=c, linewidth=1)
@@ -612,7 +613,8 @@ def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, 
     ax.set_ylabel('Dend state')
 
     ax = axes[1]
-    ax.vlines(0, -0.1, 0.1, color='red',alpha=1, linewidth=1, linestyle='--')
+    ax.axhline(0,0,1, color='gray',alpha=1, linewidth=1, linestyle='--')
+    ax.axvline(0,0,1, color='red',alpha=1, linewidth=1, linestyle='--')
     for unit,c in zip(units,colors):
         ax.plot(forward_x, activity_history[param_history_steps[t_idx],:,unit], color=c, linewidth=1)
         ax.plot(backward_x, backward_activity_history[param_history_steps[t_idx],:,unit], color=c, linewidth=1)
@@ -623,6 +625,17 @@ def plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, 
     ax.set_xlabel('Time from nudge')
     ax.set_ylabel('Activity')
     
+    ax = axes[2]
+    mean_forward_dend = np.mean(np.abs(forward_dendritic_state_history_dynamics[:,-1,:]), axis=1)
+    mean_backward_dend = np.mean(np.abs(backward_dendritic_state_history_dynamics[:,0,:]), axis=1)
+    ax.plot(param_history_steps, mean_forward_dend, label='forward',  alpha=0.5, linewidth=1.5, color='k')
+    ax.plot(param_history_steps, mean_backward_dend, label='backward', alpha=0.6, linewidth=1.5, color='r')
+    legend = ax.legend()
+    for line in legend.get_lines():
+        line.set_linewidth(2)
+    ax.set_xlabel('Train step')
+    ax.set_ylabel('|Dend state|')
+
 
 def plot_sparsity_history(network):
     rows = len(network.layers)
@@ -784,7 +797,32 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
 
         # Filter by class activity preference to sample units across all classes
         if preferred_classes is not None:
-            class_sorted_idx = ut.class_based_sorting_with_cycle(preferred_classes)
+            class_sorted_idx = class_based_sorting_with_cycle(preferred_classes)
+            def class_based_sorting_with_cycle(preferred_classes):
+                """
+                Sort units by class in repeating blocks (0,1,2,3,0,1,2,3,...).
+                Returns the index of the sorted units.
+                """
+                class_sorted_idx = []
+                preferred_classes_ls = list(preferred_classes)
+                positions = list(range(len(preferred_classes_ls)))
+                classes = list(np.unique(preferred_classes_ls))
+                class_iter = itertools.cycle(classes)
+                current_class = next(class_iter)
+                while len(preferred_classes_ls) > 0:
+                    for i, unit_class in enumerate(preferred_classes_ls):
+                        if unit_class == current_class:
+                            class_sorted_idx.append(positions[i])
+                            preferred_classes_ls.pop(i)
+                            positions.pop(i)
+                            current_class = next(class_iter)
+                            break
+                        if i == len(preferred_classes_ls)-1: # if we reach the end of the loop without encountering the class
+                            classes.remove(current_class)
+                            class_iter = itertools.cycle(classes)
+                            current_class = next(class_iter)
+                return class_sorted_idx
+
             preferred_classes = preferred_classes[class_sorted_idx]
             receptive_fields = receptive_fields[class_sorted_idx]
             if average_pop_activity is not None:
@@ -2064,7 +2102,6 @@ def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataload
     flat_param_history_all = torch.cat(flat_param_history_all)
 
     history_len = flat_param_history.shape[0]
-    num_networks = ut.count_dict_elements(param_history_dict)
     flat_param_history = flat_param_history_all
 
     # Center the data (mean=0, std=1)

@@ -225,6 +225,149 @@ def compute_test_activity_dynamics(network, dataloader, plot=False, normalize=Tr
     return pop_dynamics_dict
 
 
+def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=None, plot=False):
+    """
+    This function was designed for a simple 1-hot autoencoder task. Analyze network performance by splitting output activity into epochs
+    (containing one instance of each pattern) and computing loss/accuracy. The function is intended for use after training and requires 
+    a separate method for computing test loss and accuracy.
+
+    Parameters
+    ----------
+    network : object
+        Neural network object containing output_pop with activity_history, sorted_sample_indexes,
+        and criterion attributes.
+    target : torch.Tensor
+        Target tensor containing ground truth labels or values for comparison.
+    sorted_output_idx : array-like, optional
+        Indices for sorting output units. If None, uses original ordering. Default is None.
+    plot : bool, optional
+        Whether to generate plots showing epoch loss and accuracy over training epochs. 
+        Default is False.
+
+    Returns
+    -------
+    best_epoch_index : int
+        Index of the epoch with the minimum loss.
+    epoch_loss : torch.Tensor
+        Tensor containing loss values for each epoch.
+    epoch_argmax_accuracy : torch.Tensor
+        Tensor containing argmax accuracy percentages for each epoch.
+    """
+    output_pop = network.output_pop
+
+    epoch_loss = []
+    epoch_argmax_accuracy = []
+
+    if output_pop.activity_history.dim() > 2:
+        output_history = output_pop.activity_history[network.sorted_sample_indexes, -1, :]
+    else:
+        output_history = output_pop.activity_history[network.sorted_sample_indexes, :]
+
+    if sorted_output_idx is not None:
+        output_history = output_history[:, sorted_output_idx]
+    start = 0
+    while start < output_history.shape[0]:
+        end = start + target.shape[0]
+        epoch_output = output_history[start:end, :]
+        loss = network.criterion(epoch_output, target)
+        epoch_loss.append(loss.item())
+        start += target.shape[0]
+        accuracy = torch.sum(torch.argmax(epoch_output, axis=1) == torch.argmax(target, axis=1))
+        epoch_argmax_accuracy.append(accuracy.item() / target.shape[0] * 100.)
+
+    epoch_loss = torch.tensor(epoch_loss)
+    epoch_argmax_accuracy = torch.tensor(epoch_argmax_accuracy)
+    print(epoch_loss.shape)
+    best_epoch_index = torch.where(epoch_loss == torch.min(epoch_loss))[0][0]
+
+    if plot:
+        fig = plt.figure()
+        plt.plot(epoch_loss)
+        plt.xlabel('Training epochs')
+        plt.ylabel('MSE loss')
+        plt.title('Epoch training loss')
+        fig.tight_layout()
+        fig.show()
+
+        fig = plt.figure()
+        plt.plot(epoch_argmax_accuracy)
+        plt.xlabel('Training epochs')
+        plt.ylabel('% correct argmax')
+        plt.title('Argmax accuracy')
+        fig.tight_layout()
+        fig.show()
+
+    return best_epoch_index, epoch_loss, epoch_argmax_accuracy
+
+
+def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=None, store_history=False,
+                                           plot=False, status_bar=False, title=None):
+    """
+    Assumes network has been trained with store_params=True. Evaluates test_loss at each train step in the
+    param_history.
+    :param network:
+    :param test_dataloader:
+    :param sorted_output_idx: tensor of int
+    :param store_history: bool
+    :param plot: bool
+    :param status_bar: bool
+    :param title: str
+    """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+    assert len(network.param_history) > 0, 'Network must contain a stored param_history'
+
+    idx, test_data, test_target = next(iter(test_dataloader))
+    test_data = test_data.to(network.device)
+    test_target = test_target.to(network.device)
+    test_loss_history = []
+    test_accuracy_history = []
+    num_patterns = test_data.shape[0]
+
+    if store_history:
+        network.reset_history()
+
+    if status_bar:
+        iter_param_history = tqdm(network.param_history, desc='Test history')
+    else:
+        iter_param_history = network.param_history
+    for state_dict in iter_param_history:
+        network.load_state_dict(state_dict)
+        output = network.forward(test_data, store_history=store_history, no_grad=True)
+        if sorted_output_idx is not None:
+            output = output[:, sorted_output_idx]
+        test_loss_history.append(network.criterion(output, test_target).item())
+        accuracy = 100 * torch.sum(torch.argmax(output, dim=1) ==
+                                   torch.argmax(test_target, dim=1)) / num_patterns
+        test_accuracy_history.append(accuracy.item())
+
+    network.test_loss_history = torch.tensor(test_loss_history).cpu()
+    network.test_accuracy_history = torch.tensor(test_accuracy_history).cpu()
+
+    if title is None:
+        title_str = ''
+    else:
+        title_str = ': %s' % str(title)
+
+    if plot:
+        fig = plt.figure()
+        plt.plot(network.param_history_steps, network.test_loss_history)
+        plt.xlabel('Training steps')
+        plt.ylabel('Test loss')
+        fig.suptitle('Test loss%s' % title_str)
+        fig.tight_layout()
+        fig.show()
+
+        fig = plt.figure()
+        plt.plot(network.param_history_steps, network.test_accuracy_history)
+        plt.xlabel('Training steps')
+        plt.ylabel('Test accuracy')
+        fig.suptitle('Test accuracy%s' % title_str)
+        fig.tight_layout()
+        fig.show()
+
+    return network.test_loss_history, network.test_accuracy_history
+
+
 def compute_dParam_history(network):
     dParam_history = {name: [] for name in network.state_dict()}
 
