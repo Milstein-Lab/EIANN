@@ -490,7 +490,6 @@ def get_optimal_sorting(network, test_dataloader, plot=False):
     return min_loss_sorting
 
 
-
 def get_diag_argmax_row_indexes(data):
     """
     Sort the rows of a square matrix such that whenever row argmax and col argmax are equal, that value appears
@@ -664,8 +663,6 @@ def sort_unsupervised_by_best_epoch(network, target, plot=False):
         fig.show()
 
     return sorted_idx
-
-
 
 
 def recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx, store=False):
