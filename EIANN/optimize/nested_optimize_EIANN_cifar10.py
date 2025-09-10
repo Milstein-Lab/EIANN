@@ -63,7 +63,7 @@ def config_worker():
         context.store_dynamics = False
     else:
         context.store_dynamics = str_to_bool(context.store_dynamics)
-        
+    
     if 'store_params' not in context():
         context.store_params = False
     else:
@@ -308,7 +308,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             pass
         if context.plot_initial:
             title = 'Initial (%i, %i)' % (seed, data_seed)
-            plot_batch_accuracy(network, test_dataloader, title=title)  # population='all',
+            if context.flatten_data:
+                population = 'all'
+            else:
+                population = 'OutputE'
+            plot_batch_accuracy(network, test_dataloader, population=population, title=title)
     
     if not context.retrain:
         network = utils.load_network(context.data_file_path)
