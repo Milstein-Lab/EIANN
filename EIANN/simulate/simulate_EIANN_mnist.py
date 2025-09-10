@@ -20,8 +20,8 @@ from EIANN.plot import (plot_batch_accuracy, plot_train_loss_history, plot_valid
 from nested.utils import Context, get_unknown_click_arg_dict, str_to_bool
 from nested.parallel import get_parallel_interface
 from nested.optimize_utils import nested_parallel_init_contexts_interactive
-import EIANN.optimize.nested_optimize_EIANN_fashion_mnist
-from EIANN.optimize.nested_optimize_EIANN_fashion_mnist import get_random_seeds
+import EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist
+from EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist import get_random_seeds
 import EIANN.utils as utils
 
 
@@ -29,7 +29,7 @@ context = Context()
 
 
 def config_worker():
-    EIANN.optimize.nested_optimize_EIANN_fashion_mnist.context = context
+    EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist.context = context
     context.seed_start = int(context.seed_start)
     context.num_instances = int(context.num_instances)
     context.network_id = int(context.network_id)
@@ -144,28 +144,28 @@ def config_worker():
     tensor_flatten = T.Compose([
         T.ToTensor(),
         T.Lambda(torch.flatten)])
-    FMNIST_train_dataset = torchvision.datasets.FashionMNIST(root=context.output_dir + '/datasets/FMNIST_data/',
-                                                             train=True, download=download, transform=tensor_flatten)
-    FMNIST_test_dataset = torchvision.datasets.FashionMNIST(root=context.output_dir + '/datasets/FMNIST_data/',
-                                                            train=False, download=download, transform=tensor_flatten)
-
+    MNIST_train_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=True,
+                                                     download=download, transform=tensor_flatten)
+    MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=False,
+                                                    download=download, transform=tensor_flatten)
+    
     # Add index to train & test data
-    FMNIST_train = []
-    for idx, (data, target) in enumerate(FMNIST_train_dataset):
-        target = torch.eye(len(FMNIST_train_dataset.classes))[target]
-        FMNIST_train.append((idx, data, target))
-
-    FMNIST_test = []
-    for idx, (data, target) in enumerate(FMNIST_test_dataset):
-        target = torch.eye(len(FMNIST_test_dataset.classes))[target]
-        FMNIST_test.append((idx, data, target))
-
+    MNIST_train = []
+    for idx, (data, target) in enumerate(MNIST_train_dataset):
+        target = torch.eye(len(MNIST_train_dataset.classes))[target]
+        MNIST_train.append((idx, data, target))
+    
+    MNIST_test = []
+    for idx, (data, target) in enumerate(MNIST_test_dataset):
+        target = torch.eye(len(MNIST_test_dataset.classes))[target]
+        MNIST_test.append((idx, data, target))
+    
     # Put data in dataloader
     context.data_generator = torch.Generator()
     context.train_sub_dataloader = \
-        torch.utils.data.DataLoader(FMNIST_train[0:-10000], shuffle=True, generator=context.data_generator)
-    context.val_dataloader = torch.utils.data.DataLoader(FMNIST_train[-10000:], batch_size=10000, shuffle=False)
-    context.test_dataloader = torch.utils.data.DataLoader(FMNIST_test, batch_size=10000, shuffle=False)
+        torch.utils.data.DataLoader(MNIST_train[0:-10000], shuffle=True, generator=context.data_generator)
+    context.val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
+    context.test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
     
 
 def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
@@ -201,7 +201,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     if os.path.exists(data_file_path) and not context.retrain:
         network = utils.load_network(data_file_path)
         if context.disp:
-            print('simulate_EIANN_fashion_mnist: pid: %i loaded network history from %s' %
+            print('simulate_EIANN_mnist: pid: %i loaded network history from %s' %
                   (os.getpid(), data_file_path))
     else:
         data_generator.manual_seed(data_seed)
@@ -223,7 +223,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
         elif context.eval_accuracy == 'best':
             min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_dataloader, plot=plot)
         else:
-            raise Exception('simulate_EIANN_fashion_mnist: eval_accuracy must be final or best, not %s' %
+            raise Exception('simulate_EIANN_mnist: eval_accuracy must be final or best, not %s' %
                             context.eval_accuracy)
         sorted_val_loss_history, sorted_val_accuracy_history = \
             recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx=sorted_output_idx,
@@ -274,9 +274,8 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     if export:
         utils.save_network(network, path=data_file_path, disp=False)
         if context.disp:
-            print('simulate_EIANN_fashion_mnist: pid: %i exported network history to %s' %
+            print('simulate_EIANN_mnist: pid: %i exported network history to %s' %
                   (os.getpid(), data_file_path))
-            sys.stdout.flush()
     
     if not context.interactive:
         del network
@@ -288,13 +287,13 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
 @click.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True, ))
 @click.option("--config-file-path", required=True,
               type=click.Path(exists=True, file_okay=True, dir_okay=False),
-              default='config/fmnist/simulate_EIANN_fashion_mnist_supervised_config.yaml')
+              default='config/mnist/simulate_EIANN_mnist_supervised_config.yaml')
 @click.option("--network-config-file-path", required=True,
               type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.option("--data-file-path", '-d', multiple=True,
               type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.option("--output-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True),
-              default='../data/fmnist')
+              default='../data/mnist')
 @click.option("--export", is_flag=True)
 @click.option("--retrain", type=bool, default=True)
 @click.option("--label", type=str, default=None)
@@ -308,11 +307,11 @@ def main(cli, config_file_path, network_config_file_path, data_file_path, output
          interactive, debug, disp, framework):
     """
     To execute on a single process:
-    python -i simulate_EIANN_fashion_mnist.py --plot --interactive --config-file-path=$PATH_TO_CONFIG_YAML \
+    python -i simulate_EIANN_mnist.py --plot --interactive --config-file-path=$PATH_TO_CONFIG_YAML \
         --network-config-file-path=$PATH_TO_NETWORK_CONFIG_YAML
 
     To execute using MPI parallelism with 1 controller process and N - 1 worker processes:
-    mpirun -n N python -i -m mpi4py.futures simulate_EIANN_fashion_mnist.py --plot --interactive --framework=mpi \
+    mpirun -n N python -i -m mpi4py.futures simulate_EIANN_mnist.py --plot --interactive --framework=mpi \
         --config-file-path=$PATH_TO_CONFIG_YAML --network-config-file-path=$PATH_TO_NETWORK_CONFIG_YAML
 
     :param cli: contains unrecognized args as list of str

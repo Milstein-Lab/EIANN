@@ -20,18 +20,16 @@ from EIANN.plot import (plot_batch_accuracy, plot_train_loss_history, plot_valid
 from nested.utils import Context, get_unknown_click_arg_dict, str_to_bool
 from nested.parallel import get_parallel_interface
 from nested.optimize_utils import nested_parallel_init_contexts_interactive
-import EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist
-from EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist import get_random_seeds
+import EIANN.optimize.nested_optimize_EIANN_cifar10
+from EIANN.optimize.nested_optimize_EIANN_cifar10 import get_random_seeds
 import EIANN.utils as utils
 
 
 context = Context()
 
-context.test = 'test'
-
 
 def config_worker():
-    EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist.context = context
+    EIANN.optimize.nested_optimize_EIANN_cifar10.context = context
     context.seed_start = int(context.seed_start)
     context.num_instances = int(context.num_instances)
     context.network_id = int(context.network_id)
@@ -93,12 +91,6 @@ def config_worker():
         context.constrain_equilibration_dynamics = True
     else:
         context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
-    if 'export_network_config_file_path' not in context():
-        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-        if context.label is None:
-            context.export_network_config_file_path = f"{context.output_dir}/{network_name}_optimized.yaml"
-        else:
-            context.export_network_config_file_path = f"{context.output_dir}/{network_name}_{context.label}_optimized.yaml"
     if 'retrain' not in context():
         context.retrain = True
     else:
@@ -144,36 +136,49 @@ def config_worker():
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
     
+    if 'criterion' in context():
+        context.training_kwargs['criterion'] = context.criterion
+    
     # Load dataset
     if context.interactive:
         download = True
     else:
         download = False
-    tensor_flatten = T.Compose([
-        T.ToTensor(),
-        T.Lambda(torch.flatten)])
-    MNIST_train_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=True,
-                                                     download=download, transform=tensor_flatten)
-    MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=False,
-                                                    download=download, transform=tensor_flatten)
+    if 'flatten_data' not in context():
+        context.flatten_data = True
+    else:
+        context.flatten_data = str_to_bool(context.flatten_data)
+    
+    if context.flatten_data:
+        tensor_transform = T.Compose([
+            T.ToTensor(),
+            T.Lambda(torch.flatten)])
+    else:
+        tensor_transform = T.ToTensor()
+    CIFAR10_train_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data/',
+                                                         train=True, download=download, transform=tensor_transform)
+    CIFAR10_test_dataset = torchvision.datasets.CIFAR10(root=context.output_dir + '/datasets/CIFAR10_data/',
+                                                        train=False, download=download, transform=tensor_transform)
     
     # Add index to train & test data
-    MNIST_train = []
-    for idx, (data, target) in enumerate(MNIST_train_dataset):
-        target = torch.eye(len(MNIST_train_dataset.classes))[target]
-        MNIST_train.append((idx, data, target))
+    CIFAR10_train = []
+    for idx, (data, target) in enumerate(CIFAR10_train_dataset):
+        target = torch.eye(len(CIFAR10_train_dataset.classes))[target]
+        CIFAR10_train.append((idx, data, target))
+    CIFAR10_val = CIFAR10_train[-10000:]
+    CIFAR10_train = CIFAR10_train[:-10000]
     
-    MNIST_test = []
-    for idx, (data, target) in enumerate(MNIST_test_dataset):
-        target = torch.eye(len(MNIST_test_dataset.classes))[target]
-        MNIST_test.append((idx, data, target))
+    CIFAR10_test = []
+    for idx, (data, target) in enumerate(CIFAR10_test_dataset):
+        target = torch.eye(len(CIFAR10_test_dataset.classes))[target]
+        CIFAR10_test.append((idx, data, target))
     
     # Put data in dataloader
     context.data_generator = torch.Generator()
     context.train_sub_dataloader = \
-        torch.utils.data.DataLoader(MNIST_train[0:-10000], shuffle=True, generator=context.data_generator)
-    context.val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
-    context.test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
+        torch.utils.data.DataLoader(CIFAR10_train, shuffle=True, generator=context.data_generator)
+    context.val_dataloader = torch.utils.data.DataLoader(CIFAR10_val, batch_size=10000, shuffle=False)
+    context.test_dataloader = torch.utils.data.DataLoader(CIFAR10_test, batch_size=10000, shuffle=False)
     
 
 def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
@@ -197,7 +202,11 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     if plot:
         if context.plot_initial:
             title = 'Initial (%i, %i)' % (seed, data_seed)
-            plot_batch_accuracy(network, test_dataloader, population='all', title=title)
+            if context.flatten_data:
+                population = 'all'
+            else:
+                population = 'OutputE'
+            plot_batch_accuracy(network, test_dataloader, population=population, title=title)
     
     if data_file_path is None:
         network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
@@ -209,7 +218,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     if os.path.exists(data_file_path) and not context.retrain:
         network = utils.load_network(data_file_path)
         if context.disp:
-            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i loaded network history from %s' %
+            print('simulate_EIANN_cifar10: pid: %i loaded network history from %s' %
                   (os.getpid(), data_file_path))
     else:
         data_generator.manual_seed(data_seed)
@@ -222,7 +231,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
                       store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar)
-        
+    
     # reorder output units if using unsupervised learning rule
     if not context.supervised:
         if context.eval_accuracy == 'final':
@@ -231,7 +240,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
         elif context.eval_accuracy == 'best':
             min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_dataloader, plot=plot)
         else:
-            raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
+            raise Exception('simulate_EIANN_cifar10: eval_accuracy must be final or best, not %s' %
                             context.eval_accuracy)
         sorted_val_loss_history, sorted_val_accuracy_history = \
             recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx=sorted_output_idx,
@@ -248,26 +257,16 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     
     if plot:
         title = 'Final (%i, %i)' % (seed, data_seed)
-        plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
+        if context.flatten_data:
+            population = 'all'
+        else:
+            population = 'OutputE'
+        plot_batch_accuracy(network, test_dataloader, population=population, sorted_output_idx=sorted_output_idx,
                             title=title)
         plot_train_loss_history(network)
         plot_validate_loss_history(network)
-    
-    if 'H1' in network.layers:
-        if context.compute_receptive_fields:
-            # Compute receptive fields
-            population = network.H1.E
-            receptive_fields = utils.compute_maxact_receptive_fields(population)
-        else:
-            receptive_fields = network.H1.E.Input.E.weight.detach()
         
-        if plot:
-            plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
-    
     if context.full_analysis:
-        if 'H1' in network.layers:
-            metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
-            plot_representation_metrics(metrics_dict)
         test_loss_history, test_accuracy_history = \
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
                                                    plot=plot, status_bar=context.status_bar)
@@ -282,7 +281,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     if export:
         utils.save_network(network, path=data_file_path, disp=False)
         if context.disp:
-            print('simulate_EIANN_2_hidden_mnist: pid: %i exported network history to %s' %
+            print('simulate_EIANN_cifar10: pid: %i exported network history to %s' %
                   (os.getpid(), data_file_path))
     
     if not context.interactive:
@@ -295,12 +294,13 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
 @click.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True, ))
 @click.option("--config-file-path", required=True,
               type=click.Path(exists=True, file_okay=True, dir_okay=False),
-              default='config/mnist/simulate_EIANN_1_hidden_mnist_supervised_config.yaml')
+              default='config/cifar10/simulate_EIANN_cifar10_supervised_config.yaml')
 @click.option("--network-config-file-path", required=True,
               type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.option("--data-file-path", '-d', multiple=True,
               type=click.Path(exists=True, file_okay=True, dir_okay=False))
-@click.option("--output-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), default='../data')
+@click.option("--output-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True),
+              default='../data/cifar10')
 @click.option("--export", is_flag=True)
 @click.option("--retrain", type=bool, default=True)
 @click.option("--label", type=str, default=None)
@@ -314,11 +314,11 @@ def main(cli, config_file_path, network_config_file_path, data_file_path, output
          interactive, debug, disp, framework):
     """
     To execute on a single process:
-    python -i simulate_EIANN_1_hidden_mnist.py --plot --interactive --config-file-path=$PATH_TO_CONFIG_YAML \
+    python -i simulate_EIANN_simulate_EIANN_cifar10.py --plot --interactive --config-file-path=$PATH_TO_CONFIG_YAML \
         --network-config-file-path=$PATH_TO_NETWORK_CONFIG_YAML
 
     To execute using MPI parallelism with 1 controller process and N - 1 worker processes:
-    mpirun -n N python -i -m mpi4py.futures simulate_EIANN_1_hidden_mnist.py --plot --interactive --framework=mpi \
+    mpirun -n N python -i -m mpi4py.futures simulate_EIANN_simulate_EIANN_cifar10.py --plot --interactive --framework=mpi \
         --config-file-path=$PATH_TO_CONFIG_YAML --network-config-file-path=$PATH_TO_NETWORK_CONFIG_YAML
 
     :param cli: contains unrecognized args as list of str
