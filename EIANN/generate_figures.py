@@ -237,12 +237,15 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='activity_dynamics', data=pop_dynamics_dict, file_path=hdf5_path, overwrite=True)
 
 
-def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=None):
+def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, hdf5_path_prefix=None, recompute=None):
     for model_key in model_list:
         model_dict = model_dict_all[model_key]
         config_path = config_path_prefix + model_dict['config']
         network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
+        if hdf5_path_prefix is None:
+            hdf5_path_prefix = "data/model_hdf5_plot_data/"
+
+        hdf5_path = hdf5_path_prefix + f"plot_data_{network_name}.h5"
 
         if not os.path.exists(hdf5_path):
             # If the hdf5 is not available in local data directory, check in Box drive
@@ -425,7 +428,7 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
             x_offset = 0.12
 
         # Create the violin plot
-        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9, side=side)
+        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9, side='high')
         parts['bodies'][0].set_alpha(0.65)
         parts['bodies'][0].set_facecolor(model_dict["color"])
 
@@ -1852,7 +1855,7 @@ def images_to_pdf(image_paths, output_path, dpi=300):
 
 def main(figure, recompute):
     # Load model specs from csv file
-    csv_file_path = "figure_model_specs.csv" 
+    csv_file_path = "data/figure_model_specs.csv" 
     df = pd.read_csv(csv_file_path, index_col=0)
     df = df.map(lambda x: codecs.decode(x, 'unicode_escape') if isinstance(x, str) else x) # convert special characters like \n
     model_dict_all = df.transpose().to_dict()

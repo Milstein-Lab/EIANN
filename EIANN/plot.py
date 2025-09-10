@@ -696,7 +696,6 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
 
         # Filter by class activity preference to sample units across all classes
         if preferred_classes is not None:
-            class_sorted_idx = class_based_sorting_with_cycle(preferred_classes)
             def class_based_sorting_with_cycle(preferred_classes):
                 """
                 Sort units by class in repeating blocks (0,1,2,3,0,1,2,3,...).
@@ -721,6 +720,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
                             class_iter = itertools.cycle(classes)
                             current_class = next(class_iter)
                 return class_sorted_idx
+            class_sorted_idx = class_based_sorting_with_cycle(preferred_classes)
 
             preferred_classes = preferred_classes[class_sorted_idx]
             receptive_fields = receptive_fields[class_sorted_idx]
