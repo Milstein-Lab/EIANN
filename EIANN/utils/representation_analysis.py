@@ -225,6 +225,149 @@ def compute_test_activity_dynamics(network, dataloader, plot=False, normalize=Tr
     return pop_dynamics_dict
 
 
+def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=None, plot=False):
+    """
+    This function was designed for a simple 1-hot autoencoder task. Analyze network performance by splitting output activity into epochs
+    (containing one instance of each pattern) and computing loss/accuracy. The function is intended for use after training and requires 
+    a separate method for computing test loss and accuracy.
+
+    Parameters
+    ----------
+    network : object
+        Neural network object containing output_pop with activity_history, sorted_sample_indexes,
+        and criterion attributes.
+    target : torch.Tensor
+        Target tensor containing ground truth labels or values for comparison.
+    sorted_output_idx : array-like, optional
+        Indices for sorting output units. If None, uses original ordering. Default is None.
+    plot : bool, optional
+        Whether to generate plots showing epoch loss and accuracy over training epochs. 
+        Default is False.
+
+    Returns
+    -------
+    best_epoch_index : int
+        Index of the epoch with the minimum loss.
+    epoch_loss : torch.Tensor
+        Tensor containing loss values for each epoch.
+    epoch_argmax_accuracy : torch.Tensor
+        Tensor containing argmax accuracy percentages for each epoch.
+    """
+    output_pop = network.output_pop
+
+    epoch_loss = []
+    epoch_argmax_accuracy = []
+
+    if output_pop.activity_history.dim() > 2:
+        output_history = output_pop.activity_history[network.sorted_sample_indexes, -1, :]
+    else:
+        output_history = output_pop.activity_history[network.sorted_sample_indexes, :]
+
+    if sorted_output_idx is not None:
+        output_history = output_history[:, sorted_output_idx]
+    start = 0
+    while start < output_history.shape[0]:
+        end = start + target.shape[0]
+        epoch_output = output_history[start:end, :]
+        loss = network.criterion(epoch_output, target)
+        epoch_loss.append(loss.item())
+        start += target.shape[0]
+        accuracy = torch.sum(torch.argmax(epoch_output, axis=1) == torch.argmax(target, axis=1))
+        epoch_argmax_accuracy.append(accuracy.item() / target.shape[0] * 100.)
+
+    epoch_loss = torch.tensor(epoch_loss)
+    epoch_argmax_accuracy = torch.tensor(epoch_argmax_accuracy)
+    print(epoch_loss.shape)
+    best_epoch_index = torch.where(epoch_loss == torch.min(epoch_loss))[0][0]
+
+    if plot:
+        fig = plt.figure()
+        plt.plot(epoch_loss)
+        plt.xlabel('Training epochs')
+        plt.ylabel('MSE loss')
+        plt.title('Epoch training loss')
+        fig.tight_layout()
+        fig.show()
+
+        fig = plt.figure()
+        plt.plot(epoch_argmax_accuracy)
+        plt.xlabel('Training epochs')
+        plt.ylabel('% correct argmax')
+        plt.title('Argmax accuracy')
+        fig.tight_layout()
+        fig.show()
+
+    return best_epoch_index, epoch_loss, epoch_argmax_accuracy
+
+
+def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=None, store_history=False,
+                                           plot=False, status_bar=False, title=None):
+    """
+    Assumes network has been trained with store_params=True. Evaluates test_loss at each train step in the
+    param_history.
+    :param network:
+    :param test_dataloader:
+    :param sorted_output_idx: tensor of int
+    :param store_history: bool
+    :param plot: bool
+    :param status_bar: bool
+    :param title: str
+    """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+    assert len(network.param_history) > 0, 'Network must contain a stored param_history'
+
+    idx, test_data, test_target = next(iter(test_dataloader))
+    test_data = test_data.to(network.device)
+    test_target = test_target.to(network.device)
+    test_loss_history = []
+    test_accuracy_history = []
+    num_patterns = test_data.shape[0]
+
+    if store_history:
+        network.reset_history()
+
+    if status_bar:
+        iter_param_history = tqdm(network.param_history, desc='Test history')
+    else:
+        iter_param_history = network.param_history
+    for state_dict in iter_param_history:
+        network.load_state_dict(state_dict)
+        output = network.forward(test_data, store_history=store_history, no_grad=True)
+        if sorted_output_idx is not None:
+            output = output[:, sorted_output_idx]
+        test_loss_history.append(network.criterion(output, test_target).item())
+        accuracy = 100 * torch.sum(torch.argmax(output, dim=1) ==
+                                   torch.argmax(test_target, dim=1)) / num_patterns
+        test_accuracy_history.append(accuracy.item())
+
+    network.test_loss_history = torch.tensor(test_loss_history).cpu()
+    network.test_accuracy_history = torch.tensor(test_accuracy_history).cpu()
+
+    if title is None:
+        title_str = ''
+    else:
+        title_str = ': %s' % str(title)
+
+    if plot:
+        fig = plt.figure()
+        plt.plot(network.param_history_steps, network.test_loss_history)
+        plt.xlabel('Training steps')
+        plt.ylabel('Test loss')
+        fig.suptitle('Test loss%s' % title_str)
+        fig.tight_layout()
+        fig.show()
+
+        fig = plt.figure()
+        plt.plot(network.param_history_steps, network.test_accuracy_history)
+        plt.xlabel('Training steps')
+        plt.ylabel('Test accuracy')
+        fig.suptitle('Test accuracy%s' % title_str)
+        fig.tight_layout()
+        fig.show()
+
+    return network.test_loss_history, network.test_accuracy_history
+
+
 def compute_dParam_history(network):
     dParam_history = {name: [] for name in network.state_dict()}
 
@@ -1186,18 +1329,33 @@ def compute_act_weighted_avg(population, dataloader):
 def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, softplus=False, export=False,
                                     export_path=None, overwrite=False, test_dataloader=None):
     """
-    Use the 'activation maximization' method to compute receptive fields for all units in the population
+    Use the 'activation maximization' method to compute receptive fields for all units in the population.
 
-    :param population:
-    :param num_units:
-    :param sigmoid: if True, use sigmoid activation function for the input images;
-                    if False, returns unfiltered receptive fields and activities from act_weighted_avg images
-    :param softplus: if True, use softplus activation function for the input images;
-    :param export: bool
-    :param export_path: str (path)
-    :param overwrite: bool
-    :param test_dataloader:
-    :return:
+    Parameters
+    ----------
+    population : object
+        The neural population for which to compute receptive fields.
+    num_units : int, optional
+        Number of units to process. If None or greater than population size, 
+        uses all units in the population.
+    sigmoid : bool, default False
+        If True, applies sigmoid activation function to input images. 
+        If False, returns unfiltered receptive fields and activities.
+    softplus : bool, default False
+        If True, applies softplus activation function to input images.
+    export : bool, default False
+        Whether to save the computed receptive fields to file.
+    export_path : str, optional
+        File path for saving/loading data. Required if export is True.
+    overwrite : bool, default False
+        Whether to overwrite existing saved data.
+    test_dataloader : object, optional
+        DataLoader for test data. If None, MNIST dataloader will be created.
+
+    Returns
+    -------
+    torch.Tensor
+        Computed receptive fields for the specified units.
     """
 
     if export and overwrite is False:
@@ -1420,81 +1578,52 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
 
 def compute_dendritic_state_dynamics(network):
     """
-    Compute dendritic state dynamics from parameter and activity history of a network.
+    Compute forward and backward activity and dendritic state dynamics for each population in the network.
 
     Parameters
     ----------
-    network : EIANN.Network object
-        Neural network object containing populations, parameter history, and activity history.
-        Must be trained with store_history=True and store_params=True
+    network : :class:'EIANN._network.Network'
+        Neural network object containing stored dynamics (forward activity_dynamics and backward_steps_activity)
 
     Returns
     -------
-    dict
-        Dictionary containing dendritic dynamics data for each population.
-        Structure:
-        {population_name: {'forward_dendritic_state_history_dynamics': ndarray,
-                            'backward_dendritic_state_history_dynamics': ndarray,
-                            'activity_history': ndarray,
-                            'backward_activity_history': ndarray}}
-
+    activity_dynamics_dict : dict
+        Dictionary mapping population names to tensors of shape (time_steps, n_neurons) representing somatic activity dynamics.
+    dendrite_dynamics_dict : dict
+        Dictionary mapping population names to tensors of shape (time_steps, n_neurons) representing dendritic input dynamics.
     Notes
-    -----
-    This function iterates through the network's parameter history and computes
-    dendritic state dynamics for each population that has dendritic states.
-
-    For each population:
-    - Initializes forward and backward dendritic state history dynamics tensors
-    - For output populations: uses stored backward dendritic state history
-    - For other populations: computes dynamics by summing projections from:
-        - Forward projections: using pre-population activity history
-        - Recurrent projections: handling temporal offsets between forward/backward phases
-
-    Only processes projections targeting 'dend' or 'dendrite' compartments.
-    Requires pre-populations to have backward_activity_history for proper computation.
+    -----   
+    - Assumes at least one forward and backward pass has already been run with store_dynamics=True to populate activity_dynamics and backward_steps_activity.
+    - Dendritic input dynamics are computed by summing synaptic inputs from all afferent projections targeting the dendritic compartment.
     """
-    print('Computing dendritic state dynamics from param and activity history...')
-    dendritic_dynamics_dict = {}
+    # Compute somatic activity dynamics
+    # (combine forward and backward activity dynamics into a single tensor)
+    activity_dynamics_dict = {}
+    for population in network.populations.values():
+        activity_dynamics_dict[population.fullname] = []
+        activity_dynamics_dict[population.fullname].extend(population.activity_dynamics) # Forward phase activity
+        if hasattr(population, 'backward_steps_activity'):
+            activity_dynamics_dict[population.fullname].extend(torch.stack(population.backward_steps_activity)) # Backward phase activity
+        activity_dynamics_dict[population.fullname] = torch.stack(activity_dynamics_dict[population.fullname])
 
-    if len(network.param_history_steps) == 0:
-        raise ValueError("Network must be trained with store_history=True and store_params=True")
+    # Compute dendritic input dynamics
+    dendrite_dynamics_dict = {}
+    for population in network.populations.values():
+        if not hasattr(population,'dendritic_state'):
+            continue
+        total_dend_input = []
+        for projection in population:
+            if projection.compartment in ['dend', 'dendrite']:
+                pre_activity = activity_dynamics_dict[projection.pre.fullname]
+                synaptic_input = projection(pre_activity.type(torch.float32))
+                if projection.direction=='R': # Delay input by 1 timestep
+                    synaptic_input = np.roll(synaptic_input, 1, axis=0)
+                    synaptic_input[0] = 0
+                total_dend_input.append(synaptic_input)
+        if len(total_dend_input) > 0:
+            dendrite_dynamics_dict[population.fullname] = np.stack(total_dend_input).sum(axis=0) # Sum total synaptic input to dend during backward phase
 
-    for i, (param_step, state_dict) in tqdm(enumerate(zip(network.param_history_steps, network.prev_param_history))):
-        network.load_state_dict(state_dict)
-
-        # Compute dendritic state history dynamics
-        for population in network.populations.values():
-            if not hasattr(population,'dendritic_state'):
-                continue
-            elif not hasattr(population, 'forward_dendritic_state_history_dynamics'):
-                # Initialize dendritic state history dynamics
-                population.forward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history[network.param_history_steps])
-                population.backward_dendritic_state_history_dynamics = torch.zeros_like(population.activity_history[network.param_history_steps])
-
-            dendritic_dynamics_dict[population.fullname] = {"forward_dendritic_state_history_dynamics": population.forward_dendritic_state_history_dynamics,
-                                                            "backward_dendritic_state_history_dynamics": population.backward_dendritic_state_history_dynamics,
-                                                            "activity_history": population.activity_history,
-                                                            "backward_activity_history": population.backward_activity_history}
-
-            if population is network.output_pop:
-                population.backward_dendritic_state_history_dynamics[i] = population.backward_dendritic_state_history[param_step] # Output dendritic state is fixed to output error, does not have dynamics
-            else:
-                for projection in population:
-                    if projection.compartment in ['dend', 'dendrite']:
-                        assert hasattr(projection.pre, 'backward_activity_history'), f"{projection.pre.fullname} does not have backward activity history"
-                        assert projection.pre.backward_activity_history is not None, f"{projection.pre.fullname} does not have backward activity history"
-                        if projection.direction in ['forward', 'F']:
-                            population.forward_dendritic_state_history_dynamics[i] += projection(projection.pre.activity_history[param_step])
-                            population.backward_dendritic_state_history_dynamics[i] += projection(projection.pre.backward_activity_history[param_step])
-                        elif projection.direction in ['recurrent', 'R']:
-                            assert hasattr(projection.pre, 'backward_activity_history'), f"{projection.pre.fullname} does not have backward activity history"
-                            population.forward_dendritic_state_history_dynamics[i,1:] += projection(projection.pre.activity_history[param_step,:-1])
-                            population.backward_dendritic_state_history_dynamics[i,0] += projection(projection.pre.activity_history[param_step,-1]) # Start of backward phase: recurrent connections refer to last activity of forward phase
-                            population.backward_dendritic_state_history_dynamics[i,1:] += projection(projection.pre.backward_activity_history[param_step,:-1])
-
-    for key, value in dendritic_dynamics_dict.items():
-        dendritic_dynamics_dict[key] = {k: v.detach().clone().numpy() for k, v in value.items() if v is not None}
-    return dendritic_dynamics_dict
+    return activity_dynamics_dict, dendrite_dynamics_dict
 
 
 def compute_spiral_decisions_data(network, test_dataloader):

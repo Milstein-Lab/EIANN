@@ -641,61 +641,8 @@ def plot_dynamics_all_seeds(data_dict, model_dict, ax):
 # Multi-panel figure generation
 ########################################################################################################
 
-def plot_dynamics_example(model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=False):
-    model_key = "bpLike_WT_hebbdend_eq"
-    model_dict = model_dict_all[model_key]
-    network_name = model_dict['config'].split('.')[0] + "_dynamics"
-    hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
 
-    # Open hdf5 and check if the dynamics data already exists      
-    if not os.path.exists(hdf5_path):
-        recompute = True
-
-    if recompute in ['all', 'dendritic_dynamics_dict']:
-        print(f"Computing dynamics for {network_name}...")
-        saved_network_path = saved_network_path_prefix + "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_66049_257_complete_dynamics.pkl"        
-        if not os.path.exists(saved_network_path):
-            config_path = config_path_prefix + "20240516_EIANN_2_hidden_mnist_BP_like_config_2L_complete_optimized_dynamics.yaml"
-            network = ut.build_EIANN_from_config(config_path, network_seed=66049)
-            train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = ut.get_MNIST_dataloaders(sub_dataloader_size=20_000)
-            data_generator.manual_seed(257)
-            network.train(train_sub_dataloader, 
-                            epochs=1,
-                            samples_per_epoch=20_000,
-                            store_history=True, 
-                            store_dynamics=True,
-                            store_params=True,
-                            store_params_interval=(0,-1,100),
-                            status_bar=True)
-            ut.save_network(network, saved_network_path)
-        else:
-            network = ut.load_network(saved_network_path)
-        dendritic_dynamics_dict = ut.compute_dendritic_state_dynamics(network)
-        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='dendritic_dynamics_dict', data=dendritic_dynamics_dict, file_path=hdf5_path, overwrite=True)
-        ut.save_plot_data(network.name, 'retrained_with_dynamics', data_key='param_history_steps', data=network.param_history_steps, file_path=hdf5_path, overwrite=True)
-
-    print("Generating figure...")
-
-    fig = plt.figure(figsize=(5.5, 9))
-    gs_axes = gs.GridSpec(nrows=2, ncols=1, figure=fig,                        
-                       left=0.68,right=0.97,
-                       top=0.86, bottom = 0.65,
-                       wspace=0.3, hspace=0.5)
-    axes = [fig.add_subplot(gs_axes[i,0]) for i in range(2)]
-    with h5py.File(hdf5_path, 'r') as f:
-        data_dict = f[network_name]['retrained_with_dynamics']
-        dendritic_dynamics_dict  = data_dict['dendritic_dynamics_dict']
-        param_history_steps = data_dict['param_history_steps'][:]
-
-        pt.plot_network_dynamics_example(param_history_steps, dendritic_dynamics_dict, population="H2E", units=[0,7], t=5000, axes=axes)
-
-    if save is not None:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-
-
-
-def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                    
                        left=0.049,right=0.95,
@@ -772,7 +719,7 @@ def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, confi
         fig.savefig(f"figures/{save}.png", dpi=300)
 
 
-def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,            
                        left=0.049,right=0.95,
@@ -846,7 +793,7 @@ def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_fig4(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_fig4(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=2, ncols=2, figure=fig,                    
                        left=0.04,right=0.6,
@@ -921,7 +868,7 @@ def generate_fig4(model_dict_all, model_list_heatmaps, model_list_metrics, confi
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def fig4_spirals(model_dict_all, model_list_spirals, model_list_metrics, spiral_type='scatter', config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, recompute=None):
+def fig4_spirals(model_dict_all, model_list_spirals, model_list_metrics, spiral_type='scatter', config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/saved_network_pickles/spiral/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=1, ncols=4, figure=fig,                    
                        left=0.1,right=0.9,
@@ -961,7 +908,7 @@ def fig4_spirals(model_dict_all, model_list_spirals, model_list_metrics, spiral_
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_fig5(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_fig5(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                       
                        left=0.1,right=0.9,
@@ -1007,7 +954,7 @@ def generate_fig5(model_dict_all, model_list, config_path_prefix="network_config
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 2.4))
     axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                    
                        left=0.28,right=0.95,
@@ -1056,7 +1003,7 @@ def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="
 
 
 
-def generate_figS1(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=False):
+def generate_figS1(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=False):
     fig = plt.figure(figsize=(5.5, 4))
     axes = gs.GridSpec(nrows=len(model_list), ncols=1, figure=fig,                       
                        left=0.1,right=0.95,
@@ -1080,7 +1027,7 @@ def generate_figS1(model_dict_all, model_list, config_path_prefix="network_confi
         fig.savefig(f"figures/{save}.svg", dpi=300)
             
 
-def generate_figS2(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_figS2(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=6, figure=fig,                       
                        left=0.049,right=0.98,
@@ -1148,7 +1095,7 @@ def generate_figS2(model_dict_all, model_list_heatmaps, model_list_metrics, conf
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_figS3(model_dict_all, model_list, population, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_figS3(model_dict_all, model_list, population, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 5))
     axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,
                        left=0.07,right=0.94,
@@ -1294,7 +1241,7 @@ def generate_figS3(model_dict_all, model_list, population, config_path_prefix="n
         fig.savefig(f"figures/{save}_{population}.svg", dpi=300)
 
 
-def generate_model_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
+def generate_model_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
     mm = 1/25.4 #convert mm to inches
     num_rows = len(model_list)
     fig_height = num_rows*6.5*mm + 10*mm
@@ -1933,11 +1880,6 @@ def main(figure, recompute):
         all_spiral_models = [model_key for model_key in all_models if "spiral" in model_key]
         generate_hdf5_all_seeds(all_spiral_models, model_dict_all, config_path_prefix="network_config/spiral/", saved_network_path_prefix=saved_network_path_prefix+"spiral/", recompute=recompute)
         recompute = None
-
-    # Diagrams + example dynamics
-    if figure in ["all", "fig1"]:
-        figure_name = "dynamics_example_plots"
-        plot_dynamics_example(model_dict_all, save=figure_name, recompute=recompute)
 
     # Backprop models
     if figure in ["all", "fig2"]:
