@@ -31,6 +31,14 @@ van_bp_zero_bias_lrf:
     H1_init_weight_scale: 1.5585121437688132
     H2_init_weight_scale: 0.44987402300224477
     Output_init_weight_scale: 3.1333605953440897
+van_bp_0_hidden:
+    #    accuracy: 32.6344
+    #    loss: 0.081901506
+    # after 10 full epochs:
+    #    accuracy: 37.802002
+    #    loss: 0.078456685
+    Output_learning_rate: 0.00026772214963131306
+    Output_init_weight_scale: 0.01494359657345708
 bpDale_F_learned_bias:
     #    accuracy: 32.324798583984375
     #    dynamics_residuals: 0.0
@@ -175,6 +183,11 @@ DTP_5J_zero_bias_lrf:
     #    dynamics_residuals: 0.0
     #    loss: 0.08114281296730042
     #    mean_forward_dend_loss: 0.010765112936496735
+    # after 10 full epochs:
+    #    accuracy: 38.711002
+    #    dynamics_residuals: 0.0
+    #    loss: 0.07615817
+    #    mean_forward_dend_loss: 0.016161685809493065
     H1_E_Input_E_init_weight_scale: 1.2515801564426885
     H2_E_H1_E_init_weight_scale: 0.9847368481970282
     H_E_E_learning_rate: 0.004531157096362757
