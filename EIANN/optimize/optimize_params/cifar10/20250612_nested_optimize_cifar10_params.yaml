@@ -142,6 +142,18 @@ bpDale_G_zero_bias_lrf:
     Output_I_Output_I_init_weight_scale: 1.4046445521253732
     H_I_size: 50.0
     Output_I_size: 10.0
+bpDale_G_0_hidden:
+    #    accuracy: 32.40979766845703
+    #    dynamics_residuals: 0.0
+    #    loss: 0.08170308917760849
+    Output_E_E_learning_rate: 0.0007153678147853256
+    Output_E_Input_E_init_weight_scale: 0.6579056672317793
+    Output_E_Output_I_init_weight_scale: 0.4253214019378066
+    Output_I_Input_E_init_weight_scale: 1.212114775122497
+    Output_I_Output_E_init_weight_scale: 4.007588526770189
+    Output_I_Output_I_init_weight_scale: 0.5589125284745857
+    Output_I_size: 10.0
+
 DTP_5J_zero_bias:
     #    accuracy: 26.902999877929688
     #    dynamics_residuals: 0.0
