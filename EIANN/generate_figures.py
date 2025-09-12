@@ -71,7 +71,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     seed = f"{network_seed}_{data_seed}"
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics',
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'noise_sensitivity',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
@@ -80,7 +80,6 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         variables_to_save.append('test_accuracy_history_extended')
     if 'mnist' in config_path:
         variables_to_save.extend([f"metrics_dict_{population.fullname}" for population in network.populations.values()])
-        # variables_to_save.extend([f"maxact_receptive_fields_{population.fullname}" for population in network.populations.values() if population.name=='E' and population.fullname!='InputE'])
     if 'spiral' in config_path:
         variables_to_save.extend(['spiral_decision_data_dict'])
 
@@ -160,6 +159,12 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         percent_correct = ut.compute_test_accuracy(output, pattern_labels)
         ut.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=hdf5_path, overwrite=True)
         
+    # Noise sensitivity
+    if 'noise_sensitivity' in variables_to_recompute:
+        noise_stds = np.arange(0, 2, 0.1)
+        accuracy_list = ut.compute_noise_sensitivity(network, noise_stds=noise_stds)
+        ut.save_plot_data(network.name, network.seed, data_key='noise_sensitivity', data=(noise_stds, accuracy_list), file_path=hdf5_path, overwrite=True)
+
     # Receptive fields and metrics
     for population in network.populations.values():
         if f"metrics_dict_{population.fullname}" in variables_to_recompute:

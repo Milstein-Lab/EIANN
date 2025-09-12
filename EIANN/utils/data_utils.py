@@ -376,9 +376,12 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     return None
 
 
-def delete_plot_data(variable_name, file_name, file_path_prefix="../data/"):
+import subprocess
+import tempfile
+import shutil
+def delete_plot_data(variable_name, file_name, file_path_prefix="../data/model_hdf5_plot_data/"):
     """
-    Delete a specific variable from an HDF5 file.
+    Delete a specific variable from an HDF5 file and repack to reclaim disk space.
 
     Parameters
     ----------
@@ -387,18 +390,88 @@ def delete_plot_data(variable_name, file_name, file_path_prefix="../data/"):
     file_name : str
         Name of the HDF5 file.
     file_path_prefix : str, optional
-        Path prefix for the file location. Default is '../data/'.
+        Path prefix for the file location.
     """
     file_path = file_path_prefix + file_name
-    if os.path.exists(file_path):
-        with h5py.File(file_path, 'a') as hdf5_file:
-            for network_name in hdf5_file.keys():
-                for seed in hdf5_file[network_name]:
-                    if variable_name in hdf5_file[network_name][seed]:
-                        del hdf5_file[network_name][seed][variable_name]
-                        print(f"Deleted '{variable_name}' from {file_path.split('/')[-1]}, seed: {seed}")
-                    else:
-                        print(f"Variable '{variable_name}' not found in {file_path.split('/')[-1]}, seed: {seed}")
+    if not os.path.exists(file_path):
+        print(f'File not found: {file_path}')
+        return
+    original_size = os.path.getsize(file_path)
+
+    # First pass: delete the variable(s)
+    with h5py.File(file_path, 'a') as hdf5_file:
+        for network_name in list(hdf5_file.keys()):
+            if variable_name == network_name:
+                del hdf5_file[network_name]
+                print(f"Deleted entire network group '{network_name}' from {file_name}")
+                continue
+            for seed in list(hdf5_file[network_name].keys()):
+                if variable_name == seed:
+                    del hdf5_file[network_name][seed]
+                    print(f"Deleted '{variable_name}' from {file_name}, seed: {seed}")
+                
+                seed_group = hdf5_file[network_name][seed]
+                if variable_name in seed_group:
+                    del seed_group[variable_name]
+                    print(f"Deleted '{variable_name}' from {file_name}, seed: {seed}")
+                else:
+                    del_counter = 0
+                    for subgroup_name in list(seed_group.keys()):
+                        obj = seed_group[subgroup_name]
+                        if isinstance(obj, h5py.Group) and variable_name in obj:
+                            del obj[variable_name]
+                            del_counter += 1
+                            print(f"Deleted '{variable_name}' from {file_name}, seed: {seed}, subgroup: {subgroup_name}")
+                    if del_counter == 0:
+                        print(f"Variable '{variable_name}' not found in {file_name}, seed: {seed}")
+                        return
+
+    # Second pass: repack file to reclaim disk space
+    tmp_fd, tmp_file = tempfile.mkstemp(suffix=".h5")
+    os.close(tmp_fd)
+    try:
+        subprocess.run(["h5repack", file_path, tmp_file], check=True)
+        shutil.move(tmp_file, file_path)
+        print(f"Repacked file: {file_path.split('/')[-1]}")
+        if original_size < 1e9:
+            print(f"Original file size: {original_size / 1e6:.4f} MB")
+        else:
+            print(f"Original file size: {original_size / 1e9:.4f} GB")
+        new_size = os.path.getsize(file_path)
+        if new_size < 1e9:
+            print(f"New file size: {new_size / 1e6:.4f} MB")
+        else:
+            print(f"New file size: {new_size / 1e9:.4f} GB")
+        if new_size < original_size:
+            reclaimed = original_size - new_size
+            if reclaimed < 1e9:
+                print(f"Disk space reclaimed: {reclaimed / 1e6:.4f} MB")
+            else:
+                print(f"Disk space reclaimed: {reclaimed / 1e9:.4f} GB")
+    finally:
+        if os.path.exists(tmp_file):
+            os.remove(tmp_file)
+
+
+def print_hdf5_dataset_sizes(file_path):
+    """
+    Print the sizes of datasets in an HDF5 file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the HDF5 file.
+    """
+    def print_dataset_sizes(name, obj):
+        if isinstance(obj, h5py.Dataset):
+            size_bytes = obj.size * obj.dtype.itemsize  # logical size
+            storage_bytes = obj.id.get_storage_size()   # actual storage on disk
+            if size_bytes/1e6 > 1:
+                print(f"{name.split('/')[-2:]}: shape={obj.shape}, "
+                    f"storage_size={storage_bytes/1e6:.2f} MB")
+
+    with h5py.File(file_path, "r") as f:
+        f.visititems(print_dataset_sizes)
 
 
 def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None):
