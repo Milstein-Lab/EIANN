@@ -82,6 +82,7 @@ class Network(nn.Module):
         self.seed = seed
         if self.seed is not None:
             torch.manual_seed(self.seed)
+        self.run_time = None
 
         self.backward_methods = []
         self.module_dict = nn.ModuleDict()

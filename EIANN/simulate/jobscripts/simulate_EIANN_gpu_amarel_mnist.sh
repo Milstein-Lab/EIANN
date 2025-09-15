@@ -48,7 +48,7 @@ conda activate eiann
 python EIANN/simulate/simulate_EIANN_mnist.py --disp --export \
 --config-file-path=EIANN/simulate/config/mnist/simulate_EIANN_mnist_supervised_config.yaml \
 --network-config-file-path=EIANN/network_config/mnist/20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml \
---output-dir=/scratch/${USER}/data/eiann
+--output-dir=/scratch/${USER}/data/eiann 
 EOT
 
 # Submit job:
