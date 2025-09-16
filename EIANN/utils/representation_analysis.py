@@ -225,6 +225,26 @@ def compute_test_activity_dynamics(network, dataloader, plot=False, normalize=Tr
     return pop_dynamics_dict
 
 
+def compute_noise_sensitivity(network, noise_stds=np.arange(0, 2, 0.1)):
+    """
+    Compute noise sensitivity of a trained network on MNIST by adding Gaussian noise to the input
+    and measuring test accuracy.
+
+    Parameters
+    ----------
+    network : :class:`EIANN._network.Network`
+        The trained neural network to evaluate.
+    """
+    accuracy_list = []
+    for noise_std in tqdm(noise_stds):
+        _,_,test_dataloader,_ = data_utils.get_MNIST_dataloaders_with_noise(batch_size='full_dataset', mean=0.0, std=noise_std)
+        pop_activity_dict, pattern_labels = compute_raw_test_activity(network, test_dataloader)
+        output_activity = pop_activity_dict[network.output_pop.fullname].clone()
+        percent_correct = compute_test_accuracy(output_activity, pattern_labels)
+        accuracy_list.append(percent_correct)
+    return accuracy_list
+
+
 def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=None, plot=False):
     """
     This function was designed for a simple 1-hot autoencoder task. Analyze network performance by splitting output activity into epochs
@@ -1277,7 +1297,7 @@ def compute_representation_metrics(population, dataloader, receptive_fields=None
     # active_units_idx = torch.where(total_act > 1e-10)[0] # Only consider units that are active at least once
     selectivity = compute_selectivity(population.activity)
     sparsity = compute_sparsity(population.activity)
-    discriminability = compute_discriminability(population.activity)
+    # discriminability = compute_discriminability(population.activity)
 
     # Compute structure
     if receptive_fields is not None:
@@ -1288,7 +1308,7 @@ def compute_representation_metrics(population, dataloader, receptive_fields=None
 
     metrics_dict = {'sparsity': sparsity, 
                     'selectivity': selectivity,
-                    'discriminability': discriminability, 
+                    # 'discriminability': discriminability, 
                     'structure': structure}
 
     if plot:

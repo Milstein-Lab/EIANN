@@ -69,6 +69,8 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     assert network_seed.isdigit() and data_seed.isdigit(), f"network_seed and data_seed must be numbers, but got {network_seed} and {data_seed}"
     network = ut.build_EIANN_from_config(config_path, network_seed=network_seed)    
     seed = f"{network_seed}_{data_seed}"
+    if recompute == False:
+        recompute = None
 
     # Define which variables to compute
     variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'noise_sensitivity',
@@ -161,7 +163,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         
     # Noise sensitivity
     if 'noise_sensitivity' in variables_to_recompute:
-        noise_stds = np.arange(0, 2, 0.1)
+        noise_stds = np.arange(0, 1.1, 0.1)
         accuracy_list = ut.compute_noise_sensitivity(network, noise_stds=noise_stds)
         ut.save_plot_data(network.name, network.seed, data_key='noise_sensitivity', data=(noise_stds, accuracy_list), file_path=hdf5_path, overwrite=True)
 

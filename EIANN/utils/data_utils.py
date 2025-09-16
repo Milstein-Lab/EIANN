@@ -531,7 +531,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
         return train_dataloader, val_dataloader, test_dataloader, data_generator
 
 
-def get_MNIST_dataloaders_with_noise(sub_dataloader_size=None, batch_size=1, data_dir=None, mean=0.0, std=0.1):
+def get_MNIST_dataloaders_with_noise(sub_dataloader_size=None, batch_size=1, data_dir=None, mean=0.0, std=0.1, seed=42):
     """
     Load MNIST dataset with added Gaussian noise and return custom dataloaders that include sample indices.
 
@@ -563,6 +563,8 @@ def get_MNIST_dataloaders_with_noise(sub_dataloader_size=None, batch_size=1, dat
         root_dir = get_project_root()
         data_dir = root_dir + '/EIANN/data/datasets/MNIST'
         
+    torch.manual_seed(seed)
+
     # Load dataset
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Lambda(torch.flatten)])
     MNIST_train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True, transform=tensor_flatten)
