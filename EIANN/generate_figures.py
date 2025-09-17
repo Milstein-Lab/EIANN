@@ -50,6 +50,20 @@ plt.rcParams.update({'font.size': 6,
 # Plot data generation (hdf5 and csv files of computed model analyses)
 ########################################################################################################
 
+def load_model_dict(csv_file_path=None):
+    # Load model specs from csv file
+    root_dir = ut.get_project_root()
+    if csv_file_path is None:
+        csv_file_path = root_dir + "/EIANN/data/figure_model_specs.csv" 
+    df = pd.read_csv(csv_file_path, index_col=0)
+    df = df.map(lambda x: codecs.decode(x, 'unicode_escape') if isinstance(x, str) else x) # convert special characters like \n
+    model_dict_all = df.transpose().to_dict()
+    seeds = ["66049_257","66050_258", "66051_259", "66052_260", "66053_261"]
+    for model_key in model_dict_all:
+        model_dict_all[model_key]["seeds"] = seeds
+    return model_dict_all
+
+
 def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=None):
     '''
     Loads a network and saves plot-ready processed data into an hdf5 file.
@@ -244,15 +258,28 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='activity_dynamics', data=pop_dynamics_dict, file_path=hdf5_path, overwrite=True)
 
 
-def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix, saved_network_path_prefix, hdf5_path_prefix=None, recompute=None):
+def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix=None, saved_network_path_prefix=None, hdf5_path_prefix=None, recompute=None):
     for model_key in model_list:
         model_dict = model_dict_all[model_key]
-        config_path = config_path_prefix + model_dict['config']
         network_name = model_dict['config'].split('.')[0]
-        if hdf5_path_prefix is None:
-            hdf5_path_prefix = "data/model_hdf5_plot_data/"
 
+        root_dir = ut.get_project_root()
+        if config_path_prefix is None:
+            config_path_prefix = root_dir + "/EIANN/network_config/mnist/"
+        config_path = config_path_prefix + model_dict['config']
+
+        if hdf5_path_prefix is None:
+            hdf5_path_prefix = root_dir + "/EIANN/data/model_hdf5_plot_data/"
         hdf5_path = hdf5_path_prefix + f"plot_data_{network_name}.h5"
+
+        if saved_network_path_prefix is None:
+            # Set path to Box data directory (default path based on OS)
+            if os.name == "posix": # macOS or Linux
+                username = os.environ.get("USER")
+                saved_network_path_prefix = f"/Users/{username}/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/MNIST/"
+            elif os.name == "nt": # Windows
+                username = os.environ.get("USERNAME")
+                saved_network_path_prefix = f"C:/Users/{username}/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/MNIST/"
 
         if not os.path.exists(hdf5_path):
             # If the hdf5 is not available in local data directory, check in Box drive
@@ -650,84 +677,6 @@ def plot_dynamics_all_seeds(data_dict, model_dict, ax):
 ########################################################################################################
 # Multi-panel figure generation
 ########################################################################################################
-
-
-def generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                    
-                       left=0.049,right=0.95,
-                       top=0.95, bottom=0.52,
-                       wspace=0.2, hspace=0.4)
-    metrics_axes = gs.GridSpec(nrows=3, ncols=3, figure=fig,                        
-                       left=0.15,right=0.8,
-                       top=0.95, bottom=0.6,
-                       wspace=0.7, hspace=0.2,
-                       width_ratios=[2.5,1,1])
-
-    ax_accuracy    = fig.add_subplot(metrics_axes[2, 0])  
-    ax_selectivity = fig.add_subplot(metrics_axes[2, 1])
-    ax_structure   = fig.add_subplot(metrics_axes[2, 2])
-
-    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics)) # remove duplicates
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    for i,model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-
-            if model_key in model_list_heatmaps:
-                seed = model_dict['seeds'][0] # example seed to plot
-                population = 'H2E'
-
-                # Activity plots: batch accuracy of each population to the test dataset
-                ax = fig.add_subplot(axes[0, i])
-                average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                num_units = average_pop_activity_dict[population].shape[1]
-
-                pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, sort=True, ax=ax, cbar=True)
-                ax.set_yticks([0,num_units-1])
-                ax.set_yticklabels([1,num_units])
-                ax.set_ylabel(f'{population} unit', labelpad=-8)
-                ax.set_title(model_dict["display_name"])
-                if i>0:
-                    ax.set_ylabel('')
-                    ax.set_yticklabels([])
-
-                # Receptive field plots
-                receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
-                num_units = 10
-                temp_ax = fig.add_subplot(axes[1, i])
-                pos = temp_ax.get_position()
-                temp_ax.remove()
-                rf_axes = fig.add_gridspec(5,5,left=pos.x0, right=pos.x1-0.04, bottom=pos.y0-0.02, top=pos.y1+0.01, wspace=0.1, hspace=0.1)
-                ax_list = []
-                for j in range(num_units):
-                    _ax = fig.add_subplot(rf_axes[j])
-                    ax_list.append(_ax)
-                preferred_classes = np.argmax(average_pop_activity_dict[population], axis=0)
-                im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
-                fig_width, fig_height = fig.get_size_inches()
-                cax = fig.add_axes([ax_list[0].get_position().x0, _ax.get_position().y0-0.08/fig_height, 0.05, 0.03/fig_height])
-                fig.colorbar(im, cax=cax, orientation='horizontal')
-
-            if model_key in model_list_metrics:
-                plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy, legend=True)
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin', side='low')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E'], ax=ax_structure, metric_name='structure', plot_type='violin', side='low')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin', side='high')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H2E'], ax=ax_structure, metric_name='structure', plot_type='violin', side='high')
-
-    if save is not None:
-        # fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-        fig.savefig(f"figures/{save}.png", dpi=300)
-
 
 def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
@@ -1890,14 +1839,6 @@ def main(figure, recompute):
         all_spiral_models = [model_key for model_key in all_models if "spiral" in model_key]
         generate_hdf5_all_seeds(all_spiral_models, model_dict_all, config_path_prefix="network_config/spiral/", saved_network_path_prefix=saved_network_path_prefix+"spiral/", recompute=recompute)
         recompute = None
-
-    # Backprop models
-    if figure in ["all", "fig2"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list_heatmaps = ["vanBP", "bpDale_learned", "HebbWN_topsup"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "Fig2_vanBP_bpDale_hebb"
-        generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Analyze DendI
     if figure in ["all", "fig3"]:

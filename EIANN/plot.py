@@ -997,6 +997,7 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
         im = _ax.imshow(avg_pop_activity.T, aspect='auto', interpolation='none', vmin=0)
         if cbar:
             cbar = plt.colorbar(im, ax=_ax)
+            _ax._colorbars.append(cbar)
         _ax.set_xticks(range(avg_pop_activity.shape[0]))
         _ax.set_xlabel('Labels')
         _ax.set_ylabel(f'{pop_name} unit')
