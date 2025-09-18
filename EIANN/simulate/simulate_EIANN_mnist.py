@@ -261,7 +261,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     if context.full_analysis:
         if 'H1' in network.layers:
             metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
-            plot_representation_metrics(metrics_dict)
+            # plot_representation_metrics(metrics_dict) # TODO: Uncomment later
         test_loss_history, test_accuracy_history = \
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
                                                    plot=plot, status_bar=context.status_bar)

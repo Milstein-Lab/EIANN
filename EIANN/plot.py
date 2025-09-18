@@ -16,6 +16,8 @@ from copy import copy
 
 import EIANN.utils as ut
 
+# TODO: Need to move things with .cpu()
+
 def update_plot_defaults():
     plt.rcParams.update({'font.size': 7,
                      'axes.spines.right': False,

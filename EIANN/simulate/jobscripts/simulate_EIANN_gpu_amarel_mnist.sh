@@ -45,7 +45,7 @@ cd $HOME/EIANN/
 source ~/miniconda/etc/profile.d/conda.sh
 conda activate eiann
 
-python EIANN/simulate/simulate_EIANN_mnist.py --disp --export \
+python EIANN/simulate/simulate_EIANN_mnist.py --export \
 --config-file-path=EIANN/simulate/config/mnist/simulate_EIANN_mnist_supervised_config.yaml \
 --network-config-file-path=EIANN/network_config/mnist/20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml \
 --output-dir=/scratch/${USER}/data/eiann 

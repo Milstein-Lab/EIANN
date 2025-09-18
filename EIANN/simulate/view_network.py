@@ -1,7 +1,7 @@
 from EIANN import utils as ut
 
-network_pkl_name = '20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized_66053_261'
-path = f'/scratch/yc1376/data/eiann/{network_pkl_name}.pkl'
+network_pkl_name = '20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized_66049_257.pkl'
+path = f'/scratch/yc1376/data/eiann/{network_pkl_name}'
 net = ut.load_network(path)
 
 name = path.split('/')[-1].split('.')[0]
@@ -15,7 +15,14 @@ print(f'Network Run Time: {net.run_time} sec')
 
 
 
-# Tracking networks:
+# ----- Tracking networks ----- 
 
-# TODO: Run van bp relu again and make sure time works
-# TODO: Add _network.py and backprop.py to copilot and ask for gpu boosts
+# van_bp (CPU)
+# - Final Val Accuracy: 96.52999877929688
+# - Final Val Loss: 0.008667627349495888
+# - Using Device: cpu
+# - Network Run Time: 116.58439445495605 sec
+# - 5 Networks Runtime: 580 sec
+
+# van_bp (GPU)
+# TODO: Running into pkl opening error but pkl did successfully load

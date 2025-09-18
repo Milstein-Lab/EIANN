@@ -122,7 +122,7 @@ def save_network(network, path=None, dir='saved_networks', file_name_base=None, 
         print(f"Saved network to '{path}'")
 
 
-def load_network(path, disp=True):
+def load_network(path, disp=True, map_location=None): # TODO: Did not test yet
     """
     Load a neural network from a file using dill serialization.
 
@@ -132,6 +132,9 @@ def load_network(path, disp=True):
         Path to the file containing the serialized network.
     disp : bool, optional
         Whether to display loading status messages. Default is True.
+    map_location : str or torch.device, optional
+        Device to map the loaded tensors to. Use 'cpu' to force CPU loading.
+        Default is None (auto-detect based on CUDA availability).
 
     Returns
     -------
@@ -140,8 +143,20 @@ def load_network(path, disp=True):
     """
     if disp:
         print(f"Loading network from '{path}'")
+    
+    # Auto-detect device mapping if not specified
+    if map_location is None:
+        import torch
+        if not torch.cuda.is_available():
+            map_location = 'cpu'
+
+    # Use dill's map_location parameter to handle device mapping
     with open(path, 'rb') as f:
-        network = dill.load(f)
+        if map_location is not None:
+            network = dill.load(f, map_location=map_location)
+        else:
+            network = dill.load(f)
+
     for layer in network:
         for population in layer:
             for attr_name in population.attribute_history_dict:

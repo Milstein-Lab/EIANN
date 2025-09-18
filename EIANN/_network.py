@@ -52,7 +52,7 @@ class Network(nn.Module):
             Whether to print detailed information during initialization.
         """
         super().__init__()
-        self.device = torch.device(device)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.layer_config = layer_config
         self.projection_config = projection_config
         self.training_kwargs = {'learning_rate': learning_rate, 'optimizer': optimizer,
@@ -102,18 +102,18 @@ class Network(nn.Module):
                     pop = Input(self, layer, pop_name, **pop_kwargs)
                 elif 'population_type' in pop_kwargs:
                     if pop_kwargs['population_type'] in ['Conv2D', 'conv2D', 'conv2d']:
-                        pop = Conv2DPopulation(self, layer, pop_name, **pop_kwargs)
+                        pop = Conv2DPopulation(self, layer, pop_name, **pop_kwargs, device=self.device)
                     elif pop_kwargs['population_type'] in ['Flatten', 'flatten']:
-                        pop = FlattenPopulation(self, layer, pop_name, **pop_kwargs)
+                        pop = FlattenPopulation(self, layer, pop_name, **pop_kwargs, device=self.device)
                     elif pop_kwargs['population_type'] in ['MaxPool2D', 'maxpool2D', 'maxpool2d']:
-                        pop = MaxPool2DPopulation(self, layer, pop_name, **pop_kwargs)
+                        pop = MaxPool2DPopulation(self, layer, pop_name, **pop_kwargs, device=self.device)
                     elif pop_kwargs['population_type'] == 'default':
-                        pop = Population(self, layer, pop_name, **pop_kwargs)
+                        pop = Population(self, layer, pop_name, **pop_kwargs, device=self.device)
                     else:
                         raise Exception('EIANN.Network: pop: %s; invalid population_type: %s' %
                                         (pop_name, pop_kwargs['population_type']))
                 else:
-                    pop = Population(self, layer, pop_name, **pop_kwargs)
+                    pop = Population(self, layer, pop_name, **pop_kwargs, device=self.device)
                 layer.append_population(pop)
                 self.populations[pop.fullname] = pop
         
@@ -133,9 +133,9 @@ class Network(nn.Module):
                             projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
                         pre_pop = pre_layer.populations[pre_pop_name]
                         if hasattr(pre_pop, 'image_dim') and pre_pop.image_dim is not None:
-                            projection = Conv2DProjection(pre_pop, post_pop, device=device, **projection_kwargs)
+                            projection = Conv2DProjection(pre_pop, post_pop, device=self.device, **projection_kwargs)
                         else:
-                            projection = Projection(pre_pop, post_pop, device=device, **projection_kwargs)
+                            projection = Projection(pre_pop, post_pop, device=self.device, **projection_kwargs)
                         post_pop.append_projection(projection)
                         post_pop.incoming_projections[projection.name] = projection
                         pre_pop.outgoing_projections[projection.name] = projection
@@ -282,7 +282,7 @@ class Network(nn.Module):
     
         if not hasattr(self, 'input_pop'):
             self.input_pop = next(iter(list(self)[0]))
-        self.input_pop.activity = torch.squeeze(sample)
+        self.input_pop.activity = torch.squeeze(sample).to(self.device)
 
         for t in range(self.forward_steps):
             if (t >= self.forward_steps - self.backward_steps) and not no_grad:
@@ -666,7 +666,7 @@ class Population(object):
     def __init__(self, network, layer, name, size, activation='linear', activation_kwargs=None, tau=None,
                  include_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None,
                  bias_learning_rule=None, bias_learning_rule_kwargs=None, custom_update=None, custom_update_kwargs=None,
-                 output_pop=False):
+                 output_pop=False, device='cpu'):
         """
         Class for population of neurons
 
@@ -705,7 +705,10 @@ class Population(object):
         output_pop : bool, optional
             Whether this population is the output population for computing network loss.
             A single population must be designated as the output population, by default False
+        device : str, optional
+            Device to run computations on ('cpu' or 'cuda'), by default 'cpu'
         """
+        self.device = device
         # Constants
         self.network = network
         self.layer = layer
@@ -737,7 +740,7 @@ class Population(object):
         self.activation = lambda x: activation(x, **activation_kwargs)
 
         # Set bias parameters
-        self.bias = nn.Parameter(torch.zeros(self.size, device=network.device), requires_grad=False)
+        self.bias = nn.Parameter(torch.zeros(self.size, device=self.device), requires_grad=False)
         self.bias_init = bias_init
         if bias_init_args is None:
             bias_init_args = ()
@@ -800,7 +803,7 @@ class Population(object):
         self.outgoing_projections = {}
         self.incoming_projections = {}
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
-        self.reinit(network.device)
+        self.reinit(self.device)
         self.reset_history()
 
     def register_attribute_history(self, attr_name):
@@ -866,6 +869,7 @@ class Population(object):
             self.state = torch.zeros((batch_size, self.size), device=device)
         else:
             self.state = torch.zeros(self.size, device=device)
+        self.bias = self.bias.to(device)
         self.state += self.bias
         self.activity = self.activation(self.state).to(device)
         self.forward_steps_activity = []
