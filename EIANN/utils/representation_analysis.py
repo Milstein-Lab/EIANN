@@ -1247,8 +1247,7 @@ def compute_diag_fisher(network, train_dataloader_CL1_full):
     return diag_fisher
 
 
-def compute_representation_metrics(population, dataloader, receptive_fields=None, plot=False, export=False,
-                                   export_path=None, overwrite=False, dimensions=None):
+def compute_representation_metrics(population, dataloader, receptive_fields=None, plot=False, dimensions=None):
     """
     Compute representation metrics for a population of neurons.
 
@@ -1280,14 +1279,6 @@ def compute_representation_metrics(population, dataloader, receptive_fields=None
             - 'discriminability': Discriminability of population activity.
             - 'structure': Structure of receptive fields (if provided).
     """
-
-    if export and overwrite is False:
-        assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        metrics_dict = data_utils.load_plot_data(population.network.name, population.network.seed,
-                                                data_key=f'metrics_dict_{population.fullname}', file_path=export_path)
-        if metrics_dict is not None:
-            return metrics_dict
-
     network = population.network
     idx, data, target = next(iter(dataloader))
     data.to(network.device)
@@ -1313,12 +1304,6 @@ def compute_representation_metrics(population, dataloader, receptive_fields=None
 
     if plot:
         pt.plot_representation_metrics(metrics_dict)
-
-    if export:
-        assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        data_utils.save_plot_data(population.network.name, network.seed,
-                                  data_key=f'metrics_dict_{population.fullname}', data=metrics_dict,
-                                  file_path=export_path, overwrite=overwrite)
 
     return metrics_dict
 

@@ -87,15 +87,13 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         recompute = None
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'noise_sensitivity',
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'noise_sensitivity', 'metrics_dict',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
         variables_to_save.extend(["binned_mean_forward_dendritic_state", "binned_mean_forward_dendritic_state_steps"])
     if 'extended' in saved_network_path:
         variables_to_save.append('test_accuracy_history_extended')
-    if 'mnist' in config_path:
-        variables_to_save.extend([f"metrics_dict_{population.fullname}" for population in network.populations.values()])
     if 'spiral' in config_path:
         variables_to_save.extend(['spiral_decision_data_dict'])
 
@@ -182,12 +180,19 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='noise_sensitivity', data=(noise_stds, accuracy_list), file_path=hdf5_path, overwrite=True)
 
     # Receptive fields and metrics
-    for population in network.populations.values():
-        if f"metrics_dict_{population.fullname}" in variables_to_recompute:
+    if f"metrics_dict" in variables_to_recompute:
+        metrics_dict = {}
+        for population in network.populations.values():
             receptive_fields = None
             if population.name == "E" and population.fullname != "InputE":
-                receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=hdf5_path, overwrite=True)
-            metrics_dict = ut.compute_representation_metrics(population, test_dataloader, receptive_fields, export=True, export_path=hdf5_path, overwrite=True)
+                data_dict = ut.hdf5_to_dict(file_path=hdf5_path, variable_name=f'{network_name}/{network_seed}_{data_seed}/maxact_receptive_fields_{population.fullname}')
+                if data_dict is None:
+                    receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=hdf5_path, overwrite=True)
+                else:
+                    receptive_fields = torch.tensor(data_dict[f'maxact_receptive_fields_{population.fullname}'])
+            metrics_dict[population.fullname] = ut.compute_representation_metrics(population, test_dataloader, receptive_fields)
+        ut.save_plot_data(network.name, network.seed, data_key='metrics_dict', data=metrics_dict, file_path=hdf5_path, overwrite=True)
+
 
     # Angle vs Backprop
     if set(['angle_vs_bp','angle_vs_bp_stochastic']).intersection(variables_to_recompute):
@@ -385,7 +390,7 @@ def plot_error_all_seeds(data_dict, model_dict, ax, scale='log'):
     #     ax.set_yticks([0, 5, 10], labels=['0%', '5%', '10%'])
 
 
-def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf', side='both'):
+def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf', side='both'):
     """
     Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
 
@@ -473,7 +478,272 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
         ax.scatter(x+x_offset, mean_value, color='tomato', marker='o', s=5, zorder=5, edgecolors='w', linewidth=0.3)
         # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=2, capthick=1, zorder=5)
 
+
+def plot_metric_all_seeds3(data_dict, model_dict, populations_to_plot, ax, metric_name):
+    """
+    Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
+    Data from different populations are plotted as separate overlapping violin plots.
+
+    Parameters:
+        data_dict (dict): Dictionary containing data for different seeds.
+        model_dict (dict): Dictionary containing model metadata (e.g., name, color).
+        populations_to_plot (list): List of population names to extract the metric from.
+        ax (matplotlib.axes.Axes): Matplotlib axis to plot on.
+        metric_name (str): Name of the metric to plot ('sparsity', 'selectivity', or 'structure').
+    """
+    
+    # Collect data separately for each population
+    populations_data = {}
+    for population in populations_to_plot:
+        metric_all_seeds = []
+        for seed in data_dict:
+            if f"metrics_dict_{population}" in data_dict[seed]:
+                metric_one_seed = data_dict[seed][f"metrics_dict_{population}"][metric_name]
+                metric_all_seeds.append(metric_one_seed)
+        populations_data[population] = metric_all_seeds
+    
+    # Check if we have any data
+    total_data_points = sum(sum(len(sublist) for sublist in pop_data) for pop_data in populations_data.values())
+    if total_data_points == 0:
+        return
+
+    # Get existing labels (excluding default numerical labels) to set the x-axis positions
+    labels = [t.get_text() for t in ax.get_xticklabels()]
+    labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
+    if model_dict["label"] not in labels:
+        # Update x-axis labels
+        new_label = True
+        labels = labels + [model_dict["label"]]
+        ax.set_xticks(range(len(labels)))  # Set ticks explicitly
+        ax.set_xticklabels(labels, rotation=45, ha='right')
+        ax.set_ylabel(metric_name.capitalize())
+        ax.set_ylim([-0.03, 1.03])
+    else: 
+        new_label = False
+
+    x = len(labels) - 1
+    x_offset = 0.12
+    if new_label == False:
+        ax.vlines(x, -0.03, 1.03, color='w', linestyle='-', linewidth=0.8)
+
+    # Create separate violin plots for each population 
+    colors = [model_dict["color"]] if len(populations_to_plot) == 1 else plt.cm.Set3(np.linspace(0, 1, len(populations_to_plot)))   
+    for i, population in enumerate(populations_to_plot):
+        if not populations_data[population]:  # Skip if no data for this population
+            continue
+            
+        # Pool all data for this population across seeds
+        pooled_population_data = []
+        seed_means = []
+        for metric_one_seed in populations_data[population]:
+            if metric_one_seed:  # Only process if there's data
+                seed_means.append(np.mean(metric_one_seed))
+                pooled_population_data.extend(metric_one_seed)
         
+        if not pooled_population_data:  # Skip if no pooled data
+            continue
+        
+        # Create the violin plot for this population
+        parts = ax.violinplot(pooled_population_data, positions=[x], showmeans=False, 
+                            showmedians=False, showextrema=False, widths=0.9, side='high')
+        parts['bodies'][0].set_alpha(0.5)
+        parts['bodies'][0].set_facecolor(model_dict["color"])
+        parts['bodies'][0].set_edgecolor(colors[i])
+        parts['bodies'][0].set_linewidth(0.5)
+
+        # Scatter point with the mean for this population
+        mean_value = np.mean(seed_means)
+        error = np.std(seed_means)
+        
+        # Slightly offset scatter points for different populations to avoid complete overlap
+        pop_x_offset = x_offset + (i - len(populations_to_plot)/2 + 0.5) * 0.02
+        ax.scatter(x + pop_x_offset, mean_value, color='tomato', marker='o', s=5, zorder=5, edgecolors='w', linewidth=0.3)
+        ax.errorbar(x + pop_x_offset, mean_value, yerr=error, fmt='none', ecolor='tomato', capsize=0, zorder=5)
+
+    # Add legend if multiple populations
+    if len(populations_to_plot) > 1:
+        legend_elements = []
+        for i, population in enumerate(populations_to_plot):
+            if populations_data[population]:  # Only add to legend if there's data
+                pop_color = colors[i]
+                legend_elements.append(plt.Line2D([0], [0], color=pop_color, lw=4, alpha=0.65, label=population))
+        
+        if legend_elements:
+            ax.legend(handles=legend_elements, loc='upper right', fontsize='small')
+
+
+def plot_metric_all_seeds2(data_dict, model_dict, populations_to_plot, ax, metric_name, side='both'):
+    """
+    Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
+
+    Parameters:
+        data_dict (dict): Dictionary containing data for different seeds.
+        model_dict (dict): Dictionary containing model metadata (e.g., name, color).
+        populations_to_plot (list): List of population names to extract the metric from.
+        ax (matplotlib.axes.Axes): Matplotlib axis to plot on.
+        metric_name (str): Name of the metric to plot ('sparsity', 'selectivity', or 'structure').
+    """
+    metric_all_seeds = []
+    for seed in data_dict:
+        metric_one_seed = []
+        for population in populations_to_plot:
+            metric_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"][metric_name])
+        metric_all_seeds.append(metric_one_seed)
+
+    if sum(len(sublist) for sublist in metric_all_seeds) == 0:
+        return
+
+    # Pool all data into one list
+    pooled_data = []
+    seed_means = []
+    for metric_one_seed in metric_all_seeds:
+        seed_means.append(np.mean(metric_one_seed))
+        pooled_data.extend(metric_one_seed)
+
+    # Get existing labels (excluding default numerical labels) to set the x-axis positions
+    labels = [t.get_text() for t in ax.get_xticklabels()]
+    labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
+    if model_dict["label"] not in labels:
+        # Update x-axis labels
+        new_label = True
+        labels = labels + [model_dict["label"]]
+        ax.set_xticks(range(len(labels)))  # Set ticks explicitly
+        ax.set_xticklabels(labels, rotation=45, ha='right')
+        ax.set_ylabel(metric_name.capitalize())
+        ax.set_ylim([-0.03, 1.03])
+    else: 
+        new_label = False
+
+    x = len(labels) - 1
+    x_offset = 0
+    if new_label == False:
+        ax.vlines(x, -0.03, 1.03, color='w', linestyle='-', linewidth=0.8)
+    if side == 'low':
+        x_offset = -0.12
+    elif side=='high':
+        x_offset = 0.12
+
+    # Create the violin plot
+    parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9, side='high')
+    parts['bodies'][0].set_alpha(0.65)
+    parts['bodies'][0].set_facecolor(model_dict["color"])
+
+    # Scatter on a point with the mean and error bar
+    mean_value = np.mean(seed_means)
+    error = np.std(seed_means) #/ np.sqrt(len(seed_means))
+    # ax.scatter(x, mean_value, color='red', marker='o', s=5, zorder=5)
+    ax.scatter(x+x_offset, mean_value, color='tomato', marker='o', s=5, zorder=5, edgecolors='w', linewidth=0.3)
+    # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=2, capthick=1, zorder=5)
+
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde
+
+def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name):
+    """
+    Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
+    Data from different populations are plotted as separate overlapping violin plots with averaged KDE lines.
+
+    Parameters:
+        data_dict (dict): Dictionary containing data for different seeds.
+        model_dict (dict): Dictionary containing model metadata (e.g., name, color).
+        populations_to_plot (list): List of population names to extract the metric from.
+        ax (matplotlib.axes.Axes): Matplotlib axis to plot on.
+        metric_name (str): Name of the metric to plot ('sparsity', 'selectivity', or 'structure').
+    """
+    
+    # Collect data separately for each population
+    populations_data = {}
+    for population in populations_to_plot:
+        metric_all_seeds = []
+        for seed in data_dict:
+            if f"metrics_dict" in data_dict[seed] and population in data_dict[seed][f"metrics_dict"]:
+                metric_one_seed = data_dict[seed][f"metrics_dict"][population][metric_name]
+                metric_all_seeds.append(metric_one_seed)
+        populations_data[population] = metric_all_seeds
+    
+    # Check if we have any data
+    total_data_points = sum(sum(len(sublist) for sublist in pop_data) for pop_data in populations_data.values())
+    if total_data_points == 0:
+        return
+
+    # Get existing labels (excluding default numerical labels) to set the x-axis positions
+    labels = [t.get_text() for t in ax.get_xticklabels()]
+    labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
+    if model_dict["label"] not in labels:
+        # Update x-axis labels
+        new_label = True
+        labels = labels + [model_dict["label"]]
+        ax.set_xticks(range(len(labels)))  # Set ticks explicitly
+        ax.set_xticklabels(labels, rotation=45, ha='right')
+        ax.set_ylabel(metric_name.capitalize())
+        ax.set_ylim([-0.03, 1.03])
+    else: 
+        new_label = False
+
+    x = len(labels) - 1
+    x_offset = 0.12
+    if new_label == False:
+        ax.vlines(x, -0.03, 1.03, color='w', linestyle='-', linewidth=0.8)
+
+
+    # Define common y-axis points for KDE evaluation
+    y_points = np.linspace(-0.03, 1.03, 200)
+    for i, population in enumerate(populations_to_plot):
+        if not populations_data[population]:  # Skip if no data for this population
+            continue
+            
+        # Pool all data for this population across seeds
+        pooled_population_data = []
+        seed_means = []
+        kde_values_all_seeds = []
+        
+        for metric_one_seed in populations_data[population]:
+            if metric_one_seed:  # Only process if there's data
+                seed_means.append(np.mean(metric_one_seed))
+                pooled_population_data.extend(metric_one_seed)
+                
+                # Compute KDE for this seed
+                if len(metric_one_seed) > 1:  # Need at least 2 points for KDE
+                    kde = gaussian_kde(metric_one_seed)
+                    kde_values = kde(y_points)
+                    kde_values_all_seeds.append(kde_values)
+        
+        if not pooled_population_data:  # Skip if no pooled data
+            continue
+
+        # Plot individual KDE lines for each seed
+        if kde_values_all_seeds:
+            # Find global max for consistent scaling across all seeds
+            all_kde_values = np.concatenate(kde_values_all_seeds) if kde_values_all_seeds else []
+            kde_global_max = np.max(all_kde_values) if len(all_kde_values) > 0 else 1
+            
+            # Plot each seed's KDE as a separate line
+            for seed_idx, kde_values in enumerate(kde_values_all_seeds):
+                # Scale KDE values to fit within violin width
+                kde_scaled = (kde_values / kde_global_max) * 0.45  # Scale to half violin width
+                
+                # Plot KDE line for this seed
+                ax.plot(x + kde_scaled, y_points, color=model_dict["color"], linewidth=0.3, alpha=0.2+i/len(populations_to_plot), zorder=6, label=population if seed_idx==0 else None)
+
+        # Scatter point with the mean for this population
+        mean_value = np.mean(seed_means)
+        error = np.std(seed_means)
+        ax.scatter(x, mean_value, color='tomato', marker='o', s=5, zorder=5, linewidth=0.5, edgecolors='w', alpha=0.2+i/len(populations_to_plot))
+
+
+    # check if legend is already present
+    if ax.get_legend() is None:
+        legend = ax.legend(loc='lower left')
+        for line in legend.get_lines():
+            line.set_linewidth(1.5)
+
+
+
+
 def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
     if 'binned_mean_forward_dendritic_state_steps' not in data_dict[next(iter(data_dict.keys()))]:
         return
@@ -748,7 +1018,7 @@ def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, confi
                 line.set_linewidth(1.5)
 
     if save:
-        # fig.savefig(f"figures/{save}.png", dpi=300)
+        fig.savefig(f"figures/{save}.png", dpi=300)
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 

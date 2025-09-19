@@ -186,7 +186,8 @@ def import_metrics_data(filename):
     return metrics_dict
 
 
-def hdf5_to_dict(file_path):
+
+def hdf5_to_dict(file_path, variable_name=None):
     """
     Convert the contents of an HDF5 file into a nested dictionary.
 
@@ -194,25 +195,88 @@ def hdf5_to_dict(file_path):
     ----------
     file_path : str
         Path to the HDF5 file.
+    variable_name : str, optional
+        Name of a specific group or dataset to load. If None, loads the entire file.
+        Can be a path like 'group1/subgroup2' to load nested groups.
 
     Returns
     -------
     dict
         Nested Python dictionary representing the HDF5 file structure.
+        If variable_name is specified and points to a dataset, returns a dict with just that dataset.
+        If variable_name is specified and points to a group, returns a dict with that group's contents.
+
+    Notes
+    -----
+    Example usage:
+    # Load entire file
+    data = hdf5_to_dict('data.h5')
+
+    # Load only a specific group
+    data = hdf5_to_dict('data.h5', variable_name='group1')
+
+    # Load only a nested subgroup
+    data = hdf5_to_dict('data.h5', variable_name='group1/subgroup2')
+
+    # Load only a specific dataset
+    data = hdf5_to_dict('data.h5', variable_name='group1/dataset_name')
     """
-    # Initial call to convert the top-level group in the HDF5 file
-    # (necessary because the top-level group is not a h5py.Group object)
     with h5py.File(file_path, 'r') as f:
-        data_dict = {}
-        # Loop over the top-level keys in the HDF5 file
-        for key in f.keys():
-            if isinstance(f[key], h5py.Group):
-                # Recursively convert the group to a nested dictionary
-                data_dict[key] = convert_hdf5_group_to_dict(f[key])
-            else:
-                # If the key corresponds to a dataset, add it to the dictionary
-                data_dict[key] = f[key][()]
-    return data_dict
+        if variable_name is None:
+            # Load entire file
+            data_dict = {}
+            for key in f.keys():
+                if isinstance(f[key], h5py.Group):
+                    data_dict[key] = convert_hdf5_group_to_dict(f[key])
+                else:
+                    data_dict[key] = f[key][()]
+            return data_dict
+        else:
+            # Load specific group or dataset
+            try:
+                item = f[variable_name]
+                if isinstance(item, h5py.Group):
+                    # If it's a group, return its contents as a dict
+                    return convert_hdf5_group_to_dict(item)
+                else:
+                    # If it's a dataset, return a dict with the dataset name as key
+                    dataset_name = variable_name.split('/')[-1]  # Get the last part of the path
+                    return {dataset_name: item[()]}
+            except KeyError:
+                print(f"WARNING: '{variable_name.split('/')[-1]}' not found in HDF5 file")
+                return None
+
+
+
+
+
+# def hdf5_to_dict(file_path):
+#     """
+#     Convert the contents of an HDF5 file into a nested dictionary.
+
+#     Parameters
+#     ----------
+#     file_path : str
+#         Path to the HDF5 file.
+
+#     Returns
+#     -------
+#     dict
+#         Nested Python dictionary representing the HDF5 file structure.
+#     """
+#     # Initial call to convert the top-level group in the HDF5 file
+#     # (necessary because the top-level group is not a h5py.Group object)
+#     with h5py.File(file_path, 'r') as f:
+#         data_dict = {}
+#         # Loop over the top-level keys in the HDF5 file
+#         for key in f.keys():
+#             if isinstance(f[key], h5py.Group):
+#                 # Recursively convert the group to a nested dictionary
+#                 data_dict[key] = convert_hdf5_group_to_dict(f[key])
+#             else:
+#                 # If the key corresponds to a dataset, add it to the dictionary
+#                 data_dict[key] = f[key][()]
+#     return data_dict
 
 
 def convert_hdf5_group_to_dict(group):
