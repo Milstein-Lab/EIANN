@@ -19,6 +19,8 @@ def main(network_config_file_name, data_dir):
     network_seed = 66049
     data_seed = 257
 
+    ut.set_all_seeds(seed=network_seed)
+
     # Create network object
     config_file_path = f"EIANN/network_config/mnist/{network_config_file_name}"
     network = ut.build_EIANN_from_config(config_file_path, network_seed=network_seed)
