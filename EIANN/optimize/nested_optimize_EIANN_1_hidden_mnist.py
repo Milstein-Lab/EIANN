@@ -144,7 +144,7 @@ def config_worker():
     
     context.train_steps = int(context.train_steps)
     
-    history_interval = max(min(250, int(context.train_steps / 200)), 100)
+    history_interval = max(int(context.train_steps * context.epochs / 200), 100)
     if 'store_params_interval' not in context():
         context.store_params_interval = (0, -1, history_interval)
     
@@ -391,7 +391,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if context.full_analysis:
         if 'H1' in network.layers:
             metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
-            plot_representation_metrics(metrics_dict)
+            if plot:
+                plot_representation_metrics(metrics_dict)
         
         test_loss_history, test_accuracy_history = \
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,

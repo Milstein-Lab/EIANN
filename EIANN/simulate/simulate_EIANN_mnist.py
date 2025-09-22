@@ -113,23 +113,19 @@ def config_worker():
     
     context.train_steps = int(context.train_steps)
     
-    history_interval = max(min(250, int(context.train_steps / 200)), 100)
+    history_interval = max(int(context.train_steps / 200), 100)
+    
+    if 'val_interval' not in context() or context.val_interval is None:
+        context.val_interval = (0, -1, history_interval)
+    
     if 'store_params_interval' not in context():
-        context.store_params_interval = (0, -1, history_interval)
+        context.store_params_interval = context.val_interval
     
     if context.full_analysis:
-        context.val_interval = (0, -1, history_interval)
-        context.store_params_interval = context.val_interval
         context.store_params = True
         context.store_num_steps = None
         if context.store_history_interval is not None:
             context.store_history_interval = context.val_interval
-    
-    if context.include_dend_loss_objective:
-        if not context.store_history:
-            context.store_history = True
-            if context.store_history_interval is None:
-                context.store_history_interval = context.val_interval
     
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
@@ -259,7 +255,8 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     if context.full_analysis:
         if 'H1' in network.layers:
             metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
-            plot_representation_metrics(metrics_dict)
+            if plot:
+                plot_representation_metrics(metrics_dict)
         test_loss_history, test_accuracy_history = \
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
                                                    plot=plot, status_bar=context.status_bar)

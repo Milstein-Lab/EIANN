@@ -21,7 +21,7 @@ import EIANN.utils as utils
 
 from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
-from pygments.lexers.ruby import FancyLexer
+
 
 context = Context()
 
