@@ -20,9 +20,8 @@ print(f'Network Run Time: {net.run_time} sec')
 # van_bp (CPU)
 # - Final Val Accuracy: 96.52999877929688
 # - Final Val Loss: 0.008667627349495888
-# - Using Device: cpu
 # - Network Run Time: 116.58439445495605 sec
 # - 5 Networks Runtime: 580 sec
 
 # van_bp (GPU)
-# TODO: Running into pkl opening error but pkl did successfully load
+# - 5 Networks Runtime: 272 sec

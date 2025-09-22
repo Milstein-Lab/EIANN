@@ -277,7 +277,8 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     network.run_time = network_end_time - network_start_time
     
     if export:
-        utils.save_network(network, path=data_file_path, disp=False)
+        network.to('cpu')
+        utils.save_network(network, path=data_file_path, disp=False, overwrite=True)
         if context.disp:
             print('simulate_EIANN_mnist: pid: %i exported network history to %s' %
                   (os.getpid(), data_file_path))

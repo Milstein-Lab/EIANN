@@ -24,13 +24,13 @@ sbatch <<EOT
 #SBATCH -o /scratch/${USER}/logs/eiann/$JOB_NAME.%j.o
 #SBATCH -e /scratch/${USER}/logs/eiann/$JOB_NAME.%j.e
 #SBATCH --requeue
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
-#SBATCH --time=03:00:00
+#SBATCH --time=02:00:00
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
 
@@ -45,10 +45,9 @@ cd $HOME/EIANN/
 source ~/miniconda/etc/profile.d/conda.sh
 conda activate eiann
 
-python EIANN/simulate/simulate_EIANN_mnist.py --export \
---config-file-path=EIANN/simulate/config/mnist/simulate_EIANN_mnist_supervised_config.yaml \
---network-config-file-path=EIANN/network_config/mnist/20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml \
---output-dir=/scratch/${USER}/data/eiann 
+python EIANN/simulate/run_EIANN_mnist.py \
+--network-config-file-name=20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml \
+--data-dir=/scratch/${USER}/data/eiann 
 EOT
 
 # Submit job:

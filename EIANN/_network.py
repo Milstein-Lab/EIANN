@@ -245,7 +245,7 @@ class Network(nn.Module):
         self.target_history = []
         for layer in self:
             for population in layer:
-                population.reinit(self.device)
+                population.reinit(device=self.device)
                 population.reset_history()
 
     def forward(self, sample, store_history=False, store_dynamics=False, store_num_steps=None, no_grad=False):
@@ -276,9 +276,9 @@ class Network(nn.Module):
         
         for population in self.populations.values():
             if sample.ndim == 1:
-                population.reinit(self.device, batch_size=1)
+                population.reinit(device=self.device, batch_size=1)
             else:
-                population.reinit(self.device, batch_size=sample.shape[0])
+                population.reinit(device=self.device, batch_size=sample.shape[0])
     
         if not hasattr(self, 'input_pop'):
             self.input_pop = next(iter(list(self)[0]))
@@ -803,7 +803,7 @@ class Population(object):
         self.outgoing_projections = {}
         self.incoming_projections = {}
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
-        self.reinit(self.device)
+        self.reinit(device=self.device)
         self.reset_history()
 
     def register_attribute_history(self, attr_name):
@@ -861,7 +861,7 @@ class Population(object):
         self.state = self.state + delta_state / self.tau
         self.activity = self.activation(self.state)
     
-    def reinit(self, device, batch_size=1):
+    def reinit(self, batch_size=1, device=None):
         """
         Method for resetting state variables of a population
         """
@@ -1117,7 +1117,7 @@ class Input(Population):
         self.outgoing_projections = {}
         self.incoming_projections = {}
         self.include_bias = False
-        self.reinit(network.device)
+        self.reinit(device=network.device)
         self.reset_history()
     
     def reinit(self, device, batch_size=1):
