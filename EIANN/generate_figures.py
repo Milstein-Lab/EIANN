@@ -385,9 +385,6 @@ def plot_error_all_seeds(data_dict, model_dict, ax, scale='log'):
         ax.set_yscale('log')
         ax.set_ylim(0, 100)
         ax.set_yticks([10, 100], labels=['10%', '100%'])
-    # elif scale == 'linear':
-    #     ax.set_ylim(0, 10)
-    #     ax.set_yticks([0, 5, 10], labels=['0%', '5%', '10%'])
 
 
 def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf', side='both'):
@@ -479,170 +476,10 @@ def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, me
         # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=2, capthick=1, zorder=5)
 
 
-def plot_metric_all_seeds3(data_dict, model_dict, populations_to_plot, ax, metric_name):
-    """
-    Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
-    Data from different populations are plotted as separate overlapping violin plots.
-
-    Parameters:
-        data_dict (dict): Dictionary containing data for different seeds.
-        model_dict (dict): Dictionary containing model metadata (e.g., name, color).
-        populations_to_plot (list): List of population names to extract the metric from.
-        ax (matplotlib.axes.Axes): Matplotlib axis to plot on.
-        metric_name (str): Name of the metric to plot ('sparsity', 'selectivity', or 'structure').
-    """
-    
-    # Collect data separately for each population
-    populations_data = {}
-    for population in populations_to_plot:
-        metric_all_seeds = []
-        for seed in data_dict:
-            if f"metrics_dict_{population}" in data_dict[seed]:
-                metric_one_seed = data_dict[seed][f"metrics_dict_{population}"][metric_name]
-                metric_all_seeds.append(metric_one_seed)
-        populations_data[population] = metric_all_seeds
-    
-    # Check if we have any data
-    total_data_points = sum(sum(len(sublist) for sublist in pop_data) for pop_data in populations_data.values())
-    if total_data_points == 0:
-        return
-
-    # Get existing labels (excluding default numerical labels) to set the x-axis positions
-    labels = [t.get_text() for t in ax.get_xticklabels()]
-    labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
-    if model_dict["label"] not in labels:
-        # Update x-axis labels
-        new_label = True
-        labels = labels + [model_dict["label"]]
-        ax.set_xticks(range(len(labels)))  # Set ticks explicitly
-        ax.set_xticklabels(labels, rotation=45, ha='right')
-        ax.set_ylabel(metric_name.capitalize())
-        ax.set_ylim([-0.03, 1.03])
-    else: 
-        new_label = False
-
-    x = len(labels) - 1
-    x_offset = 0.12
-    if new_label == False:
-        ax.vlines(x, -0.03, 1.03, color='w', linestyle='-', linewidth=0.8)
-
-    # Create separate violin plots for each population 
-    colors = [model_dict["color"]] if len(populations_to_plot) == 1 else plt.cm.Set3(np.linspace(0, 1, len(populations_to_plot)))   
-    for i, population in enumerate(populations_to_plot):
-        if not populations_data[population]:  # Skip if no data for this population
-            continue
-            
-        # Pool all data for this population across seeds
-        pooled_population_data = []
-        seed_means = []
-        for metric_one_seed in populations_data[population]:
-            if metric_one_seed:  # Only process if there's data
-                seed_means.append(np.mean(metric_one_seed))
-                pooled_population_data.extend(metric_one_seed)
-        
-        if not pooled_population_data:  # Skip if no pooled data
-            continue
-        
-        # Create the violin plot for this population
-        parts = ax.violinplot(pooled_population_data, positions=[x], showmeans=False, 
-                            showmedians=False, showextrema=False, widths=0.9, side='high')
-        parts['bodies'][0].set_alpha(0.5)
-        parts['bodies'][0].set_facecolor(model_dict["color"])
-        parts['bodies'][0].set_edgecolor(colors[i])
-        parts['bodies'][0].set_linewidth(0.5)
-
-        # Scatter point with the mean for this population
-        mean_value = np.mean(seed_means)
-        error = np.std(seed_means)
-        
-        # Slightly offset scatter points for different populations to avoid complete overlap
-        pop_x_offset = x_offset + (i - len(populations_to_plot)/2 + 0.5) * 0.02
-        ax.scatter(x + pop_x_offset, mean_value, color='tomato', marker='o', s=5, zorder=5, edgecolors='w', linewidth=0.3)
-        ax.errorbar(x + pop_x_offset, mean_value, yerr=error, fmt='none', ecolor='tomato', capsize=0, zorder=5)
-
-    # Add legend if multiple populations
-    if len(populations_to_plot) > 1:
-        legend_elements = []
-        for i, population in enumerate(populations_to_plot):
-            if populations_data[population]:  # Only add to legend if there's data
-                pop_color = colors[i]
-                legend_elements.append(plt.Line2D([0], [0], color=pop_color, lw=4, alpha=0.65, label=population))
-        
-        if legend_elements:
-            ax.legend(handles=legend_elements, loc='upper right', fontsize='small')
-
-
-def plot_metric_all_seeds2(data_dict, model_dict, populations_to_plot, ax, metric_name, side='both'):
-    """
-    Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
-
-    Parameters:
-        data_dict (dict): Dictionary containing data for different seeds.
-        model_dict (dict): Dictionary containing model metadata (e.g., name, color).
-        populations_to_plot (list): List of population names to extract the metric from.
-        ax (matplotlib.axes.Axes): Matplotlib axis to plot on.
-        metric_name (str): Name of the metric to plot ('sparsity', 'selectivity', or 'structure').
-    """
-    metric_all_seeds = []
-    for seed in data_dict:
-        metric_one_seed = []
-        for population in populations_to_plot:
-            metric_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"][metric_name])
-        metric_all_seeds.append(metric_one_seed)
-
-    if sum(len(sublist) for sublist in metric_all_seeds) == 0:
-        return
-
-    # Pool all data into one list
-    pooled_data = []
-    seed_means = []
-    for metric_one_seed in metric_all_seeds:
-        seed_means.append(np.mean(metric_one_seed))
-        pooled_data.extend(metric_one_seed)
-
-    # Get existing labels (excluding default numerical labels) to set the x-axis positions
-    labels = [t.get_text() for t in ax.get_xticklabels()]
-    labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
-    if model_dict["label"] not in labels:
-        # Update x-axis labels
-        new_label = True
-        labels = labels + [model_dict["label"]]
-        ax.set_xticks(range(len(labels)))  # Set ticks explicitly
-        ax.set_xticklabels(labels, rotation=45, ha='right')
-        ax.set_ylabel(metric_name.capitalize())
-        ax.set_ylim([-0.03, 1.03])
-    else: 
-        new_label = False
-
-    x = len(labels) - 1
-    x_offset = 0
-    if new_label == False:
-        ax.vlines(x, -0.03, 1.03, color='w', linestyle='-', linewidth=0.8)
-    if side == 'low':
-        x_offset = -0.12
-    elif side=='high':
-        x_offset = 0.12
-
-    # Create the violin plot
-    parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9, side='high')
-    parts['bodies'][0].set_alpha(0.65)
-    parts['bodies'][0].set_facecolor(model_dict["color"])
-
-    # Scatter on a point with the mean and error bar
-    mean_value = np.mean(seed_means)
-    error = np.std(seed_means) #/ np.sqrt(len(seed_means))
-    # ax.scatter(x, mean_value, color='red', marker='o', s=5, zorder=5)
-    ax.scatter(x+x_offset, mean_value, color='tomato', marker='o', s=5, zorder=5, edgecolors='w', linewidth=0.3)
-    # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=2, capthick=1, zorder=5)
-
-
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
-
-def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name):
+def plot_metric_all_seeds2(data_dict, model_dict, populations_to_plot, ax, metric_name):
     """
     Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
     Data from different populations are plotted as separate overlapping violin plots with averaged KDE lines.
@@ -741,6 +578,109 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
         for line in legend.get_lines():
             line.set_linewidth(1.5)
 
+
+def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name):
+    """
+    Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
+    Data from different populations are plotted as separate overlapping violin plots with mean KDE lines and std shading.
+
+    Parameters:
+        data_dict (dict): Dictionary containing data for different seeds.
+        model_dict (dict): Dictionary containing model metadata (e.g., name, color).
+        populations_to_plot (list): List of population names to extract the metric from.
+        ax (matplotlib.axes.Axes): Matplotlib axis to plot on.
+        metric_name (str): Name of the metric to plot ('sparsity', 'selectivity', or 'structure').
+    """
+    
+    # Collect data separately for each population
+    populations_data = {}
+    for population in populations_to_plot:
+        metric_all_seeds = []
+        for seed in data_dict:
+            if f"metrics_dict" in data_dict[seed] and population in data_dict[seed][f"metrics_dict"]:
+                metric_one_seed = data_dict[seed][f"metrics_dict"][population][metric_name]
+                metric_all_seeds.append(metric_one_seed)
+        populations_data[population] = metric_all_seeds
+    populations_data['InputE'] = data_dict[seed]['metrics_dict']['InputE'][metric_name]
+
+    # Plot values for InputE as a baseline comparison
+    if len(ax._children) == 0:
+        average_metric = np.mean(populations_data['InputE'])
+        ax.axhline(average_metric, color='gray', linewidth=1.0, alpha=0.5, zorder=6, linestyle='--')
+        ax.annotate('Input', (0.15, average_metric-0.16), color='gray', ha='left', va='bottom', fontsize=7)
+
+    # Get existing labels (excluding default numerical labels) to set the x-axis positions
+    labels = [t.get_text() for t in ax.get_xticklabels()]
+    labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
+    if model_dict["label"] not in labels:
+        # Update x-axis labels
+        new_label = True
+        labels = labels + [model_dict["label"]]
+        ax.set_xticks(range(len(labels)))  # Set ticks explicitly
+        ax.set_xticklabels(labels, rotation=45, ha='right')
+        ax.set_ylabel(metric_name.capitalize())
+        ax.set_ylim([-0.03, 1.03])
+    else: 
+        new_label = False
+
+    x = len(labels) - 1
+    x_offset = 0.12
+    if new_label == False:
+        ax.vlines(x, -0.03, 1.03, color='w', linestyle='-', linewidth=0.8)
+
+    # Define common y-axis points for KDE evaluation
+    y_points = np.linspace(-0.03, 1.03, 200)
+    
+    for population in populations_to_plot:
+        kde_values_all_seeds = []
+        
+        # Compute KDE for each seed for this population
+        for metric_one_seed in populations_data[population]:            
+            kde = gaussian_kde(metric_one_seed)
+            kde_values = kde(y_points)
+            kde_values_all_seeds.append(kde_values)
+
+        # Calculate mean KDE and standard deviation across seeds
+        if kde_values_all_seeds:
+            kde_values_array = np.array(kde_values_all_seeds)
+            
+            # Find global max for consistent scaling
+            kde_global_max = np.max(kde_values_array)
+            
+            # Calculate mean and std of KDE values across seeds
+            kde_mean = np.mean(kde_values_array, axis=0)
+            kde_std = np.std(kde_values_array, axis=0)
+            
+            # Scale KDE values to fit within violin width
+            kde_mean_scaled = (kde_mean / kde_global_max) * 0.45
+            kde_std_scaled = (kde_std / kde_global_max) * 0.45
+            
+            # Calculate upper and lower bounds for shading
+            kde_upper = kde_mean_scaled + kde_std_scaled
+            kde_lower = kde_mean_scaled - kde_std_scaled
+            
+            # Plot mean KDE line
+            ax.plot(x + kde_mean_scaled, y_points, 
+                   color=model_dict["color"], 
+                   linewidth=1.0, 
+                   alpha=0.8, 
+                   zorder=6, 
+                   label=population)
+            
+            # Add shaded error region
+            ax.fill_betweenx(y_points, 
+                           x + kde_lower, 
+                           x + kde_upper, 
+                           color=model_dict["color"], 
+                           alpha=0.4, 
+                           zorder=5,
+                           linewidth=0)
+
+    # check if legend is already present
+    if ax.get_legend() is None and len(populations_to_plot) > 1:
+        legend = ax.legend(loc='lower left')
+        for line in legend.get_lines():
+            line.set_linewidth(1.5)
 
 
 

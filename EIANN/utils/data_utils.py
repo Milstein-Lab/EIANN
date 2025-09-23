@@ -2,14 +2,13 @@
 import torch
 import numpy as np
 import itertools
-import matplotlib.pyplot as plt
-from tqdm.autonotebook import tqdm
 import h5py
 import os
 import yaml
 import torchvision
-import EIANN.plot as plot
-
+import subprocess
+import tempfile
+import shutil
 
 
 # *******************************************************************
@@ -186,7 +185,6 @@ def import_metrics_data(filename):
     return metrics_dict
 
 
-
 def hdf5_to_dict(file_path, variable_name=None):
     """
     Convert the contents of an HDF5 file into a nested dictionary.
@@ -245,38 +243,6 @@ def hdf5_to_dict(file_path, variable_name=None):
             except KeyError:
                 print(f"WARNING: '{variable_name.split('/')[-1]}' not found in HDF5 file")
                 return None
-
-
-
-
-
-# def hdf5_to_dict(file_path):
-#     """
-#     Convert the contents of an HDF5 file into a nested dictionary.
-
-#     Parameters
-#     ----------
-#     file_path : str
-#         Path to the HDF5 file.
-
-#     Returns
-#     -------
-#     dict
-#         Nested Python dictionary representing the HDF5 file structure.
-#     """
-#     # Initial call to convert the top-level group in the HDF5 file
-#     # (necessary because the top-level group is not a h5py.Group object)
-#     with h5py.File(file_path, 'r') as f:
-#         data_dict = {}
-#         # Loop over the top-level keys in the HDF5 file
-#         for key in f.keys():
-#             if isinstance(f[key], h5py.Group):
-#                 # Recursively convert the group to a nested dictionary
-#                 data_dict[key] = convert_hdf5_group_to_dict(f[key])
-#             else:
-#                 # If the key corresponds to a dataset, add it to the dictionary
-#                 data_dict[key] = f[key][()]
-#     return data_dict
 
 
 def convert_hdf5_group_to_dict(group):
@@ -440,9 +406,6 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     return None
 
 
-import subprocess
-import tempfile
-import shutil
 def delete_plot_data(variable_name, file_name, file_path_prefix="../data/model_hdf5_plot_data/"):
     """
     Delete a specific variable from an HDF5 file and repack to reclaim disk space.
