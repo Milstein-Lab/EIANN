@@ -31,6 +31,20 @@ van_bp_zero_bias_lrf:
     H1_init_weight_scale: 1.5585121437688132
     H2_init_weight_scale: 0.44987402300224477
     Output_init_weight_scale: 3.1333605953440897
+van_bp_2_fixed_hidden_zero_bias_lrf:
+    # after 20000 train steps:
+    #    accuracy: 30.388401
+    #    loss: 0.083649114
+    # after 40000 train steps:
+    #    accuracy: 32.788998
+    #    loss: 0.08093785
+    # after 10 epochs:
+    #    accuracy: 38.258003
+    #    loss: 0.07746164
+    Output_learning_rate: 0.9236019594134509
+    H1_init_weight_scale: 0.27880296194302967
+    H2_init_weight_scale: 1.0335326664773958
+    Output_init_weight_scale: 0.523291737058317
 van_bp_0_hidden:
     #    accuracy: 32.6344
     #    loss: 0.081901506
