@@ -770,7 +770,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
     if num_rows is None:
         num_rows = int(np.ceil(num_units / num_cols))
 
-    size = np.min([12, num_cols])
+    size = np.min([12, num_cols]) / 2
     num_rows += 1
     if ax_list is None:
         fig = plt.figure(figsize=(size, size * num_rows / num_cols))

@@ -1247,7 +1247,7 @@ def compute_diag_fisher(network, train_dataloader_CL1_full):
     return diag_fisher
 
 
-def compute_representation_metrics(population, dataloader, receptive_fields=None, plot=False, dimensions=None):
+def compute_representation_metrics(population, dataloader, receptive_fields=None, initial_receptive_fields=None, plot=False, dimensions=None):
     """
     Compute representation metrics for a population of neurons.
 
@@ -1284,23 +1284,20 @@ def compute_representation_metrics(population, dataloader, receptive_fields=None
     data.to(network.device)
     network.forward(data, no_grad=True)
 
-    # total_act = torch.sum(population.activity, dim=0)
-    # active_units_idx = torch.where(total_act > 1e-10)[0] # Only consider units that are active at least once
     selectivity = compute_selectivity(population.activity)
     sparsity = compute_sparsity(population.activity)
-    # discriminability = compute_discriminability(population.activity)
 
-    # Compute structure
+    structure_initial = []
+    structure_final = []
     if receptive_fields is not None:
-        # receptive_fields = receptive_fields[active_units_idx]
-        structure = compute_rf_structure(receptive_fields, dimensions=dimensions, method='moran')
-    else:
-        structure = []
+        structure_final = compute_rf_structure(receptive_fields, dimensions=dimensions, method='moran')
+    if initial_receptive_fields is not None:
+        structure_initial = compute_rf_structure(initial_receptive_fields, dimensions=dimensions, method='moran')        
 
     metrics_dict = {'sparsity': sparsity, 
                     'selectivity': selectivity,
-                    # 'discriminability': discriminability, 
-                    'structure': structure}
+                    'structure_final': structure_final,
+                    'structure_initial': structure_initial}
 
     if plot:
         pt.plot_representation_metrics(metrics_dict)

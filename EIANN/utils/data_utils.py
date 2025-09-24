@@ -406,7 +406,7 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     return None
 
 
-def delete_plot_data(variable_name, file_name, file_path_prefix="../data/model_hdf5_plot_data/"):
+def delete_plot_data(variable_name, file_name, file_path_prefix=None):
     """
     Delete a specific variable from an HDF5 file and repack to reclaim disk space.
 
@@ -419,6 +419,10 @@ def delete_plot_data(variable_name, file_name, file_path_prefix="../data/model_h
     file_path_prefix : str, optional
         Path prefix for the file location.
     """
+    if file_path_prefix is None:
+        root_dir = get_project_root()
+        file_path_prefix = root_dir + "/EIANN/data/model_hdf5_plot_data/"
+        
     file_path = file_path_prefix + file_name
     if not os.path.exists(file_path):
         print(f'File not found: {file_path}')
