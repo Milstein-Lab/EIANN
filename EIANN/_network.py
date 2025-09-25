@@ -671,9 +671,9 @@ class Population(object):
 
         Parameters
         ----------
-        network : EIANN.Network object
+        network : :class:`EIANN.Network`
             The network object this population belongs to
-        layer : EIANN.Layer object
+        layer : :class:`EIANN.Layer`
             The layer object this population belongs to
         name : str
             Name identifier for the population
@@ -721,12 +721,17 @@ class Population(object):
 
         # Set callable activation function
         if isinstance(activation, str):
+            activation_name = activation
             if hasattr(ut, activation):
                 activation = getattr(ut, activation)
             elif hasattr(torch.nn.functional, activation):
                 activation = getattr(torch.nn.functional, activation) 
             elif hasattr(external, activation):
                 activation = getattr(external, activation)
+        elif hasattr(activation, '__name__'):
+            activation_name = activation.__name__
+        else:
+            activation_name = None
 
         if not callable(activation):
             raise RuntimeError \
@@ -734,6 +739,8 @@ class Population(object):
         if activation_kwargs is None:
             activation_kwargs = {}
         self.activation = lambda x: activation(x, **activation_kwargs)
+        self.activation.name = activation_name
+        self.activation.kwargs = activation_kwargs
 
         # Set bias parameters
         self.bias = nn.Parameter(torch.zeros(self.size, device=network.device), requires_grad=False)

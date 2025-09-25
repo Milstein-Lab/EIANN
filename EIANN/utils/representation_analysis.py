@@ -1328,8 +1328,8 @@ def compute_act_weighted_avg(population, dataloader):
     return weighted_avg_input, activity_preferred_inputs
 
 
-def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, softplus=False, export=False,
-                                    export_path=None, overwrite=False, test_dataloader=None):
+def compute_maxact_receptive_fields(population, num_units=None, softplus=False, test_dataloader=None, 
+                                    export=False, export_path=None, overwrite=False, random_initializations=1000):
     """
     Use the 'activation maximization' method to compute receptive fields for all units in the population.
 
@@ -1359,22 +1359,30 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     torch.Tensor
         Computed receptive fields for the specified units.
     """
+    network = population.network
 
     if export and overwrite is False:
         # Check if receptive fields and activity_preferred_inputs have already been computed and saved in the data hdf5 file
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        receptive_fields = data_utils.load_plot_data(population.network.name, population.network.seed,
-                                                     data_key=f'maxact_receptive_fields_{population.fullname}',
-                                                     file_path=export_path)
+        receptive_fields = data_utils.load_plot_data(network.name, network.seed, file_path=export_path, data_key=f'maxact_receptive_fields_{population.fullname}')
         if receptive_fields is not None:
             return torch.tensor(receptive_fields)
 
-    # Otherwise, compute receptive fields
-    num_random_initializations = 1000
-    network = population.network
+    if softplus: # Replace all activation functions with softplus
+        previous_activation_funcs = {}
+        for pop_name, population in network.populations.items():
+            if hasattr(population, 'activation'):
+                previous_activation_funcs[pop_name] = population.activation
+        network_utils.set_new_activation(network, activation='softplus', population='all', activation_kwargs={'beta': 10})
 
-    # seed = network.seed
-    # torch.manual_seed(seed)
+    if hasattr(network, 'seed'):
+        try:
+            network_seed = int(network.seed.split("_")[0])
+        except:
+            network_seed = int(network.seed)
+    else:
+        network_seed = 123
+    data_utils.set_all_seeds(seed=network_seed)
 
     if network.backward_steps == 0:
         network.backward_steps = 3
@@ -1386,48 +1394,36 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     all_images = [torch.empty(num_units, input_size).uniform_(-0.01,0.01)]
 
     if test_dataloader is None:
-        train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = (
-            data_utils.get_MNIST_dataloaders(sub_dataloader_size=20_000))
+        _,_, test_dataloader,_ = data_utils.get_MNIST_dataloaders(batch_size='full_dataset')
     idx, data, target = next(iter(test_dataloader))
 
     print("Optimizing receptive field images...")
 
-    for i in tqdm(range(num_random_initializations)):   
-        # input_images = torch.empty(num_units, input_size).uniform_(0,1)
-        # input_images = torch.empty(num_units, input_size).normal_(mean=0,std=10)
+    for i in tqdm(range(random_initializations)):   
         random_sample = data[np.random.choice(len(data))]
         input_images = random_sample.expand(num_units, -1)
-
         input_images.requires_grad = True
         loss_history = []
 
-        if sigmoid:
-            im = torch.sigmoid((input_images-0.5)*10)
-            network.forward(im)  # compute unit activities in forward pass
-        elif softplus:
-            im = torch.nn.functional.softplus(input_images)
-            network.forward(im)  # compute unit activities in forward pass
-        else:
-            network.forward(input_images)  # compute unit activities in forward pass
+        network.forward(input_images)  # compute unit activities in forward pass
         pop_activity = population.activity[:,0:num_units]
         loss = torch.sum(-torch.diagonal(pop_activity))
-        loss_history.append(loss.detach().numpy())
         loss.backward()
+        loss_history.append(loss.detach().numpy())
         all_images.append(-input_images.grad.detach().clone())
 
     receptive_fields = torch.mean(torch.stack(all_images), dim=0)
-    if sigmoid:
-        receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
-    elif softplus:
-        receptive_fields = torch.nn.functional.softplus(receptive_fields)
 
     if export:
         # Save receptive fields and activity_preferred_inputs to data hdf5 file
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        data_utils.save_plot_data(population.network.name, population.network.seed,
-                                  data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields,
-                                  file_path=export_path, overwrite=overwrite)
-    
+        data_utils.save_plot_data(population.network.name, population.network.seed, file_path=export_path, overwrite=overwrite,
+                                  data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields)
+
+    if softplus: # Restore original activation functions
+        for pop_name, orig_activation_func in previous_activation_funcs.items():
+            network_utils.set_new_activation(network, orig_activation_func, population=pop_name, activation_kwargs=orig_activation_func.kwargs if hasattr(orig_activation_func, 'kwargs') else None)
+
     return receptive_fields
 
 

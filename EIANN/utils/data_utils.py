@@ -9,7 +9,7 @@ import torchvision
 import subprocess
 import tempfile
 import shutil
-
+import random
 
 # *******************************************************************
 # Functions to import and export data
@@ -38,6 +38,25 @@ def get_project_root():
         if current_path == os.path.dirname(current_path):
             raise FileNotFoundError("Project root directory 'EIANN' not found")    
     return current_path
+
+
+def set_all_seeds(seed: int = 123) -> None:
+    "Sets the random seed for PyTorch, NumPy, and Python's random module"
+
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed) # For current GPU
+        torch.cuda.manual_seed_all(seed) # For all GPUs
+    
+    # When running on the CuDNN backend, this ensures reproducible deterministic behavior
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    # Set a fixed hash seed to ensure consistent hashing behavior
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    print(f"Random seed set to {seed}")
 
 
 def nested_convert_scalars(data):

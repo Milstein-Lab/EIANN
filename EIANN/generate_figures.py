@@ -202,12 +202,15 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         metrics_dict = {}
         initial_receptive_fields_dict = ut.hdf5_to_dict(file_path=hdf5_path, variable_name=f'{network_name}/{network_seed}_{data_seed}/initial_receptive_fields')
         final_receptive_fields_dict = ut.hdf5_to_dict(file_path=hdf5_path, variable_name=f'{network_name}/{network_seed}_{data_seed}/final_receptive_fields')
-        metrics_populations = [population for population in network.populations.values() if population.name == "E" and population.fullname != "InputE"]
-        for population in metrics_populations:
-            if initial_receptive_fields_dict is not None:
-                initial_receptive_fields = torch.tensor(initial_receptive_fields_dict[population.fullname])
-            if final_receptive_fields_dict is not None:
-                final_receptive_fields = torch.tensor(final_receptive_fields_dict[population.fullname])
+        for population in network.populations.values():
+            if population.name == "E" and population.fullname != "InputE":
+                if initial_receptive_fields_dict is not None:
+                    initial_receptive_fields = torch.tensor(initial_receptive_fields_dict[population.fullname])
+                if final_receptive_fields_dict is not None:
+                    final_receptive_fields = torch.tensor(final_receptive_fields_dict[population.fullname])
+            else:
+                initial_receptive_fields = None
+                final_receptive_fields = None
             metrics_dict[population.fullname] = ut.compute_representation_metrics(population, test_dataloader, final_receptive_fields, initial_receptive_fields)
         ut.save_plot_data(network.name, network.seed, data_key='metrics_dict', data=metrics_dict, file_path=hdf5_path, overwrite=True)
 
