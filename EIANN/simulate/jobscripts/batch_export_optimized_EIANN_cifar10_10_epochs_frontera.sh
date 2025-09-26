@@ -31,7 +31,7 @@ do
   ibrun -n 6 -o $o python -m mpi4py.futures simulate_EIANN_cifar10.py \
     --network-config-file-path=$CONFIG_DIR/${config_files[$i]} \
     --output-dir=$SCRATCH/data/EIANN --disp --export \
-    --framework=mpi --label=10_epochs --train_steps=40000 --epoch=10 &
+    --framework=mpi --label=10_epochs --train_steps=40000 --epochs=10 &
   ((o+=6))
 done
 wait
