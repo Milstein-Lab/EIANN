@@ -87,7 +87,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         recompute = None
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'noise_sensitivity', 'metrics_dict',
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'noise_sensitivity', 'metrics_dict', 'final_receptive_fields',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
@@ -179,18 +179,39 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         accuracy_list = ut.compute_noise_sensitivity(network, noise_stds=noise_stds)
         ut.save_plot_data(network.name, network.seed, data_key='noise_sensitivity', data=(noise_stds, accuracy_list), file_path=hdf5_path, overwrite=True)
 
-    # Receptive fields and metrics
+    if 'final_receptive_fields' in variables_to_recompute:
+        rf_populations = [population for population in network.populations.values() if population.name == "E" and population.fullname != "InputE"]
+        
+        initial_state_dict = network.prev_param_history[0]
+        network.load_state_dict(initial_state_dict)
+        receptive_fields_dict = {}
+        for population in rf_populations:
+            receptive_fields_dict[population.fullname] = ut.compute_maxact_receptive_fields(population)
+        ut.save_plot_data(network.name, network.seed, data_key='initial_receptive_fields', data=receptive_fields_dict, file_path=hdf5_path, overwrite=True)
+
+        final_state_dict = network.param_history[-1]
+        network.load_state_dict(final_state_dict)
+        receptive_fields_dict = {}
+        for population in rf_populations:
+            receptive_fields_dict[population.fullname] = ut.compute_maxact_receptive_fields(population)
+        ut.save_plot_data(network.name, network.seed, data_key='final_receptive_fields', data=receptive_fields_dict, file_path=hdf5_path, overwrite=True)
+
+
+    # Sparsity, selectivity, and structure metrics
     if f"metrics_dict" in variables_to_recompute:
         metrics_dict = {}
+        initial_receptive_fields_dict = ut.hdf5_to_dict(file_path=hdf5_path, variable_name=f'{network_name}/{network_seed}_{data_seed}/initial_receptive_fields')
+        final_receptive_fields_dict = ut.hdf5_to_dict(file_path=hdf5_path, variable_name=f'{network_name}/{network_seed}_{data_seed}/final_receptive_fields')
         for population in network.populations.values():
-            receptive_fields = None
             if population.name == "E" and population.fullname != "InputE":
-                data_dict = ut.hdf5_to_dict(file_path=hdf5_path, variable_name=f'{network_name}/{network_seed}_{data_seed}/maxact_receptive_fields_{population.fullname}')
-                if data_dict is None:
-                    receptive_fields = ut.compute_maxact_receptive_fields(population, export=True, export_path=hdf5_path, overwrite=True)
-                else:
-                    receptive_fields = torch.tensor(data_dict[f'maxact_receptive_fields_{population.fullname}'])
-            metrics_dict[population.fullname] = ut.compute_representation_metrics(population, test_dataloader, receptive_fields)
+                if initial_receptive_fields_dict is not None:
+                    initial_receptive_fields = torch.tensor(initial_receptive_fields_dict[population.fullname])
+                if final_receptive_fields_dict is not None:
+                    final_receptive_fields = torch.tensor(final_receptive_fields_dict[population.fullname])
+            else:
+                initial_receptive_fields = None
+                final_receptive_fields = None
+            metrics_dict[population.fullname] = ut.compute_representation_metrics(population, test_dataloader, final_receptive_fields, initial_receptive_fields)
         ut.save_plot_data(network.name, network.seed, data_key='metrics_dict', data=metrics_dict, file_path=hdf5_path, overwrite=True)
 
 
@@ -403,7 +424,7 @@ def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, me
     for seed in data_dict:
         metric_one_seed = []
         for population in populations_to_plot:
-            metric_one_seed.extend(data_dict[seed][f"metrics_dict_{population}"][metric_name])
+            metric_one_seed.extend(data_dict[seed][f"metrics_dict"][population][metric_name])
         metric_all_seeds.append(metric_one_seed)
 
     if sum(len(sublist) for sublist in metric_all_seeds) == 0:
@@ -443,6 +464,15 @@ def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, me
         # Get existing labels (excluding default numerical labels) to set the x-axis positions
         labels = [t.get_text() for t in ax.get_xticklabels()]
         labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
+
+        # # Update x-axis labels
+        # new_label = True
+        # labels = labels + [model_dict["label"]]
+        # ax.set_xticks(range(len(labels)))  # Set ticks explicitly
+        # ax.set_xticklabels(labels, rotation=45, ha='right')
+        # ax.set_ylabel(metric_name.capitalize())
+        # ax.set_ylim([-0.03, 1.03])
+
         if model_dict["label"] not in labels:
             # Update x-axis labels
             new_label = True
@@ -464,7 +494,7 @@ def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, me
             x_offset = 0.12
 
         # Create the violin plot
-        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9, side='high')
+        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9, side=side)
         parts['bodies'][0].set_alpha(0.65)
         parts['bodies'][0].set_facecolor(model_dict["color"])
 

@@ -1,5 +1,6 @@
 import EIANN._network as nt
 import EIANN.utils as ut
+import EIANN.external as external
 import os
 import pickle
 import dill
@@ -353,6 +354,58 @@ def recursive_dict_rename(my_dict, old_name, new_name):
         elif isinstance(my_dict[key], dict):
             recursive_dict_rename(my_dict[key], old_name, new_name)
     return 
+
+
+def set_new_activation(network, activation, population='all', activation_kwargs=None):
+    """
+    Set a new activation function for a population or all populations in the network
+    
+    Parameters
+    ----------
+    network : :class:`EIANN._network.Network`
+        The neural network object to set the activation function for.
+    activation : str
+        The name of the activation function to set.
+    population : str or list or :class:`EIANN._network.Population`, optional
+        The population or populations to set the activation function for. Default is 'all'.
+    activation_kwargs : dict, optional
+        The keyword arguments for the activation function. Default is None.
+    """
+
+    # Set callable activation function
+    if isinstance(activation, str):
+        activation_name = activation
+        if hasattr(ut, activation):
+            activation = getattr(ut, activation)
+        elif hasattr(torch.nn.functional, activation):
+            activation = getattr(torch.nn.functional, activation) 
+        elif hasattr(external, activation):
+            activation = getattr(external, activation)
+    elif hasattr(activation, '__name__'):
+        activation_name = activation.__name__
+    else:
+        activation_name = None
+
+    if not callable(activation):
+        raise RuntimeError \
+            ('Population: callable for activation: %s must be imported' % activation)
+    if activation_kwargs is None:
+        activation_kwargs = {}
+
+    if population in [None, 'all']:
+        populations = network.populations.values()
+    elif isinstance(population, str):
+        populations = [network.populations[population]]
+    elif isinstance(population, list):
+        populations = population
+    else:
+        populations = [population]
+
+
+    for population in populations:
+        population.activation = lambda x: activation(x, **activation_kwargs)
+        population.activation.name = activation_name
+        population.activation.kwargs = activation_kwargs
 
 
 def recompute_history(network, output_sorting):
