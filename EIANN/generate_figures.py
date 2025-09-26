@@ -465,24 +465,24 @@ def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, me
         labels = [t.get_text() for t in ax.get_xticklabels()]
         labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
 
-        # Update x-axis labels
-        new_label = True
-        labels = labels + [model_dict["label"]]
-        ax.set_xticks(range(len(labels)))  # Set ticks explicitly
-        ax.set_xticklabels(labels, rotation=45, ha='right')
-        ax.set_ylabel(metric_name.capitalize())
-        ax.set_ylim([-0.03, 1.03])
+        # # Update x-axis labels
+        # new_label = True
+        # labels = labels + [model_dict["label"]]
+        # ax.set_xticks(range(len(labels)))  # Set ticks explicitly
+        # ax.set_xticklabels(labels, rotation=45, ha='right')
+        # ax.set_ylabel(metric_name.capitalize())
+        # ax.set_ylim([-0.03, 1.03])
 
-        # if model_dict["label"] not in labels:
-        #     # Update x-axis labels
-        #     new_label = True
-        #     labels = labels + [model_dict["label"]]
-        #     ax.set_xticks(range(len(labels)))  # Set ticks explicitly
-        #     ax.set_xticklabels(labels, rotation=45, ha='right')
-        #     ax.set_ylabel(metric_name.capitalize())
-        #     ax.set_ylim([-0.03, 1.03])
-        # else: 
-        #     new_label = False
+        if model_dict["label"] not in labels:
+            # Update x-axis labels
+            new_label = True
+            labels = labels + [model_dict["label"]]
+            ax.set_xticks(range(len(labels)))  # Set ticks explicitly
+            ax.set_xticklabels(labels, rotation=45, ha='right')
+            ax.set_ylabel(metric_name.capitalize())
+            ax.set_ylim([-0.03, 1.03])
+        else: 
+            new_label = False
 
         x = len(labels) - 1
         x_offset = 0
@@ -494,7 +494,7 @@ def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, me
             x_offset = 0.12
 
         # Create the violin plot
-        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9, side='high')
+        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9, side=side)
         parts['bodies'][0].set_alpha(0.65)
         parts['bodies'][0].set_facecolor(model_dict["color"])
 
