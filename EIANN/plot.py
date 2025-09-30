@@ -2177,8 +2177,8 @@ def plot_spiral_decisions(decision_data, graph='decision', ax=None, point_size=1
         
         ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=point_size, alpha=0.4)
         ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=point_size*1.2)
-        ax.set_xlabel('x1')
-        ax.set_ylabel('x2')
+        ax.set_xlabel(r'$x_1$')
+        ax.set_ylabel(r'$x_2$')
         ax.set_title('Predictions')
 
     elif graph == 'decision':
@@ -2204,8 +2204,8 @@ def plot_spiral_decisions(decision_data, graph='decision', ax=None, point_size=1
         
         ax.set_xticks([-2, -1, 0, 1, 2])
         ax.set_yticks([-2, -1, 0, 1, 2])
-        ax.set_xlabel('x1')
-        ax.set_ylabel('x2')
+        ax.set_xlabel(r'$x_1$')
+        ax.set_ylabel(r'$x_2$')
 
     if ax is None:
         fig.tight_layout(rect=[0, 0, 1, 0.95]) 
