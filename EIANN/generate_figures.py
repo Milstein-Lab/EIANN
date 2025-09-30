@@ -408,7 +408,7 @@ def plot_error_all_seeds(data_dict, model_dict, ax, scale='log'):
         ax.set_yticks([10, 100], labels=['10%', '100%'])
 
 
-def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf', side='both'):
+def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf', side='both', plot_input=True):
     """
     Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
 
@@ -445,7 +445,7 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
         avg_metric = np.mean(avg_metric_per_seed)
         error = np.std(avg_metric_per_seed)
 
-        if len(ax.patches) == 0:
+        if len(ax.patches) == 0 and plot_input:
             avg_input = np.mean(metric_InputE)
             error_input = np.std(metric_InputE)
             bar = ax.bar(-0.5, avg_input, color='gray', width=0.6, alpha=0.4)
@@ -475,13 +475,13 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
         labels = [t.get_text() for t in ax.get_xticklabels()]
         labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
 
-        if len(labels) == 0: # Plot InputE if it's the first violin plot
+        if len(labels) == 0 and plot_input: # Plot InputE if it's the first violin plot
             parts = ax.violinplot(metric_InputE, positions=[0], showmeans=False, showmedians=False, showextrema=False, widths=0.7, side=side)
             parts['bodies'][0].set_alpha(0.65)
             parts['bodies'][0].set_facecolor('lightgray')
             mean_value = np.mean(metric_InputE)
             ax.scatter(0, mean_value, color='tomato', marker='o', s=5, zorder=5, edgecolors='w', linewidth=0.3)
-            labels = labels + ['Input E']
+            labels = labels + ['Input']
 
         if model_dict["label"] not in labels:
             # Update x-axis labels
