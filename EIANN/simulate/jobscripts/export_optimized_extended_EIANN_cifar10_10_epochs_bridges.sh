@@ -16,6 +16,8 @@ sbatch <<EOT
 #SBATCH --mail-user=milstein@cabm.rutgers.edu
 #SBATCH --mail-type=ALL
 
+set -x
+
 cd $PROJECT/EIANN/EIANN/simulate
 
 export MPI4PY_RC_RECV_MPROBE=false

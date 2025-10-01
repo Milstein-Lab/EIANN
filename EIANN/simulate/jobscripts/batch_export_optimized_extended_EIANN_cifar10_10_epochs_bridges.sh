@@ -1,5 +1,7 @@
 #!/bin/bash -l
 
+set -x
+
 export CONFIG_DIR=../network_config/cifar10
 
 declare -a config_files=(
