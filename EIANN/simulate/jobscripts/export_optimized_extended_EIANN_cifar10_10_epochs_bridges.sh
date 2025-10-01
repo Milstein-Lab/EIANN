@@ -7,7 +7,7 @@ sbatch <<EOT
 #SBATCH -J $JOB_NAME
 #SBATCH -o /ocean/projects/bio240068p/aaronmil/logs/EIANN/$JOB_NAME.%j.o
 #SBATCH -e /ocean/projects/bio240068p/aaronmil/logs/EIANN/$JOB_NAME.%j.e
-#SBATCH -p RM-shared
+#SBATCH -p RM
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=6
 #SBATCH -n 6
