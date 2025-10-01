@@ -87,14 +87,17 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         recompute = None
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'noise_sensitivity', 'metrics_dict', 'final_receptive_fields',
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
         variables_to_save.extend(["binned_mean_forward_dendritic_state", "binned_mean_forward_dendritic_state_steps"])
     if 'extended' in saved_network_path:
         variables_to_save.append('test_accuracy_history_extended')
-    if 'spiral' in config_path:
+
+    if 'mnist' in config_path:
+        variables_to_save.extend(['noise_sensitivity', 'final_receptive_fields'])
+    elif 'spiral' in config_path:
         variables_to_save.extend(['spiral_decision_data_dict'])
 
     # Open hdf5 and check if the relevant network data already exists       
@@ -284,14 +287,14 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='activity_dynamics', data=pop_dynamics_dict, file_path=hdf5_path, overwrite=True)
 
 
-def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix=None, saved_network_path_prefix=None, hdf5_path_prefix=None, recompute=None):
+def generate_hdf5_all_seeds(model_list, model_dict_all, dataset='mnist', config_path_prefix=None, saved_network_path_prefix=None, hdf5_path_prefix=None, recompute=None):
     for model_key in model_list:
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
 
         root_dir = ut.get_project_root()
         if config_path_prefix is None:
-            config_path_prefix = root_dir + "/EIANN/network_config/mnist/"
+            config_path_prefix = root_dir + f"/EIANN/network_config/{dataset}/"
         config_path = config_path_prefix + model_dict['config']
 
         if hdf5_path_prefix is None:
@@ -302,10 +305,10 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, config_path_prefix=None,
             # Set path to Box data directory (default path based on OS)
             if os.name == "posix": # macOS or Linux
                 username = os.environ.get("USER")
-                saved_network_path_prefix = f"/Users/{username}/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/MNIST/"
+                saved_network_path_prefix = f"/Users/{username}/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/{dataset.upper()}/"
             elif os.name == "nt": # Windows
                 username = os.environ.get("USERNAME")
-                saved_network_path_prefix = f"C:/Users/{username}/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/MNIST/"
+                saved_network_path_prefix = f"C:/Users/{username}/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/{dataset.upper()}/"
 
         if not os.path.exists(hdf5_path):
             # If the hdf5 is not available in local data directory, check in Box drive
@@ -408,7 +411,7 @@ def plot_error_all_seeds(data_dict, model_dict, ax, scale='log'):
         ax.set_yticks([10, 100], labels=['10%', '100%'])
 
 
-def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf', side='both'):
+def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name, plot_type='cdf', side='both', plot_input=True):
     """
     Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
 
@@ -421,11 +424,13 @@ def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, me
         plot_type (str): Type of plot ('cdf' or 'bar').
     """
     metric_all_seeds = []
+    metric_InputE = []
     for seed in data_dict:
         metric_one_seed = []
         for population in populations_to_plot:
             metric_one_seed.extend(data_dict[seed][f"metrics_dict"][population][metric_name])
         metric_all_seeds.append(metric_one_seed)
+        metric_InputE.extend(data_dict[seed][f"metrics_dict"]["InputE"][metric_name])
 
     if sum(len(sublist) for sublist in metric_all_seeds) == 0:
         return
@@ -442,14 +447,22 @@ def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, me
         avg_metric_per_seed = [np.mean(x) for x in metric_all_seeds]
         avg_metric = np.mean(avg_metric_per_seed)
         error = np.std(avg_metric_per_seed)
-        x = len(ax.patches)
-        print(x)
 
-        bar = ax.bar(x, avg_metric, yerr=error, color=model_dict["color"], width=0.6, ecolor='red', alpha=0.8)
+        if len(ax.patches) == 0 and plot_input:
+            avg_input = np.mean(metric_InputE)
+            error_input = np.std(metric_InputE)
+            bar = ax.bar(-0.5, avg_input, color='gray', width=0.6, alpha=0.4)
+            bar[0].set_label('Input')
+            ax.errorbar(-0.5, avg_input, yerr=error_input, fmt='none', ecolor='k', capsize=0, linewidth=0.5)
+
+        x = len(ax.patches)
+        bar = ax.bar(x, avg_metric, color=model_dict["color"], width=0.6, alpha=0.4)
         bar[0].set_label(model_dict["label"])
+        ax.errorbar(x, avg_metric, yerr=error, fmt='none', ecolor='k', capsize=0, linewidth=0.5)
         ax.set_ylabel(metric_name.capitalize())
         ax.set_ylim([0, 1])
-        ax.set_xticks(range(x + 1))
+        xticks = [-0.5] + [1 + i for i in range(x)]
+        ax.set_xticks(xticks)
         xtick_labels = [patch.get_label() for patch in ax.patches]
         ax.set_xticklabels(xtick_labels, rotation=45, ha='right')
 
@@ -465,13 +478,13 @@ def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, me
         labels = [t.get_text() for t in ax.get_xticklabels()]
         labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
 
-        # # Update x-axis labels
-        # new_label = True
-        # labels = labels + [model_dict["label"]]
-        # ax.set_xticks(range(len(labels)))  # Set ticks explicitly
-        # ax.set_xticklabels(labels, rotation=45, ha='right')
-        # ax.set_ylabel(metric_name.capitalize())
-        # ax.set_ylim([-0.03, 1.03])
+        if len(labels) == 0 and plot_input: # Plot InputE if it's the first violin plot
+            parts = ax.violinplot(metric_InputE, positions=[0], showmeans=False, showmedians=False, showextrema=False, widths=0.7, side=side)
+            parts['bodies'][0].set_alpha(0.65)
+            parts['bodies'][0].set_facecolor('lightgray')
+            mean_value = np.mean(metric_InputE)
+            ax.scatter(0, mean_value, color='tomato', marker='o', s=5, zorder=5, edgecolors='w', linewidth=0.3)
+            labels = labels + ['Input']
 
         if model_dict["label"] not in labels:
             # Update x-axis labels
@@ -494,224 +507,15 @@ def plot_metric_all_seeds_old(data_dict, model_dict, populations_to_plot, ax, me
             x_offset = 0.12
 
         # Create the violin plot
-        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.9, side=side)
+        parts = ax.violinplot(pooled_data, positions=[x], showmeans=False, showmedians=False, showextrema=False, widths=0.7, side=side)
         parts['bodies'][0].set_alpha(0.65)
         parts['bodies'][0].set_facecolor(model_dict["color"])
 
         # Scatter on a point with the mean and error bar
         mean_value = np.mean(seed_means)
-        error = np.std(seed_means) #/ np.sqrt(len(seed_means))
-        # ax.scatter(x, mean_value, color='red', marker='o', s=5, zorder=5)
-        ax.scatter(x+x_offset, mean_value, color='tomato', marker='o', s=5, zorder=5, edgecolors='w', linewidth=0.3)
-        # ax.errorbar(x, mean_value, yerr=error, color='red', fmt='none', capsize=2, capthick=1, zorder=5)
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import gaussian_kde
-def plot_metric_all_seeds2(data_dict, model_dict, populations_to_plot, ax, metric_name):
-    """
-    Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
-    Data from different populations are plotted as separate overlapping violin plots with averaged KDE lines.
-
-    Parameters:
-        data_dict (dict): Dictionary containing data for different seeds.
-        model_dict (dict): Dictionary containing model metadata (e.g., name, color).
-        populations_to_plot (list): List of population names to extract the metric from.
-        ax (matplotlib.axes.Axes): Matplotlib axis to plot on.
-        metric_name (str): Name of the metric to plot ('sparsity', 'selectivity', or 'structure').
-    """
-    
-    # Collect data separately for each population
-    populations_data = {}
-    for population in populations_to_plot:
-        metric_all_seeds = []
-        for seed in data_dict:
-            if f"metrics_dict" in data_dict[seed] and population in data_dict[seed][f"metrics_dict"]:
-                metric_one_seed = data_dict[seed][f"metrics_dict"][population][metric_name]
-                metric_all_seeds.append(metric_one_seed)
-        populations_data[population] = metric_all_seeds
-    
-    # Check if we have any data
-    total_data_points = sum(sum(len(sublist) for sublist in pop_data) for pop_data in populations_data.values())
-    if total_data_points == 0:
-        return
-
-    # Get existing labels (excluding default numerical labels) to set the x-axis positions
-    labels = [t.get_text() for t in ax.get_xticklabels()]
-    labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
-    if model_dict["label"] not in labels:
-        # Update x-axis labels
-        new_label = True
-        labels = labels + [model_dict["label"]]
-        ax.set_xticks(range(len(labels)))  # Set ticks explicitly
-        ax.set_xticklabels(labels, rotation=45, ha='right')
-        ax.set_ylabel(metric_name.capitalize())
-        ax.set_ylim([-0.03, 1.03])
-    else: 
-        new_label = False
-
-    x = len(labels) - 1
-    x_offset = 0.12
-    if new_label == False:
-        ax.vlines(x, -0.03, 1.03, color='w', linestyle='-', linewidth=0.8)
-
-
-    # Define common y-axis points for KDE evaluation
-    y_points = np.linspace(-0.03, 1.03, 200)
-    for i, population in enumerate(populations_to_plot):
-        if not populations_data[population]:  # Skip if no data for this population
-            continue
-            
-        # Pool all data for this population across seeds
-        pooled_population_data = []
-        seed_means = []
-        kde_values_all_seeds = []
-        
-        for metric_one_seed in populations_data[population]:
-            if metric_one_seed:  # Only process if there's data
-                seed_means.append(np.mean(metric_one_seed))
-                pooled_population_data.extend(metric_one_seed)
-                
-                # Compute KDE for this seed
-                if len(metric_one_seed) > 1:  # Need at least 2 points for KDE
-                    kde = gaussian_kde(metric_one_seed)
-                    kde_values = kde(y_points)
-                    kde_values_all_seeds.append(kde_values)
-        
-        if not pooled_population_data:  # Skip if no pooled data
-            continue
-
-        # Plot individual KDE lines for each seed
-        if kde_values_all_seeds:
-            # Find global max for consistent scaling across all seeds
-            all_kde_values = np.concatenate(kde_values_all_seeds) if kde_values_all_seeds else []
-            kde_global_max = np.max(all_kde_values) if len(all_kde_values) > 0 else 1
-            
-            # Plot each seed's KDE as a separate line
-            for seed_idx, kde_values in enumerate(kde_values_all_seeds):
-                # Scale KDE values to fit within violin width
-                kde_scaled = (kde_values / kde_global_max) * 0.45  # Scale to half violin width
-                
-                # Plot KDE line for this seed
-                ax.plot(x + kde_scaled, y_points, color=model_dict["color"], linewidth=0.3, alpha=0.2+i/len(populations_to_plot), zorder=6, label=population if seed_idx==0 else None)
-
-        # Scatter point with the mean for this population
-        mean_value = np.mean(seed_means)
         error = np.std(seed_means)
-        ax.scatter(x, mean_value, color='tomato', marker='o', s=5, zorder=5, linewidth=0.5, edgecolors='w', alpha=0.2+i/len(populations_to_plot))
-
-
-    # check if legend is already present
-    if ax.get_legend() is None:
-        legend = ax.legend(loc='lower left')
-        for line in legend.get_lines():
-            line.set_linewidth(1.5)
-
-
-def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric_name):
-    """
-    Generalized function to plot a metric (sparsity, selectivity, or structure) across multiple random seeds.
-    Data from different populations are plotted as separate overlapping violin plots with mean KDE lines and std shading.
-
-    Parameters:
-        data_dict (dict): Dictionary containing data for different seeds.
-        model_dict (dict): Dictionary containing model metadata (e.g., name, color).
-        populations_to_plot (list): List of population names to extract the metric from.
-        ax (matplotlib.axes.Axes): Matplotlib axis to plot on.
-        metric_name (str): Name of the metric to plot ('sparsity', 'selectivity', or 'structure').
-    """
-    
-    # Collect data separately for each population
-    populations_data = {}
-    for population in populations_to_plot:
-        metric_all_seeds = []
-        for seed in data_dict:
-            if f"metrics_dict" in data_dict[seed] and population in data_dict[seed][f"metrics_dict"]:
-                metric_one_seed = data_dict[seed][f"metrics_dict"][population][metric_name]
-                metric_all_seeds.append(metric_one_seed)
-        populations_data[population] = metric_all_seeds
-    populations_data['InputE'] = data_dict[seed]['metrics_dict']['InputE'][metric_name]
-
-    # Plot values for InputE as a baseline comparison
-    if len(ax._children) == 0:
-        average_metric = np.mean(populations_data['InputE'])
-        ax.axhline(average_metric, color='gray', linewidth=1.0, alpha=0.5, zorder=6, linestyle='--')
-        ax.annotate('Input', (0.15, average_metric-0.16), color='gray', ha='left', va='bottom', fontsize=7)
-
-    # Get existing labels (excluding default numerical labels) to set the x-axis positions
-    labels = [t.get_text() for t in ax.get_xticklabels()]
-    labels = [label for label in labels if not label.replace('.', '').isdigit()]  # Remove numerical labels
-    if model_dict["label"] not in labels:
-        # Update x-axis labels
-        new_label = True
-        labels = labels + [model_dict["label"]]
-        ax.set_xticks(range(len(labels)))  # Set ticks explicitly
-        ax.set_xticklabels(labels, rotation=45, ha='right')
-        ax.set_ylabel(metric_name.capitalize())
-        ax.set_ylim([-0.03, 1.03])
-    else: 
-        new_label = False
-
-    x = len(labels) - 1
-    x_offset = 0.12
-    if new_label == False:
-        ax.vlines(x, -0.03, 1.03, color='w', linestyle='-', linewidth=0.8)
-
-    # Define common y-axis points for KDE evaluation
-    y_points = np.linspace(-0.03, 1.03, 200)
-    
-    for population in populations_to_plot:
-        kde_values_all_seeds = []
-        
-        # Compute KDE for each seed for this population
-        for metric_one_seed in populations_data[population]:            
-            kde = gaussian_kde(metric_one_seed)
-            kde_values = kde(y_points)
-            kde_values_all_seeds.append(kde_values)
-
-        # Calculate mean KDE and standard deviation across seeds
-        if kde_values_all_seeds:
-            kde_values_array = np.array(kde_values_all_seeds)
-            
-            # Find global max for consistent scaling
-            kde_global_max = np.max(kde_values_array)
-            
-            # Calculate mean and std of KDE values across seeds
-            kde_mean = np.mean(kde_values_array, axis=0)
-            kde_std = np.std(kde_values_array, axis=0)
-            
-            # Scale KDE values to fit within violin width
-            kde_mean_scaled = (kde_mean / kde_global_max) * 0.45
-            kde_std_scaled = (kde_std / kde_global_max) * 0.45
-            
-            # Calculate upper and lower bounds for shading
-            kde_upper = kde_mean_scaled + kde_std_scaled
-            kde_lower = kde_mean_scaled - kde_std_scaled
-            
-            # Plot mean KDE line
-            ax.plot(x + kde_mean_scaled, y_points, 
-                   color=model_dict["color"], 
-                   linewidth=1.0, 
-                   alpha=0.8, 
-                   zorder=6, 
-                   label=population)
-            
-            # Add shaded error region
-            ax.fill_betweenx(y_points, 
-                           x + kde_lower, 
-                           x + kde_upper, 
-                           color=model_dict["color"], 
-                           alpha=0.4, 
-                           zorder=5,
-                           linewidth=0)
-
-    # check if legend is already present
-    if ax.get_legend() is None and len(populations_to_plot) > 1:
-        legend = ax.legend(loc='lower left')
-        for line in legend.get_lines():
-            line.set_linewidth(1.5)
-
+        ax.scatter(x+x_offset, mean_value, color='tomato', marker='o', s=5, zorder=5, edgecolors='w', linewidth=0.3)
+        # ax.errorbar(x, mean_value, yerr=error, color='k', fmt='none', capsize=0, capthick=0.5, zorder=5)
 
 
 def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
@@ -739,8 +543,8 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True, error
     for seed in model_dict['seeds']:
         if stochastic:
             angle = data_dict[seed]['angle_vs_bp_stochastic']['all_params'][:]
-            if np.isnan(angle).any(): # check if there are any NaNs in the array
-                print(f"Warning: NaN values found in angle array for seed {seed}")
+            # if np.isnan(angle).any(): # check if there are any NaNs in the array
+            #     print(f"Warning: NaN values found in angle array for seed {seed}")
             angle = np.where(np.isnan(angle), 0, angle) # replace NaNs with 0
             bin_size = 3
             n = len(angle) // bin_size
@@ -917,194 +721,6 @@ def plot_dynamics_all_seeds(data_dict, model_dict, ax):
 ########################################################################################################
 # Multi-panel figure generation
 ########################################################################################################
-
-def generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,            
-                       left=0.049,right=0.95,
-                       top=0.95, bottom=0.5,
-                       wspace=0.2, hspace=0.5,
-                       width_ratios=[1, 1, 1, 0.1])
-    
-    metrics_axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,
-                       left=0.049,right=0.98,
-                       top=0.95, bottom=0.55,
-                       wspace=0.4, hspace=0.6,
-                       width_ratios=[1, 1, 1, 0.4])
-
-    ax_accuracy    = fig.add_subplot(metrics_axes[1, 0])
-    ax_dendstate   = fig.add_subplot(metrics_axes[1, 1])
-    ax_angle       = fig.add_subplot(metrics_axes[1, 2])
-    ax_selectivity = fig.add_subplot(metrics_axes[1, 3])
-    # ax_sparsity    = fig.add_subplot(metrics_axes[0, 3])
-
-    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-    
-    if "bpLike_WT_hebbdend" in model_dict_all: # Update model label for this figure
-        model_dict_all["bpLike_WT_hebbdend"]["label"] = "Learned (Hebb)"
-        
-    for col, model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-            populations_to_plot = ['H2DendI']
-
-            # Plot heatmaps
-            if model_key in model_list_heatmaps:
-                for row,population in enumerate(populations_to_plot):
-                    # Activity plots: batch accuracy of each population to the test dataset
-                    ax = fig.add_subplot(axes[row, col])
-                    seed = model_dict['seeds'][0] # example seed to plot
-                    average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                    num_units = average_pop_activity_dict[population].shape[1]
-                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, sort=True, ax=ax, cbar=True)
-
-                    ax.set_yticks([0,num_units-1])
-                    ax.set_yticklabels([1,num_units])
-                    ax.set_ylabel(f'{population} unit', labelpad=-8)
-                    if row==0:
-                        ax.set_title(model_dict["display_name"], pad=3)
-                    if col>0:
-                        ax.set_ylabel('')
-                        ax.set_yticklabels([])
-
-            # Plot metrics
-            if model_key in model_list_metrics:  
-                plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
-                plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle)
-
-                populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict'] if 'DendI' in population]
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
-
-            legend = ax_accuracy.legend(ncol=1, bbox_to_anchor=(0.2, 0.6), loc='upper left', fontsize=6)
-            for line in legend.get_lines():
-                line.set_linewidth(1.5)
-
-    if save:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-
-
-def generate_fig4(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=2, ncols=2, figure=fig,                    
-                       left=0.04,right=0.6,
-                       top=0.88, bottom=0.59,
-                       wspace=0.1, hspace=0.3,
-                       height_ratios=[1,1.2])
-    metrics_axes = gs.GridSpec(nrows=2, ncols=2, figure=fig,                        
-                       left=0.7,right=0.98,
-                       top=0.99, bottom=0.72,
-                       wspace=0.8, hspace=0.4)
-    ax_accuracy    = fig.add_subplot(metrics_axes[0, :])  
-    ax_selectivity = fig.add_subplot(metrics_axes[1, 0])
-    ax_structure   = fig.add_subplot(metrics_axes[1, 1])
-
-    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics)) # remove duplicates
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    for i,model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-
-            if model_key in model_list_heatmaps:
-                seed = model_dict['seeds'][0] # example seed to plot
-                population = 'H2E'
-
-                # Activity plots: batch accuracy of each population to the test dataset
-                ax = fig.add_subplot(axes[0, i])
-                average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                num_units = average_pop_activity_dict[population].shape[1]
-
-                pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, sort=True, ax=ax, cbar=True)
-                ax.set_yticks([0,num_units-1])
-                ax.set_yticklabels([1,num_units])
-                ax.set_ylabel(f'{population} unit', labelpad=-8)
-                ax.set_title(model_dict["display_name"])
-                if i>0:
-                    ax.set_ylabel('')
-                    ax.set_yticklabels([])
-
-                # Receptive field plots
-                temp_ax = fig.add_subplot(axes[1, i])
-                pos = temp_ax.get_position()
-                temp_ax.remove()
-                rf_axes = fig.add_gridspec(5,5,left=pos.x0, right=pos.x1-0.04, bottom=pos.y0, top=pos.y1, wspace=0.1, hspace=0.1)
-                ax_list = []
-                num_units = 10
-                for j in range(num_units):
-                    ax = fig.add_subplot(rf_axes[j])
-                    ax_list.append(ax)
-                preferred_classes = np.argmax(average_pop_activity_dict[population], axis=0)
-                receptive_fields = torch.tensor(np.array(data_dict[seed][f"maxact_receptive_fields_{population}"]))
-                im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes)
-                fig_width, fig_height = fig.get_size_inches()
-                cax = fig.add_axes([ax_list[0].get_position().x0, ax.get_position().y0-0.08/fig_height, 0.05, 0.03/fig_height])
-                fig.colorbar(im, cax=cax, orientation='horizontal')
-
-            if model_key in model_list_metrics:
-                plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy, legend=True)
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin',side='low')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E'], ax=ax_structure, metric_name='structure', plot_type='violin', side='low')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin', side='high')
-                # plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H2E'], ax=ax_structure, metric_name='structure', plot_type='violin', side='high')
-
-    if save is not None:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-
-
-def fig4_spirals(model_dict_all, model_list_spirals, model_list_metrics, spiral_type='scatter', config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/saved_network_pickles/spiral/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=1, ncols=4, figure=fig,                    
-                       left=0.1,right=0.9,
-                       top=0.9, bottom=0.8,
-                       wspace=0.3, hspace=0.5,
-                       width_ratios=[1,1,0.1,1.3])
-    ax_accuracy =   fig.add_subplot(axes[0, 3])  
-
-    all_models = list(dict.fromkeys(model_list_spirals + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    for model_idx, model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-            seed = model_dict['seeds'][0] # example seed to plot
-
-            if model_key in model_list_spirals:
-                # Plot spirals
-                ax = fig.add_subplot(axes[0, model_idx])
-                decision_data = data_dict[seed]['spiral_decision_data_dict']
-                pt.plot_spiral_decisions(decision_data, graph=spiral_type, ax=ax)
-                ax.set_aspect('equal')
-                ax.set_title(model_dict["label"], pad=4)
-                ax.set_xlabel('x1')
-                ax.set_ylabel('x2')
-
-            # Plot metrics
-            if model_key in model_list_metrics:                
-                plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-
-    if save:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
 def generate_fig5(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
@@ -1571,7 +1187,6 @@ def generate_hyperparams_table(csv_filename, save):
     fig.savefig(f"figures/{save}.tiff", dpi=300)
 
 
-
 def compare_RSM_properties(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None):
     fig = plt.figure(figsize=(5.5, 9))
     axes = gs.GridSpec(nrows=4, ncols=3, figure=fig,
@@ -2004,42 +1619,6 @@ def shorten_label(name):
     
 
 
-from reportlab.pdfgen import canvas
-def images_to_pdf(image_paths, output_path, dpi=300):
-    # Define US Letter page size in points
-    letter_size = [8.5 * 72, 11 * 72]  # 612 x 792 points
-    
-    # Scale figure size based on dpi
-    scale_factor = dpi / 300  # Reference is 300 dpi
-    fig_size = [5.5 * 72 * scale_factor, 9 * 72 * scale_factor]
-    
-    fig_width = fig_size[0]
-    fig_height = fig_size[1]
-    
-    margin_x = (letter_size[0] - fig_width) / 2
-    margin_y = (letter_size[1] - fig_height) / 2
-    
-    # Create a canvas for the PDF
-    c = canvas.Canvas(output_path, pagesize=letter_size)
-    
-    for img_path in image_paths:
-        c.setPageSize(letter_size)
-        
-        # Draw the image on the page
-        c.drawImage(img_path, margin_x, margin_y, width=fig_width, height=fig_height)
-        
-        # Add a caption with the image filename
-        caption = os.path.basename(img_path)
-        c.setFont("Helvetica", 12)
-        caption_x = letter_size[0] * 0.35
-        caption_y = letter_size[1] - margin_y * 0.7
-        c.drawString(caption_x, caption_y, caption)
-        
-        c.showPage()  # Add a new page in the PDF for the next image
-    
-    c.save()
-
-
 
 ########################################################################################################
 # Main script
@@ -2079,15 +1658,6 @@ def main(figure, recompute):
         all_spiral_models = [model_key for model_key in all_models if "spiral" in model_key]
         generate_hdf5_all_seeds(all_spiral_models, model_dict_all, config_path_prefix="network_config/spiral/", saved_network_path_prefix=saved_network_path_prefix+"spiral/", recompute=recompute)
         recompute = None
-
-    # Analyze DendI
-    if figure in ["all", "fig3"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list_heatmaps = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend"]
-        # model_list_metrics = model_list_heatmaps + ["bpDale_fixed"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "Fig3_dendI"
-        generate_fig3(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Analyze E properties of main models
     if figure in ["all", "fig4"]:
@@ -2278,13 +1848,6 @@ def main(figure, recompute):
         figure_name = "metrics_all_models"
         generate_metrics_plot(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
-
-    # Combine figures into one PDF
-    directory = "figures/"
-    os.makedirs(directory, exist_ok=True)
-    image_paths = [os.path.join(directory, figure) for figure in os.listdir(directory) if figure.endswith('.png') and figure.startswith('Fig')]
-    image_paths.sort()
-    images_to_pdf(image_paths=image_paths, output_path= directory+"all_figures.pdf")
 
 
 if __name__=="__main__":
