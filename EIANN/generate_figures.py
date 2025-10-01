@@ -1696,21 +1696,6 @@ def main(figure, recompute):
         generate_hdf5_all_seeds(all_spiral_models, model_dict_all, config_path_prefix="network_config/spiral/", saved_network_path_prefix=saved_network_path_prefix+"spiral/", recompute=recompute)
         recompute = None
 
-    # Analyze E properties of main models
-    if figure in ["all", "fig4"]:
-        saved_network_path_prefix_m = saved_network_path_prefix + "MNIST/"
-        model_list_heatmaps = ["bpDale_fixed", "bpLike_WT_hebbdend"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "Fig4_bpDale_bpLike"
-        generate_fig4(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix_m, recompute=recompute)
-        
-        saved_network_path_prefix_s = saved_network_path_prefix + "spiral/"
-        model_list_spirals = ["bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]        
-        model_list_metrics = model_list_spirals + ["vanBP_2_hidden_zero_bias_spiral", "vanBP_2_hidden_learned_bias_spiral"]
-        figure_name = "Fig4_Spirals"
-        fig4_spirals(model_dict_all, model_list_spirals, model_list_metrics, spiral_type='decision', config_path_prefix='network_config/spiral/',
-                                saved_network_path_prefix=saved_network_path_prefix_s, save=figure_name, recompute=recompute)
-
     # Biological learning rules (with WT/good gradients)
     if figure in ["all","fig5"]:
         saved_network_path_prefix += "MNIST/"

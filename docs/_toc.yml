@@ -28,6 +28,7 @@ parts:
     - file: Galloni_etal_2025/Figure_4
     - file: Galloni_etal_2025/Figure_5
     - file: Galloni_etal_2025/Figure_6
+    - file: Galloni_etal_2025/noise_sensitivity
     
   - caption: Python API  
     chapters:
