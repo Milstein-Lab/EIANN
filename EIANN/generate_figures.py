@@ -491,9 +491,11 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
             new_label = True
             labels = labels + [model_dict["label"]]
             ax.set_xticks(range(len(labels)))  # Set ticks explicitly
-            ax.set_xticklabels(labels, rotation=45, ha='right')
+            ax.set_xticklabels(labels, rotation=45, ha='right', rotation_mode='anchor', va='center')
             ax.set_ylabel(metric_name.capitalize())
             ax.set_ylim([-0.03, 1.03])
+            ax.set_yticks([0,0.5,1])
+            ax.set_yticklabels([str(int(tick)) if tick in [0,1] else '' for tick in ax.get_yticks()])
         else: 
             new_label = False
 
@@ -716,6 +718,41 @@ def plot_dynamics_all_seeds(data_dict, model_dict, ax):
     ax_E.set_ylabel('Activity (norm.)')
     ax_E.set_title(model_dict['label'], rotation=90, x=-0.25, y=0.4, va='center')
 
+
+def plot_confusion_all_seeds(data_dict, model_dict, ax):
+    population = 'H1E'
+    between_class_similarity = {label: [] for label in range(10)}
+    between_class_similarity_all = []
+    for seed in model_dict['seeds']:
+        # Calculate the receptive field similarity for each unit (the histogram will pool data across all model seeds)
+        unit_labels_dict = data_dict[seed]['unit_labels_dict']
+        unit_labels = unit_labels_dict[population][:]
+        idx = np.argsort(unit_labels)
+        unit_labels = unit_labels[idx]
+
+        average_pop_activity = np.array(data_dict[seed]['average_pop_activity_dict'][population][:]).T
+        sorted_pop_activity = average_pop_activity[idx]
+
+        # Calculate within-class and between-class receptive field similarity (accumulate across all seeds)
+        for label in range(10):
+            class_idx = np.where(unit_labels == label)[0]
+            max_activity_outside_class = np.max(sorted_pop_activity[class_idx][:, np.arange(10)!=label], axis=1)
+            mean_activity_outside_class = np.mean(sorted_pop_activity[class_idx][:, np.arange(10)!=label], axis=1)
+            confusion_ratio = max_activity_outside_class / (mean_activity_outside_class + 1e-10)
+            between_class_similarity_all.extend(confusion_ratio)
+            between_class_similarity[label].extend(confusion_ratio)
+
+    for label in range(10):
+        mean_val = np.mean(between_class_similarity[label])
+        std_val = np.std(between_class_similarity[label])
+        ax.bar(label, mean_val, width=0.8, label='Between-class' if label==0 else None, color=model_dict["color"], alpha=0.3)
+        ax.errorbar(label, mean_val, yerr=std_val, fmt='none', ecolor=model_dict["color"], capsize=0, linewidth=0.5)
+
+    ax.set_ylabel('Confusion ratio\n(non-preferred class)')
+    ax.set_xticks(range(10))
+    ax.set_xticklabels(range(10))
+    ax.set_ylim(0, 8)
+    ax.set_xlabel('Labels', labelpad=0)
 
 
 ########################################################################################################

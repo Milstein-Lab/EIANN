@@ -26,6 +26,8 @@ parts:
     - file: Galloni_etal_2025/Figure_2
     - file: Galloni_etal_2025/Figure_3
     - file: Galloni_etal_2025/Figure_4
+    - file: Galloni_etal_2025/Figure_5
+    - file: Galloni_etal_2025/Figure_6
     
   - caption: Python API  
     chapters:
