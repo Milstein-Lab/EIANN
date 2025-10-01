@@ -22,6 +22,6 @@ export MPI4PY_RC_RECV_MPROBE=false
 
 mpirun -n 6 python -m mpi4py.futures simulate_EIANN_cifar10.py \
     --network-config-file-path=$CONFIG_FILE_PATH \
-    --output-dir=data/EIANN --disp --export \
+    --output-dir=../data/EIANN --disp --export \
     --framework=mpi --label=10_epochs --train_steps=40000 --epochs=10
 EOT

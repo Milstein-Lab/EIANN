@@ -22,6 +22,6 @@ export MPI4PY_RC_RECV_MPROBE=false
 
 mpirun -n 6 python -m mpi4py.futures simulate_EIANN_mnist.py \
     --network-config-file-path=$CONFIG_FILE_PATH \
-    --output-dir=data/EIANN --disp --export \
+    --output-dir=../data/EIANN --disp --export \
     --framework=mpi --label=complete --train_steps=20000
 EOT
