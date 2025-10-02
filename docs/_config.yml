@@ -124,11 +124,11 @@ sphinx:
     autoapi_add_toctree_entry: true
     nb_merge_streams: true    
     html_show_sourcelink: true    
-    autoapi_ignore: 
-      - '*generate_figures.py'
-      - '*external.py'
-      - '*optimize*'
-      - '*simulate*'
+    # autoapi_ignore: 
+    #   - '*generate_figures.py'
+    #   - '*external.py'
+    #   - '*optimize*'
+    #   - '*simulate*'
     autosectionlabel_prefix_document: true
 
     # Other configurations
