@@ -748,7 +748,7 @@ def plot_confusion_all_seeds(data_dict, model_dict, ax):
         ax.bar(label, mean_val, width=0.8, label='Between-class' if label==0 else None, color=model_dict["color"], alpha=0.3)
         ax.errorbar(label, mean_val, yerr=std_val, fmt='none', ecolor=model_dict["color"], capsize=0, linewidth=0.5)
 
-    ax.set_ylabel('Confusion ratio\n(non-preferred class)')
+    ax.set_ylabel('Confusion ratio (non-\npreferred class selectivity)')
     ax.set_xticks(range(10))
     ax.set_xticklabels(range(10))
     ax.set_ylim(0, 8)
