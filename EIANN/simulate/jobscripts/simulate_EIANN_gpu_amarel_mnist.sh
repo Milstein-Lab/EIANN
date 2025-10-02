@@ -62,3 +62,6 @@ EOT
 
 # See the progress
 # watch -n 1 squeue -u $USER
+
+# before python call:
+# export CUBLAS_WORKSPACE_CONFIG=:4096:8
