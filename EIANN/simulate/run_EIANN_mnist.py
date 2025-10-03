@@ -71,7 +71,16 @@ if __name__ == '__main__':
     main()
 
 
-# Network Tracking
+# Network Tracking (Bridges)
+
+# Van BP (GPU) --> in interactive session
+# Network Name: 20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml
+# Final Val Accuracy: 96.30999755859375
+# Final Val Loss: 0.008542143739759922
+# Network Run Time: 37.80518388748169 sec
+
+
+# Network Tracking (Amarel)
 
 # Van BP (CPU)
 # - Network Name: 20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml
@@ -84,5 +93,6 @@ if __name__ == '__main__':
 # - Final Val Accuracy: 96.13999938964844
 # - Final Val Loss: 0.008898369036614895
 # - Network Run Time: 91.12481260299683 sec
+
 
 # TODO: Make jobscript for bridges, test initial weights/biases and initial values on Modal and Bridges to see if seed is set same
