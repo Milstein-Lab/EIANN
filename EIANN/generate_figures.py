@@ -87,7 +87,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         recompute = None
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict',
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict', 'robustness_to_pruning_E_to_E',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
@@ -173,7 +173,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='sorted_unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
 
         output = pop_activity_dict[network.output_pop.fullname]
-        percent_correct = ut.compute_test_accuracy(output, pattern_labels)
+        percent_correct = ut.compute_test_accuracy_from_data(output, pattern_labels)
         ut.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=hdf5_path, overwrite=True)
         
     # Noise sensitivity
@@ -181,6 +181,14 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         noise_stds = np.arange(0, 1.1, 0.1)
         accuracy_list = ut.compute_noise_sensitivity(network, noise_stds=noise_stds)
         ut.save_plot_data(network.name, network.seed, data_key='noise_sensitivity', data=(noise_stds, accuracy_list), file_path=hdf5_path, overwrite=True)
+
+    # Robustness to pruning
+    if 'robustness_to_pruning_E_to_E' in variables_to_recompute or 'robustness_to_pruning_all' in variables_to_recompute:
+        fraction_to_prune, accuracy_list = ut.compute_robustness_to_pruning(network, test_dataloader, projections='E_to_E')
+        ut.save_plot_data(network.name, network.seed, data_key='robustness_to_pruning_E_to_E', data=(fraction_to_prune, accuracy_list), file_path=hdf5_path, overwrite=True)
+
+        fraction_to_prune, accuracy_list = ut.compute_robustness_to_pruning(network, test_dataloader, projections='all')
+        ut.save_plot_data(network.name, network.seed, data_key='robustness_to_pruning_all', data=(fraction_to_prune, accuracy_list), file_path=hdf5_path, overwrite=True)
 
     if 'final_receptive_fields' in variables_to_recompute:
         rf_populations = [population for population in network.populations.values() if population.name == "E" and population.fullname != "InputE"]

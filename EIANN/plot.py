@@ -1040,7 +1040,7 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     output_activity = pop_activity_dict[network.output_pop.fullname].clone()
     if sorted_output_idx is not None:
         output_activity = output_activity[:, sorted_output_idx]
-    percent_correct = ut.compute_test_accuracy(output_activity, pattern_labels)
+    percent_correct = ut.compute_test_accuracy_from_data(output_activity, pattern_labels)
     print(f'Batch accuracy = {percent_correct}%')
 
     if isinstance(population, str):
