@@ -46,30 +46,34 @@ if __name__ == '__main__':
     main()
 
 
-# Network Tracking (Bridges)
 
-# Van BP (GPU) (1 GPU)
+######## Network Tracking (Bridges) ########
+
+# ------ CPU ------
+
+# Van BP 
+# - Network Name: 20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml
+# - Final Val Accuracy: 96.55999755859375
+# - Final Val Loss: 0.008532393723726273
+# - Network Run Time: 80.56694316864014 sec
+
+# BP Dale
+# - Network Name: 20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml
+# - Final Val Accuracy: 95.86000061035156
+# - Final Val Loss: 0.010352011770009995
+# - Network Run Time: 1154.7670638561249 sec
+
+
+# ------ GPU ------
+
+# Van BP 
 # - Network Name: 20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml
 # - Final Val Accuracy: 96.30999755859375
 # - Final Val Loss: 0.008542143739759922
 # - Network Run Time: 39.9001362323761 sec
 
-# Van BP (CPU)
-
-
-# Network Tracking (Amarel)
-
-# Van BP (CPU)
-# - Network Name: 20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml
-# - Final Val Accuracy: 96.52999877929688
-# - Final Val Loss: 0.008667627349495888
-# - Network Run Time: 108.71107316017151 sec
-
-# Van BP (GPU)
-# - Network Name: 20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml
-# - Final Val Accuracy: 96.13999938964844
-# - Final Val Loss: 0.008898369036614895
-# - Network Run Time: 91.12481260299683 sec
-
-
-# TODO: Make jobscript for bridges, test initial weights/biases and initial values on Modal and Bridges to see if seed is set same
+# BP Dale 
+# - Network Name: 20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml
+# - Final Val Accuracy: 95.22999572753906
+# - Final Val Loss: 0.01068859826773405
+# - Network Run Time: 306.1142373085022 sec

@@ -1,15 +1,14 @@
 #!/bin/bash -l
-#SBATCH -J eiann_gpu_mnist
-#SBATCH -o /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_gpu_mnist.%j.o
-#SBATCH -e /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_gpu_mnist.%j.e
+#SBATCH -J eiann_cpu_mnist
+#SBATCH -o /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_cpu_mnist.%j.o
+#SBATCH -e /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_cpu_mnist.%j.e
 #SBATCH --requeue
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --partition=GPU-shared
-#SBATCH --gres=gpu:v100-32:1
-#SBATCH --mem=16G
+#SBATCH --partition=RM
+#SBATCH --mem=32G
 #SBATCH --cpus-per-task=4
-#SBATCH --time=01:00:00
+#SBATCH --time=02:00:00
 #SBATCH -A bio240068p
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
@@ -21,11 +20,9 @@ export OMP_NUM_THREADS=4
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
-export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_START_METHOD=thread
 
 module purge
-module load cuda/12.4.0
 
 source /opt/packages/anaconda3-2024.10-1/etc/profile.d/conda.sh
 conda activate eiann
@@ -38,13 +35,10 @@ python EIANN/simulate/run_EIANN_mnist.py \
 
 
 # cd $HOME/EIANN/EIANN/simulate/jobscripts
-# sbatch simulate_EIANN_gpu_bridges_mnist.sh bpDale_relu
+# sbatch simulate_EIANN_cpu_bridges_mnist.sh bpDale_relu
 
 # See logs:
 # cd /ocean/projects/bio240068p/$USER/logs/EIANN
 
 # See progress:
 # watch -n 1 squeue -u $USER
-
-# Request one node:
-# interact -p GPU-shared --gres=gpu:v100-32:4 -t 30:00 -A bio240068p
