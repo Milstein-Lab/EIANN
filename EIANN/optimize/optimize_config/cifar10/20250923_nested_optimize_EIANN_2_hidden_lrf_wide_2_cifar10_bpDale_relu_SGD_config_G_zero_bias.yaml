@@ -61,9 +61,9 @@ kwargs:
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: optimize/network_config/cifar10/20250911_EIANN_2_hidden_lrf_wide_cifar10_bpDale_relu_SGD_config_G_zero_bias.yaml
+    network_config_file_path: optimize/network_config/cifar10/20250923_EIANN_2_hidden_lrf_wide_2_cifar10_bpDale_relu_SGD_config_G_zero_bias.yaml
     val_interval:
-        - -100
+        - -200
         - -1
         - 100
     num_training_steps_accuracy_window: 1000
@@ -78,7 +78,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_lrf_wide_cifar10_bpDale_relu_SGD_G_zero_bias
+optimization_title: EIANN_2_hidden_lrf_wide_2_cifar10_bpDale_relu_SGD_G_zero_bias
 x0:
     H_E_E_learning_rate: 0.5
     Output_E_E_learning_rate: 0.5

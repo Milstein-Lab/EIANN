@@ -126,7 +126,7 @@ def config_worker():
     
     context.train_steps = int(context.train_steps)
     
-    history_interval = max(min(250, int(context.train_steps / 200)), 100)
+    history_interval = max(int(context.train_steps * context.epochs / 200), 100)
     if 'store_params_interval' not in context():
         context.store_params_interval = (0, -1, history_interval)
     

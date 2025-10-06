@@ -182,10 +182,19 @@ def compute_test_activity(network, test_dataloader, class_average=False, sort=Fa
     return pop_activity_dict, pattern_labels, unit_labels_dict
 
 
-def compute_test_accuracy(output, labels):
+def compute_test_accuracy_from_data(output, labels):
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / len(labels)
     percent_correct = torch.round(percent_correct, decimals=2)       
     return percent_correct 
+
+
+def compute_test_accuracy(network, test_dataloader, sorted_output_idx=None):
+    pop_activity_dict, pattern_labels = compute_raw_test_activity(network, test_dataloader)
+    output_activity = pop_activity_dict[network.output_pop.fullname].clone()
+    if sorted_output_idx is not None:
+        output_activity = output_activity[:, sorted_output_idx]
+    percent_correct = compute_test_accuracy_from_data(output_activity, pattern_labels)
+    return percent_correct
 
 
 def compute_test_activity_dynamics(network, dataloader, plot=False, normalize=True):
@@ -223,6 +232,95 @@ def compute_test_activity_dynamics(network, dataloader, plot=False, normalize=Tr
     if plot:
         pt.plot_network_dynamics(pop_dynamics_dict, normalize=normalize)
     return pop_dynamics_dict
+
+
+def compute_noise_sensitivity(network, noise_stds=np.arange(0, 2, 0.1)):
+    """
+    Compute noise sensitivity of a trained network on MNIST by adding Gaussian noise to the input
+    and measuring test accuracy.
+
+    Parameters
+    ----------
+    network : :class:`EIANN._network.Network`
+        The trained neural network to evaluate.
+    noise_stds : array-like, optional
+        The standard deviations of the noise to add to the input. Default is np.arange(0, 2, 0.1).
+
+    Returns
+    -------
+    accuracy_list : list
+        The test accuracy for each standard deviation of noise.
+    """
+    accuracy_list = []
+    for noise_std in tqdm(noise_stds):
+        _,_,test_dataloader,_ = data_utils.get_MNIST_dataloaders_with_noise(batch_size='full_dataset', mean=0.0, std=noise_std)
+        percent_correct = compute_test_accuracy(network, test_dataloader)
+        accuracy_list.append(percent_correct)
+    return accuracy_list
+
+
+def compute_robustness_to_pruning(network, test_dataloader, projections='all'):
+    """
+    Compute robustness to pruning of a trained network by pruning the weakest connections
+    and measuring test accuracy.
+
+    Example usage:
+    fraction_to_prune, accuracy_list = compute_robustness_to_pruning(network, test_dataloader, projections='E_to_E')
+    plt.plot(fraction_to_prune, accuracy_list)
+    plt.show()
+    
+    Parameters
+    ----------
+    network : :class:`EIANN._network.Network`
+        The trained neural network to evaluate.
+    test_dataloader : :class:`torch.utils.data.DataLoader`
+        The test dataloader to evaluate the network on.
+    projections : str, optional
+        The projections to prune. Can be 'E_to_E', 'all' (default), or a list of projection names.
+
+    Returns
+    -------
+    fraction_to_prune : array-like
+        The fractions of connections to prune.
+    accuracy_list : list
+        The test accuracy for each fraction of connections to prune.
+    """
+    if projections == 'all':
+        projections = list(network.projections.keys())
+    elif projections == 'E_to_E':
+        projections = []
+        for proj in network.projections:
+            pre_pop = proj.split('_')[0]
+            post_pop = proj.split('_')[1]
+            if 'E' in pre_pop and 'E' in post_pop:
+                projections.append(proj)
+    elif type(projections) == list:
+        for proj in projections:
+            if proj not in network.projections:
+                raise ValueError(f'Invalid projection: {proj}, must be in {list(network.projections.keys())}')
+    else:
+        raise ValueError(f'Invalid projections: {projections}, must be "E_to_E", "all", or a list of projection names')
+    
+    accuracy_list = []
+    fraction_to_prune = np.linspace(0, 1, 41)
+    initial_state_dict = copy.deepcopy(network.state_dict())
+
+    print(f'Computing robustness to pruning ({len(projections)} projections)')
+    for fraction in tqdm(fraction_to_prune):
+        # Prune the weakest connections
+        for proj_name in projections:
+            weight_tensor = network.projections[proj_name].weight.detach()
+            sorted_indices = torch.argsort(torch.abs(weight_tensor.flatten()))
+            pruning_idx = int(len(sorted_indices) * fraction)
+            weight_tensor.flatten()[sorted_indices[0:pruning_idx]] = 0
+
+        # Test the network performance after pruning
+        percent_correct = compute_test_accuracy(network, test_dataloader)
+        accuracy_list.append(percent_correct)
+
+    network.load_state_dict(initial_state_dict) # Reset network to original state
+
+    return fraction_to_prune, accuracy_list
 
 
 def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=None, plot=False):
@@ -1230,8 +1328,7 @@ def compute_diag_fisher(network, train_dataloader_CL1_full):
     return diag_fisher
 
 
-def compute_representation_metrics(population, dataloader, receptive_fields=None, plot=False, export=False,
-                                   export_path=None, overwrite=False, dimensions=None):
+def compute_representation_metrics(population, dataloader, receptive_fields=None, initial_receptive_fields=None, plot=False, dimensions=None):
     """
     Compute representation metrics for a population of neurons.
 
@@ -1263,45 +1360,28 @@ def compute_representation_metrics(population, dataloader, receptive_fields=None
             - 'discriminability': Discriminability of population activity.
             - 'structure': Structure of receptive fields (if provided).
     """
-
-    if export and overwrite is False:
-        assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        metrics_dict = data_utils.load_plot_data(population.network.name, population.network.seed,
-                                                data_key=f'metrics_dict_{population.fullname}', file_path=export_path)
-        if metrics_dict is not None:
-            return metrics_dict
-
     network = population.network
     idx, data, target = next(iter(dataloader))
     data.to(network.device)
     network.forward(data, no_grad=True)
 
-    # total_act = torch.sum(population.activity, dim=0)
-    # active_units_idx = torch.where(total_act > 1e-10)[0] # Only consider units that are active at least once
     selectivity = compute_selectivity(population.activity)
     sparsity = compute_sparsity(population.activity)
-    discriminability = compute_discriminability(population.activity)
 
-    # Compute structure
+    structure_initial = []
+    structure_final = []
     if receptive_fields is not None:
-        # receptive_fields = receptive_fields[active_units_idx]
-        structure = compute_rf_structure(receptive_fields, dimensions=dimensions, method='moran')
-    else:
-        structure = []
+        structure_final = compute_rf_structure(receptive_fields, dimensions=dimensions, method='moran')
+    if initial_receptive_fields is not None:
+        structure_initial = compute_rf_structure(initial_receptive_fields, dimensions=dimensions, method='moran')        
 
     metrics_dict = {'sparsity': sparsity, 
                     'selectivity': selectivity,
-                    'discriminability': discriminability, 
-                    'structure': structure}
+                    'structure_final': structure_final,
+                    'structure_initial': structure_initial}
 
     if plot:
         pt.plot_representation_metrics(metrics_dict)
-
-    if export:
-        assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        data_utils.save_plot_data(population.network.name, network.seed,
-                                  data_key=f'metrics_dict_{population.fullname}', data=metrics_dict,
-                                  file_path=export_path, overwrite=overwrite)
 
     return metrics_dict
 
@@ -1329,8 +1409,8 @@ def compute_act_weighted_avg(population, dataloader):
     return weighted_avg_input, activity_preferred_inputs
 
 
-def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, softplus=False, export=False,
-                                    export_path=None, overwrite=False, test_dataloader=None):
+def compute_maxact_receptive_fields(population, num_units=None, softplus=False, test_dataloader=None, 
+                                    export=False, export_path=None, overwrite=False, random_initializations=1000):
     """
     Use the 'activation maximization' method to compute receptive fields for all units in the population.
 
@@ -1360,22 +1440,30 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     torch.Tensor
         Computed receptive fields for the specified units.
     """
+    network = population.network
 
     if export and overwrite is False:
         # Check if receptive fields and activity_preferred_inputs have already been computed and saved in the data hdf5 file
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        receptive_fields = data_utils.load_plot_data(population.network.name, population.network.seed,
-                                                     data_key=f'maxact_receptive_fields_{population.fullname}',
-                                                     file_path=export_path)
+        receptive_fields = data_utils.load_plot_data(network.name, network.seed, file_path=export_path, data_key=f'maxact_receptive_fields_{population.fullname}')
         if receptive_fields is not None:
             return torch.tensor(receptive_fields)
 
-    # Otherwise, compute receptive fields
-    num_random_initializations = 1000
-    network = population.network
+    if softplus: # Replace all activation functions with softplus
+        previous_activation_funcs = {}
+        for pop_name, population in network.populations.items():
+            if hasattr(population, 'activation'):
+                previous_activation_funcs[pop_name] = population.activation
+        network_utils.set_new_activation(network, activation='softplus', population='all', activation_kwargs={'beta': 10})
 
-    # seed = network.seed
-    # torch.manual_seed(seed)
+    if hasattr(network, 'seed'):
+        try:
+            network_seed = int(network.seed.split("_")[0])
+        except:
+            network_seed = int(network.seed)
+    else:
+        network_seed = 123
+    data_utils.set_all_seeds(seed=network_seed)
 
     if network.backward_steps == 0:
         network.backward_steps = 3
@@ -1387,48 +1475,37 @@ def compute_maxact_receptive_fields(population, num_units=None, sigmoid=False, s
     all_images = [torch.empty(num_units, input_size).uniform_(-0.01,0.01)]
 
     if test_dataloader is None:
-        train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator = (
-            data_utils.get_MNIST_dataloaders(sub_dataloader_size=20_000))
+        _,_, test_dataloader,_ = data_utils.get_MNIST_dataloaders(batch_size='full_dataset')
     idx, data, target = next(iter(test_dataloader))
 
     print("Optimizing receptive field images...")
 
-    for i in tqdm(range(num_random_initializations)):   
-        # input_images = torch.empty(num_units, input_size).uniform_(0,1)
-        # input_images = torch.empty(num_units, input_size).normal_(mean=0,std=10)
+    for i in tqdm(range(random_initializations)):   
         random_sample = data[np.random.choice(len(data))]
         input_images = random_sample.expand(num_units, -1)
-
         input_images.requires_grad = True
         loss_history = []
 
-        if sigmoid:
-            im = torch.sigmoid((input_images-0.5)*10)
-            network.forward(im)  # compute unit activities in forward pass
-        elif softplus:
-            im = torch.nn.functional.softplus(input_images)
-            network.forward(im)  # compute unit activities in forward pass
-        else:
-            network.forward(input_images)  # compute unit activities in forward pass
+        network.forward(input_images)  # compute unit activities in forward pass
         pop_activity = population.activity[:,0:num_units]
         loss = torch.sum(-torch.diagonal(pop_activity))
         loss_history.append(loss.detach().cpu().numpy())
         loss.backward()
+        loss_history.append(loss.detach().numpy())
         all_images.append(-input_images.grad.detach().clone())
 
     receptive_fields = torch.mean(torch.stack(all_images), dim=0)
-    if sigmoid:
-        receptive_fields = torch.sigmoid((receptive_fields-0.5)*10)
-    elif softplus:
-        receptive_fields = torch.nn.functional.softplus(receptive_fields)
 
     if export:
         # Save receptive fields and activity_preferred_inputs to data hdf5 file
         assert hasattr(population.network, 'name'), 'Network must have a name attribute to load/export data'
-        data_utils.save_plot_data(population.network.name, population.network.seed,
-                                  data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields,
-                                  file_path=export_path, overwrite=overwrite)
-    
+        data_utils.save_plot_data(population.network.name, population.network.seed, file_path=export_path, overwrite=overwrite,
+                                  data_key=f'maxact_receptive_fields_{population.fullname}', data=receptive_fields)
+
+    if softplus: # Restore original activation functions
+        for pop_name, orig_activation_func in previous_activation_funcs.items():
+            network_utils.set_new_activation(network, orig_activation_func, population=pop_name, activation_kwargs=orig_activation_func.kwargs if hasattr(orig_activation_func, 'kwargs') else None)
+
     return receptive_fields
 
 

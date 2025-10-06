@@ -5,7 +5,7 @@
 #SBATCH -p normal
 #SBATCH -N 1
 #SBATCH -n 18
-#SBATCH -t 2:00:00
+#SBATCH -t 24:00:00
 #SBATCH --mail-user=milstein@cabm.rutgers.edu
 #SBATCH --mail-type=ALL
 
@@ -31,7 +31,7 @@ do
   ibrun -n 6 -o $o python -m mpi4py.futures simulate_EIANN_cifar10.py \
     --network-config-file-path=$CONFIG_DIR/${config_files[$i]} \
     --output-dir=$SCRATCH/data/EIANN --disp --export \
-    --framework=mpi --label=extended --train_steps=40000 &
+    --framework=mpi --label=10_epochs --train_steps=40000 --epochs=10 &
   ((o+=6))
 done
 wait

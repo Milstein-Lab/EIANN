@@ -772,7 +772,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
     if num_rows is None:
         num_rows = int(np.ceil(num_units / num_cols))
 
-    size = np.min([12, num_cols])
+    size = np.min([12, num_cols]) / 2
     num_rows += 1
     if ax_list is None:
         fig = plt.figure(figsize=(size, size * num_rows / num_cols))
@@ -999,6 +999,7 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
         im = _ax.imshow(avg_pop_activity.T, aspect='auto', interpolation='none', vmin=0)
         if cbar:
             cbar = plt.colorbar(im, ax=_ax)
+            _ax._colorbars.append(cbar)
         _ax.set_xticks(range(avg_pop_activity.shape[0]))
         _ax.set_xlabel('Labels')
         _ax.set_ylabel(f'{pop_name} unit')
@@ -1041,7 +1042,7 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
     output_activity = pop_activity_dict[network.output_pop.fullname].clone()
     if sorted_output_idx is not None:
         output_activity = output_activity[:, sorted_output_idx]
-    percent_correct = ut.compute_test_accuracy(output_activity, pattern_labels)
+    percent_correct = ut.compute_test_accuracy_from_data(output_activity, pattern_labels)
     print(f'Batch accuracy = {percent_correct}%')
 
     if isinstance(population, str):
@@ -2178,8 +2179,8 @@ def plot_spiral_decisions(decision_data, graph='decision', ax=None, point_size=1
         
         ax.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=point_size, alpha=0.4)
         ax.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=point_size*1.2)
-        ax.set_xlabel('x1')
-        ax.set_ylabel('x2')
+        ax.set_xlabel(r'$x_1$')
+        ax.set_ylabel(r'$x_2$')
         ax.set_title('Predictions')
 
     elif graph == 'decision':
@@ -2205,8 +2206,8 @@ def plot_spiral_decisions(decision_data, graph='decision', ax=None, point_size=1
         
         ax.set_xticks([-2, -1, 0, 1, 2])
         ax.set_yticks([-2, -1, 0, 1, 2])
-        ax.set_xlabel('x1')
-        ax.set_ylabel('x2')
+        ax.set_xlabel(r'$x_1$')
+        ax.set_ylabel(r'$x_2$')
 
     if ax is None:
         fig.tight_layout(rect=[0, 0, 1, 0.95]) 

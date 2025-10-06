@@ -503,7 +503,30 @@ Top_Layer_Supervised_Hebb_WeightNorm_lrf_7:
     Output_I_Output_I_weight_scale: 3.7057439469585494
     H_I_size: 50.0
     Output_I_size: 10.0
-
+Top_Layer_Supervised_Hebb_WeightNorm_lrf_wide_2_7:
+    #    accuracy: 67.96199798583984
+    #    dynamics_residuals: 0.0
+    #    loss: 0.05558428913354874
+    H1_E_Input_E_weight_scale: 1.5586075206577596
+    H2_E_H1_E_weight_scale: 0.9630502389173895
+    H_E_E_learning_rate: 0.0048403029837168175
+    E_I_learning_rate: 0.00551803185513857
+    I_E_learning_rate: 0.0035033577786447384
+    I_I_learning_rate: 0.01710342719770218
+    H1_E_H1_SomaI_weight_scale: 0.36302432602323925
+    H1_SomaI_H1_E_weight_scale: 0.8262850588877504
+    H1_SomaI_Input_E_weight_scale: 2.7235399443526207
+    H1_SomaI_H1_SomaI_weight_scale: 0.7007825500487695
+    H2_E_H2_SomaI_weight_scale: 1.7281848884087145
+    H2_SomaI_H2_E_weight_scale: 1.1193833831086293
+    H2_SomaI_H1_E_weight_scale: 0.9160026119084087
+    H2_SomaI_H2_SomaI_weight_scale: 1.9243394983327022
+    Output_E_H2_E_init_weight_scale: 0.523721056298533
+    Output_E_H2_E_learning_rate: 0.013841644526096928
+    Output_E_Output_I_weight_scale: 0.31390148049691585
+    Output_I_Output_E_weight_scale: 0.023506633450103093
+    Output_I_H2_E_weight_scale: 0.3177936394562565
+    Output_I_Output_I_weight_scale: 4.077773639699044
 Hebb_Temp_Contrast_2:
     # All layers learned with Hebb_Temp_Contrast
     #    accuracy: 91.81719970703125

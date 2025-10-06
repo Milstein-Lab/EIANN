@@ -2,16 +2,15 @@
 import torch
 import numpy as np
 import itertools
-import matplotlib.pyplot as plt
-from tqdm.autonotebook import tqdm
 import h5py
 import os
 import yaml
 import torchvision
 import random
-import EIANN.plot as plot
-
-
+import subprocess
+import tempfile
+import shutil
+import random
 
 # *******************************************************************
 # Functions to import and export data
@@ -40,6 +39,25 @@ def get_project_root():
         if current_path == os.path.dirname(current_path):
             raise FileNotFoundError("Project root directory 'EIANN' not found")    
     return current_path
+
+
+def set_all_seeds(seed: int = 123) -> None:
+    "Sets the random seed for PyTorch, NumPy, and Python's random module"
+
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed) # For current GPU
+        torch.cuda.manual_seed_all(seed) # For all GPUs
+    
+    # When running on the CuDNN backend, this ensures reproducible deterministic behavior
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    # Set a fixed hash seed to ensure consistent hashing behavior
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    print(f"Random seed set to {seed}")
 
 
 def nested_convert_scalars(data):
@@ -187,7 +205,7 @@ def import_metrics_data(filename):
     return metrics_dict
 
 
-def hdf5_to_dict(file_path):
+def hdf5_to_dict(file_path, variable_name=None):
     """
     Convert the contents of an HDF5 file into a nested dictionary.
 
@@ -195,25 +213,56 @@ def hdf5_to_dict(file_path):
     ----------
     file_path : str
         Path to the HDF5 file.
+    variable_name : str, optional
+        Name of a specific group or dataset to load. If None, loads the entire file.
+        Can be a path like 'group1/subgroup2' to load nested groups.
 
     Returns
     -------
     dict
         Nested Python dictionary representing the HDF5 file structure.
+        If variable_name is specified and points to a dataset, returns a dict with just that dataset.
+        If variable_name is specified and points to a group, returns a dict with that group's contents.
+
+    Notes
+    -----
+    Example usage:
+    # Load entire file
+    data = hdf5_to_dict('data.h5')
+
+    # Load only a specific group
+    data = hdf5_to_dict('data.h5', variable_name='group1')
+
+    # Load only a nested subgroup
+    data = hdf5_to_dict('data.h5', variable_name='group1/subgroup2')
+
+    # Load only a specific dataset
+    data = hdf5_to_dict('data.h5', variable_name='group1/dataset_name')
     """
-    # Initial call to convert the top-level group in the HDF5 file
-    # (necessary because the top-level group is not a h5py.Group object)
     with h5py.File(file_path, 'r') as f:
-        data_dict = {}
-        # Loop over the top-level keys in the HDF5 file
-        for key in f.keys():
-            if isinstance(f[key], h5py.Group):
-                # Recursively convert the group to a nested dictionary
-                data_dict[key] = convert_hdf5_group_to_dict(f[key])
-            else:
-                # If the key corresponds to a dataset, add it to the dictionary
-                data_dict[key] = f[key][()]
-    return data_dict
+        if variable_name is None:
+            # Load entire file
+            data_dict = {}
+            for key in f.keys():
+                if isinstance(f[key], h5py.Group):
+                    data_dict[key] = convert_hdf5_group_to_dict(f[key])
+                else:
+                    data_dict[key] = f[key][()]
+            return data_dict
+        else:
+            # Load specific group or dataset
+            try:
+                item = f[variable_name]
+                if isinstance(item, h5py.Group):
+                    # If it's a group, return its contents as a dict
+                    return convert_hdf5_group_to_dict(item)
+                else:
+                    # If it's a dataset, return a dict with the dataset name as key
+                    dataset_name = variable_name.split('/')[-1]  # Get the last part of the path
+                    return {dataset_name: item[()]}
+            except KeyError:
+                print(f"WARNING: '{variable_name.split('/')[-1]}' not found in HDF5 file")
+                return None
 
 
 def convert_hdf5_group_to_dict(group):
@@ -396,10 +445,7 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     return None
 
 
-import subprocess
-import tempfile
-import shutil
-def delete_plot_data(variable_name, file_name, file_path_prefix="../data/model_hdf5_plot_data/"):
+def delete_plot_data(variable_name, file_name, file_path_prefix=None):
     """
     Delete a specific variable from an HDF5 file and repack to reclaim disk space.
 
@@ -412,6 +458,10 @@ def delete_plot_data(variable_name, file_name, file_path_prefix="../data/model_h
     file_path_prefix : str, optional
         Path prefix for the file location.
     """
+    if file_path_prefix is None:
+        root_dir = get_project_root()
+        file_path_prefix = root_dir + "/EIANN/data/model_hdf5_plot_data/"
+        
     file_path = file_path_prefix + file_name
     if not os.path.exists(file_path):
         print(f'File not found: {file_path}')
@@ -551,7 +601,7 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
         return train_dataloader, val_dataloader, test_dataloader, data_generator
 
 
-def get_MNIST_dataloaders_with_noise(sub_dataloader_size=None, batch_size=1, data_dir=None, mean=0.0, std=0.1):
+def get_MNIST_dataloaders_with_noise(sub_dataloader_size=None, batch_size=1, data_dir=None, mean=0.0, std=0.1, seed=42):
     """
     Load MNIST dataset with added Gaussian noise and return custom dataloaders that include sample indices.
 
@@ -583,6 +633,8 @@ def get_MNIST_dataloaders_with_noise(sub_dataloader_size=None, batch_size=1, dat
         root_dir = get_project_root()
         data_dir = root_dir + '/EIANN/data/datasets/MNIST'
         
+    torch.manual_seed(seed)
+
     # Load dataset
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Lambda(torch.flatten)])
     MNIST_train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True, transform=tensor_flatten)

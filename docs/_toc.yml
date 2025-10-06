@@ -12,7 +12,7 @@ parts:
     - file: Using_EIANN/training_feedforward_network
     - file: Using_EIANN/visualizing_network_properties
 
-  - caption: Galloni et al. 2025
+  - caption: Galloni et al. 2025 - EIANN models
     chapters:
     - file: Galloni_etal_2025/1_feedforward_ANN_Backprop
     - file: Galloni_etal_2025/2_EIANN_learned_somaI_Backprop
@@ -20,12 +20,20 @@ parts:
     - file: Galloni_etal_2025/4_EIANN_learned_somaI_Hebbian
     - file: Galloni_etal_2025/5_EIANN_DendTargetProp_LDS
     - file: Galloni_etal_2025/6_EIANN_DendTargetProp_BTSP
+
+  - caption: Galloni et al. 2025 - Figures
+    chapters:
+    - file: Galloni_etal_2025/Figure_2
     - file: Galloni_etal_2025/Figure_3
+    - file: Galloni_etal_2025/Figure_4
+    - file: Galloni_etal_2025/Figure_5
+    - file: Galloni_etal_2025/Figure_6
+    - file: Galloni_etal_2025/noise_sensitivity
     
   - caption: Python API  
     chapters:
-    - file: yaml_glossary
-    - glob: autoapi/EIANN/*
+      - file: yaml_glossary
+      - glob: autoapi/EIANN/*
       
 
 # - file: modules_reference
