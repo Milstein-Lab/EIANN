@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --partition=GPU-shared
-#SBATCH --gres=gpu:v100-32:4
+#SBATCH --gres=gpu:v100-32:1
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=02:00:00
@@ -34,7 +34,7 @@ cd ~/EIANN
 
 python EIANN/simulate/run_EIANN_mnist.py \
   --network-config-file-name=20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml \
-  --data-dir=/ocean/projects/bio240068p/$USER/data/EIANN 
+  --data-dir=/ocean/projects/bio250022p/$USER/data/EIANN 
 
 
 # cd $HOME/EIANN/EIANN/simulate/jobscripts
@@ -48,5 +48,3 @@ python EIANN/simulate/run_EIANN_mnist.py \
 
 # Request one node:
 # interact -p GPU-shared --gres=gpu:v100-32:4 -t 30:00 -A bio240068p
-
-# /ocean/projects/bio240068p/$USER/logs/EIANN/
