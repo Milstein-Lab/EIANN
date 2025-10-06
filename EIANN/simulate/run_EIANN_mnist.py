@@ -2,7 +2,7 @@ import click
 from time import time
 import EIANN.utils as ut
 
-import torch, sys, platform, hashlib
+import torch, sys, platform, hashlib # TODO: Get rid of all debug stuff later
 print("python:", sys.version.splitlines()[0])
 print("platform:", platform.platform())
 print("torch:", torch.__version__)

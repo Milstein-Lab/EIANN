@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH -J eiann_gpu_mnist
-#SBATCH -o eiann_gpu_mnist.%j.o
-#SBATCH -e eiann_gpu_mnist.%j.e
+#SBATCH -o /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_gpu_mnist.%j.o
+#SBATCH -e /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_gpu_mnist.%j.e
 #SBATCH --requeue
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -25,23 +25,16 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_START_METHOD=thread
 
 module purge
-module load cuda/11.7.1
+module load cuda/12.4.0
 
-LOG=/ocean/projects/bio240068p/$USER/logs/EIANN/debug_test.log
-echo "SLURM job started on $(hostname)" > $LOG
-date >> $LOG
+source /opt/packages/anaconda3-2024.10-1/etc/profile.d/conda.sh
+conda activate eiann
 
-echo "Activating conda..." >> $LOG
-source /opt/packages/anaconda3-2024.10-1/etc/profile.d/conda.sh || { echo "Failed to source conda" >> $LOG; exit 1; }
-conda activate eiann || { echo "Failed to activate eiann" >> $LOG; exit 1; }
+cd ~/EIANN
 
-cd ~/EIANN || { echo "Failed to cd into EIANN" >> $LOG; exit 1; }
-
-echo "Running EIANN MNIST script..." >> $LOG
 python EIANN/simulate/run_EIANN_mnist.py \
   --network-config-file-name=20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml \
-  --data-dir=/ocean/projects/bio240068p/$USER/data/EIANN \
-  >> $LOG 2>&1
+  --data-dir=/ocean/projects/bio240068p/$USER/data/EIANN 
 
 
 # cd $HOME/EIANN/EIANN/simulate/jobscripts
