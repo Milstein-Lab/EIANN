@@ -527,6 +527,42 @@ Top_Layer_Supervised_Hebb_WeightNorm_lrf_wide_2_7:
     Output_I_Output_E_weight_scale: 0.023506633450103093
     Output_I_H2_E_weight_scale: 0.3177936394562565
     Output_I_Output_I_weight_scale: 4.077773639699044
+Supervised_Hebb_WeightNorm_4:
+    #    accuracy: 37.917396545410156
+    #    dynamics_residuals: 0.0
+    #    loss: 0.1749098002910614
+    #    mean_forward_dend_loss: 0.13242385238409043
+    H1_E_Input_E_weight_scale: 0.0477638711957813
+    H2_E_H1_E_weight_scale: 0.1899051685772193
+    H_E_E_learning_rate: 0.04346723091301442
+    H1_E_H2_E_weight_scale: 2.099222850319017
+    H2_E_Output_E_weight_scale: 2.2654792469229235
+    H1_E_H1_SomaI_init_weight_scale: 0.537502787116289
+    H1_SomaI_H1_E_init_weight_scale: 0.1525720856761311
+    H1_SomaI_Input_E_init_weight_scale: 0.056509598761980265
+    H1_SomaI_H1_SomaI_init_weight_scale: 0.6908442714427772
+    H_E_DendI_learning_rate: 0.01108688379604397
+    H1_E_H1_DendI_init_weight_scale: 0.11337783436578247
+    H1_DendI_H1_E_weight_scale: 0.38139474256971656
+    H1_DendI_H1_DendI_weight_scale: 0.7011063881047273
+    H2_E_H2_SomaI_init_weight_scale: 0.09958605499512241
+    H2_SomaI_H2_E_init_weight_scale: 1.0140344246313842
+    H2_SomaI_H1_E_init_weight_scale: 0.426617961246742
+    H2_SomaI_H2_SomaI_init_weight_scale: 0.6161300534101006
+    H2_E_H2_DendI_init_weight_scale: 1.8630319642612996
+    H2_DendI_H2_E_weight_scale: 1.5800047005178788
+    H2_DendI_H2_DendI_weight_scale: 1.3176890057582749
+    Output_E_H2_E_weight_scale: 0.5632564345234051
+    DendI_E_learning_rate: 0.0033306558935421162
+    DendI_DendI_learning_rate: 0.005756288867947899
+    Output_E_H2_E_learning_rate: 0.0005082815948348589
+    Output_E_Output_I_init_weight_scale: 0.39147115575916575
+    Output_I_Output_E_init_weight_scale: 0.1371673743320819
+    Output_I_H2_E_init_weight_scale: 0.16705567128532683
+    Output_I_Output_I_init_weight_scale: 3.730730653350187
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
 Hebb_Temp_Contrast_2:
     # All layers learned with Hebb_Temp_Contrast
     #    accuracy: 91.81719970703125

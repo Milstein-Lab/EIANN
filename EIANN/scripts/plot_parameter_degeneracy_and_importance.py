@@ -48,7 +48,7 @@ requested_ids_dict = {'BP_like_5J': [27351, 28461, 22309, 28785]
 for model_name in opt_file_path_dict:
     opt_results = OptimizationReport(file_path=opt_file_path_dict[model_name])
     best_x = param_dict_to_array(best_x_dict[model_name], opt_results.param_names)
-    group = opt_results.get_marder_group(plot=True, order=order_dict[model_name])
+    group = opt_results.get_marder_group(plot=True, order=order_dict[model_name]) # , semilogy=True)
     min_param_vals = opt_results.min_param_vals
     max_param_vals = opt_results.max_param_vals
 
