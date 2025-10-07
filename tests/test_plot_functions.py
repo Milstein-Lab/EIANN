@@ -8,7 +8,7 @@ import os
 
 import EIANN.utils as ut
 import EIANN.plot as pt
-import EIANN._network as nt
+import EIANN.network as nt
 
 
 def test_plot_batch_accuracy(network, dataloaders_mnist):

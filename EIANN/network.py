@@ -1811,7 +1811,7 @@ class LayerBuilder:
     """Builder for individual layers containing populations."""
     
     def __init__(self, network_builder: NetworkBuilder, layer_name: str):
-        self._network_builder = network_builder
+        self.network_builder = network_builder
         self._layer_name = layer_name
         
     def population(self, 
@@ -1823,8 +1823,8 @@ class LayerBuilder:
                    bias_learning_rate: Optional[float] = None,
                    tau: Optional[float] = None) -> 'LayerBuilder':
         """Add a population to the current layer."""
-        if self._layer_name not in self._network_builder._layers:
-            self._network_builder._layers[self._layer_name] = {}
+        if self._layer_name not in self.network_builder._layers:
+            self.network_builder._layers[self._layer_name] = {}
             
         pop_config = {'size': size}
         if activation is not None:
@@ -1838,7 +1838,7 @@ class LayerBuilder:
         if tau is not None:
             pop_config['tau'] = tau
             
-        self._network_builder._layers[self._layer_name][pop_name] = pop_config
+        self.network_builder._layers[self._layer_name][pop_name] = pop_config
         return self
     
     def type(self, neuron_type: str, init_scale: float = 1.0) -> 'LayerBuilder':
@@ -1851,15 +1851,15 @@ class LayerBuilder:
         Returns:
             Self for method chaining
         """
-        if not self._network_builder._layers[self._layer_name]:
+        if not self.network_builder._layers[self._layer_name]:
             raise ValueError(f"No populations defined in layer {self._layer_name}")
         
         # Get the last added population
-        last_pop = list(self._network_builder._layers[self._layer_name].keys())[-1]
+        last_pop = list(self.network_builder._layers[self._layer_name].keys())[-1]
         
         # Store the population type for future connections
         pop_key = f"{self._layer_name}.{last_pop}"
-        self._network_builder._population_types[pop_key] = (neuron_type, init_scale)
+        self.network_builder._population_types[pop_key] = (neuron_type, init_scale)
         
         # Apply the type to any existing outgoing connections from this population
         self._apply_type_to_existing_connections(last_pop, neuron_type, init_scale)
@@ -1869,11 +1869,11 @@ class LayerBuilder:
     def _apply_type_to_existing_connections(self, source_pop: str, neuron_type: str, init_scale: float):
         """Apply the population type to existing outgoing connections."""
         # Find all projections where this population is the source
-        for target_layer in self._network_builder._projections:
-            for target_pop in self._network_builder._projections[target_layer]:
-                if self._layer_name in self._network_builder._projections[target_layer][target_pop]:
-                    if source_pop in self._network_builder._projections[target_layer][target_pop][self._layer_name]:
-                        projection = self._network_builder._projections[target_layer][target_pop][self._layer_name][source_pop]
+        for target_layer in self.network_builder._projections:
+            for target_pop in self.network_builder._projections[target_layer]:
+                if self._layer_name in self.network_builder._projections[target_layer][target_pop]:
+                    if source_pop in self.network_builder._projections[target_layer][target_pop][self._layer_name]:
+                        projection = self.network_builder._projections[target_layer][target_pop][self._layer_name][source_pop]
                         
                         # Apply the type settings
                         if neuron_type.lower() in ['excitatory', 'e', 'exc']:
@@ -1892,12 +1892,12 @@ class LayerBuilder:
         """Create a projection from this layer to a target layer/population."""
         # If no source population specified, assume we're connecting from the last added population
         if source_population is None:
-            if not self._network_builder._layers[self._layer_name]:
+            if not self.network_builder._layers[self._layer_name]:
                 raise ValueError(f"No populations defined in layer {self._layer_name}")
-            source_population = list(self._network_builder._layers[self._layer_name].keys())[-1]
+            source_population = list(self.network_builder._layers[self._layer_name].keys())[-1]
         
         projection_builder = ProjectionBuilder(
-            self._network_builder, 
+            self.network_builder, 
             self._layer_name, 
             source_population,
             target_layer, 
@@ -1906,8 +1906,8 @@ class LayerBuilder:
         
         # Apply population type if it exists for the source population
         source_key = f"{self._layer_name}.{source_population}"
-        if source_key in self._network_builder._population_types:
-            pop_type, init_scale = self._network_builder._population_types[source_key]
+        if source_key in self.network_builder._population_types:
+            pop_type, init_scale = self.network_builder._population_types[source_key]
             projection_builder.type(pop_type, init_scale)
         
         return projection_builder
@@ -1919,12 +1919,12 @@ class LayerBuilder:
         """Create a projection from a source layer/population to this layer."""
         # If no target population specified, assume we're connecting to the last added population
         if target_population is None:
-            if not self._network_builder._layers[self._layer_name]:
+            if not self.network_builder._layers[self._layer_name]:
                 raise ValueError(f"No populations defined in layer {self._layer_name}")
-            target_population = list(self._network_builder._layers[self._layer_name].keys())[-1]
+            target_population = list(self.network_builder._layers[self._layer_name].keys())[-1]
         
         projection_builder = ProjectionBuilder(
-            self._network_builder,
+            self.network_builder,
             source_layer,
             source_population, 
             self._layer_name,
@@ -1933,23 +1933,23 @@ class LayerBuilder:
         
         # Apply population type if it exists for the source population
         source_key = f"{source_layer}.{source_population}"
-        if source_key in self._network_builder._population_types:
-            pop_type, init_scale = self._network_builder._population_types[source_key]
+        if source_key in self.network_builder._population_types:
+            pop_type, init_scale = self.network_builder._population_types[source_key]
             projection_builder.type(pop_type, init_scale)
         
         return projection_builder
     
     def layer(self, name: str) -> 'LayerBuilder':
         """Switch to building a different layer."""
-        return self._network_builder.layer(name)
+        return self.network_builder.layer(name)
     
     def training(self, **kwargs) -> NetworkBuilder:
         """Set training parameters and return to network builder."""
-        return self._network_builder.training(**kwargs)
+        return self.network_builder.training(**kwargs)
     
     def build(self) -> Tuple[Dict, Dict, Dict]:
         """Build and return all configuration dictionaries."""
-        return self._network_builder.build()
+        return self.network_builder.build()
 
 
 class ProjectionBuilder:
@@ -1961,14 +1961,14 @@ class ProjectionBuilder:
                  source_pop: str, 
                  target_layer: str, 
                  target_pop: str):
-        self._network_builder = network_builder
+        self.network_builder = network_builder
         self._source_layer = source_layer
         self._source_pop = source_pop
         self._target_layer = target_layer
         self._target_pop = target_pop
         
         # Initialize nested structure if needed
-        projections = self._network_builder._projections
+        projections = self.network_builder._projections
         if target_layer not in projections:
             projections[target_layer] = {}
         if target_pop not in projections[target_layer]:
@@ -2051,14 +2051,14 @@ class ProjectionBuilder:
     
     def layer(self, name: str) -> LayerBuilder:
         """Switch to building a different layer."""
-        return self._network_builder.layer(name)
+        return self.network_builder.layer(name)
     
     def training(self, **kwargs) -> NetworkBuilder:
         """Set training parameters and return to network builder."""
-        return self._network_builder.training(**kwargs)
+        return self.network_builder.training(**kwargs)
     
     def build(self) -> Tuple[Dict, Dict, Dict]:
         """Build and return all configuration dictionaries."""
-        return self._network_builder.build()
+        return self.network_builder.build()
 
 

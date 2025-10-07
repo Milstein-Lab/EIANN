@@ -1020,7 +1020,7 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
 
     Parameters
     ----------
-    network : EIANN._network.Network
+    network : EIANN.network.Network
         The neural network model to evaluate.
     test_dataloader : torch.utils.data.DataLoader
         DataLoader providing test data. Must contain a single large batch.

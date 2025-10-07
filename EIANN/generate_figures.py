@@ -19,7 +19,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 import EIANN.utils as ut
 import EIANN.plot as pt
-import EIANN._network as nt
+import EIANN.network as nt
 
 plt.rcParams.update({'font.size': 6,
                     'axes.spines.right': False,
