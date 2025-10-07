@@ -4,8 +4,8 @@
 #SBATCH -e /scratch1/06441/aaronmil/logs/EIANN/batch_export_optimized_EIANN_mnist.%j.e
 #SBATCH -p normal
 #SBATCH -N 1
-#SBATCH -n 18
-#SBATCH -t 2:00:00
+#SBATCH -n 6
+#SBATCH -t 6:00:00
 #SBATCH --mail-user=milstein@cabm.rutgers.edu
 #SBATCH --mail-type=ALL
 
