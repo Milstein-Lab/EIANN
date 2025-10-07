@@ -1,5 +1,5 @@
 from .external import register_external, is_registered_external
-from ._network import *
+from .network import *
 from .plot import *
 from . import utils as utils
 

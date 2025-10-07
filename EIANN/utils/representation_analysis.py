@@ -19,7 +19,7 @@ def compute_raw_test_activity(network, test_dataloader):
 
     Parameters
     ----------
-    network : EIANN._network.Network
+    network : EIANN.network.Network
         The neural network model to evaluate.
     test_dataloader : torch.utils.data.DataLoader
         DataLoader providing test data. Must contain a single large batch.
@@ -91,7 +91,7 @@ def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=
 
     Parameters
     ----------
-    network : EIANN._network.Network
+    network : EIANN.network.Network
         The neural network model.
     pop_activity_dict : dict[str, torch.Tensor]
         Dictionary mapping population names to their activity matrices.
@@ -150,7 +150,7 @@ def compute_test_activity(network, test_dataloader, class_average=False, sort=Fa
 
     Parameters
     ----------
-    network : EIANN._network.Network
+    network : EIANN.network.Network
         The neural network model to evaluate.
     test_dataloader : torch.utils.data.DataLoader
         DataLoader providing test data. Must contain a single large batch.
@@ -182,10 +182,19 @@ def compute_test_activity(network, test_dataloader, class_average=False, sort=Fa
     return pop_activity_dict, pattern_labels, unit_labels_dict
 
 
-def compute_test_accuracy(output, labels):
+def compute_test_accuracy_from_data(output, labels):
     percent_correct = 100 * torch.sum(torch.argmax(output, dim=1) == labels) / len(labels)
     percent_correct = torch.round(percent_correct, decimals=2)       
     return percent_correct 
+
+
+def compute_test_accuracy(network, test_dataloader, sorted_output_idx=None):
+    pop_activity_dict, pattern_labels = compute_raw_test_activity(network, test_dataloader)
+    output_activity = pop_activity_dict[network.output_pop.fullname].clone()
+    if sorted_output_idx is not None:
+        output_activity = output_activity[:, sorted_output_idx]
+    percent_correct = compute_test_accuracy_from_data(output_activity, pattern_labels)
+    return percent_correct
 
 
 def compute_test_activity_dynamics(network, dataloader, plot=False, normalize=True):
@@ -232,17 +241,86 @@ def compute_noise_sensitivity(network, noise_stds=np.arange(0, 2, 0.1)):
 
     Parameters
     ----------
-    network : :class:`EIANN._network.Network`
+    network : :class:`EIANN.network.Network`
         The trained neural network to evaluate.
+    noise_stds : array-like, optional
+        The standard deviations of the noise to add to the input. Default is np.arange(0, 2, 0.1).
+
+    Returns
+    -------
+    accuracy_list : list
+        The test accuracy for each standard deviation of noise.
     """
     accuracy_list = []
     for noise_std in tqdm(noise_stds):
         _,_,test_dataloader,_ = data_utils.get_MNIST_dataloaders_with_noise(batch_size='full_dataset', mean=0.0, std=noise_std)
-        pop_activity_dict, pattern_labels = compute_raw_test_activity(network, test_dataloader)
-        output_activity = pop_activity_dict[network.output_pop.fullname].clone()
-        percent_correct = compute_test_accuracy(output_activity, pattern_labels)
+        percent_correct = compute_test_accuracy(network, test_dataloader)
         accuracy_list.append(percent_correct)
     return accuracy_list
+
+
+def compute_robustness_to_pruning(network, test_dataloader, projections='all'):
+    """
+    Compute robustness to pruning of a trained network by pruning the weakest connections
+    and measuring test accuracy.
+
+    Example usage:
+    fraction_to_prune, accuracy_list = compute_robustness_to_pruning(network, test_dataloader, projections='E_to_E')
+    plt.plot(fraction_to_prune, accuracy_list)
+    plt.show()
+    
+    Parameters
+    ----------
+    network : :class:`EIANN.network.Network`
+        The trained neural network to evaluate.
+    test_dataloader : :class:`torch.utils.data.DataLoader`
+        The test dataloader to evaluate the network on.
+    projections : str, optional
+        The projections to prune. Can be 'E_to_E', 'all' (default), or a list of projection names.
+
+    Returns
+    -------
+    fraction_to_prune : array-like
+        The fractions of connections to prune.
+    accuracy_list : list
+        The test accuracy for each fraction of connections to prune.
+    """
+    if projections == 'all':
+        projections = list(network.projections.keys())
+    elif projections == 'E_to_E':
+        projections = []
+        for proj in network.projections:
+            pre_pop = proj.split('_')[0]
+            post_pop = proj.split('_')[1]
+            if 'E' in pre_pop and 'E' in post_pop:
+                projections.append(proj)
+    elif type(projections) == list:
+        for proj in projections:
+            if proj not in network.projections:
+                raise ValueError(f'Invalid projection: {proj}, must be in {list(network.projections.keys())}')
+    else:
+        raise ValueError(f'Invalid projections: {projections}, must be "E_to_E", "all", or a list of projection names')
+    
+    accuracy_list = []
+    fraction_to_prune = np.linspace(0, 1, 41)
+    initial_state_dict = copy.deepcopy(network.state_dict())
+
+    print(f'Computing robustness to pruning ({len(projections)} projections)')
+    for fraction in tqdm(fraction_to_prune):
+        # Prune the weakest connections
+        for proj_name in projections:
+            weight_tensor = network.projections[proj_name].weight.detach()
+            sorted_indices = torch.argsort(torch.abs(weight_tensor.flatten()))
+            pruning_idx = int(len(sorted_indices) * fraction)
+            weight_tensor.flatten()[sorted_indices[0:pruning_idx]] = 0
+
+        # Test the network performance after pruning
+        percent_correct = compute_test_accuracy(network, test_dataloader)
+        accuracy_list.append(percent_correct)
+
+    network.load_state_dict(initial_state_dict) # Reset network to original state
+
+    return fraction_to_prune, accuracy_list
 
 
 def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_idx=None, plot=False):
@@ -900,7 +978,7 @@ def compute_within_class_representational_similarity(network, dataloader, popula
 
     Parameters
     ----------
-    network : EIANN._network.Network
+    network : EIANN.network.Network
         The neural network model to evaluate.
     test_dataloader : torch.utils.data.DataLoader
         DataLoader providing test data for evaluation.
@@ -1580,7 +1658,7 @@ def compute_dendritic_state_dynamics(network):
 
     Parameters
     ----------
-    network : :class:'EIANN._network.Network'
+    network : :class:'EIANN.network.Network'
         Neural network object containing stored dynamics (forward activity_dynamics and backward_steps_activity)
 
     Returns

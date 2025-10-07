@@ -19,7 +19,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 import EIANN.utils as ut
 import EIANN.plot as pt
-import EIANN._network as nt
+import EIANN.network as nt
 
 plt.rcParams.update({'font.size': 6,
                     'axes.spines.right': False,
@@ -87,7 +87,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         recompute = None
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict',
+    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict', 'robustness_to_pruning_E_to_E',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
@@ -173,7 +173,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='sorted_unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
 
         output = pop_activity_dict[network.output_pop.fullname]
-        percent_correct = ut.compute_test_accuracy(output, pattern_labels)
+        percent_correct = ut.compute_test_accuracy_from_data(output, pattern_labels)
         ut.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=hdf5_path, overwrite=True)
         
     # Noise sensitivity
@@ -181,6 +181,14 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         noise_stds = np.arange(0, 1.1, 0.1)
         accuracy_list = ut.compute_noise_sensitivity(network, noise_stds=noise_stds)
         ut.save_plot_data(network.name, network.seed, data_key='noise_sensitivity', data=(noise_stds, accuracy_list), file_path=hdf5_path, overwrite=True)
+
+    # Robustness to pruning
+    if 'robustness_to_pruning_E_to_E' in variables_to_recompute or 'robustness_to_pruning_all' in variables_to_recompute:
+        fraction_to_prune, accuracy_list = ut.compute_robustness_to_pruning(network, test_dataloader, projections='E_to_E')
+        ut.save_plot_data(network.name, network.seed, data_key='robustness_to_pruning_E_to_E', data=(fraction_to_prune, accuracy_list), file_path=hdf5_path, overwrite=True)
+
+        fraction_to_prune, accuracy_list = ut.compute_robustness_to_pruning(network, test_dataloader, projections='all')
+        ut.save_plot_data(network.name, network.seed, data_key='robustness_to_pruning_all', data=(fraction_to_prune, accuracy_list), file_path=hdf5_path, overwrite=True)
 
     if 'final_receptive_fields' in variables_to_recompute:
         rf_populations = [population for population in network.populations.values() if population.name == "E" and population.fullname != "InputE"]
@@ -491,9 +499,11 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
             new_label = True
             labels = labels + [model_dict["label"]]
             ax.set_xticks(range(len(labels)))  # Set ticks explicitly
-            ax.set_xticklabels(labels, rotation=45, ha='right')
+            ax.set_xticklabels(labels, rotation=45, ha='right', rotation_mode='anchor', va='center')
             ax.set_ylabel(metric_name.capitalize())
             ax.set_ylim([-0.03, 1.03])
+            ax.set_yticks([0,0.5,1])
+            ax.set_yticklabels([str(int(tick)) if tick in [0,1] else '' for tick in ax.get_yticks()])
         else: 
             new_label = False
 
@@ -716,6 +726,41 @@ def plot_dynamics_all_seeds(data_dict, model_dict, ax):
     ax_E.set_ylabel('Activity (norm.)')
     ax_E.set_title(model_dict['label'], rotation=90, x=-0.25, y=0.4, va='center')
 
+
+def plot_confusion_all_seeds(data_dict, model_dict, ax):
+    population = 'H1E'
+    between_class_similarity = {label: [] for label in range(10)}
+    between_class_similarity_all = []
+    for seed in model_dict['seeds']:
+        # Calculate the receptive field similarity for each unit (the histogram will pool data across all model seeds)
+        unit_labels_dict = data_dict[seed]['unit_labels_dict']
+        unit_labels = unit_labels_dict[population][:]
+        idx = np.argsort(unit_labels)
+        unit_labels = unit_labels[idx]
+
+        average_pop_activity = np.array(data_dict[seed]['average_pop_activity_dict'][population][:]).T
+        sorted_pop_activity = average_pop_activity[idx]
+
+        # Calculate within-class and between-class receptive field similarity (accumulate across all seeds)
+        for label in range(10):
+            class_idx = np.where(unit_labels == label)[0]
+            max_activity_outside_class = np.max(sorted_pop_activity[class_idx][:, np.arange(10)!=label], axis=1)
+            mean_activity_outside_class = np.mean(sorted_pop_activity[class_idx][:, np.arange(10)!=label], axis=1)
+            confusion_ratio = max_activity_outside_class / (mean_activity_outside_class + 1e-10)
+            between_class_similarity_all.extend(confusion_ratio)
+            between_class_similarity[label].extend(confusion_ratio)
+
+    for label in range(10):
+        mean_val = np.mean(between_class_similarity[label])
+        std_val = np.std(between_class_similarity[label])
+        ax.bar(label, mean_val, width=0.8, label='Between-class' if label==0 else None, color=model_dict["color"], alpha=0.3)
+        ax.errorbar(label, mean_val, yerr=std_val, fmt='none', ecolor=model_dict["color"], capsize=0, linewidth=0.5)
+
+    ax.set_ylabel('Confusion ratio (non-\npreferred class selectivity)')
+    ax.set_xticks(range(10))
+    ax.set_xticklabels(range(10))
+    ax.set_ylim(0, 8)
+    ax.set_xlabel('Labels', labelpad=0)
 
 
 ########################################################################################################
@@ -1658,21 +1703,6 @@ def main(figure, recompute):
         all_spiral_models = [model_key for model_key in all_models if "spiral" in model_key]
         generate_hdf5_all_seeds(all_spiral_models, model_dict_all, config_path_prefix="network_config/spiral/", saved_network_path_prefix=saved_network_path_prefix+"spiral/", recompute=recompute)
         recompute = None
-
-    # Analyze E properties of main models
-    if figure in ["all", "fig4"]:
-        saved_network_path_prefix_m = saved_network_path_prefix + "MNIST/"
-        model_list_heatmaps = ["bpDale_fixed", "bpLike_WT_hebbdend"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "Fig4_bpDale_bpLike"
-        generate_fig4(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix_m, recompute=recompute)
-        
-        saved_network_path_prefix_s = saved_network_path_prefix + "spiral/"
-        model_list_spirals = ["bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]        
-        model_list_metrics = model_list_spirals + ["vanBP_2_hidden_zero_bias_spiral", "vanBP_2_hidden_learned_bias_spiral"]
-        figure_name = "Fig4_Spirals"
-        fig4_spirals(model_dict_all, model_list_spirals, model_list_metrics, spiral_type='decision', config_path_prefix='network_config/spiral/',
-                                saved_network_path_prefix=saved_network_path_prefix_s, save=figure_name, recompute=recompute)
 
     # Biological learning rules (with WT/good gradients)
     if figure in ["all","fig5"]:
