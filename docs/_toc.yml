@@ -29,6 +29,7 @@ parts:
     - file: Galloni_etal_2025/Figure_5
     - file: Galloni_etal_2025/Figure_6
     - file: Galloni_etal_2025/noise_sensitivity
+    - file: Galloni_etal_2025/robustness_to_pruning
     
   - caption: Python API  
     chapters:
