@@ -87,7 +87,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         recompute = None
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict', 'robustness_to_pruning_E_to_E',
+    variables_to_save = ['weights', 'percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict', 'robustness_to_pruning_E_to_E',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
                          'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
     if "Dend" in "".join(network.populations.keys()):
@@ -159,7 +159,14 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     ##################################################################
     ## Generate plot data
 
-    # Class-averaged activity
+    if 'weights' in variables_to_recompute:
+        weights_dict = {'initial_weights': {}, 'final_weights': {}}
+        for proj in ['H1E_InputE', 'H2E_H1E']:
+            proj_key = f"module_dict.{proj}.weight"
+            weights_dict['initial_weights'][proj] = network.param_history[0][proj_key]
+            weights_dict['final_weights'][proj] = network.param_history[-1][proj_key]
+        ut.save_plot_data(network.name, network.seed, data_key='weights', data=weights_dict, file_path=hdf5_path, overwrite=True)
+
     if 'average_pop_activity_dict' in variables_to_recompute:
         average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=False)
         ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
