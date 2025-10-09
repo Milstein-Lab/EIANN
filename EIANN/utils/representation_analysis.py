@@ -670,16 +670,13 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
                 actual_dParam = torch.sign(actual_dParam)
             if only_updated_params:
                 updated_idx = torch.where(actual_dParam != 0)
-                # if len(updated_idx[0]) != len(actual_dParam):
-                #     print(f"Percentage updated = {len(updated_idx[0])/len(actual_dParam)*100:.2f}%")
                 predicted_dParam = predicted_dParam[actual_dParam != 0]
                 actual_dParam = actual_dParam[actual_dParam != 0]
                 
             angle = compute_vector_angle(predicted_dParam, actual_dParam)
             angles[param_name].append(angle)
             if torch.isnan(angle):
-                print(f'Warning: angle is NaN at step {t}, {param_name}, t={t}, Pred. norm.={torch.norm(predicted_dParam)}, Actual norm.={torch.norm(actual_dParam)}')
-                # return predicted_dParam, actual_dParam
+                print(f'Warning: angle is NaN at step {t}, {param_name.split(".")[1]}, dW norm ={torch.norm(actual_dParam)}')
 
         if plot:
             ax = axes[n_params-(i+1)]

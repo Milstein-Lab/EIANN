@@ -88,9 +88,10 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
     # Define which variables to compute
     if variables_to_save == 'all':
-        variables_to_save = ['weights', 'accuracy', 'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict', 'robustness_to_pruning',
-                         'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
-                         'angle_vs_bp', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
+        variables_to_save = ['weights', 'accuracy', 'val_accuracy_history', 'test_accuracy_history', 
+                            'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict', 'robustness_to_pruning',
+                            'val_loss_history', 'val_history_train_steps', 'test_loss_history',
+                            'angle_vs_bp', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
         if "Dend" in "".join(network.populations.keys()):
             variables_to_save.extend("dendritic_state")
         if 'extended' in saved_network_path:
@@ -264,8 +265,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     # Dendritic state (local loss)
     if 'dendritic_state' in variables_to_recompute:
         steps, binned_mean_forward_dendritic_state = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
-        binned_mean_forward_dendritic_state = {key: value.numpy() for key, value in binned_mean_forward_dendritic_state.items()}
-        dendritic_state = {'steps': steps.numpy(), 'forward_dendritic_state': binned_mean_forward_dendritic_state}
+        dendritic_state = {'steps': steps, 'forward_dendritic_state': binned_mean_forward_dendritic_state}
         if binned_mean_forward_dendritic_state is not None:
             ut.save_plot_data(network.name, network.seed, data_key='dendritic_state', data=dendritic_state, file_path=hdf5_path, overwrite=True)
 
@@ -281,11 +281,10 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=hdf5_path, overwrite=True)
     
-    if set(['test_loss_history', 'test_accuracy_history']).intersection(variables_to_recompute):
+    if set(['test_loss_history', 'test_accuracy_history', 'test_accuracy_history_extended']).intersection(variables_to_recompute):
         ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=hdf5_path, overwrite=True)
 
-    if 'test_accuracy_history_extended' in variables_to_recompute:
         ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history_extended', data=network.test_accuracy_history, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps_extended', data=network.val_history_train_steps, file_path=hdf5_path, overwrite=True)
 
@@ -1707,22 +1706,6 @@ def main(figure, recompute):
 
     #-------------- Supplementary Tables --------------
 
-    if figure in ["all", "T1"]:
-        saved_network_path_prefix += "MNIST/"
-        figure_name = "FigT1_mnist_table"
-        model_list = ["vanBP", "vanBP_fixed_hidden", "vanBP_0hidden",
-                      "bpDale_fixed", "bpDale_learned", "bpDale_noI", 
-                      "HebbWN_topsup", "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
-                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend", "BTSP_WT_hebbdend",
-                      "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-        generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", save=figure_name, recompute=recompute)
-    
-    if figure in ["all", "T2"]:
-        saved_network_path_prefix += "spiral/"
-        figure_name = "FigT2_spiral_table"
-        model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
-                    "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
-        generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/spiral/", save=figure_name, recompute=recompute)
 
     if figure in ["all", "T3"]:
         # csv_filename = "data/FigT3_mnist_hyperparams.csv"
