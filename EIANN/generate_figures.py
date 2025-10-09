@@ -64,7 +64,7 @@ def load_model_dict(csv_file_path=None):
     return model_dict_all
 
 
-def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=None):
+def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=None, variables_to_save='all'):
     '''
     Loads a network and saves plot-ready processed data into an hdf5 file.
 
@@ -87,18 +87,19 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         recompute = None
 
     # Define which variables to compute
-    variables_to_save = ['percent_correct', 'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict', 'robustness_to_pruning_E_to_E',
+    if variables_to_save == 'all':
+        variables_to_save = ['weights', 'accuracy', 'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict', 'robustness_to_pruning',
                          'val_loss_history', 'val_accuracy_history', 'val_history_train_steps', 'test_loss_history', 'test_accuracy_history',
-                         'angle_vs_bp', 'angle_vs_bp_stochastic', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
-    if "Dend" in "".join(network.populations.keys()):
-        variables_to_save.extend(["binned_mean_forward_dendritic_state", "binned_mean_forward_dendritic_state_steps"])
-    if 'extended' in saved_network_path:
-        variables_to_save.append('test_accuracy_history_extended')
+                         'angle_vs_bp', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
+        if "Dend" in "".join(network.populations.keys()):
+            variables_to_save.extend("dendritic_state")
+        if 'extended' in saved_network_path:
+            variables_to_save.append("test_accuracy_history_extended")
 
-    if 'mnist' in config_path:
-        variables_to_save.extend(['noise_sensitivity', 'final_receptive_fields'])
-    elif 'spiral' in config_path:
-        variables_to_save.extend(['spiral_decision_data_dict'])
+        if 'mnist' in config_path:
+            variables_to_save.extend(['noise_sensitivity', 'final_receptive_fields'])
+        elif 'spiral' in config_path:
+            variables_to_save.extend(['spiral_decision_data_dict'])
 
     # Open hdf5 and check if the relevant network data already exists       
     variables_to_recompute = []  
@@ -159,14 +160,21 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     ##################################################################
     ## Generate plot data
 
-    # Class-averaged activity
+    if 'weights' in variables_to_recompute:
+        weights_dict = {'initial_weights': {}, 'final_weights': {}}
+        for proj in ['H1E_InputE', 'H2E_H1E']:
+            proj_key = f"module_dict.{proj}.weight"
+            weights_dict['initial_weights'][proj] = network.prev_param_history[0][proj_key]
+            weights_dict['final_weights'][proj] = network.param_history[-1][proj_key]
+        ut.save_plot_data(network.name, network.seed, data_key='weights', data=weights_dict, file_path=hdf5_path, overwrite=True)
+
     if 'average_pop_activity_dict' in variables_to_recompute:
         average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=False)
         ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
 
-    if 'percent_correct' in variables_to_recompute:
+    if 'accuracy' in variables_to_recompute:
         pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
         ut.save_plot_data(network.name, network.seed, data_key='sorted_activity_dict', data=pop_activity_dict, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='sorted_pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
@@ -174,21 +182,16 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
         output = pop_activity_dict[network.output_pop.fullname]
         percent_correct = ut.compute_test_accuracy_from_data(output, pattern_labels)
-        ut.save_plot_data(network.name, network.seed, data_key='percent_correct', data=percent_correct, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='accuracy', data=percent_correct, file_path=hdf5_path, overwrite=True)
         
-    # Noise sensitivity
     if 'noise_sensitivity' in variables_to_recompute:
         noise_stds = np.arange(0, 1.1, 0.1)
         accuracy_list = ut.compute_noise_sensitivity(network, noise_stds=noise_stds)
         ut.save_plot_data(network.name, network.seed, data_key='noise_sensitivity', data=(noise_stds, accuracy_list), file_path=hdf5_path, overwrite=True)
 
-    # Robustness to pruning
-    if 'robustness_to_pruning_E_to_E' in variables_to_recompute or 'robustness_to_pruning_all' in variables_to_recompute:
-        fraction_to_prune, accuracy_list = ut.compute_robustness_to_pruning(network, test_dataloader, projections='E_to_E')
-        ut.save_plot_data(network.name, network.seed, data_key='robustness_to_pruning_E_to_E', data=(fraction_to_prune, accuracy_list), file_path=hdf5_path, overwrite=True)
-
+    if 'robustness_to_pruning' in variables_to_recompute:
         fraction_to_prune, accuracy_list = ut.compute_robustness_to_pruning(network, test_dataloader, projections='all')
-        ut.save_plot_data(network.name, network.seed, data_key='robustness_to_pruning_all', data=(fraction_to_prune, accuracy_list), file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='robustness_to_pruning', data=(fraction_to_prune, accuracy_list), file_path=hdf5_path, overwrite=True)
 
     if 'final_receptive_fields' in variables_to_recompute:
         rf_populations = [population for population in network.populations.values() if population.name == "E" and population.fullname != "InputE"]
@@ -244,25 +247,27 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
         # Compare overall angle after many train steps (stored_history_step_size)
         bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, comparison_network, batch_size=stored_history_step_size)
-        angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
-        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=hdf5_path, overwrite=True)
+        angles_stepaveraged = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history_stepaveraged)
         
         # Compare angles for one train step (batch_size=1)
         bpClone_network = ut.compute_alternate_dParam_history(train_dataloader, network, comparison_network, batch_size=1)
-        angles = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history)
-        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp_stochastic', data=angles, file_path=hdf5_path, overwrite=True)
+        angles_stochastic = ut.compute_dW_angles_vs_BP(bpClone_network.predicted_dParam_history, bpClone_network.actual_dParam_history)
+
+        angles = {'stepaveraged': angles_stepaveraged, 'stochastic': angles_stochastic}
+        ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=hdf5_path, overwrite=True)
 
     # Forward vs Backward weight angle (weight symmetry)
     if 'feedback_weight_angle_history' in variables_to_recompute:
         FF_FB_angles = ut.compute_feedback_weight_angle_history(network)
         ut.save_plot_data(network.name, network.seed, data_key='feedback_weight_angle_history', data=FF_FB_angles, file_path=hdf5_path, overwrite=True)
 
-    # Binned dendritic state (local loss)
-    if 'binned_mean_forward_dendritic_state' in variables_to_recompute:
+    # Dendritic state (local loss)
+    if 'dendritic_state' in variables_to_recompute:
         steps, binned_mean_forward_dendritic_state = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
+        binned_mean_forward_dendritic_state = {key: value.numpy() for key, value in binned_mean_forward_dendritic_state.items()}
+        dendritic_state = {'steps': steps.numpy(), 'forward_dendritic_state': binned_mean_forward_dendritic_state}
         if binned_mean_forward_dendritic_state is not None:
-            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state', data=binned_mean_forward_dendritic_state, file_path=hdf5_path, overwrite=True)
-            ut.save_plot_data(network.name, network.seed, data_key='binned_mean_forward_dendritic_state_steps', data=steps, file_path=hdf5_path, overwrite=True)
+            ut.save_plot_data(network.name, network.seed, data_key='dendritic_state', data=dendritic_state, file_path=hdf5_path, overwrite=True)
 
     # Sparsity and selectivity
     if 'sparsity_history' in variables_to_recompute or 'selectivity_history' in variables_to_recompute:
@@ -295,7 +300,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='activity_dynamics', data=pop_dynamics_dict, file_path=hdf5_path, overwrite=True)
 
 
-def generate_hdf5_all_seeds(model_list, model_dict_all, dataset='mnist', config_path_prefix=None, saved_network_path_prefix=None, hdf5_path_prefix=None, recompute=None):
+def generate_hdf5_all_seeds(model_list, model_dict_all, dataset='mnist', config_path_prefix=None, saved_network_path_prefix=None, hdf5_path_prefix=None, recompute=None, variables_to_save='all'):
     for model_key in model_list:
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
@@ -333,7 +338,7 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, dataset='mnist', config_
         for seed in model_dict['seeds']:
             extended_flag = '_extended' if "extended" in saved_network_path_prefix else ""
             saved_network_path = saved_network_path_prefix + network_name + f"_{seed}{extended_flag}.pkl"
-            generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute)
+            generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute, variables_to_save)
             gc.collect()
 
 
@@ -529,15 +534,15 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
 
 
 def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
-    if 'binned_mean_forward_dendritic_state_steps' not in data_dict[next(iter(data_dict.keys()))]:
+    if 'dendritic_state' not in data_dict[next(iter(data_dict.keys()))]:
         return
     dendstate_all_seeds = []
     for seed in model_dict['seeds']:
-        dendstate_one_seed = data_dict[seed]['binned_mean_forward_dendritic_state']['all'][:]
+        dendstate_one_seed = data_dict[seed]['dendritic_state']['forward_dendritic_state']['all'][:]
         dendstate_all_seeds.append(dendstate_one_seed)
     avg_dendstate = np.mean(dendstate_all_seeds, axis=0)
     error = np.std(dendstate_all_seeds, axis=0)
-    binned_mean_forward_dendritic_state_steps = data_dict[seed]['binned_mean_forward_dendritic_state_steps'][:]
+    binned_mean_forward_dendritic_state_steps = data_dict[seed]['dendritic_state']['steps'][:]
     ax.plot(binned_mean_forward_dendritic_state_steps, avg_dendstate, label=model_dict["label"], color=model_dict["color"])
     ax.fill_between(binned_mean_forward_dendritic_state_steps, avg_dendstate-error, avg_dendstate+error, alpha=0.5, color=model_dict["color"], linewidth=0)
     ax.set_xlabel('Training step')
@@ -766,52 +771,6 @@ def plot_confusion_all_seeds(data_dict, model_dict, ax):
 ########################################################################################################
 # Multi-panel figure generation
 ########################################################################################################
-
-
-def generate_fig5(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                       
-                       left=0.1,right=0.9,
-                       top=0.9, bottom = 0.6,
-                       wspace=0.4, hspace=0.6,
-                       height_ratios=[1, 0.7])
-    ax_accuracy = fig.add_subplot(axes[1,0])
-    ax_dendstate = fig.add_subplot(axes[1,1])
-    ax_angle_vs_BP = fig.add_subplot(axes[1,2])
-
-    axes = gs.GridSpecFromSubplotSpec(nrows=1, ncols=4, subplot_spec=axes[0,0:3], wspace=0.2)
-    diagram_axes = [fig.add_subplot(axes[0,i]) for i in range(4)]
-    for ax in diagram_axes: # decrease the height of the diagram axes
-        ax.set_position([ax.get_position().x0, ax.get_position().y0, ax.get_position().width, ax.get_position().height*0.7])
-
-    pt.plot_learning_rule_diagram(axes_list=diagram_axes)
-
-    all_models = list(dict.fromkeys(model_list))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    model_dict_all["BTSP_WT_hebbdend"]["label"] = "BTSP"
-    model_dict_all["bpLike_WT_hebbdend"]["label"] = "LDS"
-
-    for model_key in all_models:
-        model_dict = model_dict_all[model_key]
-        config_path = config_path_prefix + model_dict['config']
-        pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-            plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-            plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
-            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP)
-
-    legend = ax_accuracy.legend(ncol=4, bbox_to_anchor=(-0.1, 1.25), loc='upper left')
-    for line in legend.get_lines():
-        line.set_linewidth(1.5)
-
-    if save is not None:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
 def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
@@ -1704,13 +1663,6 @@ def main(figure, recompute):
         generate_hdf5_all_seeds(all_spiral_models, model_dict_all, config_path_prefix="network_config/spiral/", saved_network_path_prefix=saved_network_path_prefix+"spiral/", recompute=recompute)
         recompute = None
 
-    # Biological learning rules (with WT/good gradients)
-    if figure in ["all","fig5"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list = ["bpLike_WT_hebbdend", "BTSP_WT_hebbdend", "Supervised_BCM_WT_hebbdend","SupHebbTempCont_WT_hebbdend"]
-        figure_name = "Fig5_BTSP_BCM_HebbWN"
-        generate_fig5(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-        
     # Forward (W) vs backward (B) alignment angle
     if figure in ["all", "fig6"]:
         saved_network_path_prefix += "MNIST/"
@@ -1744,15 +1696,6 @@ def main(figure, recompute):
         figure_name = "FigS3_receptive_fields"
         generate_figS3(model_dict_all, model_list, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
         generate_figS3(model_dict_all, model_list, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-    # Extended fig5: representations in biological learning rules
-    if figure in ["all", "S4"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list_heatmaps = ["BTSP_WT_hebbdend", "Supervised_BCM_WT_hebbdend","SupHebbTempCont_WT_hebbdend"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "FigS4_biorule_representations"
-        model_dict_all["BTSP_WT_hebbdend"]["label"] = "BTSP"
-        generate_fig2(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
     # Extended fig5: receptive fields in biological learning rules
     if figure in ["all", "S5"]:

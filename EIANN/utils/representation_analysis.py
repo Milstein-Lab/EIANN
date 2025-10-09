@@ -1453,14 +1453,7 @@ def compute_maxact_receptive_fields(population, num_units=None, softplus=False, 
                 previous_activation_funcs[pop_name] = population.activation
         network_utils.set_new_activation(network, activation='softplus', population='all', activation_kwargs={'beta': 10})
 
-    if hasattr(network, 'seed'):
-        try:
-            network_seed = int(network.seed.split("_")[0])
-        except:
-            network_seed = int(network.seed)
-    else:
-        network_seed = 123
-    data_utils.set_all_seeds(seed=network_seed)
+    data_utils.set_all_seeds(seed=123, verbose=False)
 
     if network.backward_steps == 0:
         network.backward_steps = 3
