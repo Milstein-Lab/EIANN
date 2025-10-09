@@ -40,7 +40,7 @@ def get_project_root():
     return current_path
 
 
-def set_all_seeds(seed: int = 123) -> None:
+def set_all_seeds(seed: int = 123, verbose=True) -> None:
     "Sets the random seed for PyTorch, NumPy, and Python's random module"
 
     np.random.seed(seed)
@@ -56,7 +56,8 @@ def set_all_seeds(seed: int = 123) -> None:
 
     # Set a fixed hash seed to ensure consistent hashing behavior
     os.environ['PYTHONHASHSEED'] = str(seed)
-    print(f"Random seed set to {seed}")
+    if verbose:
+        print(f"Random seed set to {seed}")
 
 
 def nested_convert_scalars(data):
