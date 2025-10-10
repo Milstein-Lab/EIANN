@@ -96,11 +96,13 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
             variables_to_save.extend("dendritic_state")
         if 'extended' in saved_network_path:
             variables_to_save.append("test_accuracy_history_extended")
-
         if 'mnist' in config_path:
             variables_to_save.extend(['noise_sensitivity', 'final_receptive_fields'])
         elif 'spiral' in config_path:
             variables_to_save.extend(['spiral_decision_data_dict'])
+
+    if "dendritic_state" in variables_to_save and "Dend" not in "".join(network.populations.keys()):
+        variables_to_save.remove("dendritic_state")
 
     # Open hdf5 and check if the relevant network data already exists       
     variables_to_recompute = []  
@@ -175,7 +177,16 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
 
-    if 'accuracy' in variables_to_recompute:
+    if set(['accuracy','test_loss_history', 'test_accuracy_history', 'test_accuracy_history_extended', 'val_loss_history', 'val_accuracy_history', 'val_history_train_steps']).intersection(variables_to_recompute):
+        ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps_extended', data=network.val_history_train_steps, file_path=hdf5_path, overwrite=True)
+        
+        ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history_extended', data=network.test_accuracy_history, file_path=hdf5_path, overwrite=True)
+
         pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
         ut.save_plot_data(network.name, network.seed, data_key='sorted_activity_dict', data=pop_activity_dict, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='sorted_pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
@@ -211,7 +222,6 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
             receptive_fields_dict[population.fullname] = ut.compute_maxact_receptive_fields(population)
         ut.save_plot_data(network.name, network.seed, data_key='final_receptive_fields', data=receptive_fields_dict, file_path=hdf5_path, overwrite=True)
 
-
     # Sparsity, selectivity, and structure metrics
     if f"metrics_dict" in variables_to_recompute:
         metrics_dict = {}
@@ -228,7 +238,6 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
                 final_receptive_fields = None
             metrics_dict[population.fullname] = ut.compute_representation_metrics(population, test_dataloader, final_receptive_fields, initial_receptive_fields)
         ut.save_plot_data(network.name, network.seed, data_key='metrics_dict', data=metrics_dict, file_path=hdf5_path, overwrite=True)
-
 
     # Angle vs Backprop
     if set(['angle_vs_bp','angle_vs_bp_stochastic']).intersection(variables_to_recompute):
@@ -274,19 +283,6 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         sparsity_history_dict, selectivity_history_dict = ut.compute_sparsity_selectivity_history(network, test_dataloader)
         ut.save_plot_data(network.name, network.seed, data_key='sparsity_history', data=sparsity_history_dict, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='selectivity_history', data=selectivity_history_dict, file_path=hdf5_path, overwrite=True)
-
-    # Loss and accuracy
-    if set(['val_loss_history', 'val_accuracy_history', 'val_history_train_steps']).intersection(variables_to_recompute):
-        ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=hdf5_path, overwrite=True)
-        ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=hdf5_path, overwrite=True)
-        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=hdf5_path, overwrite=True)
-    
-    if set(['test_loss_history', 'test_accuracy_history', 'test_accuracy_history_extended']).intersection(variables_to_recompute):
-        ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=hdf5_path, overwrite=True)
-        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=hdf5_path, overwrite=True)
-
-        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history_extended', data=network.test_accuracy_history, file_path=hdf5_path, overwrite=True)
-        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps_extended', data=network.val_history_train_steps, file_path=hdf5_path, overwrite=True)
 
     # Spiral decision boundary plots
     if 'spiral_decision_data_dict' in variables_to_recompute:
@@ -556,7 +552,7 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True, error
     angle_all_seeds = []
     for seed in model_dict['seeds']:
         if stochastic:
-            angle = data_dict[seed]['angle_vs_bp_stochastic']['all_params'][:]
+            angle = data_dict[seed]['angle_vs_bp']['stochastic']['all_params'][:]
             # if np.isnan(angle).any(): # check if there are any NaNs in the array
             #     print(f"Warning: NaN values found in angle array for seed {seed}")
             angle = np.where(np.isnan(angle), 0, angle) # replace NaNs with 0
