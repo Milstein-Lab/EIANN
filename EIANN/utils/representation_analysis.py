@@ -676,7 +676,7 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
             angle = compute_vector_angle(predicted_dParam, actual_dParam)
             angles[param_name].append(angle)
             if torch.isnan(angle):
-                print(f'Warning: angle is NaN at step {t}, {param_name.split(".")[1]}, dW norm ={torch.norm(actual_dParam)}')
+                print(f'Warning: angle is NaN at step {t}, {param_name}, dW norm={torch.norm(actual_dParam)}')
 
         if plot:
             ax = axes[n_params-(i+1)]
