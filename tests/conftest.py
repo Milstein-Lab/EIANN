@@ -2,6 +2,14 @@ import pytest
 import torch
 import EIANN.utils as ut
 
+"""
+This file contains shared fixtures and configuration for all tests in the tests directory.
+
+Fixtures are functions that return test data or objects that can be used by multiple tests.
+
+Pytest automatically discovers and loads conftest.py files. Fixtures defined here are automatically available to all 
+test files in this directory and subdirectories without needing to import them.
+"""
 
 @pytest.fixture(scope="module") #Make the output of this function available to all tests in this module
 def dataloaders_mnist():

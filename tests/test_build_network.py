@@ -1,7 +1,4 @@
-import pytest
-import torch
 import os
-
 import EIANN.utils as ut
 import EIANN.plot as pt
 import EIANN.network as nt
@@ -35,9 +32,14 @@ def test_train_network(network, dataloaders_mnist):
     os.remove("test_dir/test_network.pkl")
     os.rmdir("test_dir")
 
-# @pytest.mark.skipif(os.environ.get("CI") == "true", reason="Pickle file not saved in GitHub Actions")
-# def test_load_network(network, root_dir):
-#     saved_network_dir = root_dir + "/EIANN/data/mnist/"
-#     saved_network = "20231120_EIANN_1_hidden_mnist_van_bp_relu_SGD_config_G_66049_257.pkl"
-#     saved_network_path = saved_network_dir + saved_network
-#     network = ut.load_network(saved_network_path)
+
+@pytest.mark.skipif(os.environ.get("CI") == "true", reason="Pickle file not saved in GitHub Actions")
+def test_load_network(network, root_dir, dataloaders_mnist):
+    train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator =  dataloaders_mnist    
+    network_name = "20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized"
+    network_seed = 66049
+    data_seed = 257
+    saved_network_path = root_dir + f"/EIANN/data/saved_network_pickles/mnist/{network_name}_{network_seed}_{data_seed}.pkl"
+    network = ut.load_network(saved_network_path)
+    idx, data, target = next(iter(train_dataloader))
+    network.forward(data, no_grad=True)

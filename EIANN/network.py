@@ -299,7 +299,10 @@ class Network(nn.Module):
         self.input_pop.activity = torch.squeeze(sample).to(self.device)
 
         # Use autocast context for forward pass if AMP is enabled and not in no_grad mode
-        autocast_context = autocast() if (self.use_amp and not no_grad) else torch.no_grad() if no_grad else torch.enable_grad()
+        if hasattr(self, 'use_amp'):
+            autocast_context = autocast() if (self.use_amp and not no_grad) else torch.no_grad() if no_grad else torch.enable_grad()
+        else:
+            autocast_context = torch.no_grad() if no_grad else torch.enable_grad()
 
         with autocast_context:
             for t in range(self.forward_steps):
