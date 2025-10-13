@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 from torch.nn import MSELoss, BCELoss, CrossEntropyLoss
 from torch.optim import Adam, SGD
+from torch.cuda.amp import autocast, GradScaler
 
 from copy import deepcopy
 from collections import defaultdict
@@ -18,7 +19,7 @@ import EIANN.external as external
 class Network(nn.Module):
     def __init__(self, layer_config, projection_config, learning_rate=None, optimizer=SGD, optimizer_kwargs=None,
                  criterion=MSELoss, criterion_kwargs=None, seed=None, device='cpu', tau=1, forward_steps=1,
-                 backward_steps=1, verbose=False):  
+                 backward_steps=1, use_amp=False, verbose=False):  
         """
         Initialize a neural network with configurable layers and projections.
 
@@ -48,6 +49,8 @@ class Network(nn.Module):
             Number of forward integration steps.
         backward_steps : int, default 1
             Number of backward integration steps.
+        use_amp : bool, default False
+            Whether to use Automatic Mixed Precision (AMP) for training.
         verbose : bool, default False
             Whether to print detailed information during initialization.
         """
@@ -59,6 +62,17 @@ class Network(nn.Module):
                                 'optimizer_kwargs': optimizer_kwargs, 'criterion': criterion,
                                 'criterion_kwargs': criterion_kwargs, 'device': device, 'tau': tau,
                                 'forward_steps': forward_steps, 'backward_steps': backward_steps}
+
+        # AMP configuration (no speedup for biological networks)
+        self.use_amp = use_amp and device != 'cpu' and torch.cuda.is_available()
+        if self.use_amp:
+            self.scaler = GradScaler()
+            if verbose:
+                print("AMP enabled for training")
+        else:
+            self.scaler = None
+            if verbose and use_amp:
+                print("AMP requested but disabled (requires CUDA)")
 
         # Load loss criterion
         if isinstance(criterion, str):
@@ -284,21 +298,25 @@ class Network(nn.Module):
             self.input_pop = next(iter(list(self)[0]))
         self.input_pop.activity = torch.squeeze(sample).to(self.device)
 
-        for t in range(self.forward_steps):
-            if (t >= self.forward_steps - self.backward_steps) and not no_grad:
-                track_grad = True
-            else:
-                track_grad = False
+        # Use autocast context for forward pass if AMP is enabled and not in no_grad mode
+        autocast_context = autocast() if (self.use_amp and not no_grad) else torch.no_grad() if no_grad else torch.enable_grad()
 
-            with torch.set_grad_enabled(track_grad):
-                for population in self.populations.values():
-                    population.prev_activity = population.activity
-                for i, post_layer in enumerate(self):
-                    for post_pop in post_layer:
-                        if i > 0:
-                            post_pop.forward()
-                        if store_dynamics and t >= (self.forward_steps - store_num_steps):
-                            post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
+        with autocast_context:
+            for t in range(self.forward_steps):
+                if (t >= self.forward_steps - self.backward_steps) and not no_grad:
+                    track_grad = True
+                else:
+                    track_grad = False
+
+                with torch.set_grad_enabled(track_grad):
+                    for population in self.populations.values():
+                        population.prev_activity = population.activity
+                    for i, post_layer in enumerate(self):
+                        for post_pop in post_layer:
+                            if i > 0:
+                                post_pop.forward()
+                            if store_dynamics and t >= (self.forward_steps - store_num_steps):
+                                post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
 
         if store_history:
             for pop in self.populations.values():
@@ -508,10 +526,17 @@ class Network(nn.Module):
                 else:
                     this_train_step_store_history = False
 
-                output = self.forward(sample_data, store_history=this_train_step_store_history,
+                # Use autocast for forward pass when AMP is enabled
+                if self.use_amp:
+                    with autocast():
+                        output = self.forward(sample_data, store_history=this_train_step_store_history,
+                                              store_dynamics=store_dynamics)
+                        loss = self.criterion(output, sample_target)
+                else:
+                    output = self.forward(sample_data, store_history=this_train_step_store_history,
                                       store_dynamics=store_dynamics)
-                
-                loss = self.criterion(output, sample_target)
+                    loss = self.criterion(output, sample_target)
+
                 self.loss_history.append(loss.item())
                 self.target_history.append(sample_target.clone())
 
@@ -549,9 +574,16 @@ class Network(nn.Module):
                 
                 # Compute validation loss
                 if val_dataloader is not None and train_step in val_range:
-                    output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                    if self.use_amp:
+                        with autocast():
+                            output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                            val_loss = self.criterion(output, val_target)
+                    else:
+                        output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                        val_loss = self.criterion(output, val_target)
+                    
                     self.val_output_history.append(output.detach().clone())
-                    self.val_loss_history.append(self.criterion(output, val_target).item())
+                    self.val_loss_history.append(val_loss.item())
                     accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
                                output.shape[0]
                     self.val_accuracy_history.append(accuracy.item())
@@ -619,8 +651,13 @@ class Network(nn.Module):
                     sample_data = sample_data.to(self.device)
                     sample_target = sample_target.to(self.device)
 
-            output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
-            loss = self.criterion(output, sample_target)
+            if self.use_amp:
+                with autocast():
+                    output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
+                    loss = self.criterion(output, sample_target)
+            else:
+                output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
+                loss = self.criterion(output, sample_target)
 
         return loss.item()
            

@@ -30,12 +30,12 @@ conda activate eiann
 cd ~/EIANN
 
 python EIANN/simulate/run_EIANN_mnist.py \
-  --network-config-file-name=20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml \
+  --network-config-file-name=20241125_EIANN_2_hidden_mnist_Hebb_Temp_Contrast_config_2_complete_optimized.yaml \
   --data-dir=/ocean/projects/bio250022p/$USER/data/EIANN 
 
 
 # cd $HOME/EIANN/EIANN/simulate/jobscripts
-# sbatch simulate_EIANN_cpu_bridges_mnist.sh bpDale_relu
+# sbatch simulate_EIANN_cpu_bridges_mnist.sh
 
 # See logs:
 # cd /ocean/projects/bio240068p/$USER/logs/EIANN

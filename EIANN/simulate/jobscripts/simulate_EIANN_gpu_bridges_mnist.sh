@@ -9,7 +9,7 @@
 #SBATCH --gres=gpu:v100-32:1
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
-#SBATCH --time=01:00:00
+#SBATCH --time=00:30:00
 #SBATCH -A bio240068p
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
@@ -33,12 +33,12 @@ conda activate eiann
 cd ~/EIANN
 
 python EIANN/simulate/run_EIANN_mnist.py \
-  --network-config-file-name=20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml \
+  --network-config-file-name=20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml \
   --data-dir=/ocean/projects/bio250022p/$USER/data/EIANN 
 
 
 # cd $HOME/EIANN/EIANN/simulate/jobscripts
-# sbatch simulate_EIANN_gpu_bridges_mnist.sh bpDale_relu
+# sbatch simulate_EIANN_gpu_bridges_mnist.sh
 
 # See logs:
 # cd /ocean/projects/bio240068p/$USER/logs/EIANN
@@ -47,4 +47,4 @@ python EIANN/simulate/run_EIANN_mnist.py \
 # watch -n 1 squeue -u $USER
 
 # Request one node:
-# interact -p GPU-shared --gres=gpu:v100-32:4 -t 30:00 -A bio240068p
+# interact -p GPU-shared --gres=gpu:v100-32:1 -t 30:00 -A bio240068p
