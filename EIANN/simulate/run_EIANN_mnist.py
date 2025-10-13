@@ -10,6 +10,14 @@ import EIANN.utils as ut
 def main(network_config_file_name, data_dir, debug):
     start_time = time()
 
+    network_seed = 66049
+    data_seed = 257
+
+    # Determine device FIRST
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    ut.set_all_seeds(seed=network_seed)
+
     print(f"1. Random num: {torch.rand(1)}")
 
     # Load dataset
@@ -18,21 +26,14 @@ def main(network_config_file_name, data_dir, debug):
         print("Loaded Data")
 
     print(f"2. Random num: {torch.rand(1)}")
-    
-
-    network_seed = 66049
-    data_seed = 257
-    ut.set_all_seeds(seed=network_seed)
-
-    print(f"3. Random num: {torch.rand(1)}")
 
     # Create network object
     config_file_path = f"EIANN/network_config/mnist/{network_config_file_name}"
-    network = ut.build_EIANN_from_config(config_file_path, network_seed=network_seed)
+    network = ut.build_EIANN_from_config(config_file_path, network_seed=network_seed, device=device)
     if debug:
         print("Built Network")
 
-    print(f"4. Random num: {torch.rand(1)}")
+    print(f"3. Random num: {torch.rand(1)}")
 
     print('Weights before train')
     print(network.H1.E.Input.E.weight.detach().cpu()[0,0:10])
@@ -51,7 +52,7 @@ def main(network_config_file_name, data_dir, debug):
     if debug:
         print("Trained Network")
 
-    print(f"5. Random num: {torch.rand(1)}")
+    print(f"4. Random num: {torch.rand(1)}")
     
     network.run_time = time() - start_time
 
@@ -63,6 +64,8 @@ def main(network_config_file_name, data_dir, debug):
 
     print('Weights after train')
     print(network.H1.E.Input.E.weight.detach().cpu()[0,0:10])
+
+    print(f"Network Sample Order: {network.sample_order}")
 
 if __name__ == '__main__':
     main()
