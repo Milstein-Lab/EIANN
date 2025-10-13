@@ -9,6 +9,7 @@ import h5py
 import gc
 import click
 import matplotlib.pyplot as plt
+from time import time
 
 from EIANN import Network
 from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
@@ -194,6 +195,8 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
         else:
             data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}_{context.label}.pkl"
     
+    network_start_time = time()
+
     if os.path.exists(data_file_path) and not context.retrain:
         network = utils.load_network(data_file_path)
         if context.disp:
@@ -202,8 +205,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
     else:
         data_generator.manual_seed(data_seed)
         if context.debug:
-            import time
-            current_time = time.time()
+            current_time = time()
         network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
                       val_interval=context.val_interval,  # e.g. (-201, -1, 10),
                       samples_per_epoch=context.train_steps, store_history=context.store_history,
@@ -266,9 +268,13 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
         if residuals > 0. and context.disp:
             print('Failed equilibration dynamics test (%i, %i)' % (seed, data_seed))
             sys.stdout.flush()
+
+    network_end_time = time()
+    network.run_time = network_end_time - network_start_time
     
     if export:
-        utils.save_network(network, path=data_file_path, disp=False)
+        network.to('cpu')
+        utils.save_network(network, path=data_file_path, disp=False, overwrite=True)
         if context.disp:
             print('simulate_EIANN_mnist: pid: %i exported network history to %s' %
                   (os.getpid(), data_file_path))
@@ -324,6 +330,8 @@ def main(cli, config_file_path, network_config_file_path, data_file_path, output
     :param disp: bool
     :param framework: str
     """
+    start_time = time()
+
     # requires a global variable context: :class:'Context'
     context.update(locals())
     kwargs = get_unknown_click_arg_dict(cli.args)
@@ -355,6 +363,10 @@ def main(cli, config_file_path, network_config_file_path, data_file_path, output
         context.update(locals())
     else:
         context.interface.stop()
+
+    end_time = time()
+    if disp:
+        print(f'simulate_EIANN_mnist: pid: {os.getpid()} total time: {end_time - start_time} seconds')
 
 
 if __name__ == '__main__':

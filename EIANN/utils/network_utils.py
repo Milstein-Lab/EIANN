@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'):
+def build_EIANN_from_config(config_path, network_seed=42, config_format='normal', training_kwargs=None):
     '''
     Build an EIANN network from a config file
     '''        
@@ -20,7 +20,11 @@ def build_EIANN_from_config(config_path, network_seed=42, config_format='normal'
     if config_format == 'simplified':
         projection_config = convert_projection_config_dict(projection_config)
         layer_config = convert_layer_config_dict(layer_config)
-    training_kwargs = network_config['training_kwargs']
+    _training_kwargs = network_config['training_kwargs']
+
+    if training_kwargs is not None:
+        _training_kwargs.update(training_kwargs)
+    training_kwargs = _training_kwargs
     
     try:
         network = nt.Network(layer_config, projection_config, seed=network_seed, **training_kwargs)
@@ -471,6 +475,8 @@ def get_binned_mean_population_attribute_history_dict(network, attr_name, bin_si
         all_pop_attr_history_list.append(binned_attr_history)
         binned_attr_history_dict[pop_name] = torch.mean(binned_attr_history, dim=1)
     
+    if len(all_pop_attr_history_list) == 0:
+        return None, None
     binned_attr_history_tensor = torch.concatenate(all_pop_attr_history_list, dim=1)
     binned_attr_history_dict['all'] = torch.mean(binned_attr_history_tensor, dim=1)
     return steps, binned_attr_history_dict

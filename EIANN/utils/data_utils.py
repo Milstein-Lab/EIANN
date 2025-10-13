@@ -6,6 +6,7 @@ import h5py
 import os
 import yaml
 import torchvision
+import random
 import subprocess
 import tempfile
 import shutil
@@ -328,6 +329,25 @@ def convert_dict_to_hdf5_group(data_dict, group):
             # Save datasets to the HDF5 group
             group.create_dataset(key, data=value, track_order=True)
 
+def set_all_seeds(seed: int = 66049, verbose: bool = False) -> None:
+    """Sets the random seed for PyTorch, NumPy, and Python's random module."""
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)  # For current GPU
+        torch.cuda.manual_seed_all(seed)  # For all GPUs
+
+    # When running on the CuDNN backend, two further options must be set for full determinism.
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    # Set a fixed value for the hash seed to ensure consistent hashing behavior
+    os.environ["PYTHONHASHSEED"] = str(seed)
+
+    if verbose:
+        print(f"Random seed set as {seed}")
+
 
 def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite=False):
     """
@@ -367,6 +387,8 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
                     hdf5_file[network_name][seed].create_group(data_key, track_order=True)
                     convert_dict_to_hdf5_group(data, hdf5_file[network_name][seed][data_key])
                 else:
+                    if isinstance(data, torch.Tensor):
+                        data = data.numpy()
                     hdf5_file[network_name][seed].create_dataset(data_key, data=data, track_order=True)
                 print(f'{data_key} saved to file: {file_path}')
             else:
@@ -375,6 +397,8 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
         with h5py.File(file_path, 'w') as hdf5_file:
             hdf5_file.create_group(network_name, track_order=True)
             hdf5_file[network_name].create_group(seed, track_order=True)
+            if isinstance(data, torch.Tensor):
+                data = data.numpy()
             hdf5_file[network_name][seed].create_dataset(data_key, data=data, track_order=True)
             print(f'{data_key} saved to file: {file_path}')
 

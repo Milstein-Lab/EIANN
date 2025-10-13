@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 from torch.nn import MSELoss, BCELoss, CrossEntropyLoss
 from torch.optim import Adam, SGD
+from torch.cuda.amp import autocast, GradScaler
 
 from copy import deepcopy
 from collections import defaultdict
@@ -18,7 +19,7 @@ import EIANN.external as external
 class Network(nn.Module):
     def __init__(self, layer_config, projection_config, learning_rate=None, optimizer=SGD, optimizer_kwargs=None,
                  criterion=MSELoss, criterion_kwargs=None, seed=None, device='cpu', tau=1, forward_steps=1,
-                 backward_steps=1, verbose=False):  
+                 backward_steps=1, use_amp=False, verbose=False):  
         """
         Initialize a neural network with configurable layers and projections.
 
@@ -48,17 +49,30 @@ class Network(nn.Module):
             Number of forward integration steps.
         backward_steps : int, default 1
             Number of backward integration steps.
+        use_amp : bool, default False
+            Whether to use Automatic Mixed Precision (AMP) for training.
         verbose : bool, default False
             Whether to print detailed information during initialization.
         """
         super().__init__()
-        self.device = torch.device(device)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.layer_config = layer_config
         self.projection_config = projection_config
         self.training_kwargs = {'learning_rate': learning_rate, 'optimizer': optimizer,
                                 'optimizer_kwargs': optimizer_kwargs, 'criterion': criterion,
                                 'criterion_kwargs': criterion_kwargs, 'device': device, 'tau': tau,
                                 'forward_steps': forward_steps, 'backward_steps': backward_steps}
+
+        # AMP configuration (no speedup for biological networks)
+        self.use_amp = use_amp and device != 'cpu' and torch.cuda.is_available()
+        if self.use_amp:
+            self.scaler = GradScaler()
+            if verbose:
+                print("AMP enabled for training")
+        else:
+            self.scaler = None
+            if verbose and use_amp:
+                print("AMP requested but disabled (requires CUDA)")
 
         # Load loss criterion
         if isinstance(criterion, str):
@@ -82,6 +96,7 @@ class Network(nn.Module):
         self.seed = seed
         if self.seed is not None:
             torch.manual_seed(self.seed)
+        self.run_time = None
 
         self.backward_methods = []
         self.module_dict = nn.ModuleDict()
@@ -101,18 +116,18 @@ class Network(nn.Module):
                     pop = Input(self, layer, pop_name, **pop_kwargs)
                 elif 'population_type' in pop_kwargs:
                     if pop_kwargs['population_type'] in ['Conv2D', 'conv2D', 'conv2d']:
-                        pop = Conv2DPopulation(self, layer, pop_name, **pop_kwargs)
+                        pop = Conv2DPopulation(self, layer, pop_name, **pop_kwargs, device=self.device)
                     elif pop_kwargs['population_type'] in ['Flatten', 'flatten']:
-                        pop = FlattenPopulation(self, layer, pop_name, **pop_kwargs)
+                        pop = FlattenPopulation(self, layer, pop_name, **pop_kwargs, device=self.device)
                     elif pop_kwargs['population_type'] in ['MaxPool2D', 'maxpool2D', 'maxpool2d']:
-                        pop = MaxPool2DPopulation(self, layer, pop_name, **pop_kwargs)
+                        pop = MaxPool2DPopulation(self, layer, pop_name, **pop_kwargs, device=self.device)
                     elif pop_kwargs['population_type'] == 'default':
-                        pop = Population(self, layer, pop_name, **pop_kwargs)
+                        pop = Population(self, layer, pop_name, **pop_kwargs, device=self.device)
                     else:
                         raise Exception('EIANN.Network: pop: %s; invalid population_type: %s' %
                                         (pop_name, pop_kwargs['population_type']))
                 else:
-                    pop = Population(self, layer, pop_name, **pop_kwargs)
+                    pop = Population(self, layer, pop_name, **pop_kwargs, device=self.device)
                 layer.append_population(pop)
                 self.populations[pop.fullname] = pop
         
@@ -132,9 +147,9 @@ class Network(nn.Module):
                             projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
                         pre_pop = pre_layer.populations[pre_pop_name]
                         if hasattr(pre_pop, 'image_dim') and pre_pop.image_dim is not None:
-                            projection = Conv2DProjection(pre_pop, post_pop, device=device, **projection_kwargs)
+                            projection = Conv2DProjection(pre_pop, post_pop, device=self.device, **projection_kwargs)
                         else:
-                            projection = Projection(pre_pop, post_pop, device=device, **projection_kwargs)
+                            projection = Projection(pre_pop, post_pop, device=self.device, **projection_kwargs)
                         post_pop.append_projection(projection)
                         post_pop.incoming_projections[projection.name] = projection
                         pre_pop.outgoing_projections[projection.name] = projection
@@ -244,7 +259,7 @@ class Network(nn.Module):
         self.target_history = []
         for layer in self:
             for population in layer:
-                population.reinit(self.device)
+                population.reinit(device=self.device)
                 population.reset_history()
 
     def forward(self, sample, store_history=False, store_dynamics=False, store_num_steps=None, no_grad=False):
@@ -275,29 +290,33 @@ class Network(nn.Module):
         
         for population in self.populations.values():
             if sample.ndim == 1:
-                population.reinit(self.device, batch_size=1)
+                population.reinit(device=self.device, batch_size=1)
             else:
-                population.reinit(self.device, batch_size=sample.shape[0])
+                population.reinit(device=self.device, batch_size=sample.shape[0])
     
         if not hasattr(self, 'input_pop'):
             self.input_pop = next(iter(list(self)[0]))
-        self.input_pop.activity = torch.squeeze(sample)
+        self.input_pop.activity = torch.squeeze(sample).to(self.device)
 
-        for t in range(self.forward_steps):
-            if (t >= self.forward_steps - self.backward_steps) and not no_grad:
-                track_grad = True
-            else:
-                track_grad = False
+        # Use autocast context for forward pass if AMP is enabled and not in no_grad mode
+        autocast_context = autocast() if (self.use_amp and not no_grad) else torch.no_grad() if no_grad else torch.enable_grad()
 
-            with torch.set_grad_enabled(track_grad):
-                for population in self.populations.values():
-                    population.prev_activity = population.activity
-                for i, post_layer in enumerate(self):
-                    for post_pop in post_layer:
-                        if i > 0:
-                            post_pop.forward()
-                        if store_dynamics and t >= (self.forward_steps - store_num_steps):
-                            post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
+        with autocast_context:
+            for t in range(self.forward_steps):
+                if (t >= self.forward_steps - self.backward_steps) and not no_grad:
+                    track_grad = True
+                else:
+                    track_grad = False
+
+                with torch.set_grad_enabled(track_grad):
+                    for population in self.populations.values():
+                        population.prev_activity = population.activity
+                    for i, post_layer in enumerate(self):
+                        for post_pop in post_layer:
+                            if i > 0:
+                                post_pop.forward()
+                            if store_dynamics and t >= (self.forward_steps - store_num_steps):
+                                post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
 
         if store_history:
             for pop in self.populations.values():
@@ -507,10 +526,17 @@ class Network(nn.Module):
                 else:
                     this_train_step_store_history = False
 
-                output = self.forward(sample_data, store_history=this_train_step_store_history,
+                # Use autocast for forward pass when AMP is enabled
+                if self.use_amp:
+                    with autocast():
+                        output = self.forward(sample_data, store_history=this_train_step_store_history,
+                                              store_dynamics=store_dynamics)
+                        loss = self.criterion(output, sample_target)
+                else:
+                    output = self.forward(sample_data, store_history=this_train_step_store_history,
                                       store_dynamics=store_dynamics)
-                
-                loss = self.criterion(output, sample_target)
+                    loss = self.criterion(output, sample_target)
+
                 self.loss_history.append(loss.item())
                 self.target_history.append(sample_target.clone())
 
@@ -548,9 +574,16 @@ class Network(nn.Module):
                 
                 # Compute validation loss
                 if val_dataloader is not None and train_step in val_range:
-                    output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                    if self.use_amp:
+                        with autocast():
+                            output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                            val_loss = self.criterion(output, val_target)
+                    else:
+                        output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                        val_loss = self.criterion(output, val_target)
+                    
                     self.val_output_history.append(output.detach().clone())
-                    self.val_loss_history.append(self.criterion(output, val_target).item())
+                    self.val_loss_history.append(val_loss.item())
                     accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
                                output.shape[0]
                     self.val_accuracy_history.append(accuracy.item())
@@ -618,8 +651,13 @@ class Network(nn.Module):
                     sample_data = sample_data.to(self.device)
                     sample_target = sample_target.to(self.device)
 
-            output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
-            loss = self.criterion(output, sample_target)
+            if self.use_amp:
+                with autocast():
+                    output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
+                    loss = self.criterion(output, sample_target)
+            else:
+                output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
+                loss = self.criterion(output, sample_target)
 
         return loss.item()
            
@@ -665,7 +703,7 @@ class Population(object):
     def __init__(self, network, layer, name, size, activation='linear', activation_kwargs=None, tau=None,
                  include_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None,
                  bias_learning_rule=None, bias_learning_rule_kwargs=None, custom_update=None, custom_update_kwargs=None,
-                 output_pop=False):
+                 output_pop=False, device='cpu'):
         """
         Class for population of neurons
 
@@ -704,7 +742,10 @@ class Population(object):
         output_pop : bool, optional
             Whether this population is the output population for computing network loss.
             A single population must be designated as the output population, by default False
+        device : str, optional
+            Device to run computations on ('cpu' or 'cuda'), by default 'cpu'
         """
+        self.device = device
         # Constants
         self.network = network
         self.layer = layer
@@ -743,7 +784,7 @@ class Population(object):
         self.activation.kwargs = activation_kwargs
 
         # Set bias parameters
-        self.bias = nn.Parameter(torch.zeros(self.size, device=network.device), requires_grad=False)
+        self.bias = nn.Parameter(torch.zeros(self.size, device=self.device), requires_grad=False)
         self.bias_init = bias_init
         if bias_init_args is None:
             bias_init_args = ()
@@ -806,7 +847,7 @@ class Population(object):
         self.outgoing_projections = {}
         self.incoming_projections = {}
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
-        self.reinit(network.device)
+        self.reinit(device=self.device)
         self.reset_history()
 
     def register_attribute_history(self, attr_name):
@@ -864,7 +905,7 @@ class Population(object):
         self.state = self.state + delta_state / self.tau
         self.activity = self.activation(self.state)
     
-    def reinit(self, device, batch_size=1):
+    def reinit(self, batch_size=1, device=None):
         """
         Method for resetting state variables of a population
         """
@@ -872,6 +913,7 @@ class Population(object):
             self.state = torch.zeros((batch_size, self.size), device=device)
         else:
             self.state = torch.zeros(self.size, device=device)
+        self.bias = self.bias.to(device)
         self.state += self.bias
         self.activity = self.activation(self.state).to(device)
         self.forward_steps_activity = []
@@ -1119,7 +1161,7 @@ class Input(Population):
         self.outgoing_projections = {}
         self.incoming_projections = {}
         self.include_bias = False
-        self.reinit(network.device)
+        self.reinit(device=network.device)
         self.reset_history()
     
     def reinit(self, device, batch_size=1):
@@ -1811,7 +1853,7 @@ class LayerBuilder:
     """Builder for individual layers containing populations."""
     
     def __init__(self, network_builder: NetworkBuilder, layer_name: str):
-        self.network_builder = network_builder
+        self._network_builder = network_builder
         self._layer_name = layer_name
         
     def population(self, 
@@ -1823,8 +1865,8 @@ class LayerBuilder:
                    bias_learning_rate: Optional[float] = None,
                    tau: Optional[float] = None) -> 'LayerBuilder':
         """Add a population to the current layer."""
-        if self._layer_name not in self.network_builder._layers:
-            self.network_builder._layers[self._layer_name] = {}
+        if self._layer_name not in self._network_builder._layers:
+            self._network_builder._layers[self._layer_name] = {}
             
         pop_config = {'size': size}
         if activation is not None:
@@ -1838,7 +1880,7 @@ class LayerBuilder:
         if tau is not None:
             pop_config['tau'] = tau
             
-        self.network_builder._layers[self._layer_name][pop_name] = pop_config
+        self._network_builder._layers[self._layer_name][pop_name] = pop_config
         return self
     
     def type(self, neuron_type: str, init_scale: float = 1.0) -> 'LayerBuilder':
@@ -1851,15 +1893,15 @@ class LayerBuilder:
         Returns:
             Self for method chaining
         """
-        if not self.network_builder._layers[self._layer_name]:
+        if not self._network_builder._layers[self._layer_name]:
             raise ValueError(f"No populations defined in layer {self._layer_name}")
         
         # Get the last added population
-        last_pop = list(self.network_builder._layers[self._layer_name].keys())[-1]
+        last_pop = list(self._network_builder._layers[self._layer_name].keys())[-1]
         
         # Store the population type for future connections
         pop_key = f"{self._layer_name}.{last_pop}"
-        self.network_builder._population_types[pop_key] = (neuron_type, init_scale)
+        self._network_builder._population_types[pop_key] = (neuron_type, init_scale)
         
         # Apply the type to any existing outgoing connections from this population
         self._apply_type_to_existing_connections(last_pop, neuron_type, init_scale)
@@ -1869,11 +1911,11 @@ class LayerBuilder:
     def _apply_type_to_existing_connections(self, source_pop: str, neuron_type: str, init_scale: float):
         """Apply the population type to existing outgoing connections."""
         # Find all projections where this population is the source
-        for target_layer in self.network_builder._projections:
-            for target_pop in self.network_builder._projections[target_layer]:
-                if self._layer_name in self.network_builder._projections[target_layer][target_pop]:
-                    if source_pop in self.network_builder._projections[target_layer][target_pop][self._layer_name]:
-                        projection = self.network_builder._projections[target_layer][target_pop][self._layer_name][source_pop]
+        for target_layer in self._network_builder._projections:
+            for target_pop in self._network_builder._projections[target_layer]:
+                if self._layer_name in self._network_builder._projections[target_layer][target_pop]:
+                    if source_pop in self._network_builder._projections[target_layer][target_pop][self._layer_name]:
+                        projection = self._network_builder._projections[target_layer][target_pop][self._layer_name][source_pop]
                         
                         # Apply the type settings
                         if neuron_type.lower() in ['excitatory', 'e', 'exc']:
@@ -1892,12 +1934,12 @@ class LayerBuilder:
         """Create a projection from this layer to a target layer/population."""
         # If no source population specified, assume we're connecting from the last added population
         if source_population is None:
-            if not self.network_builder._layers[self._layer_name]:
+            if not self._network_builder._layers[self._layer_name]:
                 raise ValueError(f"No populations defined in layer {self._layer_name}")
-            source_population = list(self.network_builder._layers[self._layer_name].keys())[-1]
+            source_population = list(self._network_builder._layers[self._layer_name].keys())[-1]
         
         projection_builder = ProjectionBuilder(
-            self.network_builder, 
+            self._network_builder, 
             self._layer_name, 
             source_population,
             target_layer, 
@@ -1906,8 +1948,8 @@ class LayerBuilder:
         
         # Apply population type if it exists for the source population
         source_key = f"{self._layer_name}.{source_population}"
-        if source_key in self.network_builder._population_types:
-            pop_type, init_scale = self.network_builder._population_types[source_key]
+        if source_key in self._network_builder._population_types:
+            pop_type, init_scale = self._network_builder._population_types[source_key]
             projection_builder.type(pop_type, init_scale)
         
         return projection_builder
@@ -1919,12 +1961,12 @@ class LayerBuilder:
         """Create a projection from a source layer/population to this layer."""
         # If no target population specified, assume we're connecting to the last added population
         if target_population is None:
-            if not self.network_builder._layers[self._layer_name]:
+            if not self._network_builder._layers[self._layer_name]:
                 raise ValueError(f"No populations defined in layer {self._layer_name}")
-            target_population = list(self.network_builder._layers[self._layer_name].keys())[-1]
+            target_population = list(self._network_builder._layers[self._layer_name].keys())[-1]
         
         projection_builder = ProjectionBuilder(
-            self.network_builder,
+            self._network_builder,
             source_layer,
             source_population, 
             self._layer_name,
@@ -1933,23 +1975,23 @@ class LayerBuilder:
         
         # Apply population type if it exists for the source population
         source_key = f"{source_layer}.{source_population}"
-        if source_key in self.network_builder._population_types:
-            pop_type, init_scale = self.network_builder._population_types[source_key]
+        if source_key in self._network_builder._population_types:
+            pop_type, init_scale = self._network_builder._population_types[source_key]
             projection_builder.type(pop_type, init_scale)
         
         return projection_builder
     
     def layer(self, name: str) -> 'LayerBuilder':
         """Switch to building a different layer."""
-        return self.network_builder.layer(name)
+        return self._network_builder.layer(name)
     
     def training(self, **kwargs) -> NetworkBuilder:
         """Set training parameters and return to network builder."""
-        return self.network_builder.training(**kwargs)
+        return self._network_builder.training(**kwargs)
     
     def build(self) -> Tuple[Dict, Dict, Dict]:
         """Build and return all configuration dictionaries."""
-        return self.network_builder.build()
+        return self._network_builder.build()
 
 
 class ProjectionBuilder:
@@ -1961,14 +2003,14 @@ class ProjectionBuilder:
                  source_pop: str, 
                  target_layer: str, 
                  target_pop: str):
-        self.network_builder = network_builder
+        self._network_builder = network_builder
         self._source_layer = source_layer
         self._source_pop = source_pop
         self._target_layer = target_layer
         self._target_pop = target_pop
         
         # Initialize nested structure if needed
-        projections = self.network_builder._projections
+        projections = self._network_builder._projections
         if target_layer not in projections:
             projections[target_layer] = {}
         if target_pop not in projections[target_layer]:
@@ -2051,14 +2093,13 @@ class ProjectionBuilder:
     
     def layer(self, name: str) -> LayerBuilder:
         """Switch to building a different layer."""
-        return self.network_builder.layer(name)
+        return self._network_builder.layer(name)
     
     def training(self, **kwargs) -> NetworkBuilder:
         """Set training parameters and return to network builder."""
-        return self.network_builder.training(**kwargs)
+        return self._network_builder.training(**kwargs)
     
     def build(self) -> Tuple[Dict, Dict, Dict]:
         """Build and return all configuration dictionaries."""
-        return self.network_builder.build()
-
+        return self._network_builder.build()
 

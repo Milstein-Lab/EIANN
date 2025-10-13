@@ -670,16 +670,13 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
                 actual_dParam = torch.sign(actual_dParam)
             if only_updated_params:
                 updated_idx = torch.where(actual_dParam != 0)
-                # if len(updated_idx[0]) != len(actual_dParam):
-                #     print(f"Percentage updated = {len(updated_idx[0])/len(actual_dParam)*100:.2f}%")
                 predicted_dParam = predicted_dParam[actual_dParam != 0]
                 actual_dParam = actual_dParam[actual_dParam != 0]
                 
             angle = compute_vector_angle(predicted_dParam, actual_dParam)
             angles[param_name].append(angle)
             if torch.isnan(angle):
-                print(f'Warning: angle is NaN at step {t}, {param_name}, t={t}, Pred. norm.={torch.norm(predicted_dParam)}, Actual norm.={torch.norm(actual_dParam)}')
-                # return predicted_dParam, actual_dParam
+                print(f'Warning: angle is NaN at step {t}, {param_name}, dW norm={torch.norm(actual_dParam)}')
 
         if plot:
             ax = axes[n_params-(i+1)]
@@ -917,8 +914,11 @@ def compute_discriminability(population_activity):
     Silent patterns (rows with all zeros) are assigned a similarity of 1 with all other patterns,
     resulting in a discriminability of 0 for those pairs.
     """
-    silent_pattern_idx = np.where(torch.sum(population_activity, dim=1) == 0.)[0]
-    similarity_matrix = cosine_similarity(population_activity)
+    # Move to CPU and convert to numpy for sklearn compatibility
+    population_activity_cpu = population_activity.cpu().numpy()
+
+    silent_pattern_idx = np.where(np.sum(population_activity_cpu, axis=1) == 0.)[0]
+    similarity_matrix = cosine_similarity(population_activity_cpu)
     similarity_matrix[silent_pattern_idx,:] = 1
     similarity_matrix[:,silent_pattern_idx] = 1
     similarity_matrix_idx = np.tril_indices_from(similarity_matrix, -1) # select values below diagonal
@@ -1233,17 +1233,17 @@ def compute_rf_structure(receptive_fields, dimensions=None, method='moran'):
         else:
             if method == 'moran':
                     # Calculate Moran's I (spatial autocorrelation)
-                    spatial_autocorrelation = np.abs(compute_morans_I(unit_rf.view(rf_width, rf_height).detach().numpy()))
+                    spatial_autocorrelation = np.abs(compute_morans_I(unit_rf.view(rf_width, rf_height).detach().cpu().numpy()))
                     structure_ls.append(spatial_autocorrelation)
             else:
                 for i in range(3):  # structural similarity to noise (averaged across 3 random noise images)
                     # noise = np.random.uniform(min(unit_rf), max(unit_rf), (rf_width, rf_height))
-                    noise = unit_rf.clone()[torch.randperm(rf_width * rf_height)].view(rf_width, rf_height).numpy() # generate "noise" by random permutation of original unit_rf
+                    noise = unit_rf.clone()[torch.randperm(rf_width * rf_height)].view(rf_width, rf_height).cpu().numpy() # generate "noise" by random permutation of original unit_rf
                     if method == 'fft':
                         reference_correlation = spatial_structure_similarity_fft(noise, noise)
-                        similarity_to_noise += spatial_structure_similarity_fft(unit_rf.view(rf_width, rf_height).numpy(), noise) / reference_correlation
+                        similarity_to_noise += spatial_structure_similarity_fft(unit_rf.view(rf_width, rf_height).cpu().numpy(), noise) / reference_correlation
                     elif method == 'ssim':
-                        similarity_to_noise += metrics.structural_similarity(unit_rf.view(rf_width, rf_height).numpy(), noise)
+                        similarity_to_noise += metrics.structural_similarity(unit_rf.view(rf_width, rf_height).cpu().numpy(), noise)
                 structure_ls.append(1 - similarity_to_noise/3)
     
     return np.array(structure_ls)
@@ -1479,6 +1479,7 @@ def compute_maxact_receptive_fields(population, num_units=None, softplus=False, 
         network.forward(input_images)  # compute unit activities in forward pass
         pop_activity = population.activity[:,0:num_units]
         loss = torch.sum(-torch.diagonal(pop_activity))
+        loss_history.append(loss.detach().cpu().numpy())
         loss.backward()
         loss_history.append(loss.detach().numpy())
         all_images.append(-input_images.grad.detach().clone())
