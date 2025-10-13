@@ -1,3 +1,4 @@
+import pytest
 import os
 import EIANN.utils as ut
 import EIANN.plot as pt
