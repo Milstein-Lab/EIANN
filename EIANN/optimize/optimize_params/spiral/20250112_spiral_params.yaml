@@ -52,6 +52,27 @@ bpDale_learned_bias:
     Output_I_Output_E_init_weight_scale: 1.4600401572902482
     Output_I_Output_I_init_weight_scale: 1.5591878259608454
 # python -m  nested.analyze --config-file-path=optimize/optimize_config/spiral/20250108_nested_optimize_EIANN_2_hidden_spiral_bpDale_fixed_SomaI_learned_bias_config.yaml --disp --num_instances=1 --model-key=bpDale_learned_bias --param-file-path=optimize/optimize_params/spiral/20250112_spiral_params.yaml --export_network_config_file_path=network_config/spiral/20250127_EIANN_2_hidden_spiral_bpDale_learned_bias_config_complete_optimized.yaml --export 
+bpDale_zero_bias:
+    #    accuracy: 37.66167068481445
+    #    dynamics_residuals: 0.0
+    #    loss: 0.19942501187324524
+    H_E_E_learning_rate: 0.013448112719206729
+    Output_E_E_learning_rate: 0.03718742430289554
+    H1_E_Input_E_init_weight_scale: 0.6131275385411309
+    H1_E_H1_I_init_weight_scale: 0.09433188698616012
+    H1_I_Input_E_init_weight_scale: 0.2633981316147314
+    H1_I_H1_E_init_weight_scale: 0.12681364406091267
+    H1_I_H1_I_init_weight_scale: 0.9137983373562025
+    H2_E_H1_E_init_weight_scale: 0.2417308848321429
+    H2_E_H2_I_init_weight_scale: 0.08379437739573734
+    H2_I_H1_E_init_weight_scale: 0.3013595225808092
+    H2_I_H2_E_init_weight_scale: 2.2501635729336016
+    H2_I_H2_I_init_weight_scale: 1.2066864480677988
+    Output_E_H2_E_init_weight_scale: 1.876311287872052
+    Output_E_Output_I_init_weight_scale: 0.26254229241902155
+    Output_I_H2_E_init_weight_scale: 0.5409982149056294
+    Output_I_Output_E_init_weight_scale: 0.1217279620800388
+    Output_I_Output_I_init_weight_scale: 1.7805200793653517
 
 DTP_fixed_SomaI_learned_bias:
     #    accuracy: 91.65834045410156
@@ -89,5 +110,40 @@ DTP_fixed_SomaI_learned_bias:
     Output_I_H2_E_init_weight_scale: 1.9823693413208623
     Output_I_Output_I_init_weight_scale: 3.924537045484193
     DendI_size_fraction: 0.4285589156097181
+DTP_fixed_SomaI_zero_bias:
+    #    accuracy: 37.394996643066406
+    #    dynamics_residuals: 0.0
+    #    loss: 0.1752709001302719
+    #    mean_forward_dend_loss: 0.0069660902954638
+    H1_E_Input_E_init_weight_scale: 2.4012955462976993
+    H2_E_H1_E_init_weight_scale: 1.1887202141656101
+    H_E_E_learning_rate: 0.07091479862034537
+    H1_E_H2_E_weight_scale: 0.21133877695437114
+    H2_E_Output_E_weight_scale: 0.11737928559346615
+    H1_E_H1_SomaI_init_weight_scale: 2.0795497798478135
+    H1_SomaI_H1_E_init_weight_scale: 0.6140729287494098
+    H1_SomaI_Input_E_init_weight_scale: 1.9137521331048366
+    H1_SomaI_H1_SomaI_init_weight_scale: 3.033007401134379
+    H_E_DendI_learning_rate: 0.1001120320314592
+    H1_E_H1_DendI_init_weight_scale: 0.6956827403710787
+    H1_DendI_H1_E_weight_scale: 4.058298584850933
+    H1_DendI_H1_DendI_weight_scale: 0.3796353286293149
+    H2_E_H2_SomaI_init_weight_scale: 0.5499413114134734
+    H2_SomaI_H2_E_init_weight_scale: 0.8915120547270652
+    H2_SomaI_H1_E_init_weight_scale: 2.837361344289605
+    H2_SomaI_H2_SomaI_init_weight_scale: 2.6800912944698774
+    H2_E_H2_DendI_init_weight_scale: 2.3199986568036155
+    H2_DendI_H2_E_weight_scale: 1.2309093558552164
+    H2_DendI_H2_DendI_weight_scale: 0.5428488486752238
+    Output_E_H2_E_init_weight_scale: 2.027682194987855
+    DendI_E_learning_rate: 0.0952585373676334
+    DendI_DendI_learning_rate: 0.03435512003722571
+    Output_E_H2_E_learning_rate: 0.008067175133788176
+    Output_E_Output_I_init_weight_scale: 1.505594142433112
+    Output_I_Output_E_init_weight_scale: 0.06932742253127393
+    Output_I_H2_E_init_weight_scale: 0.30349326436387225
+    Output_I_Output_I_init_weight_scale: 0.7752282811624321
+    DendI_size_fraction: 0.8245603778971957
+
 
 # Generate .pkl files and network config with generate_pkl_EIANN.sh

@@ -156,24 +156,28 @@ bpDale_G_zero_bias_lrf:
     Output_I_Output_I_init_weight_scale: 1.4046445521253732
     H_I_size: 50.0
     Output_I_size: 10.0
-bpDale_G_zero_bias_wide_lrf_test:
-    H_E_E_learning_rate: 0.16054505441740982
-    Output_E_E_learning_rate: 0.04675558581255138
-    H1_E_Input_E_init_weight_scale: 0.34634970229241296
-    H1_E_H1_I_init_weight_scale: 0.3793775999178492
-    H1_I_Input_E_init_weight_scale: 0.2345638479590626
-    H1_I_H1_E_init_weight_scale: 0.26488891934380016
-    H1_I_H1_I_init_weight_scale: 1.1681359035005414
-    H2_E_H1_E_init_weight_scale: 1.9159581109767234
-    H2_E_H2_I_init_weight_scale: 1.1925264715342325
-    H2_I_H1_E_init_weight_scale: 2.328515327357697
-    H2_I_H2_E_init_weight_scale: 0.41805245166674315
-    H2_I_H2_I_init_weight_scale: 1.2951455208138398
-    Output_E_H2_E_init_weight_scale: 1.3744629321965163
-    Output_E_Output_I_init_weight_scale: 0.773126187876416
-    Output_I_H2_E_init_weight_scale: 1.8620989970697943
-    Output_I_Output_E_init_weight_scale: 1.5327463990588632
-    Output_I_Output_I_init_weight_scale: 1.4046445521253732
+bpDale_G_zero_bias_wide_lrf_2:
+    # H1.SomaI also have local receptive fields
+    #    accuracy: 34.417999267578125
+    #    dynamics_residuals: 0.0
+    #    loss: 0.07925762236118317
+    H_E_E_learning_rate: 0.22455899584911168
+    Output_E_E_learning_rate: 0.02273337052754512
+    H1_E_Input_E_init_weight_scale: 0.16468312298329135
+    H1_E_H1_I_init_weight_scale: 0.12759205735629237
+    H1_I_Input_E_init_weight_scale: 0.3500323466976125
+    H1_I_H1_E_init_weight_scale: 0.5211644444433936
+    H1_I_H1_I_init_weight_scale: 0.5959772068128814
+    H2_E_H1_E_init_weight_scale: 1.2362699518046114
+    H2_E_H2_I_init_weight_scale: 0.7866080882689215
+    H2_I_H1_E_init_weight_scale: 1.9703074373891425
+    H2_I_H2_E_init_weight_scale: 0.8221889449988781
+    H2_I_H2_I_init_weight_scale: 1.1614654988444704
+    Output_E_H2_E_init_weight_scale: 1.4417516787223468
+    Output_E_Output_I_init_weight_scale: 0.9409231526672053
+    Output_I_H2_E_init_weight_scale: 1.2617007165795329
+    Output_I_Output_E_init_weight_scale: 1.251709595313946
+    Output_I_Output_I_init_weight_scale: 0.8148363997953999
 bpDale_G_0_hidden:
     #    accuracy: 32.40979766845703
     #    dynamics_residuals: 0.0
