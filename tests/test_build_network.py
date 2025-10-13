@@ -4,7 +4,7 @@ import os
 
 import EIANN.utils as ut
 import EIANN.plot as pt
-import EIANN._network as nt
+import EIANN.network as nt
 
 
 def test_build_network(root_dir):

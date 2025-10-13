@@ -1,4 +1,4 @@
-import EIANN._network as nt
+import EIANN.network as nt
 import EIANN.utils as ut
 import EIANN.external as external
 import os
@@ -222,7 +222,7 @@ def load_network_dict(network, path):
 
     Parameters
     ----------
-    network : :class:`EIANN._network.Network`
+    network : :class:`EIANN.network.Network`
         The existing network object to load parameters into.
     path : str
         Path to the pickle file containing the network dictionary data.
@@ -251,7 +251,7 @@ def build_clone_network(network, backprop=True):
 
     Parameters
     ----------
-    network : :class:`EIANN._network.Network`
+    network : :class:`EIANN.network.Network`
         The source network to clone from.
     backprop : bool, optional
         Whether to change the learning rule to backpropagation and ensure 
@@ -366,11 +366,11 @@ def set_new_activation(network, activation, population='all', activation_kwargs=
     
     Parameters
     ----------
-    network : :class:`EIANN._network.Network`
+    network : :class:`EIANN.network.Network`
         The neural network object to set the activation function for.
     activation : str
         The name of the activation function to set.
-    population : str or list or :class:`EIANN._network.Population`, optional
+    population : str or list or :class:`EIANN.network.Population`, optional
         The population or populations to set the activation function for. Default is 'all'.
     activation_kwargs : dict, optional
         The keyword arguments for the activation function. Default is None.
@@ -475,6 +475,8 @@ def get_binned_mean_population_attribute_history_dict(network, attr_name, bin_si
         all_pop_attr_history_list.append(binned_attr_history)
         binned_attr_history_dict[pop_name] = torch.mean(binned_attr_history, dim=1)
     
+    if len(all_pop_attr_history_list) == 0:
+        return None, None
     binned_attr_history_tensor = torch.concatenate(all_pop_attr_history_list, dim=1)
     binned_attr_history_dict['all'] = torch.mean(binned_attr_history_tensor, dim=1)
     return steps, binned_attr_history_dict

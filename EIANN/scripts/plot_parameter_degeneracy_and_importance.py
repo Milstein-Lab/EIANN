@@ -1,4 +1,17 @@
-from nested.optimize_utils import *
+import matplotlib.pyplot as plt
+import optuna
+import os
+import numpy as np
+from nested.optimize_utils import OptimizationHistory, OptimizationReport, normalize_dynamic, clean_axes
+from nested.utils import param_array_to_dict, param_dict_to_array, read_from_yaml
+from optuna.importance import PedAnovaImportanceEvaluator, get_param_importances
+from EIANN.plot import update_plot_defaults
+
+plt.rcParams.update({'svg.fonttype': 'none',
+                     'font.sans-serif': 'Avenir',
+                     'text.usetex': False,
+                     'font.size': 14,
+                     })
 
 opt_file_path_dict = {'BP_like_5J': '../optimize/data/mnist/20241011_152454_nested_optimization_history_PopulationAnnealing_EIANN_2_hidden_mnist_BP_like_5J_298410265168692003819576414887770517830.hdf5'
                       }
@@ -48,7 +61,8 @@ requested_ids_dict = {'BP_like_5J': [27351, 28461, 22309, 28785]
 for model_name in opt_file_path_dict:
     opt_results = OptimizationReport(file_path=opt_file_path_dict[model_name])
     best_x = param_dict_to_array(best_x_dict[model_name], opt_results.param_names)
-    group = opt_results.get_marder_group(plot=True, order=order_dict[model_name])
+    group = opt_results.get_marder_group(plot=True, order=order_dict[model_name], ylim=(-0.003, 0.15),
+                                         xlim=(-0.04, 1.3), rasterized=True) # , semilogy=True)
     min_param_vals = opt_results.min_param_vals
     max_param_vals = opt_results.max_param_vals
 
@@ -63,7 +77,7 @@ for model_name in opt_file_path_dict:
                             range(len(min_param_vals))]
     normalized_selected_x = np.array(normalized_selected_x).T
     
-    fig, axis = plt.subplots(figsize=(7., 6.))
+    fig, axis = plt.subplots(figsize=(8., 6.5))
     plot_param_indexes = []
     plot_param_names = []
     for i, param_name in enumerate(opt_results.param_names):
@@ -73,18 +87,52 @@ for model_name in opt_file_path_dict:
     plot_param_indexes = np.array(plot_param_indexes)
     y_vals = list(reversed(range(len(plot_param_names))))
     for label, this_x in zip(labels, normalized_selected_x):
-        axis.scatter(this_x[plot_param_indexes], y_vals, label=label)
+        axis.scatter(this_x[plot_param_indexes], y_vals, label=label, rasterized=True, s=50)
     axis.set_xlabel('Normalized parameter value')
     axis.set_yticks(y_vals)
     # y_ticklabels = opt_results.param_names
     y_ticklabels = [yticklabels_dict[param_name] for param_name in plot_param_names]
     axis.set_yticklabels(y_ticklabels)
+    axis.set_ylim(-0.5, len(y_ticklabels) - 0.5)
     axis.set_xlim((0., 1.))
     axis.legend(loc='best', frameon=False, framealpha=0.5, handlelength=1)
-    fig.suptitle(titles_dict[model_name])
+    # fig.suptitle(titles_dict[model_name])
     clean_axes(axis)
     # fig.subplots_adjust(left=0.4, top=0.95)
     fig.tight_layout()
-    fig.subplots_adjust(top=0.95)
+    # fig.subplots_adjust(top=0.95)
     fig.show()
+    
+    h5_file_path = opt_file_path_dict[model_name]
+    db_file_path = h5_file_path.rsplit('.', 1)[0]+'.db'
+    
+    if not os.path.exists(db_file_path):
+        history = OptimizationHistory(file_path=h5_file_path)
+        study = history.to_optuna_study(h5_file_path)
+    else:
+        study_name = db_file_path.rsplit('/', 1)[1]
+        study_name = study_name.rsplit('.', 1)[0]
+        sqlite_path = 'sqlite:///' + db_file_path
+        study = optuna.load_study(study_name=study_name, storage=sqlite_path)
+    
+    target = lambda t: t.values[2]
+    target_name = 'Classification loss'
+    evaluator = PedAnovaImportanceEvaluator(evaluate_on_local=False)
+    # optuna.visualization.matplotlib.plot_param_importances(study, evaluator=evaluator, target=target, target_name=target_name)
+    importances = get_param_importances(study, evaluator=evaluator, target=target)
+    filtered_importances = {}
+    for key in importances:
+        if key in yticklabels_dict:
+            filtered_importances[key] = importances[key]
+    sorted_items_by_value = sorted(filtered_importances.items(), key=lambda item: item[1])  # item[1] refers to the value
+    importances = dict(sorted_items_by_value)
+    fig, ax = plt.subplots(figsize=(8., 6.5))
+    ax.barh(range(len(importances)), importances.values(), color='grey')
+    ax.set_yticks(range(len(importances)), [yticklabels_dict[key] for key in importances.keys()])
+    ax.set_xlabel('Parameter importance')
+    ax.set_ylim(-0.5, len(importances) - 0.5)
+    clean_axes(ax)
+    fig.tight_layout()
+    fig.show()
+
 plt.show()

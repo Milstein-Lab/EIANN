@@ -41,7 +41,7 @@ def get_project_root():
     return current_path
 
 
-def set_all_seeds(seed: int = 123) -> None:
+def set_all_seeds(seed: int = 123, verbose=True) -> None:
     "Sets the random seed for PyTorch, NumPy, and Python's random module"
 
     np.random.seed(seed)
@@ -57,7 +57,8 @@ def set_all_seeds(seed: int = 123) -> None:
 
     # Set a fixed hash seed to ensure consistent hashing behavior
     os.environ['PYTHONHASHSEED'] = str(seed)
-    print(f"Random seed set to {seed}")
+    if verbose:
+        print(f"Random seed set to {seed}")
 
 
 def nested_convert_scalars(data):
@@ -386,6 +387,8 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
                     hdf5_file[network_name][seed].create_group(data_key, track_order=True)
                     convert_dict_to_hdf5_group(data, hdf5_file[network_name][seed][data_key])
                 else:
+                    if isinstance(data, torch.Tensor):
+                        data = data.numpy()
                     hdf5_file[network_name][seed].create_dataset(data_key, data=data, track_order=True)
                 print(f'{data_key} saved to file: {file_path}')
             else:
@@ -394,6 +397,8 @@ def save_plot_data(network_name, seed, data_key, data, file_path=None, overwrite
         with h5py.File(file_path, 'w') as hdf5_file:
             hdf5_file.create_group(network_name, track_order=True)
             hdf5_file[network_name].create_group(seed, track_order=True)
+            if isinstance(data, torch.Tensor):
+                data = data.numpy()
             hdf5_file[network_name][seed].create_dataset(data_key, data=data, track_order=True)
             print(f'{data_key} saved to file: {file_path}')
 

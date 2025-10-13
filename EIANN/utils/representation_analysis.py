@@ -19,7 +19,7 @@ def compute_raw_test_activity(network, test_dataloader):
 
     Parameters
     ----------
-    network : EIANN._network.Network
+    network : EIANN.network.Network
         The neural network model to evaluate.
     test_dataloader : torch.utils.data.DataLoader
         DataLoader providing test data. Must contain a single large batch.
@@ -91,7 +91,7 @@ def apply_sorting(network, pop_activity_dict, pattern_labels, sorted_output_idx=
 
     Parameters
     ----------
-    network : EIANN._network.Network
+    network : EIANN.network.Network
         The neural network model.
     pop_activity_dict : dict[str, torch.Tensor]
         Dictionary mapping population names to their activity matrices.
@@ -150,7 +150,7 @@ def compute_test_activity(network, test_dataloader, class_average=False, sort=Fa
 
     Parameters
     ----------
-    network : EIANN._network.Network
+    network : EIANN.network.Network
         The neural network model to evaluate.
     test_dataloader : torch.utils.data.DataLoader
         DataLoader providing test data. Must contain a single large batch.
@@ -241,7 +241,7 @@ def compute_noise_sensitivity(network, noise_stds=np.arange(0, 2, 0.1)):
 
     Parameters
     ----------
-    network : :class:`EIANN._network.Network`
+    network : :class:`EIANN.network.Network`
         The trained neural network to evaluate.
     noise_stds : array-like, optional
         The standard deviations of the noise to add to the input. Default is np.arange(0, 2, 0.1).
@@ -271,7 +271,7 @@ def compute_robustness_to_pruning(network, test_dataloader, projections='all'):
     
     Parameters
     ----------
-    network : :class:`EIANN._network.Network`
+    network : :class:`EIANN.network.Network`
         The trained neural network to evaluate.
     test_dataloader : :class:`torch.utils.data.DataLoader`
         The test dataloader to evaluate the network on.
@@ -670,16 +670,13 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
                 actual_dParam = torch.sign(actual_dParam)
             if only_updated_params:
                 updated_idx = torch.where(actual_dParam != 0)
-                # if len(updated_idx[0]) != len(actual_dParam):
-                #     print(f"Percentage updated = {len(updated_idx[0])/len(actual_dParam)*100:.2f}%")
                 predicted_dParam = predicted_dParam[actual_dParam != 0]
                 actual_dParam = actual_dParam[actual_dParam != 0]
                 
             angle = compute_vector_angle(predicted_dParam, actual_dParam)
             angles[param_name].append(angle)
             if torch.isnan(angle):
-                print(f'Warning: angle is NaN at step {t}, {param_name}, t={t}, Pred. norm.={torch.norm(predicted_dParam)}, Actual norm.={torch.norm(actual_dParam)}')
-                # return predicted_dParam, actual_dParam
+                print(f'Warning: angle is NaN at step {t}, {param_name}, dW norm={torch.norm(actual_dParam)}')
 
         if plot:
             ax = axes[n_params-(i+1)]
@@ -981,7 +978,7 @@ def compute_within_class_representational_similarity(network, dataloader, popula
 
     Parameters
     ----------
-    network : EIANN._network.Network
+    network : EIANN.network.Network
         The neural network model to evaluate.
     test_dataloader : torch.utils.data.DataLoader
         DataLoader providing test data for evaluation.
@@ -1456,14 +1453,7 @@ def compute_maxact_receptive_fields(population, num_units=None, softplus=False, 
                 previous_activation_funcs[pop_name] = population.activation
         network_utils.set_new_activation(network, activation='softplus', population='all', activation_kwargs={'beta': 10})
 
-    if hasattr(network, 'seed'):
-        try:
-            network_seed = int(network.seed.split("_")[0])
-        except:
-            network_seed = int(network.seed)
-    else:
-        network_seed = 123
-    data_utils.set_all_seeds(seed=network_seed)
+    data_utils.set_all_seeds(seed=123, verbose=False)
 
     if network.backward_steps == 0:
         network.backward_steps = 3
@@ -1662,7 +1652,7 @@ def compute_dendritic_state_dynamics(network):
 
     Parameters
     ----------
-    network : :class:'EIANN._network.Network'
+    network : :class:'EIANN.network.Network'
         Neural network object containing stored dynamics (forward activity_dynamics and backward_steps_activity)
 
     Returns
