@@ -12,9 +12,7 @@ import h5py
 import click
 import gc
 import codecs
-import csv
 import re
-from reportlab.pdfgen import canvas
 from sklearn.metrics.pairwise import cosine_similarity
 
 import EIANN.utils as ut
@@ -580,7 +578,7 @@ def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True, error
     ax.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict["color"], linewidth=0)
     ax.grid(True, axis='y', color='gray', linewidth=0.5, alpha=0.3)
     ax.set_xlabel('Training step')
-    ax.set_ylabel('Alignment angle\n(ΔW     vs backprop)')
+    ax.set_ylabel('Alignment angle\n(ΔW $\\measuredangle$ vs backprop)')
     ax.set_ylim([-5,max(100, np.nanmax(avg_angle+error))])
     ax.set_xlim([-train_steps[-1]/20, train_steps[-1]+1])
     ax.set_yticks(np.arange(0, 101, 30))
