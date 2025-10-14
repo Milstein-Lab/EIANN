@@ -302,7 +302,7 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, dataset='mnist', config_
 
         root_dir = ut.get_project_root()
         if config_path_prefix is None:
-            config_path_prefix = root_dir + f"/EIANN/network_config/{dataset}/"
+            config_path_prefix = root_dir + f"/EIANN/network_config/{dataset.lower()}/"
         config_path = config_path_prefix + model_dict['config']
 
         if hdf5_path_prefix is None:
@@ -313,10 +313,10 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, dataset='mnist', config_
             # Set path to Box data directory (default path based on OS)
             if os.name == "posix": # macOS or Linux
                 username = os.environ.get("USER")
-                saved_network_path_prefix = f"/Users/{username}/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/{dataset.upper()}/"
+                saved_network_path_prefix = f"/Users/{username}/Library/CloudStorage/Box-Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/{dataset}/"
             elif os.name == "nt": # Windows
                 username = os.environ.get("USERNAME")
-                saved_network_path_prefix = f"C:/Users/{username}/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/{dataset.upper()}/"
+                saved_network_path_prefix = f"C:/Users/{username}/Box/Milstein-Shared/EIANN exported data/2024 Manuscript V2/{dataset}/"
 
         if not os.path.exists(hdf5_path):
             # If the hdf5 is not available in local data directory, check in Box drive
