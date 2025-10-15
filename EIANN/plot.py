@@ -30,7 +30,7 @@ def update_plot_defaults():
                      'ytick.major.width': 0.5,
                      'legend.frameon': False,
                      'legend.handletextpad': 0.5,
-                     'legend.handlelength': 1.2,
+                     'legend.handlelength': 1.,
                      'legend.labelspacing': 0.3,
                      'figure.figsize': [4, 1.5],
                      'svg.fonttype': 'none',

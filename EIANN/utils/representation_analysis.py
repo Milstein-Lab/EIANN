@@ -5,6 +5,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 from skimage import metrics
 import scipy.stats as stats
 import copy
+import warnings
+warnings.filterwarnings('ignore', category=Warning)
+warnings.filterwarnings('ignore', message='.*tqdm.*')
 from tqdm.autonotebook import tqdm
 from scipy import signal
 from collections import defaultdict
