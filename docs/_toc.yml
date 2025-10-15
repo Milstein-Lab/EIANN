@@ -23,14 +23,23 @@ parts:
 
   - caption: Galloni et al. 2025 - Figures
     chapters:
+    - file: Galloni_etal_2025/Figure_1
     - file: Galloni_etal_2025/Figure_2
     - file: Galloni_etal_2025/Figure_3
     - file: Galloni_etal_2025/Figure_4
     - file: Galloni_etal_2025/Figure_5
     - file: Galloni_etal_2025/Figure_6
     - file: Galloni_etal_2025/Figure_7
-    - file: Galloni_etal_2025/Figure_S5
+    - file: Galloni_etal_2025/Figure_8
     
+  - caption: Galloni et al. 2025 - Supplementary Figures
+    chapters:
+    - file: Galloni_etal_2025/Figure_S1
+    - file: Galloni_etal_2025/Figure_S2
+    - file: Galloni_etal_2025/Figure_S3
+    - file: Galloni_etal_2025/Figure_S4
+    - file: Galloni_etal_2025/Figure_S5
+
   - caption: Python API  
     chapters:
       - file: yaml_glossary
