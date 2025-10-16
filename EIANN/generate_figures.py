@@ -515,6 +515,7 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
 
 def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
     if 'dendritic_state' not in data_dict[next(iter(data_dict.keys()))]:
+        print(f"No dendritic state found for {model_dict['display_name']}")
         return
     dendstate_all_seeds = []
     for seed in model_dict['seeds']:
@@ -637,8 +638,7 @@ def plot_dimensionality_all_seeds(data_dict, model_dict, ax):
     # ax.tick_params(axis='both', length=0)
 
 
-def plot_confusion_all_seeds(data_dict, model_dict, ax):
-    population = 'H1E'
+def plot_confusion_all_seeds(data_dict, model_dict, ax, population):
     between_class_similarity = {label: [] for label in range(10)}
     between_class_similarity_all = []
     for seed in model_dict['seeds']:
