@@ -117,6 +117,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
     print("-----------------------------------------------------------------------------")
     print(f"Variables to save: {variables_to_save}")
+    print(f"Network: {network_name} {seed}")
 
     # Load the saved network pickle
     if not all('extended' in var for var in variables_to_save):  # don't load the regular network if we are only saving the extended training data
@@ -636,7 +637,6 @@ def plot_dimensionality_all_seeds(data_dict, model_dict, ax):
     # ax.tick_params(axis='both', length=0)
 
 
-
 def plot_confusion_all_seeds(data_dict, model_dict, ax):
     population = 'H1E'
     between_class_similarity = {label: [] for label in range(10)}
@@ -676,202 +676,6 @@ def plot_confusion_all_seeds(data_dict, model_dict, ax):
 ########################################################################################################
 # Multi-panel figure generation
 ########################################################################################################
-
-
-def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 2.4))
-    axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                    
-                       left=0.28,right=0.95,
-                       top=0.92, bottom = 0.15,
-                       wspace=0.6, hspace=0.8)
-    ax_accuracy1 = fig.add_subplot(axes[0,0])
-    ax_angle_vs_BP1 = fig.add_subplot(axes[0,1])
-    ax_FB_angle1 = fig.add_subplot(axes[0,2])
-    ax_accuracy2 = fig.add_subplot(axes[1,0])
-    ax_angle_vs_BP2 = fig.add_subplot(axes[1,1])
-    ax_FB_angle2 = fig.add_subplot(axes[1,2])
-
-    all_models = list(dict.fromkeys(model_list1 + model_list2))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-    model_dict_all["bpLike_WT_hebbdend"]["label"] = "LDS"
-
-    for i, model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-            if model_key in model_list1:
-                ax_accuracy = ax_accuracy1
-                ax_angle_vs_BP = ax_angle_vs_BP1
-                ax_FB_angle = ax_FB_angle1
-            if model_key in model_list2:
-                ax_accuracy = ax_accuracy2
-                ax_angle_vs_BP = ax_angle_vs_BP2
-                ax_FB_angle = ax_FB_angle2
-            plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP, error='std')
-            plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angle, error='std')
-
-    legend = ax_accuracy1.legend(ncol=3, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
-    for line in legend.get_lines():
-        line.set_linewidth(1.5)
-    legend = ax_accuracy2.legend(ncol=3, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
-    for line in legend.get_lines():
-        line.set_linewidth(1.5)
-
-    if save is not None:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-
-
-
-
-def generate_figS3(model_dict_all, model_list, population, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 5))
-    axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,
-                       left=0.07,right=0.94,
-                       top=0.93, bottom = 0.1,
-                       wspace=0.5, hspace=0.3,
-                       height_ratios=[2,1,1])
-
-    all_models = list(dict.fromkeys(model_list))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    if "bpLike_WT_hebbdend" in model_dict_all: # Update model label for this figure
-        model_dict_all["bpLike_WT_hebbdend"]["display_name"] = "Dendritic Target \nPropagation (LDS)"
-        
-    for i,model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['display_name']}")
-
-            example_seed = model_dict['seeds'][-1] # example seed to plot
-            # fig.suptitle(f"{population} {example_seed}", fontsize=9, x=0.5, y=0.99)
-
-            # Example receptive fields
-            receptive_fields = torch.tensor(np.array(data_dict[example_seed][f"maxact_receptive_fields_{population}"]))
-            num_units = 50
-            temp_ax = fig.add_subplot(axes[0, i])
-            pos = temp_ax.get_position()
-            
-            rf_axes = fig.add_gridspec(10,5,left=pos.x0, right=pos.x1, bottom=pos.y0, top=pos.y1, wspace=0.1, hspace=0.1)
-            ax_list = []
-            for j in range(num_units):
-                _ax = fig.add_subplot(rf_axes[j])
-                ax_list.append(_ax)
-                
-            average_pop_activity_dict = data_dict[example_seed]['average_pop_activity_dict']
-            preferred_classes = np.argmax(average_pop_activity_dict[population], axis=0)
-            im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes, class_labels=False)
-            height = _ax.get_position().y1 - _ax.get_position().y0
-            width = _ax.get_position().x1 - _ax.get_position().x0
-            cax = fig.add_axes([_ax.get_position().x1+width/5, _ax.get_position().y0, width/5, 1.5*height])
-            fig.colorbar(im, cax=cax, orientation='vertical')
-            ax_list[2].set_title(model_dict["display_name"])
-            for label in range(10):
-                temp_ax.text(-0.1, label*0.101+0.04, str(9-label), fontsize=7, ha='center', va='center')
-            if i==0:
-                temp_ax.set_title('Unit tuning\n(label of max avg. activity)', x=-0.31, rotation=90, y=0.45, ha='center', va='center', fontsize=7)
-            temp_ax.axis('off')
-
-            # Draw an arrow below the x-axis
-            new_ax = fig.add_axes([temp_ax.get_position().x0, temp_ax.get_position().y0-0.035, temp_ax.get_position().x1-temp_ax.get_position().x0, 0.05])
-            new_ax.set_ylim(-0.5, 0.5)
-            new_ax.axis('off')
-            new_ax.arrow(0, 0, 1, 0, head_width=0.2, head_length=0.1, facecolor='k', edgecolor='k', linewidth=1)     
-            new_ax.text(0.5, -0.3, "Example units", fontsize=7, ha='center', va='center')                          
-
-            # Receptive field similarity (for each unit)
-            ax = fig.add_subplot(axes[1, i])
-            between_class_similarity = {label: [] for label in range(10)}
-            between_class_similarity_all = []
-            for seed in model_dict['seeds']:
-                # Calculate the receptive field similarity for each unit (the histogram will pool data across all model seeds)
-                unit_labels_dict = data_dict[seed]['unit_labels_dict']
-                unit_labels = unit_labels_dict[population][:]
-                idx = np.argsort(unit_labels)
-                unit_labels = unit_labels[idx]
-
-                # receptive_fields = np.array(data_dict[seed][f"maxact_receptive_fields_{population}"])
-                # sorted_receptive_fields = receptive_fields[idx]
-                
-                # Alternative 1: compare unit activities (class averaged)
-                average_pop_activity = np.array(data_dict[seed]['average_pop_activity_dict'][population][:]).T
-                sorted_receptive_fields = average_pop_activity[idx]
-
-                # # Alternative 2: compare unit activities (full)
-                # pop_activity_dict = data_dict[seed]['sorted_activity_dict']
-                # unit_labels = data_dict[seed]['sorted_unit_labels_dict'][population][:]
-                # sorted_receptive_fields = np.array(pop_activity_dict[population][:]).T
-
-                rf_similarity = cosine_similarity(sorted_receptive_fields)
-                np.fill_diagonal(rf_similarity, 0) # remove self-similarity
-
-                # Plot the receptive field similarity matrix for the example seed
-                if seed == example_seed:
-                    masked_rf_similarity = np.ma.masked_array(rf_similarity, mask=~np.tril(np.ones(rf_similarity.shape), k=-1).astype(bool))
-                    im = ax.imshow(masked_rf_similarity, interpolation="nearest", cmap='bwr', vmin=-1, vmax=1)
-                    ax.set_xlabel(f"{population} unit")
-                    ax.set_ylabel(f"{population} unit")
-                    if i==len(all_models)-1:
-                        cax = fig.add_axes([ax.get_position().x1+0.005, ax.get_position().y0, 0.01, ax.get_position().height])
-                        fig.colorbar(im, cax=cax, orientation='vertical')
-                        cax.set_yticks([-1, 1])
-                        # cax.set_yticks([0, 1])
-                        cax.set_ylabel('Receptive field\ncosine similarity', rotation=270, labelpad=5)
-                
-                # Calculate within-class and between-class receptive field similarity (accumulate across all seeds)
-                for label in range(10):
-                    class_idx = np.where(unit_labels == label)[0]
-                    # within_class_values = np.max(rf_similarity[class_idx,:][:, class_idx], axis=1)
-                    # between_class_values = np.max(rf_similarity[class_idx,:][:, ~class_idx], axis=1)
-                    
-                    max_activity_outside_class = np.max(sorted_receptive_fields[class_idx][:, np.arange(10)!=label], axis=1)
-                    mean_activity_outside_class = np.mean(sorted_receptive_fields[class_idx][:, np.arange(10)!=label], axis=1)
-                    confusion_ratio = max_activity_outside_class / (mean_activity_outside_class + 1e-10)
-
-                    between_class_similarity_all.extend(confusion_ratio)
-                    between_class_similarity[label].extend(confusion_ratio)
-                    if len(class_idx) > 0: # Add triangle to indicate units within the same class
-                        class_boundary_start = class_idx[0]
-                        class_boundary_end = class_idx[-1]+1
-                        top = (class_boundary_start-0.5, class_boundary_start-0.5)
-                        bottom = (class_boundary_start-0.5, class_boundary_end-0.5)
-                        right = (class_boundary_end-0.5, class_boundary_end-0.5)
-                        if seed == example_seed:
-                            # cmap = plt.colormaps['tab20']
-                            # ax.add_patch(matplotlib.patches.Polygon([bottom, top, right], fill=False, edgecolor=cmap(i), linewidth=0.3))
-                            ax.add_patch(matplotlib.patches.Polygon([bottom, top, right], fill=False, edgecolor='k', linewidth=0.3))
-            
-            # Bar graph of mean within and between class similarities for each class
-            ax = fig.add_subplot(axes[2, i])
-            for label in range(10):
-                mean_val = np.mean(between_class_similarity[label])
-                std_val = np.std(between_class_similarity[label])
-                ax.bar(label + 0.2, mean_val, width=0.4, label='Between-class' if label==0 else None, color='steelblue', alpha=0.8)
-                ax.errorbar(label + 0.2, mean_val, yerr=std_val, fmt='none', ecolor='gray', capsize=0, linewidth=0.5)
-            ax.set_ylabel('Confusion ratio \n(max/mean act. out-of-class)')
-            ax.set_xticks(range(10))
-            ax.set_xticklabels(range(10))
-            ax.set_ylim(0, 8)
-            # if i==0:
-            #     ax.legend(loc='upper left', fontsize=6, ncol=2, bbox_to_anchor=(0., -0.1))
-
-            # # Histogram of receptive field similarity
-            # ax = fig.add_subplot(axes[2, i])
-            # ax.hist(between_class_similarity_all, bins=30, density=True)
-            # ax.set_xlabel('Max out-of-class similarity')
-            # ax.set_ylabel('Density')
-            # ax.set_xlim(min(-0.2, np.min(between_class_similarity_all)), max(1, np.max(between_class_similarity_all)))
-
-    if save:
-        fig.savefig(f"figures/{save}_{population}.png", dpi=300)
-        fig.savefig(f"figures/{save}_{population}.svg", dpi=300)
 
 
 def generate_model_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
@@ -1466,47 +1270,7 @@ def main(figure, recompute):
         model_dict_all[model_key]["seeds"] = seeds
 
 
-    #-------------- Main Figures --------------
-
-    if figure == "all":
-        # Generate HDF5 files for all models
-        all_models = list(model_dict_all.keys())[9:]
-        all_mnist_models = [model_key for model_key in all_models if "spiral" not in model_key]
-        generate_hdf5_all_seeds(all_mnist_models, model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix=saved_network_path_prefix+"MNIST/", recompute=recompute)
-        all_spiral_models = [model_key for model_key in all_models if "spiral" in model_key]
-        generate_hdf5_all_seeds(all_spiral_models, model_dict_all, config_path_prefix="network_config/spiral/", saved_network_path_prefix=saved_network_path_prefix+"spiral/", recompute=recompute)
-        recompute = None
-
-    # Forward (W) vs backward (B) alignment angle
-    if figure in ["all", "fig6"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend"]
-        model_list2 = ["BTSP_WT_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-        figure_name = "Fig6_WB_alignment_FA_bpLike_BTSP"
-        generate_fig6(model_dict_all, model_list1, model_list2, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-
-    #-------------- Supplementary Figures --------------
- 
-    # Extended receptive field comparison
-    if figure in ["all", "S3"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
-        figure_name = "FigS3_receptive_fields"
-        generate_figS3(model_dict_all, model_list, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-        generate_figS3(model_dict_all, model_list, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-    # Extended fig5: receptive fields in biological learning rules
-    if figure in ["all", "S5"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list = ["BTSP_WT_hebbdend", "Supervised_BCM_WT_hebbdend","SupHebbTempCont_WT_hebbdend"]
-        figure_name = "FigS5_biorule_receptive_fields"
-        generate_figS3(model_dict_all, model_list, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-        generate_figS3(model_dict_all, model_list, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
     #-------------- Supplementary Tables --------------
-
-
     if figure in ["all", "T3"]:
         # csv_filename = "data/FigT3_mnist_hyperparams.csv"
         # figure_name = "FigT3_mnist_hyperparams_all"
@@ -1603,8 +1367,3 @@ def main(figure, recompute):
         # model_list = ["bpLike_hebbTD_hebbdend_eq", "bpLike_WT_hebbdend_eq", "bpLike_hebbTD_hebbdend", "bpLike_WT_hebbdend"]
         figure_name = "metrics_all_models"
         generate_metrics_plot(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-
-
-if __name__=="__main__":
-    main()
