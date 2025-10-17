@@ -34,7 +34,7 @@ cd ~/EIANN
 
 python EIANN/simulate/run_EIANN_mnist.py \
   --network-config-file-name=20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml \
-  --data-dir=/ocean/projects/bio250022p/$USER/data/EIANN 
+  --data-dir=/ocean/projects/bio250022p/$USER/data/EIANN
 
 
 # cd $HOME/EIANN/EIANN/simulate/jobscripts

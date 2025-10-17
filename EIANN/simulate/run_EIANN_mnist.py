@@ -13,64 +13,63 @@ def main(network_config_file_name, data_dir, debug):
     network_seed = 66049
     data_seed = 257
 
-    # Determine device FIRST
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
     ut.set_all_seeds(seed=network_seed)
-
-    print(f"1. Random num: {torch.rand(1)}")
 
     # Load dataset
     train_dataloader, val_dataloader, test_dataloader, data_generator = ut.get_MNIST_dataloaders(data_dir=data_dir)
-    if debug:
-        print("Loaded Data")
 
-    print(f"2. Random num: {torch.rand(1)}")
-
-    # Create network object
+    # Create network
     config_file_path = f"EIANN/network_config/mnist/{network_config_file_name}"
     network = ut.build_EIANN_from_config(config_file_path, network_seed=network_seed, device=device)
+
     if debug:
-        print("Built Network")
-
-    print(f"3. Random num: {torch.rand(1)}")
-
-    print('Weights before train')
-    print(network.H1.E.Input.E.weight.detach().cpu()[0,0:10])
+        print('Weights before train')
+        weights_before = network.module_dict['H1E_InputE'].weight.detach().clone().cpu()[0, 350:360]
+        print(weights_before)
+        state_dict_before = {k: v.detach().clone().cpu() for k, v in network.state_dict().items()}
 
     # Train network
     data_generator.manual_seed(data_seed)
     network.train(train_dataloader, val_dataloader, 
-                epochs = 1,
-                samples_per_epoch = 20_000, 
-                val_interval = (0, -1, 100), 
-                store_history = False,
-                store_history_interval = (0, -1, 100), 
-                store_dynamics = False, 
-                store_params = False,
-                status_bar = False)
-    if debug:
-        print("Trained Network")
+                epochs=1,
+                samples_per_epoch=20_000, 
+                val_interval=(0, -1, 100), 
+                store_history=False,
+                store_history_interval=(0, -1, 100), 
+                store_dynamics=False, 
+                store_params=False,
+                status_bar=False)
 
-    print(f"4. Random num: {torch.rand(1)}")
-    
     network.run_time = time() - start_time
 
-    print(f'Using Device: {network.device}')
+    print(f'\nUsing Device: {network.device}')
     print(f'Network Name: {network_config_file_name}')
     print(f'Final Val Accuracy: {network.val_accuracy_history[-1]}')
     print(f'Final Val Loss: {network.val_loss_history[-1]}')
     print(f'Network Run Time: {network.run_time} sec')
 
-    print('Weights after train')
-    print(network.H1.E.Input.E.weight.detach().cpu()[0,0:10])
+    if debug:
+        print('\nWeights after train')
+        weights_after = network.module_dict['H1E_InputE'].weight.detach().clone().cpu()[0, 350:360]
+        print(weights_after)
+        state_dict_after = {k: v.detach().clone().cpu() for k, v in network.state_dict().items()}
+    
+        print('\nWeight difference:')
+        weight_diff = weights_after - weights_before
+        print(weight_diff)
+        print(f'Max absolute change: {weight_diff.abs().max().item():.6f}')
+        print(f'Mean absolute change: {weight_diff.abs().mean().item():.6f}')
 
-    print(f"Network Sample Order: {network.sample_order}")
+        for key in state_dict_before:
+            diff = (state_dict_after[key] - state_dict_before[key]).abs()
+            print(f"{key}: max_change={diff.max().item():.6f}, mean_change={diff.mean().item():.6f}")
+
+        print(f"Network Sample Order: {network.sample_order}")
 
 if __name__ == '__main__':
     main()
 
-# TODO compare random numbers for GPU and CPU in .o file for jobs 35418474 (gpu) and 35418477 (cpu) 
 # TODO raytune optimizer
 
 

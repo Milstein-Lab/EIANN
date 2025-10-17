@@ -56,6 +56,14 @@ class Network(nn.Module):
         """
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # Set seed for both CPU and GPU before any weight initialization
+        self.seed = seed
+        if self.seed is not None:
+            torch.manual_seed(self.seed)
+            if self.device.type == 'cuda':
+                torch.cuda.manual_seed(self.seed)
+                torch.cuda.manual_seed_all(self.seed)
+
         self.layer_config = layer_config
         self.projection_config = projection_config
         self.training_kwargs = {'learning_rate': learning_rate, 'optimizer': optimizer,
@@ -93,9 +101,6 @@ class Network(nn.Module):
         self.forward_steps = forward_steps
         self.backward_steps = backward_steps
 
-        self.seed = seed
-        if self.seed is not None:
-            torch.manual_seed(self.seed)
         self.run_time = None
 
         self.backward_methods = []

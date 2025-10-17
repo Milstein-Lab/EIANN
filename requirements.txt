@@ -14,3 +14,4 @@ reportlab==4.2.5
 ipympl==0.9.3
 ipywidgets==8.1.7
 ipykernel==6.29.4
+mpi4py==4.1.1
