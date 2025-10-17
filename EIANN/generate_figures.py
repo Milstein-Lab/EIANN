@@ -19,28 +19,28 @@ import EIANN.utils as ut
 import EIANN.plot as pt
 import EIANN.network as nt
 
-plt.rcParams.update({'font.size': 6,
-                    'axes.spines.right': False,
-                    'axes.spines.top':   False,
-                    'axes.linewidth':    0.5,
-                    'axes.labelpad':     2.0, 
-                    'xtick.major.size':  2,
-                    'xtick.major.width': 0.5,
-                    'ytick.major.size':  2,
-                    'ytick.major.width': 0.5,
-                    'xtick.major.pad':   2,
-                    'ytick.major.pad':   2,
-                    'legend.frameon':       False,
-                    'legend.handletextpad': 0.5,
-                    'legend.handlelength': 0.8,
-                    # 'legend.handleheight': 10,
-                    'legend.labelspacing': 0.2,
-                    'legend.columnspacing': 1.2,
-                    'lines.linewidth': 0.5,
-                    'figure.figsize': [10.0, 3.0],
-                    'font.sans-serif': 'Avenir',
-                    'svg.fonttype': 'none',
-                    'text.usetex': False})
+# plt.rcParams.update({'font.size': 6,
+#                     'axes.spines.right': False,
+#                     'axes.spines.top':   False,
+#                     'axes.linewidth':    0.5,
+#                     'axes.labelpad':     2.0, 
+#                     'xtick.major.size':  2,
+#                     'xtick.major.width': 0.5,
+#                     'ytick.major.size':  2,
+#                     'ytick.major.width': 0.5,
+#                     'xtick.major.pad':   2,
+#                     'ytick.major.pad':   2,
+#                     'legend.frameon':       False,
+#                     'legend.handletextpad': 0.5,
+#                     'legend.handlelength': 0.8,
+#                     # 'legend.handleheight': 10,
+#                     'legend.labelspacing': 0.2,
+#                     'legend.columnspacing': 1.2,
+#                     'lines.linewidth': 0.5,
+#                     'figure.figsize': [10.0, 3.0],
+#                     'font.sans-serif': 'Avenir',
+#                     'svg.fonttype': 'none',
+#                     'text.usetex': False})
 
 
 
@@ -98,6 +98,11 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     if "dendritic_state" in variables_to_save and not any('Dend' in pop_name for pop_name in pop_names):
         variables_to_save.remove("dendritic_state")
 
+    if recompute==True:
+        recompute = variables_to_save
+    elif recompute==False:
+        recompute = None
+
     # Open hdf5 and check if the relevant data already exists       
     if os.path.exists(hdf5_path): # If the file exists, check if the network data already exists or needs to be recomputed
         with h5py.File(hdf5_path, 'r') as file:
@@ -152,6 +157,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
 
     if 'average_pop_activity_dict' in variables_to_save:
         average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=False)
+        average_pop_activity_dict = {k: v.numpy() for k, v in average_pop_activity_dict.items()}
         ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
@@ -200,7 +206,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='final_receptive_fields', data=receptive_fields_dict, file_path=hdf5_path, overwrite=True)
 
     # Sparsity, selectivity, and structure metrics
-    if f"metrics_dict" in variables_to_save:
+    if "metrics_dict" in variables_to_save:
         metrics_dict = {}
         initial_receptive_fields_dict = ut.hdf5_to_dict(file_path=hdf5_path, variable_name=f'{network_name}/{network_seed}_{data_seed}/initial_receptive_fields')
         final_receptive_fields_dict = ut.hdf5_to_dict(file_path=hdf5_path, variable_name=f'{network_name}/{network_seed}_{data_seed}/final_receptive_fields')
