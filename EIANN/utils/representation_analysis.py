@@ -5,6 +5,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 from skimage import metrics
 import scipy.stats as stats
 import copy
+import warnings
+warnings.filterwarnings('ignore', category=Warning)
+warnings.filterwarnings('ignore', message='.*tqdm.*')
 from tqdm.autonotebook import tqdm
 from scipy import signal
 from collections import defaultdict
@@ -676,7 +679,7 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
             angle = compute_vector_angle(predicted_dParam, actual_dParam)
             angles[param_name].append(angle)
             if torch.isnan(angle):
-                print(f'Warning: angle is NaN at step {t}, {param_name}, dW norm={torch.norm(actual_dParam)}')
+                print(f'Warning: angle is NaN at step {t}, {param_name}, dW norm=({torch.norm(actual_dParam)},{torch.norm(predicted_dParam)})')
 
         if plot:
             ax = axes[n_params-(i+1)]

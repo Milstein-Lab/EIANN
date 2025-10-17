@@ -90,6 +90,35 @@ bpDale_relu_F:
     Output_I_Output_I_init_weight_scale: 0.8823956574152774
     H_I_size: 50.0
     Output_I_size: 10.0
+BP_like_1J:
+    # dendritic temporal contrast (no DendI)
+    #    accuracy: 94.9177
+    #    loss: 0.012421076
+    # stability: after 50000 steps:
+    #    accuracy: 96.2585
+    #    loss: 0.0098232115
+    H1_E_Input_E_init_weight_scale: 2.2831628029220297
+    H2_E_H1_E_init_weight_scale: 0.5622471190837615
+    H_E_learning_rate: 0.04633960603772247
+    H1_E_H2_E_weight_scale: 0.24305016894817305
+    H2_E_Output_E_weight_scale: 0.14770341550690272
+    H1_E_H1_SomaI_init_weight_scale: 1.2116190129690576
+    H1_SomaI_H1_E_init_weight_scale: 0.3207289226201756
+    H1_SomaI_Input_E_init_weight_scale: 2.4953393308008134
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.172779105963424
+    H2_E_H2_SomaI_init_weight_scale: 0.4382489360248627
+    H2_SomaI_H2_E_init_weight_scale: 1.0347196073204092
+    H2_SomaI_H1_E_init_weight_scale: 1.17210907627419
+    H2_SomaI_H2_SomaI_init_weight_scale: 1.8281610820065695
+    Output_E_H2_E_init_weight_scale: 1.097414860717388
+    Output_E_H2_E_learning_rate: 0.00517787922672665
+    Output_E_Output_I_init_weight_scale: 0.890754490537869
+    Output_I_Output_E_init_weight_scale: 1.7125187753035955
+    Output_I_H2_E_init_weight_scale: 1.055681300955858
+    Output_I_Output_I_init_weight_scale: 1.0626687001147859
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
 BP_like_5J:
     # all H.E units are updated and nudged
     # with relu gating

@@ -708,10 +708,8 @@ def get_FashionMNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_di
     # Load dataset
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                      torchvision.transforms.Lambda(torch.flatten)])
-    train_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=True, download=True,
-                                                     transform=tensor_flatten)
-    test_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=False, download=True,
-                                                    transform=tensor_flatten)
+    train_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=True, download=True, transform=tensor_flatten)
+    test_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=False, download=True, transform=tensor_flatten)
 
     # Add index to train & test data
     fmnist_train = []
@@ -749,7 +747,6 @@ def get_cifar10_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=Non
 
     tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                      torchvision.transforms.Lambda(torch.flatten)])
-
     CIFAR10_train_dataset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=tensor_flatten)
     CIFAR10_test_dataset = torchvision.datasets.CIFAR10(root=data_dir, train=False, download=True, transform=tensor_flatten)
 
