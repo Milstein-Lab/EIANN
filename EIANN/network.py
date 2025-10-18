@@ -16,6 +16,23 @@ import EIANN.rules as rules
 import EIANN.external as external
 
 
+__all__ = [
+    'Network',
+    'AttrDict',
+    'Layer',
+    'Population',
+    'Conv2DPopulation',
+    'MaxPool2DPopulation',
+    'FlattenPopulation',
+    'Input',
+    'Projection',
+    'Conv2DProjection',
+    'NetworkBuilder',
+    'LayerBuilder',
+    'ProjectionBuilder',
+]
+
+
 class Network(nn.Module):
     def __init__(self, layer_config, projection_config, learning_rate=None, optimizer=SGD, optimizer_kwargs=None,
                  criterion=MSELoss, criterion_kwargs=None, seed=None, device='cpu', tau=1, forward_steps=1,
