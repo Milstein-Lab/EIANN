@@ -1277,6 +1277,33 @@ def main(figure, recompute):
 
 
     #-------------- Supplementary Tables --------------
+    if figure in ["all", "hyperparams"]:
+        model_list = ["vanBP", "vanBP_fixed_hidden", "vanBP_0hidden", "bpDale_fixed", "bpDale_learned", "bpDale_noI", "HebbWN_topsup",
+                      "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend",
+                      "BTSP_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
+        figure_name = "FigT3_mnist_hyperparams"
+        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
+
+        model_list = ["vanBP", "vanBP_fixed_hidden", "vanBP_0hidden",
+                      "bpDale_fixed", "bpDale_learned", "bpDale_noI", "HebbWN_topsup"]
+        figure_name = "FigT3_mnist_hyperparams1"
+        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
+
+        model_list = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
+                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend"]
+        figure_name = "FigT3_mnist_hyperparams2"
+        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
+
+        model_list = ["BTSP_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
+        figure_name = "FigT3_mnist_hyperparams3"
+        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
+
+        figure_name = "FigT4_spiral_hyperparams"
+        model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
+                    "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
+        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
+
+
     if figure in ["all", "T3"]:
         # csv_filename = "data/FigT3_mnist_hyperparams.csv"
         # figure_name = "FigT3_mnist_hyperparams_all"
@@ -1307,34 +1334,6 @@ def main(figure, recompute):
         model_list = ["fmnist_DTP_TCWN_hebbdend", "fmnist_DTP_WT_hebbdend", "fmnist_BTSP_TCWN_hebbdend", "fmnist_BTSP_WT_nobias_hebbdend", 
                       "fmnist_vanBP_nobias", "fmnist_bpDale_nobias", "fmnist_0hidden_vanBP_nobias", "fmnist_fixed_vanBP_nobias"]
         generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/fmnist/", save=figure_name, recompute=recompute)
-
-
-    if figure in ["all", "hyperparams"]:
-        model_list = ["vanBP", "vanBP_fixed_hidden", "vanBP_0hidden", "bpDale_fixed", "bpDale_learned", "bpDale_noI", "HebbWN_topsup",
-                      "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend",
-                      "BTSP_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-        figure_name = "FigT3_mnist_hyperparams"
-        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
-
-        model_list = ["vanBP", "vanBP_fixed_hidden", "vanBP_0hidden",
-                      "bpDale_fixed", "bpDale_learned", "bpDale_noI", "HebbWN_topsup"]
-        figure_name = "FigT3_mnist_hyperparams1"
-        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
-
-        model_list = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
-                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend"]
-        figure_name = "FigT3_mnist_hyperparams2"
-        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
-
-        model_list = ["BTSP_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-        figure_name = "FigT3_mnist_hyperparams3"
-        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
-
-        figure_name = "FigT4_spiral_hyperparams"
-        model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
-                    "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
-        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
-
 
     #-------------- Other Figures --------------
 

@@ -12,11 +12,55 @@ from sklearn.decomposition import PCA
 import scipy.stats as stats
 
 from tqdm.autonotebook import tqdm
-from copy import copy
-
+import copy
 import EIANN.utils as ut
 
 # TODO: Need to move things with .cpu()
+
+__all__ = [
+    'update_plot_defaults',
+    'clean_axes',
+    'plot_EIANN_1_hidden_autoenc_config_summary',
+    'plot_train_loss_history',
+    'plot_validate_loss_history',
+    'plot_loss_history',
+    'plot_accuracy_history',
+    'plot_error_history',
+    'evaluate_test_loss_history',
+    'plot_representation_metrics',
+    'plot_cumulative_distribution',
+    'plot_MNIST_examples',
+    'plot_network_dynamics',
+    'plot_sparsity_history',
+    'plot_simple_EIANN_weight_history_diagnostic',
+    'plot_hidden_weights',
+    'plot_receptive_fields',
+    'plot_unit_receptive_field',
+    'plot_hidden_weight_history',
+    'plot_binary_decision_boundary',
+    'plot_batch_accuracy_from_data',
+    'plot_batch_accuracy',
+    'plot_representational_similarity_matrix',
+    'plot_plateaus',
+    'plot_sorted_plateaus',
+    'plot_total_input',
+    'plot_correlations',
+    'plot_receptive_field_similarity',
+    'plot_within_class_representational_similarity',
+    'plot_weight_history_PCs',
+    'plot_param_history_PCs',
+    'get_flat_param_history',
+    'get_flat_weight_history',
+    'flatten_weights',
+    'unflatten_weights',
+    'unflatten_params',
+    'compute_loss',
+    'plot_loss_landscape',
+    'plot_loss_landscape_multiple',
+    'plot_3D_loss_surface',
+    'plot_FB_weight_alignment',
+    'plot_spiral_accuracy',
+    'plot_spiral_decisions',]
 
 def update_plot_defaults():
     plt.rcParams.update({'font.size': 7,
@@ -243,7 +287,7 @@ def plot_validate_loss_history(network, title=None, train_step_range=None, ax=No
 
     if ax is None:
         fig = plt.figure()
-        plt.plot(train_steps, val_loss_history)
+        plt.plot(train_steps, val_loss_history, linewidth=1)
         plt.xlabel('Training steps')
         plt.ylabel('Validation loss')
         # plt.xlim(train_step_range[0], train_step_range[1])
@@ -251,7 +295,7 @@ def plot_validate_loss_history(network, title=None, train_step_range=None, ax=No
         fig.tight_layout()
         plt.show(block=False)
     else: 
-        ax.plot(train_steps, val_loss_history, label='Validation loss', color='r')
+        ax.plot(train_steps, val_loss_history, label='Validation loss', color='r', linewidth=1)
         ax.set_xlabel('Training steps')
 
 
@@ -259,7 +303,7 @@ def plot_loss_history(network, train_step_range=None, ylim=None):
     """
     Plot training and validation loss history
     """
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(5, 1.5))
 
     plot_train_loss_history(network, ax=ax, train_step_range=train_step_range)
     if hasattr(network, 'val_loss_history'):
@@ -272,7 +316,7 @@ def plot_loss_history(network, train_step_range=None, ylim=None):
     if ylim is not None:
         ax.set_ylim(ylim)
     fig.tight_layout()
-    fig.suptitle(f"Loss history (criterion: {str(network.criterion)})")
+    fig.suptitle(f"Loss history (criterion: {str(network.criterion)})", fontsize=8, y=1.)
     
 
 def plot_accuracy_history(network):
@@ -281,12 +325,12 @@ def plot_accuracy_history(network):
     :param network:
     """
     assert len(network.val_accuracy_history) > 0, 'Network must contain a stored val_accuracy_history'
-    fig = plt.figure()
+    fig = plt.figure(figsize=(5, 1.5))
     plt.plot(network.val_history_train_steps, network.val_accuracy_history)
     plt.xlabel('Training steps')
     plt.ylabel("Accuracy (%)")
     fig.tight_layout()
-    fig.suptitle('Validation accuracy')
+    fig.suptitle('Validation accuracy', fontsize=8, y=1.)
     plt.show(block=False)
 
 
@@ -299,7 +343,7 @@ def plot_error_history(network):
     error_rate = 100 - network.val_accuracy_history
     train_steps = network.val_history_train_steps
 
-    fig,ax = plt.subplots()
+    fig,ax = plt.subplots(figsize=(5, 1.5))
     ax.plot(train_steps, error_rate)
     ax.set_yscale('log')
     ax.set_ylim(top=100)
@@ -369,36 +413,28 @@ def plot_representation_metrics(metrics_dict):
     None
         This function generates plots and does not return any value.
     """
-
-    fig, axes = plt.subplots(2,2,figsize=[12,5])
-    ax = axes[0,0]
+    fig, axes = plt.subplots(1,3,figsize=[8,1.8])
+    ax = axes[0]
     ax.hist(metrics_dict['sparsity'],50)
     ax.set_title('Sparsity distribution')
-    ax.set_ylabel('num patterns')
+    ax.set_ylabel('num. patterns')
     ax.set_xlabel('Sparsity ($1 -$ fraction active units)')
     ax.set_xlim(0,1)
 
-    ax = axes[0,1]
+    ax = axes[1]
     ax.hist(metrics_dict['selectivity'],50)
     ax.set_title('Selectivity distribution')
-    ax.set_ylabel('num units')
+    ax.set_ylabel('num. units')
     ax.set_xlabel('Selectivity ($1 -$ fraction active patterns)')
     ax.set_xlim(0,1)
 
-    ax = axes[1,0]
-    ax.set_title('Discriminability distribution')
-    ax.hist(metrics_dict['discriminability'], 50)
-    ax.set_ylabel('pattern pairs')
-    ax.set_xlabel('Discriminability ($1 -$ cosine similarity)')
-    ax.set_xlim(0,1)
-
-    ax = axes[1,1]
-    if len(metrics_dict['structure'])>0:
-        ax.hist(metrics_dict['structure'], 50)
+    ax = axes[2]
+    if len(metrics_dict['structure_final'])>0:
+        ax.hist(metrics_dict['structure_final'], 50)
         ax.set_title("Receptive field structure distribution")
-        ax.set_ylabel('num units')
+        ax.set_ylabel('num. units')
         ax.set_xlabel("Spatial autocorrelation (Moran's I)")
-        ax.set_xlim(min(0,np.min(metrics_dict['structure'])), 1)
+        ax.set_xlim(min(0,np.min(metrics_dict['structure_final'])), 1)
     else:
         ax.axis('off')
 
@@ -473,7 +509,7 @@ def plot_network_dynamics(pop_dynamics_dict, axes=None, normalize=True):
     pop_dynamics_dict = utils.compute_test_activity_dynamics(network, test_dataloader)
     """
     if axes is None:
-        fig = plt.figure(figsize=(8, 2))
+        fig = plt.figure(figsize=(6, 1.2))
         axes = gs.GridSpec(1, 2, figure=fig, wspace=0.2, hspace=0.5)
     else:
         fig = axes.figure
@@ -511,7 +547,7 @@ def plot_network_dynamics(pop_dynamics_dict, axes=None, normalize=True):
         avg_dynamics = _get_neural_dynamics(pop_dynamics)
         if normalize:
             avg_dynamics = avg_dynamics / avg_dynamics[-1]
-        ax_E.plot(avg_dynamics, color='r', alpha=1/(1+i), label=pop_name)
+        ax_E.plot(avg_dynamics, color='r', alpha=1/(1+i), label=pop_name, linewidth=1)
     legend = ax_E.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.25), frameon=False, framealpha=0.5, handlelength=0.8, handletextpad=0.5, columnspacing=1)
     for line in legend.get_lines():
         line.set_linewidth(3)
@@ -521,7 +557,7 @@ def plot_network_dynamics(pop_dynamics_dict, axes=None, normalize=True):
         avg_dynamics = _get_neural_dynamics(pop_dynamics)
         if normalize:
             avg_dynamics = avg_dynamics/avg_dynamics[-1]
-        ax_I.plot(avg_dynamics, color='b', alpha=1/(1+i), label=pop_name)
+        ax_I.plot(avg_dynamics, color='b', alpha=1/(1+i), label=pop_name, linewidth=1)
     legend = ax_I.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.25), frameon=False, framealpha=0.5, handlelength=0.8, handletextpad=0.5, columnspacing=1)
     for line in legend.get_lines():
         line.set_linewidth(3)
@@ -845,7 +881,7 @@ def plot_receptive_fields(receptive_fields, scale=1, sort=False, preferred_class
             fig.suptitle(title)
         fig.tight_layout(pad=0.2)
         fig_width, fig_height = fig.get_size_inches()
-        cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.12/fig_height])
+        cax = fig.add_axes([0.005, ax.get_position().y0-0.2/fig_height, 0.5, 0.1/fig_height])
         cbar = plt.colorbar(im, cax=cax, orientation='horizontal')
         plt.show(block=False)
     else:
@@ -1075,7 +1111,7 @@ def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neur
         pattern_similarity_matrix = pattern_similarity_matrix_dict[pop_name]
         neuron_similarity_matrix = neuron_similarity_matrix_dict[pop_name]
 
-        fig = plt.figure(figsize=(8, 4))
+        fig = plt.figure(figsize=(4.2, 1.8))
         axes = gs.GridSpec(nrows=1, ncols=2, wspace=0.4)
 
         ax = fig.add_subplot(axes[0])
@@ -1121,7 +1157,7 @@ def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neur
                 if len(class_idx) > 0:
                     class_boundary_start = class_idx[0]
                     class_boundary_end = class_idx[-1]+1
-                    ax.add_patch(matplotlib.patches.Rectangle((class_boundary_start-0.5, class_boundary_start-0.5), class_boundary_end - class_boundary_start, class_boundary_end - class_boundary_start, fill=False, edgecolor=cmap(i), linewidth=2, facecolor=cmap(i)))
+                    ax.add_patch(matplotlib.patches.Rectangle((class_boundary_start-0.5, class_boundary_start-0.5), class_boundary_end - class_boundary_start, class_boundary_end - class_boundary_start, fill=False, edgecolor=cmap(i), linewidth=1, facecolor=cmap(i)))
                     # class_boundary = class_idx[-1] + 0.5
                     # ax.vlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
                     # ax.hlines(class_boundary, -0.5, num_units-0.5, color='w', linestyle='-', linewidth=0.5)
@@ -1129,7 +1165,7 @@ def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neur
             print(f'WARNING: {pop_name} is not sorted')
 
         if len(neuron_similarity_matrix_dict) > 1:
-            fig.suptitle(pop_name)
+            fig.suptitle(pop_name, fontsize=10, fontweight='bold', y=1)
 
     return fig
 
@@ -1365,8 +1401,7 @@ def plot_correlations(network, test_dataloader):
 
 
 def plot_receptive_field_similarity(receptive_fields, average_pop_activity, unit_labels):
-    fig = plt.figure(figsize=(7, 6))
-
+    fig = plt.figure(figsize=(5, 4.2))
     axes = gs.GridSpec(nrows=2, ncols=2, figure=fig,
                         left=0.07,right=0.94,
                         top=0.93, bottom = 0.1,
@@ -1494,8 +1529,7 @@ def plot_within_class_representational_similarity(within_class_pattern_similarit
     >>> plot_within_class_representational_similarity(within_pat_sim, between_pat_sim, within_unit_sim, between_unit_sim)
     """
     populations = [pop for pop in ['H1E', 'H2E'] if pop in within_class_pattern_similarity_dict]
-    fig, axes = plt.subplots(2, 2, figsize=(12, 6))
-    from matplotlib.lines import Line2D
+    fig, axes = plt.subplots(2, 2, figsize=(7, 3))
     for i,population in enumerate(populations):
         within_class_pattern_similarity = []
         between_class_pattern_similarity = []
@@ -1516,8 +1550,8 @@ def plot_within_class_representational_similarity(within_class_pattern_similarit
             ax.set_title(f"Pattern Similarity Distribution \n {population}")
         else:
             ax.set_title(population)
-        legend_lines = [Line2D([0], [0], color='red', lw=3, alpha=0.5),
-                        Line2D([0], [0], color='blue', lw=3, alpha=0.5)]
+        legend_lines = [matplotlib.lines.Line2D([0], [0], color='red', lw=3, alpha=0.5),
+                        matplotlib.lines.Line2D([0], [0], color='blue', lw=3, alpha=0.5)]
         ax.legend(legend_lines, ['Between class', 'Within class'], handlelength=1, handletextpad=0.5)
 
         ax = axes[i,1]
@@ -1529,8 +1563,8 @@ def plot_within_class_representational_similarity(within_class_pattern_similarit
             ax.set_title(f"Unit Similarity Distribution \n {population}")
         else:
             ax.set_title(population)
-        legend_lines = [Line2D([0], [0], color='red', lw=3, alpha=0.5),
-                        Line2D([0], [0], color='blue', lw=3, alpha=0.5)]
+        legend_lines = [matplotlib.lines.Line2D([0], [0], color='red', lw=3, alpha=0.5),
+                        matplotlib.lines.Line2D([0], [0], color='blue', lw=3, alpha=0.5)]
         ax.legend(legend_lines, ['Between class', 'Within class'], handlelength=1, handletextpad=0.5)
 
     plt.tight_layout()
@@ -1833,7 +1867,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
     gridpoints_paramspace = torch.tensor(gridpoints_paramspace) * p_std + p_mean
 
     # --- Compute loss for each point in grid ---
-    test_network = copy(network1)  # single copy only
+    test_network = copy.deepcopy(network1)  # single copy only
     losses = torch.zeros(gridpoints_paramspace.shape[0])
     for i, gridpoint_flat in enumerate(tqdm(gridpoints_paramspace)):
         state_dict = unflatten_params(gridpoint_flat, param_metadata)
@@ -1867,7 +1901,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         plt.ylabel('PC2')
 
     else:
-        fig, axes = plt.subplots(1, 2, figsize=(12, 3), gridspec_kw={'wspace': 0.5})
+        fig, axes = plt.subplots(1, 2, figsize=(7, 1.5), gridspec_kw={'wspace': 0.5})
 
         if network2 is None:
             vmax_net = vmax_scale * torch.max(network1.val_loss_history)
@@ -1887,25 +1921,26 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         cbar2.set_label('Loss' if scale == 'linear' else 'Loss (log scale)', rotation=270, labelpad=15)
 
         for ax in [axes[0], axes[1]]:
-            ax.scatter(PC1, PC2, s=10, color='k')
+            ax.scatter(PC1, PC2, s=0.1, color='k')
             ax.plot(PC1, PC2, color='k', linewidth=1)
+            scatter_size = 20
 
             if network2 is None:
-                ax.scatter(PC1[0], PC2[0], s=80, color='deepskyblue', edgecolor='k', label='Start', zorder=10)
-                ax.scatter(PC1[-1], PC2[-1], s=80, color='orange', edgecolor='k', label='End', zorder=10)
+                ax.scatter(PC1[0], PC2[0], s=scatter_size, color='deepskyblue', edgecolor='k', label='Start', zorder=10, linewidth=0.5)
+                ax.scatter(PC1[-1], PC2[-1], s=scatter_size, color='orange', edgecolor='k', label='End', zorder=10, linewidth=0.5)
             else:
                 PC1_network1, PC2_network1 = PC1[0:history_len1], PC2[0:history_len1]
                 PC1_network2, PC2_network2 = PC1[history_len1:], PC2[history_len1:]
-                ax.scatter(PC1_network1[0], PC2_network1[0], s=80, color='b', edgecolor='k', label='Start', zorder=10)
-                ax.scatter(PC1_network2[0], PC2_network2[0], s=80, color='b', edgecolor='k', zorder=10)
+                ax.scatter(PC1_network1[0], PC2_network1[0], s=scatter_size, color='b', edgecolor='k', label='Start', zorder=10, linewidth=0.5)
+                ax.scatter(PC1_network2[0], PC2_network2[0], s=scatter_size, color='b', edgecolor='k', zorder=10, linewidth=0.5)
 
                 if not hasattr(network1, 'name'):
                     network1.name = '1'
                 if not hasattr(network2, 'name'):
                     network2.name = '2'
-                ax.scatter(PC1_network1[-1], PC2_network1[-1], s=80, color='orange', edgecolor='k',
+                ax.scatter(PC1_network1[-1], PC2_network1[-1], s=scatter_size, color='orange', edgecolor='k', linewidth=0.5,
                            label=f'End {network1.name}', zorder=10)
-                ax.scatter(PC1_network2[-1], PC2_network2[-1], s=80, color='cyan', edgecolor='k',
+                ax.scatter(PC1_network2[-1], PC2_network2[-1], s=scatter_size, color='cyan', edgecolor='k', linewidth=0.5,
                            label=f'End {network2.name}', zorder=10)
 
             ax.legend()
@@ -1959,7 +1994,7 @@ def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataload
     gridpoints_paramspace = torch.tensor(gridpoints_paramspace) * p_std + p_mean
 
     # Compute loss for points in grid
-    test_network = copy(test_network)  # create copy to avoid modifying original networks
+    test_network = copy.deepcopy(test_network)  # create copy to avoid modifying original networks
     losses = torch.zeros(num_points ** 2)
     for i, gridpoint_flat in enumerate(tqdm(gridpoints_paramspace)):
         state_dict = unflatten_params(gridpoint_flat, param_metadata)
