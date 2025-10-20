@@ -19,29 +19,6 @@ import EIANN.utils as ut
 import EIANN.plot as pt
 import EIANN.network as nt
 
-# plt.rcParams.update({'font.size': 6,
-#                     'axes.spines.right': False,
-#                     'axes.spines.top':   False,
-#                     'axes.linewidth':    0.5,
-#                     'axes.labelpad':     2.0, 
-#                     'xtick.major.size':  2,
-#                     'xtick.major.width': 0.5,
-#                     'ytick.major.size':  2,
-#                     'ytick.major.width': 0.5,
-#                     'xtick.major.pad':   2,
-#                     'ytick.major.pad':   2,
-#                     'legend.frameon':       False,
-#                     'legend.handletextpad': 0.5,
-#                     'legend.handlelength': 0.8,
-#                     # 'legend.handleheight': 10,
-#                     'legend.labelspacing': 0.2,
-#                     'legend.columnspacing': 1.2,
-#                     'lines.linewidth': 0.5,
-#                     'figure.figsize': [10.0, 3.0],
-#                     'font.sans-serif': 'Avenir',
-#                     'svg.fonttype': 'none',
-#                     'text.usetex': False})
-
 
 
 ########################################################################################################

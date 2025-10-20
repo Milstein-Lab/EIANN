@@ -63,24 +63,46 @@ __all__ = [
     'plot_spiral_decisions',]
 
 def update_plot_defaults():
-    plt.rcParams.update({'font.size': 7,
-                     'axes.spines.right': False,
-                     'axes.spines.top': False,
-                     'axes.linewidth': 0.5,
-                     'lines.linewidth': 0.5,
-                     'xtick.major.size': 3,
-                     'xtick.major.width': 0.5,
-                     'ytick.major.size': 3,
-                     'ytick.major.width': 0.5,
-                     'legend.frameon': False,
-                     'legend.handletextpad': 0.5,
-                     'legend.handlelength': 1.,
-                     'legend.labelspacing': 0.3,
-                     'figure.figsize': [4, 1.5],
-                     'svg.fonttype': 'none',
-                     'figure.dpi': 200,
-                     'font.sans-serif': 'Avenir',
-                     'text.usetex': False})
+    font_size = 7
+    plt.rcParams.update({"font.size": font_size,
+                    "figure.titlesize": font_size,
+                    "figure.labelweight": font_size,
+                    "axes.titlesize": font_size,
+                    "axes.labelsize": font_size,
+                    "xtick.labelsize": font_size,
+                    "ytick.labelsize": font_size,
+                    "legend.fontsize": font_size,
+                    'legend.title_fontsize': font_size,                    
+                    'axes.spines.right': False,
+                    'axes.spines.top': False,
+                    'axes.linewidth': 0.5,
+                    'lines.linewidth': 0.5,
+                    "lines.markersize": 3,
+                    'xtick.major.size': 2.5,
+                    'ytick.major.size': 2.5,
+                    "xtick.minor.size": 2,
+                    "ytick.minor.size": 2,
+                    "xtick.minor.width": 0.5,
+                    "ytick.minor.width": 0.5,
+                    'xtick.major.width': 0.5,
+                    'ytick.major.width': 0.5,
+                    'xtick.major.pad':   2,
+                    'ytick.major.pad':   2,    
+                    'xtick.minor.pad':   2,
+                    'ytick.minor.pad':   2,
+                    'legend.frameon': False,
+                    "savefig.transparent": True,
+                    'legend.handletextpad': 0.5,
+                    'legend.handlelength': 1.,
+                    'legend.labelspacing': 0.3,
+                    'legend.columnspacing': 1.2,
+                    'figure.figsize': [4, 1.5],
+                    'figure.dpi': 200,
+                    'font.sans-serif': 'Avenir',
+                    'text.usetex': False,
+                    # 'svg.fonttype': 'none',
+                    # 'pdf.fonttype': 42,
+                    'ps.fonttype': 42})
 
 
 def clean_axes(axes, left=True, right=False):
@@ -1921,8 +1943,8 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
         cbar2.set_label('Loss' if scale == 'linear' else 'Loss (log scale)', rotation=270, labelpad=15)
 
         for ax in [axes[0], axes[1]]:
-            ax.scatter(PC1, PC2, s=0.1, color='k')
-            ax.plot(PC1, PC2, color='k', linewidth=1)
+            ax.scatter(PC1, PC2, s=0.2, color='k')
+            ax.plot(PC1, PC2, color='k', linewidth=0.5)
             scatter_size = 20
 
             if network2 is None:
