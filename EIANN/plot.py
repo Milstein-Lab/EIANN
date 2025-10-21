@@ -2,6 +2,7 @@ import itertools
 import torch
 import numpy as np
 import math
+import gc
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -15,52 +16,6 @@ from tqdm.autonotebook import tqdm
 import copy
 import EIANN.utils as ut
 
-# TODO: Need to move things with .cpu()
-
-__all__ = [
-    'update_plot_defaults',
-    'clean_axes',
-    'plot_EIANN_1_hidden_autoenc_config_summary',
-    'plot_train_loss_history',
-    'plot_validate_loss_history',
-    'plot_loss_history',
-    'plot_accuracy_history',
-    'plot_error_history',
-    'evaluate_test_loss_history',
-    'plot_representation_metrics',
-    'plot_cumulative_distribution',
-    'plot_MNIST_examples',
-    'plot_network_dynamics',
-    'plot_sparsity_history',
-    'plot_simple_EIANN_weight_history_diagnostic',
-    'plot_hidden_weights',
-    'plot_receptive_fields',
-    'plot_unit_receptive_field',
-    'plot_hidden_weight_history',
-    'plot_binary_decision_boundary',
-    'plot_batch_accuracy_from_data',
-    'plot_batch_accuracy',
-    'plot_representational_similarity_matrix',
-    'plot_plateaus',
-    'plot_sorted_plateaus',
-    'plot_total_input',
-    'plot_correlations',
-    'plot_receptive_field_similarity',
-    'plot_within_class_representational_similarity',
-    'plot_weight_history_PCs',
-    'plot_param_history_PCs',
-    'get_flat_param_history',
-    'get_flat_weight_history',
-    'flatten_weights',
-    'unflatten_weights',
-    'unflatten_params',
-    'compute_loss',
-    'plot_loss_landscape',
-    'plot_loss_landscape_multiple',
-    'plot_3D_loss_surface',
-    'plot_FB_weight_alignment',
-    'plot_spiral_accuracy',
-    'plot_spiral_decisions',]
 
 def update_plot_defaults():
     font_size = 7
@@ -131,138 +86,10 @@ def clean_axes(axes, left=True, right=False):
 # *******************************************************************
 # Network summary functions
 # *******************************************************************
-def plot_EIANN_1_hidden_autoenc_config_summary(network, test_dataloader, sorted_output_idx=None, title=None):
-    """
-
-    :param network:
-    :param test_dataloader:
-    :param sorted_output_idx: tensor of int
-    :param title: str
-    """
-    assert len(test_dataloader) == 1, 'Dataloader must have a single large batch'
-
-    network.test(test_dataloader, store_dynamics=True, status_bar=True)
-
-    if title is None:
-        title_str = ''
-    else:
-        title_str = '%s ' % title
-
-    max_rows = 1
-    cols = len(network.layers) - 1
-    for layer in network:
-        projection_count = 0
-        for population in layer:
-            projection_count += len(list(population))
-        max_rows = max(max_rows, projection_count)
-
-    fig1, axes = plt.subplots(max_rows, cols, figsize=(3.2*cols, 3.*max_rows))
-    if max_rows == 1:
-        if cols == 1:
-            axes = [[axes]]
-        else:
-            axes = [axes]
-    elif cols == 1:
-        axes = [[axis] for axis in axes]
-    for i, layer in enumerate(network):
-        if i > 0:
-            col = i - 1
-            row = 0
-            for population in layer:
-                for projection in population:
-                    this_axis = axes[row][col]
-                    if projection.post is network.output_pop:
-                        if sorted_output_idx is not None:
-                            im = this_axis.imshow(projection.weight.data[sorted_output_idx, :], aspect='auto',
-                                                  interpolation='none')
-                        else:
-                            im = this_axis.imshow(projection.weight.data, aspect='auto', interpolation='none')
-                    elif projection.pre is network.output_pop:
-                        if sorted_output_idx is not None:
-                            im = this_axis.imshow(projection.weight.data[:, sorted_output_idx], aspect='auto',
-                                                  interpolation='none')
-                        else:
-                            im = this_axis.imshow(projection.weight.data, aspect='auto', interpolation='none')
-                    else:
-                        im = this_axis.imshow(projection.weight.data, aspect='auto', interpolation='none')
-                    fig1.colorbar(im, ax=this_axis)
-                    this_axis.set_xlabel('Pre unit ID')
-                    this_axis.set_ylabel('Post unit ID')
-                    this_axis.set_title('%s.%s <- %s.%s' %
-                              (projection.post.layer.name, projection.post.name,
-                               projection.pre.layer.name, projection.pre.name))
-                    row += 1
-            while row < max_rows:
-                this_axis = axes[row, col]
-                this_axis.set_visible(False)
-                row += 1
-    fig1.suptitle('%sweights' % title_str)
-    fig1.tight_layout()
-    fig1.show()
-
-    max_rows = 1
-    cols = len(network.layers)
-    for layer in network:
-        max_rows = max(max_rows, len(layer.populations))
-
-    fig2, axes = plt.subplots(max_rows, cols, figsize=(3.2 * cols, 3. * max_rows))
-    if max_rows == 1:
-        axes = [axes]
-    for col, layer in enumerate(network):
-        for row, population in enumerate(layer):
-            this_axis = axes[row][col]
-            if population is network.output_pop and sorted_output_idx is not None:
-                im = this_axis.imshow(population.activity[:, sorted_output_idx].T, aspect='auto', interpolation='none')
-            else:
-                im = this_axis.imshow(population.activity.T, aspect='auto', interpolation='none')
-            fig2.colorbar(im, ax=this_axis)
-            this_axis.set_xlabel('Input pattern ID')
-            this_axis.set_ylabel('Unit ID')
-            this_axis.set_title('%s.%s' % (layer.name, population.name))
-        row += 1
-        while row < max_rows:
-            this_axis = axes[row][col]
-            this_axis.set_visible(False)
-            row += 1
-    fig2.suptitle('%sactivity' % title_str)
-    fig2.tight_layout()
-    fig2.show()
-
-    cols = len(network.layers) - 1
-    fig3, axes = plt.subplots(max_rows, cols, figsize=(3.2 * cols, 3. * max_rows))
-    if max_rows == 1:
-        if cols == 1:
-            axes = [[axes]]
-        else:
-            axes = [axes]
-    elif cols == 1:
-        axes = [[axis] for axis in axes]
-    for i, layer in enumerate(network):
-        if i > 0:
-            col = i - 1
-            for row, population in enumerate(layer):
-                this_axis = axes[row][col]
-                av_activity_dynamics = torch.mean(torch.stack(population.forward_steps_activity), dim=1)
-                for i in range(population.size):
-                    this_axis.plot(av_activity_dynamics[:,i])
-                this_axis.set_xlabel('Equilibration time steps')
-                this_axis.set_ylabel('Activity')
-                this_axis.set_title('%s.%s' % (layer.name, population.name))
-            row += 1
-            while row < max_rows:
-                this_axis = axes[row][col]
-                this_axis.set_visible(False)
-                row += 1
-    fig3.suptitle('%sactivity dynamics' % title_str)
-    fig3.tight_layout()
-    fig3.show()
-
 
 def plot_train_loss_history(network, title=None, train_step_range=None, ax=None):
     """
     Plot loss history from training
-    :param network:
-    :param title: str
     """
     if title is None:
         title_str = ''
@@ -344,7 +171,6 @@ def plot_loss_history(network, train_step_range=None, ylim=None):
 def plot_accuracy_history(network):
     """
     Assumes network has been trained and a val_accuracy_history has been stored.
-    :param network:
     """
     assert len(network.val_accuracy_history) > 0, 'Network must contain a stored val_accuracy_history'
     fig = plt.figure(figsize=(5, 1.5))
@@ -359,7 +185,6 @@ def plot_accuracy_history(network):
 def plot_error_history(network):
     """
     Assumes network has been trained and a val_accuracy_history has been stored.
-    :param network:
     """
     assert len(network.val_accuracy_history) > 0, 'Network must contain a stored val_accuracy_history'
     error_rate = 100 - network.val_accuracy_history
@@ -382,11 +207,6 @@ def evaluate_test_loss_history(network, test_dataloader, sorted_output_idx=None,
     """
     Assumes network has been trained with store_params=True. Evaluates test_loss at each train step in the
     param_history.
-    :param network:
-    :param test_dataloader:
-    :param sorted_output_idx: tensor of int
-    :param store_history: bool
-    :param plot: bool
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
     assert len(network.param_history) > 0, 'Network must contain a stored param_history'
@@ -614,21 +434,6 @@ def plot_sparsity_history(network):
                 ax.plot(sparsity)
                 ax.set_ylim(bottom=0.4,top=1)
                 ax.set_title(f'{population.fullname} sparsity during training')
-
-
-def plot_simple_EIANN_weight_history_diagnostic(network):
-    fig, axes = plt.subplots(5, sharex=True)
-    axes[0].plot(network.loss_history)
-    axes[0].set_title('Loss')
-    axes[1].plot(torch.mean(network.Output.E.H1.E.weight_history[:, :, 0], axis=1))
-    axes[1].set_title('Output.E.H1.E')
-    axes[2].plot(torch.mean(network.H1.E.Output.E.weight_history[:, :, 0], axis=1))
-    axes[2].set_title('H1.E.Output.E')
-    axes[3].plot(torch.mean(network.H1.E.Input.E.weight_history[:, :, 0], axis=1))
-    axes[3].set_title('H1.E.Input.E')
-    axes[4].plot(torch.mean(network.H1.E.H1.Dend_I.weight_history[:, :, 0], axis=1))
-    axes[4].set_title('H1.E.H1.Dend_I')
-    fig.show()
 
 
 def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
@@ -930,7 +735,6 @@ def plot_hidden_weight_history(network, unit=0):
     '''
     Plot a single unit's receptive field over time
     '''
-
     weight_history = network.module_dict['H1E_InputE'].weight_history[:, unit, :]
     unit_plateaus = network.H1.E.plateau_history[:, unit]
     plateau_scale = max(abs(max(unit_plateaus)), abs(min(unit_plateaus)))
@@ -1016,12 +820,23 @@ def plot_binary_decision_boundary(network, test_dataloader, hard_boundary=False,
 def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, population='OutputE', title=None, ax=None, cbar=True):
     """
     Plot the average population activity from a data dict.
-    :param average_pop_activity_dict: dict of average population activity
-    :param sort: whether to sort the data by population name
-    :param population: (optional) population to plot. Defaults to the first population in the data dict
-    :param title: (optional) title of the plot
-    :param ax: (optional) matplotlib axis to plot on
-    :param cbar: (optional) whether to include a colorbar
+
+    Parameters
+    ----------
+    average_pop_activity_dict : dict
+        Dict of average population activity.
+    sort : bool, optional
+        Whether to sort the data by population name. Default is False.
+    population : str, list, or Population object, optional
+        Population to plot. Can be 'E', 'I', 'all', a specific population name,
+        a list of population names, or an EIANN.Population object.
+        Default is 'OutputE'.
+    title : str, optional
+        Title of the plot. Default is None.
+    ax : matplotlib.axes.Axes, optional
+        Matplotlib axis to plot on. Default is None.
+    cbar : bool, optional
+        Whether to include a colorbar. Default is True.
     """
     if isinstance(population, str):
         if population == 'E':
@@ -1128,7 +943,6 @@ def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neur
     """
     Plot the representational similarity matrix (RSM) and related unit similarity matrix for a given population.
     """
-
     for pop_name in pattern_similarity_matrix_dict:
         pattern_similarity_matrix = pattern_similarity_matrix_dict[pop_name]
         neuron_similarity_matrix = neuron_similarity_matrix_dict[pop_name]
@@ -1190,236 +1004,6 @@ def plot_representational_similarity_matrix(pattern_similarity_matrix_dict, neur
             fig.suptitle(pop_name, fontsize=10, fontweight='bold', y=1)
 
     return fig
-
-
-def plot_plateaus(population, start=0, end=-1):
-    fig = plt.figure(figsize=[11,7])
-    plateaus = population.plateau_history[start:end].T
-    plt.imshow(plateaus, aspect='auto',interpolation='None',
-              vmin=-1,vmax=1,cmap='bwr')
-
-    plt.ylabel(f'{population.fullname} unit')
-    plt.xlabel('Train step')
-    plt.title(f'Plateau History: step {start} to {end}')
-
-
-def plot_sorted_plateaus(population, test_dataloader, show_negative=True):
-
-    network = population.network
-
-    # Sort history (x-axis) by label
-    # TODO: Why was this torch.stack previously?
-    label_history = torch.argmax(network.target_history, dim=1)
-    val, idx = torch.sort(label_history)
-    sorted_plateaus = population.plateau_history[idx, :]
-
-    # Sort units (y-axis) by preferred input, defined over test_dataloader
-    idx, data, target = next(iter(test_dataloader))
-    network.forward(data, no_grad=True) #compute activities for test dataset
-    labels = torch.argmax(target, dim=1)
-    num_labels = target.shape[1]
-    samples_per_label = torch.zeros(num_labels)
-    avg_pop_activity = torch.zeros(population.size, num_labels)
-    for label in range(num_labels):
-        label_idx = torch.where(labels == label)[0]
-        samples_per_label[label] = len(label_idx)
-        avg_pop_activity[:, label] = torch.mean(population.activity[label_idx,:], dim=0)
-    silent_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) == 0)[0]
-    active_unit_indexes = torch.where(torch.sum(avg_pop_activity, dim=1) > 0)[0]
-    preferred_input = torch.argmax(avg_pop_activity[active_unit_indexes], dim=1)
-    val, idx = torch.sort(preferred_input)
-    sorted_indexes = torch.concat([active_unit_indexes[idx], silent_unit_indexes])
-    sorted_plateaus = sorted_plateaus[:, sorted_indexes]
-    if not show_negative:
-        sorted_plateaus[(sorted_plateaus < 0)] = 0
-        vmin = 0
-        cmap = 'binary'
-    else:
-        vmin = -1
-        cmap = 'bwr'
-    unit_ids = idx
-
-    fig, ax = plt.subplots() # figsize=[11, 7])
-    # plateau_scale = max(abs(torch.max(sorted_plateaus)), abs(torch.min(sorted_plateaus)))
-    ax.imshow(sorted_plateaus.T, aspect='auto', cmap=cmap, interpolation='nearest',
-               vmin=vmin, vmax=1)
-    ax.set_ylabel(f'{population.fullname} unit')
-    ax.set_title(f'Sorted Plateau History, {population.fullname}')
-
-    label_centers = torch.cumsum(samples_per_label, dim=0) - samples_per_label // 2
-    ax.set_xticks(label_centers)
-    ax.set_xticklabels(range(0, num_labels))
-    ax.set_xlabel('Samples (sorted by label)')
-    fig.tight_layout()
-    clean_axes(ax)
-    fig.show()
-
-    return sorted_plateaus.T, unit_ids
-
-
-def plot_total_input(population, test_dataloader, sorting='E', act_threshold=0):
-    """
-    Plot the total input to a population for each pattern in the test set
-    TODO: check activity_history dimensions
-    :param population:
-    :param test_dataloader:
-    :param sorting:
-    :param act_threshold:
-    :return:
-    """
-    ''''''
-
-    network = population.network
-    network.reset_history()
-    idx, data, target = next(iter(test_dataloader))
-    network.forward(data, store_history=True, no_grad=True)
-
-    total_input = {}
-    for name, projection in population.incoming_projections.items():
-        if projection.direction in ['F','forward']:
-            total_input[name] = projection.weight.data @ projection.pre.activity_history[0,-1,:,:].data.T
-        elif projection.direction in ['R','recurrent']:
-            pre_act = torch.mean(projection.pre.activity_history[0,-4:,:,:].data, dim=0).data.T
-            total_input[name] = projection.weight.data @ pre_act
-
-    if sorting == 'E':
-        val, idx = torch.sort(total_input['H1E_InputE'], descending=True)
-    elif sorting == 'I':
-        val, idx = torch.sort(total_input['H1E_H1FBI'], descending=False)
-    elif sorting == 'EI_balance':
-        net_input = total_input['H1E_InputE'] + total_input['H1E_H1FBI']
-        val, idx = torch.sort(net_input, descending=True)
-    elif sorting == 'activity':
-        activity = population.activity.T
-        val, idx = torch.sort(activity, descending=True)
-
-    fig, ax = plt.subplots(1, 2, figsize=[11, 4])
-
-    for name, proj_input in total_input.items():
-        if torch.mean(proj_input) > 0:
-            color = 'r'
-        else:
-            color = 'C0'
-        sorted_input = torch.gather(proj_input, 1, idx)
-        active_units = torch.where(torch.sum(population.activity, dim=0) > act_threshold)[0]
-        # net_input = total_input['H1E_InputE'] + total_input['H1E_H1FBI']
-        # active_units = torch.where(torch.max(net_input, dim=1)[0] > act_threshold)[0]
-        avg_proj_input = torch.mean(sorted_input[active_units], dim=0)
-        ax[0].plot(np.abs(avg_proj_input), label=name, c=color, alpha=0.8)
-    ax[0].set_xlabel('Input pattern')
-    ax[0].set_ylabel('Weighted input (abs)')
-    ax[0].set_title(f'Average total E/I input to {population.fullname} (sorted)')
-    ax[0].legend()
-
-    # net_input = total_input['H1E_InputE'] + total_input['H1E_H1FBI']
-    # active_idx = torch.where(net_input > act_threshold)
-    active_idx = torch.where(population.activity.T > act_threshold)
-    ax[1].scatter(total_input['H1E_InputE'][active_idx], total_input['H1E_H1FBI'][active_idx], c='k', alpha=0.2)
-    ax[1].invert_yaxis()
-    ax[1].set_xlabel('Sample E input')
-    ax[1].set_ylabel('Sample I input')
-    ax[1].set_title(f'Total E/I input to {population.fullname}')
-    fig.tight_layout()
-
-
-def plot_correlations(network, test_dataloader):
-    '''Plot the correlation matrix for a layer's weights'''
-
-    idx, data, target = next(iter(test_dataloader))
-    network.forward(data, no_grad=True)
-
-    for layer in network:
-        if layer.name == 'Input':
-            continue
-
-        # Compute correlations
-        activity_matrix = torch.cat([layer.E.activity.T, layer.SomaI.activity.T])
-        activity_corr_mat = cosine_similarity(activity_matrix)
-
-        E_I_weights = network.module_dict[f"{layer.E.fullname}_{layer.SomaI.fullname}"].weight.data
-        I_E_weights = network.module_dict[f"{layer.SomaI.fullname}_{layer.E.fullname}"].weight.data
-
-        # Generate plots
-        fig, ax = plt.subplots(1, 4, figsize=[14, 3])
-
-        plot_nr = 0
-        ax[plot_nr].scatter(I_E_weights, E_I_weights.T, c='k', alpha=0.2)
-        ax[plot_nr].invert_yaxis()
-        ax[plot_nr].set_title('Weight correlations')
-        ax[plot_nr].set_xlabel('E->SomaI weights')
-        ax[plot_nr].set_ylabel('SomaI->E weights')
-        m, b = np.polyfit(I_E_weights.flatten(), E_I_weights.T.flatten(), 1)
-        x = np.linspace(0, torch.max(I_E_weights))
-        y = m * x + b
-        ax[plot_nr].plot(x, y, '--', c='red', linewidth=3)
-        # print(f'Linear regression: y = {m} x + {b}')
-        r_val, p_val = stats.pearsonr(I_E_weights.flatten(), E_I_weights.T.flatten())
-        plot_nr += 1
-
-        im = ax[plot_nr].imshow(activity_corr_mat[0:layer.E.size, 0:layer.E.size],
-                                vmin=np.min(activity_corr_mat), vmax=np.max(activity_corr_mat))
-        plt.colorbar(im, ax=ax[plot_nr])
-        ax[plot_nr].set_xticks([])
-        ax[plot_nr].set_yticks([])
-        ax[plot_nr].set_ylabel('E units')
-        ax[plot_nr].set_xlabel('E units')
-        ax[plot_nr].set_title(f'{layer.E.fullname} ')
-        plot_nr += 1
-
-        im = ax[plot_nr].imshow(activity_corr_mat[layer.E.size:, 0:layer.E.size],
-                                vmin=np.min(activity_corr_mat), vmax=np.max(activity_corr_mat))
-        plt.colorbar(im, ax=ax[plot_nr])
-        ax[plot_nr].set_xticks([])
-        ax[plot_nr].set_yticks([])
-        ax[plot_nr].set_ylabel('I units')
-        ax[plot_nr].set_xlabel('E units')
-        ax[plot_nr].set_title(f'E/I correlation')
-        plot_nr += 1
-
-        im = ax[plot_nr].imshow(activity_corr_mat[layer.E.size:, layer.E.size:],
-                                vmin=np.min(activity_corr_mat), vmax=np.max(activity_corr_mat))
-        ax[plot_nr].set_title(f'{layer.SomaI.fullname} ')
-        plt.colorbar(im, ax=ax[plot_nr])
-        ax[plot_nr].set_xticks([])
-        ax[plot_nr].set_yticks([])
-        ax[plot_nr].set_ylabel('I units')
-        ax[plot_nr].set_xlabel('I units')
-        plot_nr += 1
-
-        plt.suptitle(f'{layer.name} activity similarity matrix', fontsize=18)
-
-        plt.tight_layout(pad=0.5)
-        plt.show()
-        print(f'Pearson correlation: r={r_val:.3f}, r^2={r_val ** 2:.3f}, p={p_val:.2E}')
-
-        # Plot weight vs. activity correlation
-        EI_corr = activity_corr_mat[layer.E.size:, 0:layer.E.size]
-        fig, ax = plt.subplots(1, 2, figsize=[8, 2])
-        ax[0].scatter(EI_corr, I_E_weights, c='r', alpha=0.2)
-        ax[0].set_xlabel('E/I activity correlation')
-        ax[0].set_ylabel('Weight')
-        m, b = np.polyfit(EI_corr.flatten(), I_E_weights.flatten(), 1)
-        x = np.linspace(np.min(EI_corr), np.max(EI_corr), 10)
-        y = m * x + b
-        ax[0].plot(x, y, '--', c='k', linewidth=2)
-        # print(f'Linear regression: y = {m} x + {b}')
-        r_val, p_val = stats.pearsonr(EI_corr.flatten(), I_E_weights.flatten())
-        txt_E = f'Pearson correlation (E): r={r_val:.3f}, r^2={r_val ** 2:.3f}, p={p_val:.2E}'
-
-        ax[1].scatter(EI_corr, E_I_weights.T, c='b', alpha=0.2)
-        ax[1].set_xlabel('E/I activity correlation')
-        ax[1].set_ylabel('Weight')
-        ax[1].invert_yaxis()
-        m, b = np.polyfit(EI_corr.flatten(), E_I_weights.T.flatten(), 1)
-        y = m * x + b
-        ax[1].plot(x, y, '--', c='k', linewidth=2)
-        # print(f'Linear regression: y = {m} x + {b}')
-        r_val, p_val = stats.pearsonr(EI_corr.flatten(), E_I_weights.T.flatten())
-        txt_I = f'Pearson correlation (I): r={r_val:.3f}, r^2={r_val ** 2:.3f}, p={p_val:.2E}'
-        plt.tight_layout()
-        plt.show()
-        print(txt_E)
-        print(txt_I)
 
 
 def plot_receptive_field_similarity(receptive_fields, average_pop_activity, unit_labels):
@@ -1597,122 +1181,6 @@ def plot_within_class_representational_similarity(within_class_pattern_similarit
 # *******************************************************************
 # Loss landscape functions
 # *******************************************************************
-def plot_weight_history_PCs(network):
-    """
-    Function performs PCA on a given set of weights and
-        1. plots the explained variance
-        2. the trajectory of the weights in the PC space during the course of learning
-        3. the loading scores of the weights
-
-    Parameters
-    weight_history: torch tensor, size: [time_steps x total number of weights]
-
-    Returns
-    """
-    flat_weight_history,_ = get_flat_weight_history(network)
-
-    # Center the data (mean=0, std=1)
-    w_mean = torch.mean(flat_weight_history, axis=0)
-    w_std = torch.std(flat_weight_history, axis=0)
-    flat_weight_history = (flat_weight_history - w_mean) / (w_std + 1e-10) # add epsilon to avoid NaNs
-
-    pca = PCA(n_components=5)
-    pca.fit(flat_weight_history)
-    weights_pca_space = pca.transform(flat_weight_history)
-
-    # Plot explained variance
-    fig, ax = plt.subplots(1, 3)
-    explained_variance = pca.explained_variance_ratio_
-    percent_exp_var = np.round(explained_variance * 100, decimals=2)
-    labels = ['PC' + str(x) for x in range(1, len(percent_exp_var) + 1)]
-    ax[0].bar(x=range(1, len(percent_exp_var) + 1), height=percent_exp_var, tick_label=labels)
-    ax[0].set_ylabel('Percentage of variance explained')
-    ax[0].set_xlabel('Principal Component')
-    ax[0].set_title('Scree Plot')
-
-    # Plot weights in PC space
-    PC1 = weights_pca_space[:, 0]
-    PC2 = weights_pca_space[:, 1]
-    ax[1].scatter(PC1, PC2)
-    ax[1].scatter(PC1[0], PC2[0], color='blue', label='before training')
-    ax[1].scatter(PC1[-1], PC2[-1], color='red', label='after training')
-    ax[1].set_xlabel(f'PC1 - {percent_exp_var[0]}%')
-    ax[1].set_ylabel(f'PC2 - {percent_exp_var[1]}%')
-    ax[1].legend()
-
-    # Plot loading scores for PC1 to determine which/how many weights are important for variance along PC1
-    sorted_loadings = -np.sort(-np.abs(pca.components_[0]))  # Loadings sorted in descending order of abs magnitude
-    sorted_idx = np.argsort(-np.abs(pca.components_[0]))
-
-    most_important_weights_flat = sorted_idx[0:10]  #
-    most_important_weights_idx = []  # index of important weights in original weight matrix
-
-    ax[2].plot(sorted_loadings)
-    ax[2].set_xlabel('sorted weights')
-    ax[2].set_ylabel('Loading \n(alignment with weight)')
-    ax[2].set_title('PC1 weight components')
-
-    plt.tight_layout()
-    # fig.show()
-
-
-def plot_param_history_PCs(flat_param_history):
-    """
-    Function performs PCA on a given set of parameters (drawn from the network state_dict()) and
-        1. plots the explained variance
-        2. the trajectory of the weights in the PC space during the course of learning
-        3. the loading scores of the weights
-
-    Parameters
-    flat_param_history: torch tensor, size: [time_steps x total number of parameters]
-
-    Returns
-    """
-    # Center the data (mean=0, std=1)
-    p_mean = torch.mean(flat_param_history, axis=0)
-    p_std = torch.std(flat_param_history, axis=0)
-    flat_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
-
-    pca = PCA(n_components=5)
-    pca.fit(flat_param_history)
-    params_pca_space = pca.transform(flat_param_history)
-
-    # Plot explained variance
-    fig, ax = plt.subplots(1, 3)
-    explained_variance = pca.explained_variance_ratio_
-    percent_exp_var = np.round(explained_variance * 100, decimals=2)
-    labels = ['PC' + str(x) for x in range(1, len(percent_exp_var) + 1)]
-    ax[0].bar(x=range(1, len(percent_exp_var) + 1), height=percent_exp_var, tick_label=labels)
-    ax[0].set_ylabel('Percentage of variance explained')
-    ax[0].set_xlabel('Principal Component')
-    ax[0].set_title('Scree Plot')
-
-    # Plot weights in PC space
-    PC1 = params_pca_space[:, 0]
-    PC2 = params_pca_space[:, 1]
-    ax[1].scatter(PC1, PC2)
-    ax[1].scatter(PC1[0], PC2[0], color='blue', label='before training')
-    ax[1].scatter(PC1[-1], PC2[-1], color='red', label='after training')
-    ax[1].set_xlabel(f'PC1 - {percent_exp_var[0]}%')
-    ax[1].set_ylabel(f'PC2 - {percent_exp_var[1]}%')
-    ax[1].legend()
-
-    # Plot loading scores for PC1 to determine which/how many weights are important for variance along PC1
-    sorted_loadings1 = -np.sort(-np.abs(pca.components_[0]))  # Loadings sorted in descending order of abs magnitude
-    sorted_idx = np.argsort(-np.abs(pca.components_[0]))
-
-    most_important_weights_flat = sorted_idx[0:10]  #
-    most_important_weights_idx = []  # index of important weights in original weight matrix
-
-    ax[2].plot(sorted_loadings1)
-    ax[2].set_xlabel('sorted weights')
-    ax[2].set_ylabel('Loading \n(alignment with weight)')
-    ax[2].set_title('PC1 weight components')
-
-    plt.tight_layout()
-
-    return fig, sorted_loadings1
-
 
 def get_flat_param_history(param_history):
     """
@@ -1737,28 +1205,6 @@ def get_flat_param_history(param_history):
     flat_param_history = torch.stack(flat_param_history)
 
     return flat_param_history, param_metadata
-
-
-def get_flat_weight_history(network):
-    """
-    Flattens all weights into a single vector for every point in the training history
-
-    :param: network: EIANN network with weights stored as Projection attributes
-    :return: tuple: matrix of flattened weight vectors for every point in the training hisotry
-                    list containing tuples of (num weights, weight matrix shape)
-    """
-    flat_weight_history = []
-    weight_sizes = []
-    for layer in network:
-        for population in layer:
-            for projection in population:
-                W_hist = projection.weight_history
-                flat_weight_history.append(W_hist.flatten(1))
-                weight_sizes.append([W_hist[0].numel(), W_hist[0].shape])
-
-    flat_weight_history = torch.cat(flat_weight_history,dim=1)
-
-    return flat_weight_history, weight_sizes
 
 
 def flatten_weights(network):
@@ -1960,10 +1406,8 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
                     network1.name = '1'
                 if not hasattr(network2, 'name'):
                     network2.name = '2'
-                ax.scatter(PC1_network1[-1], PC2_network1[-1], s=scatter_size, color='orange', edgecolor='k', linewidth=0.5,
-                           label=f'End {network1.name}', zorder=10)
-                ax.scatter(PC1_network2[-1], PC2_network2[-1], s=scatter_size, color='cyan', edgecolor='k', linewidth=0.5,
-                           label=f'End {network2.name}', zorder=10)
+                ax.scatter(PC1_network1[-1], PC2_network1[-1], s=scatter_size, color='orange', edgecolor='k', linewidth=0.5, label=f'End {network1.name}', zorder=10)
+                ax.scatter(PC1_network2[-1], PC2_network2[-1], s=scatter_size, color='cyan', edgecolor='k', linewidth=0.5, label=f'End {network2.name}', zorder=10)
 
             ax.legend()
             ax.set_xlabel(f'PC1 \n({percent_exp_var[0]:.2f}% var. explained)')
@@ -1971,112 +1415,7 @@ def plot_loss_landscape(test_dataloader, network1, network2=None, num_points=20,
 
     # --- Cleanup large objects to reduce memory use ---
     del flat_param_history, flat_param_history_np, gridpoints_paramspace, losses, loss_grid
-
-
-def plot_loss_landscape_multiple(test_network, param_history_dict, test_dataloader, num_points=20, extension=0.2):
-    """
-    Plot PCA loss landscape for combined weights from multiple networks
-    """
-
-    flat_param_history_all = []
-
-    for network_name in param_history_dict:
-        for i in param_history_dict[network_name]:
-            flat_param_history, param_metadata = get_flat_param_history(param_history_dict[network_name][i])
-            flat_param_history_all.append(flat_param_history)
-    flat_param_history_all = torch.cat(flat_param_history_all)
-
-    history_len = flat_param_history.shape[0]
-    flat_param_history = flat_param_history_all
-
-    # Center the data (mean=0, std=1)
-    p_mean = torch.mean(flat_param_history, axis=0)
-    p_std = torch.std(flat_param_history, axis=0)
-    centered_param_history = (flat_param_history - p_mean) / (p_std + 1e-10)  # add epsilon to avoid NaNs
-
-    # Get weights in gridplane defined by PC dimensions
-    pca = PCA(n_components=2)
-    pca.fit(centered_param_history)
-    param_hist_pca_space = pca.transform(centered_param_history)
-
-    PC1 = param_hist_pca_space[:, 0]
-    PC2 = param_hist_pca_space[:, 1]
-    PC1_extension = (np.max(PC1) - np.min(PC1)) * extension
-    PC2_extension = (np.max(PC2) - np.min(PC2)) * extension
-    PC1_range = np.linspace(np.min(PC1) - PC1_extension, np.max(PC1) + PC1_extension, num_points)
-    PC2_range = np.linspace(np.min(PC2) - PC2_extension, np.max(PC2) + PC2_extension, num_points)
-    PC1_mesh, PC2_mesh = np.meshgrid(PC1_range, PC2_range)
-
-    # Convert PC coordinates into full weight vectors
-    flat_PC1_vals = PC1_mesh.reshape(1, num_points ** 2)
-    flat_PC2_vals = PC2_mesh.reshape(1, num_points ** 2)
-    meshgrid_points = np.concatenate([flat_PC1_vals, flat_PC2_vals]).T
-
-    gridpoints_paramspace = pca.inverse_transform(meshgrid_points)
-    gridpoints_paramspace = torch.tensor(gridpoints_paramspace) * p_std + p_mean
-
-    # Compute loss for points in grid
-    test_network = copy.deepcopy(test_network)  # create copy to avoid modifying original networks
-    losses = torch.zeros(num_points ** 2)
-    for i, gridpoint_flat in enumerate(tqdm(gridpoints_paramspace)):
-        state_dict = unflatten_params(gridpoint_flat, param_metadata)
-        losses[i] = compute_loss(test_network, state_dict, test_dataloader)
-    loss_grid = losses.reshape([PC1_range.size, PC2_range.size])
-
-    # plot_loss_surface(loss_grid, PC1_mesh, PC2_mesh)
-
-    lines_PC1 = []
-    lines_PC2 = []
-    for i in range(0, len(PC1), history_len):
-        lines_PC1.append(PC1[i:i + history_len])
-        lines_PC2.append(PC2[i:i + history_len])
-
-    fig = plt.figure()
-    im = plt.imshow(loss_grid, cmap='Reds',
-                    extent=[np.min(PC1_range), np.max(PC1_range),
-                            np.max(PC2_range), np.min(PC2_range)])
-    plt.colorbar(im)
-
-    plt.scatter(PC1, PC2, s=0.1, color='k')
-
-    # plt.scatter(PC1_network1[0], PC2_network1[0], s=80, color='b', edgecolor='k', label='Start')
-    # plt.scatter(PC1_network2[0], PC2_network2[0], s=80, color='b', edgecolor='k')
-
-    # plt.scatter(PC1_network1[-1], PC2_network1[-1], s=80, color='orange', edgecolor='k',
-    #             label=f'End {network1.name}')
-    # plt.scatter(PC1_network2[-1], PC2_network2[-1], s=80, color='cyan', edgecolor='k',
-    #             label=f'End {network2.name}')
-
-    plt.legend()
-    plt.xlabel('PC1')
-    plt.ylabel('PC2')
-
-
-def plot_3D_loss_surface(loss_grid, PC1_mesh, PC2_mesh):
-    """
-    Function plots loss surface from the grid based on PCs
-
-    Parameters
-    loss_grid: torch tensor, size: [num_points x num_points]
-        values of loss for the given model at a given set of weights
-    PC1_mesh: torch tensor, size: [1 x num_points(specified in get_loss_landscape] (?)
-    PC2_mesh: torch tensor, size: [1 x num_points(specified in get_loss_landscape]
-    """
-    fig = plt.figure(figsize=(8, 5))
-    ax = fig.add_subplot(projection='3d')
-
-    ax.plot_surface(PC1_mesh, PC2_mesh, loss_grid.numpy(), cmap='terrain', alpha=0.9)
-
-    ax.view_init(elev=30, azim=-50)
-    ax.set_xlabel(r'PC1', labelpad=9)
-    ax.set_ylabel(r'PC2', labelpad=10)
-    ax.set_zlabel(r'Loss', labelpad=25)
-    ax.tick_params(axis='x', pad=0)
-    ax.tick_params(axis='y', pad=0)
-    ax.tick_params(axis='z', pad=10)
-    plt.tight_layout()
-
-    return fig
+    gc.collect()
 
 
 def plot_FB_weight_alignment(*projections, title=None):
@@ -2099,48 +1438,6 @@ def plot_FB_weight_alignment(*projections, title=None):
     axes.legend(loc='best', frameon=False)
     fig.tight_layout()
     clean_axes(axes)
-    fig.show()
-
-
-def plot_spiral_accuracy(net, test_dataloader):
-    '''
-    Function to plot loss landscape of spiral classification task by marking incorrect points red
-
-    :param net: network object after training
-    :param test_dataloader: dataloader with (data,target)
-    '''
-    fig, axes = plt.subplots(1, 1, figsize=(5, 5))
-
-    # Test batch inputs
-    inputs = net.Input.E.activity
-
-    # Predicted labels after training 
-    outputs = net.Output.E.activity
-    _, predicted_labels = torch.max(outputs, 1)
-
-    # Test labels
-    on_device = False
-    for _, _, sample_target in test_dataloader:
-        sample_target = torch.squeeze(sample_target)
-        if not on_device:
-            sample_target = sample_target.to(net.device)
-        break
-    _, test_labels = torch.max(sample_target, 1)
-
-    # Accuracy
-    accuracy = (predicted_labels == test_labels).sum().item() / len(test_labels)
-
-    # Graphing
-    correct_indices = (predicted_labels == test_labels).nonzero().squeeze()
-    axes.scatter(inputs[correct_indices,0], inputs[correct_indices,1], c=test_labels[correct_indices], s=3, alpha=0.4)
-    wrong_indices = (predicted_labels != test_labels).nonzero().squeeze()
-    axes.scatter(inputs[wrong_indices, 0], inputs[wrong_indices, 1], c='red', s=4)
-    axes.set_xlabel('x1')
-    axes.set_ylabel('x2')
-    axes.set_title('Predictions')
-    axes.text(0.02, 0.95, f'Accuracy: {accuracy:.2%}', verticalalignment='top', horizontalalignment='left', transform=axes.transAxes, color='black', fontsize=11)
-
-    fig.tight_layout(rect=[0, 0, 1, 0.95]) 
     fig.show()
 
 
