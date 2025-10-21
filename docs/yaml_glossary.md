@@ -10,8 +10,8 @@ Defines the structure and behavior of neuron populations in each layer.
 ### Structure
 ```yaml
 layer_config:
-  LayerName:
-    PopulationName:
+  your_layer_name (e.g. Hidden_1):
+    your_population_name (e.g. SomaI):
       size: int
       activation: str
       activation_kwargs: dict
@@ -46,9 +46,8 @@ Defines all projections (i.e., weighted connections) between neuron populations.
 ### Structure
 ```yaml
 projection_config:
-
-  PostLayer.PostPopulation:
-    PreLayer.PrePopulation:
+  post_layer_name.post_population_name (e.g. Hidden1.excitatory):
+    pre_layer_name.pre_population_name (e.g. Hidden1.inhibitory):
       weight_init: str
       weight_init_args: tuple
       weight_constraint: str

@@ -12,35 +12,9 @@ import h5py
 import click
 import gc
 import codecs
-import re
-from sklearn.metrics.pairwise import cosine_similarity
 
 import EIANN.utils as ut
 import EIANN.plot as pt
-import EIANN.network as nt
-
-plt.rcParams.update({'font.size': 6,
-                    'axes.spines.right': False,
-                    'axes.spines.top':   False,
-                    'axes.linewidth':    0.5,
-                    'axes.labelpad':     2.0, 
-                    'xtick.major.size':  2,
-                    'xtick.major.width': 0.5,
-                    'ytick.major.size':  2,
-                    'ytick.major.width': 0.5,
-                    'xtick.major.pad':   2,
-                    'ytick.major.pad':   2,
-                    'legend.frameon':       False,
-                    'legend.handletextpad': 0.5,
-                    'legend.handlelength': 0.8,
-                    # 'legend.handleheight': 10,
-                    'legend.labelspacing': 0.2,
-                    'legend.columnspacing': 1.2,
-                    'lines.linewidth': 0.5,
-                    'figure.figsize': [10.0, 3.0],
-                    'font.sans-serif': 'Avenir',
-                    'svg.fonttype': 'none',
-                    'text.usetex': False})
 
 
 
@@ -76,78 +50,62 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     network_name = os.path.basename(config_path).split('.')[0]
     pickle_filename = os.path.basename(saved_network_path).split('.')[0]
     network_seed, data_seed = pickle_filename.split('_')[-2:]
-    if 'extended' in saved_network_path:
-        network_seed, data_seed = pickle_filename.split('_')[-3:-1]
     assert network_seed.isdigit() and data_seed.isdigit(), f"network_seed and data_seed must be numbers, but got {network_seed} and {data_seed}"
-    network = ut.build_EIANN_from_config(config_path, network_seed=network_seed)    
     seed = f"{network_seed}_{data_seed}"
-    if recompute == False:
-        recompute = None
+    network_config = ut.read_from_yaml(config_path)
+    pop_names = set([key for subdict in network_config['layer_config'].values() for key in subdict.keys()])
 
     # Define which variables to compute
     if variables_to_save == 'all':
-        variables_to_save = ['weights', 'accuracy', 'val_accuracy_history', 'test_accuracy_history', 
+        variables_to_save = ['weights', 'accuracy', 'val_accuracy_history', 'test_accuracy_history', "test_accuracy_history_extended",
                             'average_pop_activity_dict', 'activity_dynamics', 'metrics_dict', 'robustness_to_pruning',
                             'val_loss_history', 'val_history_train_steps', 'test_loss_history',
                             'angle_vs_bp', 'feedback_weight_angle_history', 'sparsity_history', 'selectivity_history']
-        if "Dend" in "".join(network.populations.keys()):
+
+        if any('Dend' in pop_name for pop_name in pop_names):
             variables_to_save.extend("dendritic_state")
-        if 'extended' in saved_network_path:
-            variables_to_save.append("test_accuracy_history_extended")
         if 'mnist' in config_path:
             variables_to_save.extend(['noise_sensitivity', 'final_receptive_fields'])
         elif 'spiral' in config_path:
             variables_to_save.extend(['spiral_decision_data_dict'])
 
-    if "dendritic_state" in variables_to_save and "Dend" not in "".join(network.populations.keys()):
+    if "dendritic_state" in variables_to_save and not any('Dend' in pop_name for pop_name in pop_names):
         variables_to_save.remove("dendritic_state")
 
-    # Open hdf5 and check if the relevant network data already exists       
-    variables_to_recompute = []  
+    if recompute==True:
+        recompute = variables_to_save
+    elif recompute==False:
+        recompute = None
+
+    # Open hdf5 and check if the relevant data already exists       
     if os.path.exists(hdf5_path): # If the file exists, check if the network data already exists or needs to be recomputed
         with h5py.File(hdf5_path, 'r') as file:
             if network_name in file.keys():
                 if seed in file[network_name].keys():
                     if recompute == 'all':
                         print(f"Overwriting {network_name} {seed} in {hdf5_path}")
-                        variables_to_recompute = variables_to_save                        
-                    elif set(variables_to_save).issubset(file[network_name][seed].keys()) and recompute is None:
+                    elif set(variables_to_save).issubset(file[network_name][seed].keys()) and recompute is None: # Don't recompute if all variables already exist
                         # print(f"Data for {network_name} {seed} exists in {hdf5_path}")
                         return
                     else:
-                        print(f"Recomputing {network_name} {seed} in {hdf5_path}")
-                        variables_to_recompute = [var for var in variables_to_save if var not in file[network_name][seed].keys()]
-                else:
-                    print(f"Computing data for name:{network_name}, seed:{seed} in {hdf5_path}")
-                    variables_to_recompute = variables_to_save     
-            else:
-                print(f"Computing data for {network_name} {seed} in {hdf5_path}")
-                variables_to_recompute = variables_to_save     
-    else:
-        print(f"Creating new data file {hdf5_path}")
-        variables_to_recompute = variables_to_save
-    
-    if recompute is not None and recompute not in variables_to_recompute:
-        variables_to_recompute.append(recompute)
+                        print(f"Recomputing plot data for {network_name} {seed} in {hdf5_path}")
+                        existing_vars = set(file[network_name][seed].keys())
+                        if recompute is None:
+                            recompute = []
+                        variables_to_save = [var for var in variables_to_save if (var not in existing_vars) or (var in recompute)]
 
     print("-----------------------------------------------------------------------------")
-
-    print(variables_to_recompute)
-    if not variables_to_recompute:
-        print(f"No variables to recompute for {network_name} {seed} in {hdf5_path}")
-        return        
+    print(f"Variables to save: {variables_to_save}")
+    print(f"Network: {network_name} {seed}")
 
     # Load the saved network pickle
-    network = ut.load_network(saved_network_path)
-    if type(network) != nt.Network:
-        print("WARNING: Network pickle is not a Network object!")
-        network = ut.build_EIANN_from_config(config_path, network_seed=network_seed)    
-        ut.load_network_dict(network, saved_network_path)
-    network.seed = seed
-    network.name = network_name
-    if not hasattr(network, 'input_pop'):
-        input_layer = list(network)[0]
-        network.input_pop = next(iter(input_layer))
+    if not all('extended' in var for var in variables_to_save):  # don't load the regular network if we are only saving the extended training data
+        network = ut.load_network(saved_network_path)
+        network.seed = seed
+        network.name = network_name
+        if not hasattr(network, 'input_pop'):
+            input_layer = list(network)[0]
+            network.input_pop = next(iter(input_layer))
 
     # Load dataset
     if "mnist" in config_path and "fmnist" not in config_path:
@@ -156,12 +114,14 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         all_dataloaders = ut.get_FashionMNIST_dataloaders(batch_size='full_dataset')
     elif "spiral" in config_path:
         all_dataloaders = ut.get_spiral_dataloaders(batch_size='full_dataset')
+    elif "cifar10" in config_path:
+        all_dataloaders = ut.get_cifar10_dataloaders(batch_size='full_dataset')
     train_dataloader, val_dataloader, test_dataloader, data_generator = all_dataloaders
 
     ##################################################################
     ## Generate plot data
 
-    if 'weights' in variables_to_recompute:
+    if 'weights' in variables_to_save:
         weights_dict = {'initial_weights': {}, 'final_weights': {}}
         for proj in ['H1E_InputE', 'H2E_H1E']:
             proj_key = f"module_dict.{proj}.weight"
@@ -169,21 +129,20 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
             weights_dict['final_weights'][proj] = network.param_history[-1][proj_key]
         ut.save_plot_data(network.name, network.seed, data_key='weights', data=weights_dict, file_path=hdf5_path, overwrite=True)
 
-    if 'average_pop_activity_dict' in variables_to_recompute:
+    if 'average_pop_activity_dict' in variables_to_save:
         average_pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=True, sort=False)
+        average_pop_activity_dict = {k: v.numpy() for k, v in average_pop_activity_dict.items()}
         ut.save_plot_data(network.name, network.seed, data_key='average_pop_activity_dict', data=average_pop_activity_dict, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='pattern_labels', data=pattern_labels, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='unit_labels_dict', data=unit_labels_dict, file_path=hdf5_path, overwrite=True)
 
-    if set(['accuracy','test_loss_history', 'test_accuracy_history', 'test_accuracy_history_extended', 'val_loss_history', 'val_accuracy_history', 'val_history_train_steps']).intersection(variables_to_recompute):
+    if set(['accuracy','test_loss_history', 'test_accuracy_history', 'val_loss_history', 'val_accuracy_history', 'val_history_train_steps']).intersection(variables_to_save):
         ut.save_plot_data(network.name, network.seed, data_key='val_loss_history',          data=network.val_loss_history,          file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='val_accuracy_history',      data=network.val_accuracy_history,      file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps',   data=network.val_history_train_steps,   file_path=hdf5_path, overwrite=True)
-        ut.save_plot_data(network.name, network.seed, data_key='val_history_train_steps_extended', data=network.val_history_train_steps, file_path=hdf5_path, overwrite=True)
         
         ut.save_plot_data(network.name, network.seed, data_key='test_loss_history',         data=network.test_loss_history,         file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history',     data=network.test_accuracy_history,     file_path=hdf5_path, overwrite=True)
-        ut.save_plot_data(network.name, network.seed, data_key='test_accuracy_history_extended', data=network.test_accuracy_history, file_path=hdf5_path, overwrite=True)
 
         pop_activity_dict, pattern_labels, unit_labels_dict = ut.compute_test_activity(network, test_dataloader, class_average=False, sort=True)
         ut.save_plot_data(network.name, network.seed, data_key='sorted_activity_dict', data=pop_activity_dict, file_path=hdf5_path, overwrite=True)
@@ -194,16 +153,16 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         percent_correct = ut.compute_test_accuracy_from_data(output, pattern_labels)
         ut.save_plot_data(network.name, network.seed, data_key='accuracy', data=percent_correct, file_path=hdf5_path, overwrite=True)
         
-    if 'noise_sensitivity' in variables_to_recompute:
+    if 'noise_sensitivity' in variables_to_save:
         noise_stds = np.arange(0, 1.1, 0.1)
         accuracy_list = ut.compute_noise_sensitivity(network, noise_stds=noise_stds)
         ut.save_plot_data(network.name, network.seed, data_key='noise_sensitivity', data=(noise_stds, accuracy_list), file_path=hdf5_path, overwrite=True)
 
-    if 'robustness_to_pruning' in variables_to_recompute:
+    if 'robustness_to_pruning' in variables_to_save:
         fraction_to_prune, accuracy_list = ut.compute_robustness_to_pruning(network, test_dataloader, projections='all')
         ut.save_plot_data(network.name, network.seed, data_key='robustness_to_pruning', data=(fraction_to_prune, accuracy_list), file_path=hdf5_path, overwrite=True)
 
-    if 'final_receptive_fields' in variables_to_recompute:
+    if 'final_receptive_fields' in variables_to_save:
         rf_populations = [population for population in network.populations.values() if population.name == "E" and population.fullname != "InputE"]
         
         initial_state_dict = network.prev_param_history[0]
@@ -221,7 +180,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='final_receptive_fields', data=receptive_fields_dict, file_path=hdf5_path, overwrite=True)
 
     # Sparsity, selectivity, and structure metrics
-    if f"metrics_dict" in variables_to_recompute:
+    if "metrics_dict" in variables_to_save:
         metrics_dict = {}
         initial_receptive_fields_dict = ut.hdf5_to_dict(file_path=hdf5_path, variable_name=f'{network_name}/{network_seed}_{data_seed}/initial_receptive_fields')
         final_receptive_fields_dict = ut.hdf5_to_dict(file_path=hdf5_path, variable_name=f'{network_name}/{network_seed}_{data_seed}/final_receptive_fields')
@@ -238,7 +197,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='metrics_dict', data=metrics_dict, file_path=hdf5_path, overwrite=True)
 
     # Angle vs Backprop
-    if set(['angle_vs_bp','angle_vs_bp_stochastic']).intersection(variables_to_recompute):
+    if set(['angle_vs_bp','angle_vs_bp_stochastic']).intersection(variables_to_save):
         stored_history_step_size = torch.diff(network.param_history_steps)[-1]
         if "mnist" in config_path and "fmnist" not in config_path:
             comparison_config_path = os.path.join(os.path.dirname(config_path), "20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml")
@@ -265,35 +224,45 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         ut.save_plot_data(network.name, network.seed, data_key='angle_vs_bp', data=angles, file_path=hdf5_path, overwrite=True)
 
     # Forward vs Backward weight angle (weight symmetry)
-    if 'feedback_weight_angle_history' in variables_to_recompute:
+    if 'feedback_weight_angle_history' in variables_to_save:
         FF_FB_angles = ut.compute_feedback_weight_angle_history(network)
         ut.save_plot_data(network.name, network.seed, data_key='feedback_weight_angle_history', data=FF_FB_angles, file_path=hdf5_path, overwrite=True)
 
     # Dendritic state (local loss)
-    if 'dendritic_state' in variables_to_recompute:
+    if 'dendritic_state' in variables_to_save:
         steps, binned_mean_forward_dendritic_state = ut.get_binned_mean_population_attribute_history_dict(network, attr_name="forward_dendritic_state", bin_size=100, abs=True)
         dendritic_state = {'steps': steps, 'forward_dendritic_state': binned_mean_forward_dendritic_state}
         if binned_mean_forward_dendritic_state is not None:
             ut.save_plot_data(network.name, network.seed, data_key='dendritic_state', data=dendritic_state, file_path=hdf5_path, overwrite=True)
 
     # Sparsity and selectivity
-    if 'sparsity_history' in variables_to_recompute or 'selectivity_history' in variables_to_recompute:
+    if 'sparsity_history' in variables_to_save or 'selectivity_history' in variables_to_save:
         sparsity_history_dict, selectivity_history_dict = ut.compute_sparsity_selectivity_history(network, test_dataloader)
         ut.save_plot_data(network.name, network.seed, data_key='sparsity_history', data=sparsity_history_dict, file_path=hdf5_path, overwrite=True)
         ut.save_plot_data(network.name, network.seed, data_key='selectivity_history', data=selectivity_history_dict, file_path=hdf5_path, overwrite=True)
 
     # Spiral decision boundary plots
-    if 'spiral_decision_data_dict' in variables_to_recompute:
+    if 'spiral_decision_data_dict' in variables_to_save:
         spiral_decision_data_dict = ut.compute_spiral_decisions_data(network, test_dataloader)
         ut.save_plot_data(network.name, network.seed, data_key='spiral_decision_data_dict', data=spiral_decision_data_dict, file_path=hdf5_path, overwrite=True)
 
     # Network forward dynamics
-    if 'activity_dynamics' in variables_to_recompute:
+    if 'activity_dynamics' in variables_to_save:
         pop_dynamics_dict = ut.compute_test_activity_dynamics(network, test_dataloader)
         ut.save_plot_data(network.name, network.seed, data_key='activity_dynamics', data=pop_dynamics_dict, file_path=hdf5_path, overwrite=True)
 
+    # Load extended network pickle if needed
+    if any('extended' in var for var in variables_to_save):
+        if "cifar10" in config_path:
+            saved_network_path = saved_network_path.replace('.pkl', '_10_epochs.pkl')
+        else:
+            saved_network_path = saved_network_path.replace('.pkl', '_extended.pkl')
+        network = ut.load_network(saved_network_path)
+        ut.save_plot_data(network_name, seed, data_key='val_history_train_steps_extended', data=network.val_history_train_steps, file_path=hdf5_path, overwrite=True)
+        ut.save_plot_data(network_name, seed, data_key='test_accuracy_history_extended', data=network.test_accuracy_history, file_path=hdf5_path, overwrite=True)
 
-def generate_hdf5_all_seeds(model_list, model_dict_all, dataset='mnist', config_path_prefix=None, saved_network_path_prefix=None, hdf5_path_prefix=None, recompute=None, variables_to_save='all'):
+
+def generate_hdf5_all_seeds(model_list, model_dict_all, dataset='MNIST', config_path_prefix=None, saved_network_path_prefix=None, hdf5_path_prefix=None, recompute=None, variables_to_save='all'):
     for model_key in model_list:
         model_dict = model_dict_all[model_key]
         network_name = model_dict['config'].split('.')[0]
@@ -319,8 +288,7 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, dataset='mnist', config_
         if not os.path.exists(hdf5_path):
             # If the hdf5 is not available in local data directory, check in Box drive
             print("Local hdf5 not found, loading data from Box drive")
-            num_parent_dirs = 2 if "extended" in saved_network_path_prefix else 1
-            box_hdf5_dir = pathlib.Path(saved_network_path_prefix).parents[num_parent_dirs] / "2024 Figure data HDF5 files"
+            box_hdf5_dir = pathlib.Path(saved_network_path_prefix).parents[1] / "2024 Figure data HDF5 files"
             box_hdf5_path = box_hdf5_dir / f"plot_data_{network_name}.h5"
             if box_hdf5_path.exists():
                 print(f"Loading hdf5 from Box drive: {box_hdf5_path}")
@@ -329,48 +297,9 @@ def generate_hdf5_all_seeds(model_list, model_dict_all, dataset='mnist', config_
                 print("hdf5 not found in Box drive")
 
         for seed in model_dict['seeds']:
-            extended_flag = '_extended' if "extended" in saved_network_path_prefix else ""
-            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}{extended_flag}.pkl"
+            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}.pkl"
             generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute, variables_to_save)
             gc.collect()
-
-
-def generate_hyperparams_csv(model_dict_all, model_list, save):
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    hyperparams_dict = {}
-
-    for model_key in model_list:
-        config_file = model_dict_all[model_key]['config']
-
-        # build path to config YAML
-        base = os.path.join(project_root, 'EIANN', 'network_config')
-        if 'mnist' in config_file and 'spiral' not in config_file:
-            base = os.path.join(base, 'mnist')
-        elif 'spiral' in config_file:
-            base = os.path.join(base, 'spiral')
-        cfg_path = os.path.join(base, config_file)
-
-        label = model_dict_all[model_key]['display_name']
-        model_cfg = ut.read_from_yaml(cfg_path)
-        proj_cfg = model_cfg.get('projection_config', {})
-        hyperparams_dict[label] = flatten_projection_config(proj_cfg)
-
-    df = pd.DataFrame.from_dict(hyperparams_dict)
-    hyperparam_names = []
-    abbreviated_names = []
-    for param_name in df.index:
-        abbreviation = shorten_label(param_name)
-        hyperparam_names.append(param_name)
-        abbreviated_names.append(abbreviation)
-    # df.insert(0, 'Full name', hyperparam_names)
-    df.insert(0, 'Param name', abbreviated_names)
-
-    # df = df.groupby("Param name", as_index=False).mean(numeric_only=True)
-    df = df.fillna("-")
-
-    out_file = f"data/{save}.csv"
-    df.to_csv(out_file, index=False)
-    print(f"Saved hyperparams table to {out_file}")
 
 
 ########################################################################################################
@@ -394,7 +323,7 @@ def plot_accuracy_all_seeds(data_dict, model_dict, ax, legend=True, extended=Fal
     ax.fill_between(val_steps, avg_accuracy-error, avg_accuracy+error, alpha=0.3, color=model_dict["color"], linewidth=0)
     ax.set_ylim([0,100])
     ax.set_xlabel('Training step')
-    ax.set_ylabel('Test accuracy (%)', labelpad=-2)
+    ax.set_ylabel('Test accuracy (%)', labelpad=-1)
     if legend:
         legend = ax.legend(ncol=1, bbox_to_anchor=(0.2, 0.6), loc='upper left', fontsize=6)
         for line in legend.get_lines():
@@ -528,6 +457,7 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
 
 def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
     if 'dendritic_state' not in data_dict[next(iter(data_dict.keys()))]:
+        print(f"No dendritic state found for {model_dict['display_name']}")
         return
     dendstate_all_seeds = []
     for seed in model_dict['seeds']:
@@ -607,7 +537,7 @@ def plot_angle_FB_all_seeds(data_dict, model_dict, ax, error='std'):
         ax.plot(train_steps, avg_angle, color=model_dict['color'], label=model_dict['label'])
         ax.fill_between(train_steps, avg_angle-error, avg_angle+error, alpha=0.5, color=model_dict['color'], linewidth=0)
     ax.set_xlabel('Training step')
-    ax.set_ylabel('Alignment angle \n(W     vs B)')
+    ax.set_ylabel('Alignment angle \n(W $\\measuredangle$ B)')
     ax.set_xlabel('Training step')
     ax.set_ylim([-5,max(100, np.nanmax(avg_angle+error))])
     ax.set_xlim([-train_steps[-1]/20, train_steps[-1]+1])
@@ -650,83 +580,7 @@ def plot_dimensionality_all_seeds(data_dict, model_dict, ax):
     # ax.tick_params(axis='both', length=0)
 
 
-def plot_dynamics_all_seeds(data_dict, model_dict, ax):
-    dynamics_all_seeds = {}
-    for seed in model_dict['seeds']:
-        pop_dynamics_dict = data_dict[seed]['activity_dynamics']
-        for pop_name, pop_dynamics in pop_dynamics_dict.items():
-            if pop_name not in dynamics_all_seeds:
-                dynamics_all_seeds[pop_name] = []
-            avg_dynamics = np.mean(pop_dynamics, axis=(1,2))
-            avg_dynamics = avg_dynamics/avg_dynamics[-1]
-            dynamics_all_seeds[pop_name].append(avg_dynamics)
-    dynamics_all_seeds = {pop_name:np.array(dynamics) for pop_name, dynamics in dynamics_all_seeds.items()}
-
-    axes = gs.GridSpecFromSubplotSpec(1, 3, subplot_spec=ax, wspace=0.2, hspace=0.2)
-    fig = axes.figure
-    ax_E = fig.add_subplot(axes[0])
-    ax_I = fig.add_subplot(axes[1])
-    all_axes = [ax_E, ax_I]
-
-    E_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in dynamics_all_seeds.items() if 'E' in pop_name and 'Input' not in pop_name}
-    # cmap = plt.get_cmap('Reds')
-    cmap = plt.get_cmap('autumn_r')
-    for i, (pop_name, pop_dynamics) in enumerate(E_populations.items()):
-        avg_dynamics = np.mean(pop_dynamics, axis=(0))
-        error = np.std(pop_dynamics, axis=0)
-        # color = cmap(0.2 + 0.7*i/len(E_populations))
-        color = cmap(0.2 + i/3)
-        ax_E.plot(np.arange(1,16), avg_dynamics, label=pop_name, color=color)
-        ax_E.fill_between(np.arange(1,16), avg_dynamics-error, avg_dynamics+error, alpha=0.2, linewidth=0,  color=color)
-    legend = ax_E.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.3), frameon=False, handlelength=0.8, handletextpad=0.5, columnspacing=1)
-    for line in legend.get_lines():
-        line.set_linewidth(2)
-
-    I_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in dynamics_all_seeds.items() if 'SomaI' in pop_name}
-    # cmap = plt.get_cmap('Blues')
-    cmap = plt.get_cmap('winter_r')
-    for i, (pop_name, pop_dynamics) in enumerate(I_populations.items()):
-        avg_dynamics = np.mean(pop_dynamics, axis=(0))
-        error = np.std(pop_dynamics, axis=0)
-        # color = cmap(0.2 + 0.7*i/len(I_populations))
-        color = cmap(0.2 + i/3)
-        ax_I.plot(np.arange(1,16), avg_dynamics, label=pop_name, color=color)
-        ax_I.fill_between(np.arange(1,16), avg_dynamics-error, avg_dynamics+error, alpha=0.2, linewidth=0,  color=color)
-    legend = ax_I.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0.1, 1.3), frameon=False, handlelength=0.8, handletextpad=0.5, columnspacing=1)
-    for line in legend.get_lines():
-        line.set_linewidth(2)
-
-    DendI_populations = {pop_name:pop_dynamics for pop_name,pop_dynamics in dynamics_all_seeds.items() if 'DendI' in pop_name}
-    if len(DendI_populations) > 0:
-        ax_dendI = fig.add_subplot(axes[2])
-        all_axes.append(ax_dendI)
-
-        # cmap = plt.get_cmap('Blues')
-        cmap = plt.get_cmap('winter_r')
-        for i, (pop_name, pop_dynamics) in enumerate(DendI_populations.items()):
-            avg_dynamics = np.mean(pop_dynamics, axis=(0))
-            error = np.std(pop_dynamics, axis=0)
-            color = cmap(0.2 + i/3)
-            ax_dendI.plot(np.arange(1,16), avg_dynamics, label=pop_name, color=color)
-            ax_dendI.fill_between(np.arange(1,16), avg_dynamics-error, avg_dynamics+error, alpha=0.2, linewidth=0,  color=color)
-        legend = ax_dendI.legend(ncol=3, loc='upper left', bbox_to_anchor=(-0., 1.3), frameon=False, handlelength=0.8, handletextpad=0.5, columnspacing=1)
-        for line in legend.get_lines():
-            line.set_linewidth(2)
-        
-    for ax in all_axes:
-        ax.set_xticks(np.arange(0, 16, 5))
-        ax.set_yticks(np.arange(0, 3.1, 1))
-        ax.set_ylim([-0.1, 3])
-        ax.set_xlim([1, 15])
-        ax.set_xticks([0, 5, 10, 15])
-        ax.set_xlabel('Forward timestep')
-        # ax.set_ylabel('Activity (norm.)')
-    ax_E.set_ylabel('Activity (norm.)')
-    ax_E.set_title(model_dict['label'], rotation=90, x=-0.25, y=0.4, va='center')
-
-
-def plot_confusion_all_seeds(data_dict, model_dict, ax):
-    population = 'H1E'
+def plot_confusion_all_seeds(data_dict, model_dict, ax, population):
     between_class_similarity = {label: [] for label in range(10)}
     between_class_similarity_all = []
     for seed in model_dict['seeds']:
@@ -764,373 +618,6 @@ def plot_confusion_all_seeds(data_dict, model_dict, ax):
 ########################################################################################################
 # Multi-panel figure generation
 ########################################################################################################
-
-
-def generate_fig6(model_dict_all, model_list1, model_list2, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 2.4))
-    axes = gs.GridSpec(nrows=2, ncols=3, figure=fig,                    
-                       left=0.28,right=0.95,
-                       top=0.92, bottom = 0.15,
-                       wspace=0.6, hspace=0.8)
-    ax_accuracy1 = fig.add_subplot(axes[0,0])
-    ax_angle_vs_BP1 = fig.add_subplot(axes[0,1])
-    ax_FB_angle1 = fig.add_subplot(axes[0,2])
-    ax_accuracy2 = fig.add_subplot(axes[1,0])
-    ax_angle_vs_BP2 = fig.add_subplot(axes[1,1])
-    ax_FB_angle2 = fig.add_subplot(axes[1,2])
-
-    all_models = list(dict.fromkeys(model_list1 + model_list2))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-    model_dict_all["bpLike_WT_hebbdend"]["label"] = "LDS"
-
-    for i, model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-            if model_key in model_list1:
-                ax_accuracy = ax_accuracy1
-                ax_angle_vs_BP = ax_angle_vs_BP1
-                ax_FB_angle = ax_FB_angle1
-            if model_key in model_list2:
-                ax_accuracy = ax_accuracy2
-                ax_angle_vs_BP = ax_angle_vs_BP2
-                ax_FB_angle = ax_FB_angle2
-            plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle_vs_BP, error='std')
-            plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angle, error='std')
-
-    legend = ax_accuracy1.legend(ncol=3, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
-    for line in legend.get_lines():
-        line.set_linewidth(1.5)
-    legend = ax_accuracy2.legend(ncol=3, bbox_to_anchor=(-0.1, 1.3), loc='upper left')
-    for line in legend.get_lines():
-        line.set_linewidth(1.5)
-
-    if save is not None:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-
-
-
-def generate_figS1(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=False):
-    fig = plt.figure(figsize=(5.5, 4))
-    axes = gs.GridSpec(nrows=len(model_list), ncols=1, figure=fig,                       
-                       left=0.1,right=0.95,
-                       top=0.95, bottom=0.2,
-                       wspace=1, hspace=0.8)
-    
-    all_models = model_list
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    for i, model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")    
-            plot_dynamics_all_seeds(data_dict, model_dict, ax=axes[i])
-
-    if save is not None:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-            
-
-def generate_figS2(model_dict_all, model_list_heatmaps, model_list_metrics, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 9))
-    axes = gs.GridSpec(nrows=4, ncols=6, figure=fig,                       
-                       left=0.049,right=0.98,
-                       top=0.95, bottom = 0.5,
-                       wspace=0.15, hspace=0.5)
-    
-    metrics_axes = gs.GridSpec(nrows=4, ncols=1, figure=fig,                     
-                       left=0.6,right=0.78,
-                       top=0.95, bottom = 0.5,
-                       wspace=0., hspace=0.5)
-    ax_accuracy    = fig.add_subplot(metrics_axes[0, 0])  
-    ax_selectivity = fig.add_subplot(metrics_axes[1, 0])
-
-    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-    model_dict_all["bpDale_fixed"]["label"] = "Backprop (fixed I)"
-    model_dict_all["bpDale_learned"]["label"] = "Backprop (learned I)"
-    model_dict_all["HebbWN_topsup"]["label"] = "Hebb (learned I)"
-
-    col = 0
-    for model_key in all_models:
-        model_dict = model_dict_all[model_key]
-        config_path = config_path_prefix + model_dict['config']
-        pickle_basename = "_".join(model_dict['config'].split('_')[0:-2])
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            
-            print(f"Generating plots for {model_dict['label']}")
-            seed = model_dict['seeds'][0] # example seed to plot
-            average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-            populations_to_plot = [population for population in average_pop_activity_dict if 'SomaI' in population]
- 
-            if model_key in model_list_heatmaps:
-                for row,population in enumerate(populations_to_plot):
-                    ## Activity plots: batch accuracy of each population to the test dataset
-                    ax = fig.add_subplot(axes[row, col])
-                    pop_activity = average_pop_activity_dict[population][:]
-                    num_units = pop_activity.shape[1]
-
-                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, sort=True, population=population, ax=ax, cbar=False)
-                    ax.set_yticks([0,num_units-1])
-                    ax.set_yticklabels([1,num_units])
-                    ax.set_ylabel(f'{population} unit', labelpad=-1)
-                    if row==0:
-                        ax.set_title(model_dict["label"])
-                    if col>0:
-                        ax.set_ylabel('')
-                        ax.set_yticklabels([])
-                col += 1
-
-            if model_key in model_list_metrics:
-                plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                legend = ax_accuracy.legend(ncol=1, bbox_to_anchor=(1., 1.), loc='upper left', fontsize=6)
-                for line in legend.get_lines():
-                    line.set_linewidth(1.5)
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=populations_to_plot, ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
-    
-
-    if save:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.tiff", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-
-
-def generate_figS3(model_dict_all, model_list, population, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
-    fig = plt.figure(figsize=(5.5, 5))
-    axes = gs.GridSpec(nrows=3, ncols=4, figure=fig,
-                       left=0.07,right=0.94,
-                       top=0.93, bottom = 0.1,
-                       wspace=0.5, hspace=0.3,
-                       height_ratios=[2,1,1])
-
-    all_models = list(dict.fromkeys(model_list))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    if "bpLike_WT_hebbdend" in model_dict_all: # Update model label for this figure
-        model_dict_all["bpLike_WT_hebbdend"]["display_name"] = "Dendritic Target \nPropagation (LDS)"
-        
-    for i,model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['display_name']}")
-
-            example_seed = model_dict['seeds'][-1] # example seed to plot
-            # fig.suptitle(f"{population} {example_seed}", fontsize=9, x=0.5, y=0.99)
-
-            # Example receptive fields
-            receptive_fields = torch.tensor(np.array(data_dict[example_seed][f"maxact_receptive_fields_{population}"]))
-            num_units = 50
-            temp_ax = fig.add_subplot(axes[0, i])
-            pos = temp_ax.get_position()
-            
-            rf_axes = fig.add_gridspec(10,5,left=pos.x0, right=pos.x1, bottom=pos.y0, top=pos.y1, wspace=0.1, hspace=0.1)
-            ax_list = []
-            for j in range(num_units):
-                _ax = fig.add_subplot(rf_axes[j])
-                ax_list.append(_ax)
-                
-            average_pop_activity_dict = data_dict[example_seed]['average_pop_activity_dict']
-            preferred_classes = np.argmax(average_pop_activity_dict[population], axis=0)
-            im = pt.plot_receptive_fields(receptive_fields, sort=True, ax_list=ax_list, preferred_classes=preferred_classes, class_labels=False)
-            height = _ax.get_position().y1 - _ax.get_position().y0
-            width = _ax.get_position().x1 - _ax.get_position().x0
-            cax = fig.add_axes([_ax.get_position().x1+width/5, _ax.get_position().y0, width/5, 1.5*height])
-            fig.colorbar(im, cax=cax, orientation='vertical')
-            ax_list[2].set_title(model_dict["display_name"])
-            for label in range(10):
-                temp_ax.text(-0.1, label*0.101+0.04, str(9-label), fontsize=7, ha='center', va='center')
-            if i==0:
-                temp_ax.set_title('Unit tuning\n(label of max avg. activity)', x=-0.31, rotation=90, y=0.45, ha='center', va='center', fontsize=7)
-            temp_ax.axis('off')
-
-            # Draw an arrow below the x-axis
-            new_ax = fig.add_axes([temp_ax.get_position().x0, temp_ax.get_position().y0-0.035, temp_ax.get_position().x1-temp_ax.get_position().x0, 0.05])
-            new_ax.set_ylim(-0.5, 0.5)
-            new_ax.axis('off')
-            new_ax.arrow(0, 0, 1, 0, head_width=0.2, head_length=0.1, facecolor='k', edgecolor='k', linewidth=1)     
-            new_ax.text(0.5, -0.3, "Example units", fontsize=7, ha='center', va='center')                          
-
-            # Receptive field similarity (for each unit)
-            ax = fig.add_subplot(axes[1, i])
-            between_class_similarity = {label: [] for label in range(10)}
-            between_class_similarity_all = []
-            for seed in model_dict['seeds']:
-                # Calculate the receptive field similarity for each unit (the histogram will pool data across all model seeds)
-                unit_labels_dict = data_dict[seed]['unit_labels_dict']
-                unit_labels = unit_labels_dict[population][:]
-                idx = np.argsort(unit_labels)
-                unit_labels = unit_labels[idx]
-
-                # receptive_fields = np.array(data_dict[seed][f"maxact_receptive_fields_{population}"])
-                # sorted_receptive_fields = receptive_fields[idx]
-                
-                # Alternative 1: compare unit activities (class averaged)
-                average_pop_activity = np.array(data_dict[seed]['average_pop_activity_dict'][population][:]).T
-                sorted_receptive_fields = average_pop_activity[idx]
-
-                # # Alternative 2: compare unit activities (full)
-                # pop_activity_dict = data_dict[seed]['sorted_activity_dict']
-                # unit_labels = data_dict[seed]['sorted_unit_labels_dict'][population][:]
-                # sorted_receptive_fields = np.array(pop_activity_dict[population][:]).T
-
-                rf_similarity = cosine_similarity(sorted_receptive_fields)
-                np.fill_diagonal(rf_similarity, 0) # remove self-similarity
-
-                # Plot the receptive field similarity matrix for the example seed
-                if seed == example_seed:
-                    masked_rf_similarity = np.ma.masked_array(rf_similarity, mask=~np.tril(np.ones(rf_similarity.shape), k=-1).astype(bool))
-                    im = ax.imshow(masked_rf_similarity, interpolation="nearest", cmap='bwr', vmin=-1, vmax=1)
-                    ax.set_xlabel(f"{population} unit")
-                    ax.set_ylabel(f"{population} unit")
-                    if i==len(all_models)-1:
-                        cax = fig.add_axes([ax.get_position().x1+0.005, ax.get_position().y0, 0.01, ax.get_position().height])
-                        fig.colorbar(im, cax=cax, orientation='vertical')
-                        cax.set_yticks([-1, 1])
-                        # cax.set_yticks([0, 1])
-                        cax.set_ylabel('Receptive field\ncosine similarity', rotation=270, labelpad=5)
-                
-                # Calculate within-class and between-class receptive field similarity (accumulate across all seeds)
-                for label in range(10):
-                    class_idx = np.where(unit_labels == label)[0]
-                    # within_class_values = np.max(rf_similarity[class_idx,:][:, class_idx], axis=1)
-                    # between_class_values = np.max(rf_similarity[class_idx,:][:, ~class_idx], axis=1)
-                    
-                    max_activity_outside_class = np.max(sorted_receptive_fields[class_idx][:, np.arange(10)!=label], axis=1)
-                    mean_activity_outside_class = np.mean(sorted_receptive_fields[class_idx][:, np.arange(10)!=label], axis=1)
-                    confusion_ratio = max_activity_outside_class / (mean_activity_outside_class + 1e-10)
-
-                    between_class_similarity_all.extend(confusion_ratio)
-                    between_class_similarity[label].extend(confusion_ratio)
-                    if len(class_idx) > 0: # Add triangle to indicate units within the same class
-                        class_boundary_start = class_idx[0]
-                        class_boundary_end = class_idx[-1]+1
-                        top = (class_boundary_start-0.5, class_boundary_start-0.5)
-                        bottom = (class_boundary_start-0.5, class_boundary_end-0.5)
-                        right = (class_boundary_end-0.5, class_boundary_end-0.5)
-                        if seed == example_seed:
-                            # cmap = plt.colormaps['tab20']
-                            # ax.add_patch(matplotlib.patches.Polygon([bottom, top, right], fill=False, edgecolor=cmap(i), linewidth=0.3))
-                            ax.add_patch(matplotlib.patches.Polygon([bottom, top, right], fill=False, edgecolor='k', linewidth=0.3))
-            
-            # Bar graph of mean within and between class similarities for each class
-            ax = fig.add_subplot(axes[2, i])
-            for label in range(10):
-                mean_val = np.mean(between_class_similarity[label])
-                std_val = np.std(between_class_similarity[label])
-                ax.bar(label + 0.2, mean_val, width=0.4, label='Between-class' if label==0 else None, color='steelblue', alpha=0.8)
-                ax.errorbar(label + 0.2, mean_val, yerr=std_val, fmt='none', ecolor='gray', capsize=0, linewidth=0.5)
-            ax.set_ylabel('Confusion ratio \n(max/mean act. out-of-class)')
-            ax.set_xticks(range(10))
-            ax.set_xticklabels(range(10))
-            ax.set_ylim(0, 8)
-            # if i==0:
-            #     ax.legend(loc='upper left', fontsize=6, ncol=2, bbox_to_anchor=(0., -0.1))
-
-            # # Histogram of receptive field similarity
-            # ax = fig.add_subplot(axes[2, i])
-            # ax.hist(between_class_similarity_all, bins=30, density=True)
-            # ax.set_xlabel('Max out-of-class similarity')
-            # ax.set_ylabel('Density')
-            # ax.set_xlim(min(-0.2, np.min(between_class_similarity_all)), max(1, np.max(between_class_similarity_all)))
-
-    if save:
-        fig.savefig(f"figures/{save}_{population}.png", dpi=300)
-        fig.savefig(f"figures/{save}_{population}.svg", dpi=300)
-
-
-def generate_model_summary_table(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/saved_network_pickles/mnist/", save=None, recompute=None):
-    mm = 1/25.4 #convert mm to inches
-    num_rows = len(model_list)
-    fig_height = num_rows*6.5*mm + 10*mm
-    fig, ax = plt.subplots(figsize=(180*mm, fig_height))
-    # fig, ax = plt.subplots(figsize=(5.5, 9))
-    ax.axis('off')
-
-    all_models = list(dict.fromkeys(model_list))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    columns = {'display_name': 0.17, 'Architecture': 0.12, 
-               'Hidden Layers': 0.12, 'Algorithm': 0.12, 
-               'W Learning Rule': 0.17, 'B Learning Rule': 0.17, 'Bias': 0.08}
-    table_vals = []
-
-    for i,model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        network_table_vals = [model_dict[col] for col in columns.keys() if col in model_dict]
-        with h5py.File(hdf5_path, 'r') as f:
-            # print(f"Generating table for {network_name}")
-            data_dict = f[network_name]
-
-            # Get the accuracy for each seed
-            accuracy_all_seeds = []
-            for seed in model_dict['seeds']:
-                accuracy_all_seeds.append(data_dict[seed]['test_accuracy_history'][-1])
-            avg_accuracy = np.mean(accuracy_all_seeds)
-            std_accuracy = np.std(accuracy_all_seeds)
-            sem_accuracy = std_accuracy / np.sqrt(len(accuracy_all_seeds))
-
-            accuracy_all_seeds_extended = []
-            for seed in model_dict['seeds']:
-                accuracy_all_seeds_extended.append(data_dict[seed]['test_accuracy_history_extended'][-1])
-            avg_accuracy_extended = np.mean(accuracy_all_seeds_extended)
-            std_accuracy_extended = np.std(accuracy_all_seeds_extended)
-            sem_accuracy_extended = std_accuracy_extended / np.sqrt(len(accuracy_all_seeds_extended))
-
-            if 'MNIST' in saved_network_path_prefix:
-                new_column_labels = ['MNIST Accuracy \n(20k samples)', 
-                                     'MNIST Accuracy \n(50k samples)']
-                network_table_vals += [f"{avg_accuracy:.2f} \u00b1 {sem_accuracy:.2f}", 
-                                       f"{avg_accuracy_extended:.2f} \u00b1 {sem_accuracy_extended:.2f}"]
-            elif 'spiral' in saved_network_path_prefix:
-                new_column_labels = ['Spiral Accuracy \n(1 epoch)', 
-                                     'Spiral Accuracy \n(10 epochs)']
-                network_table_vals += [f"{avg_accuracy:.2f} \u00b1 {sem_accuracy:.2f}", 
-                                       f"{avg_accuracy_extended:.2f} \u00b1 {sem_accuracy_extended:.2f}"]
-                
-        table_vals.append(network_table_vals)
-
-    column_labels = list(columns.keys()) + new_column_labels
-    column_labels[0] = ""
-    col_widths = list(columns.values()) + [0.14, 0.14]
-    
-    table = ax.table(cellText=table_vals, colLabels=column_labels, cellLoc="center", loc="center", colWidths=col_widths)
-    table.auto_set_font_size(False)
-    
-    for key, cell in table.get_celld().items():
-        cell.set_linewidth(0)
-        cell.set_height(cell.get_height() * 1.5)
-        cell.set_text_props(fontname='Arial', fontsize=6)
-        if key[0] == 0: # Header row
-            cell.set_facecolor([0.9 for i in range(3)])
-            cell.set_text_props(weight='bold')
-            cell.set_height(cell.get_height() * 1.2)
-        elif key[0] % 2 == 0: # Even rows
-            cell.set_facecolor([0.96 for i in range(3)]) # make even rows light grey
-
-        if key[1] == 0: # First column
-            cell.set_text_props(horizontalalignment='left', weight='semibold')
-
-    if save:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-        fig.savefig(f"figures/{save}.tiff", dpi=300)
 
 
 def generate_hyperparams_table(csv_filename, save):
@@ -1194,6 +681,7 @@ def compare_RSM_properties(model_dict_all, model_list_heatmaps, model_list_metri
     
     all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
     generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
+    from sklearn.metrics.pairwise import cosine_similarity
 
     for row, model_key in enumerate(all_models):
         model_dict = model_dict_all[model_key]
@@ -1323,300 +811,6 @@ def compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, c
         fig.savefig(f"figures/{save}.svg", dpi=300)
 
 
-def generate_metrics_plot(model_dict_all, model_list, config_path_prefix="network_config/mnist/", saved_network_path_prefix="data/mnist/", save=None, recompute=None): 
-    # fig = plt.figure(figsize=(5.5, 4))
-    fig = plt.figure(figsize=(7, 4))
-
-    axes = gs.GridSpec(nrows=4, ncols=4, figure=fig, bottom=0.1, top=0.9, left=0.1, right=0.8, hspace=0.5, wspace=0.5)
-    ax_accuracy = fig.add_subplot(axes[0,0])
-    ax_structure = fig.add_subplot(axes[0,1])
-    ax_dendstate = fig.add_subplot(axes[0,2])
-    ax_angleBP_stoch = fig.add_subplot(axes[1,2])
-    ax_sparsity = fig.add_subplot(axes[1,0])
-    ax_selectivity = fig.add_subplot(axes[1,1])
-    ax_FB_angles = fig.add_subplot(axes[2,0])
-    ax_angleBP = fig.add_subplot(axes[2,1])
-    ax_sparsity_hist = fig.add_subplot(axes[3,0])
-    ax_selectivity_hist = fig.add_subplot(axes[3,1])
-    ax_error_hist = fig.add_subplot(axes[3,2])
-
-    all_models = list(dict.fromkeys(model_list))
-    for model_key in all_models:
-        model_dict = model_dict_all[model_key]
-        config_path = config_path_prefix + model_dict['config']
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        for seed in model_dict['seeds']:
-            saved_network_path = saved_network_path_prefix + network_name + f"_{seed}.pkl"
-            generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=recompute)
-            gc.collect()
-
-    for i,model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-
-            plot_angle_FB_all_seeds(data_dict, model_dict, ax=ax_FB_angles)
-            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angleBP, stochastic=False)
-            plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angleBP_stoch, stochastic=True)
-            plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-            plot_error_all_seeds(data_dict, model_dict, ax=ax_error_hist)
-            plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
-
-            if 'H1E' in data_dict[seed]['sparsity_history'] and 'H2E' in data_dict[seed]['sparsity_history']:
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_selectivity, metric_name='selectivity', plot_type='violin')
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_sparsity, metric_name='sparsity', plot_type='violin')
-                plot_metric_all_seeds(data_dict, model_dict, populations_to_plot=['H1E','H2E'], ax=ax_structure, metric_name='structure', plot_type='violin')
-
-                # Sparsity history
-                val_steps = data_dict[seed]['val_history_train_steps'][:]
-                sparsity_history_all_seeds = []
-                for seed in data_dict:
-                    H1E_sparsity_history = data_dict[seed]['sparsity_history']['H1E'][:]
-                    H2E_sparsity_history = data_dict[seed]['sparsity_history']['H2E'][:]
-                    sparsity_history = np.mean(np.stack([H1E_sparsity_history, H2E_sparsity_history]), axis=0)
-                    sparsity_history_all_seeds.append(sparsity_history)
-                avg_sparsity = np.mean(sparsity_history_all_seeds, axis=0)
-                std_sparsity = np.std(sparsity_history_all_seeds, axis=0)
-                ax_sparsity_hist.plot(val_steps, avg_sparsity, label=f"{model_dict['label']}", color=model_dict["color"])
-                ax_sparsity_hist.fill_between(val_steps, avg_sparsity-std_sparsity, avg_sparsity+std_sparsity, alpha=0.2, color=model_dict["color"], linewidth=0)
-                ax_sparsity_hist.set_xlabel('Training step')
-                ax_sparsity_hist.set_ylabel('Sparsity')
-                ax_sparsity_hist.set_ylim([0,1])
-
-                # Selectivity history
-                selectivity_history_all_seeds = []
-                for seed in data_dict:
-                    H1E_selectivity_history = data_dict[seed]['selectivity_history']['H1E'][:]
-                    H2E_selectivity_history = data_dict[seed]['selectivity_history']['H2E'][:]
-                    selectivity_history = np.mean(np.stack([H1E_selectivity_history, H2E_selectivity_history]), axis=0)
-                    selectivity_history_all_seeds.append(selectivity_history)
-                avg_selectivity = np.mean(selectivity_history_all_seeds, axis=0)
-                std_selectivity = np.std(selectivity_history_all_seeds, axis=0)
-                ax_selectivity_hist.plot(val_steps, avg_selectivity, label=f"{model_dict['label']}", color=model_dict["color"])
-                ax_selectivity_hist.fill_between(val_steps, avg_selectivity-std_selectivity, avg_selectivity+std_selectivity, alpha=0.2, color=model_dict["color"], linewidth=0)
-                ax_selectivity_hist.set_xlabel('Training step')
-                ax_selectivity_hist.set_ylabel('Selectivity')
-                ax_selectivity_hist.set_ylim([0,1])
-
-    if save:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-
-
-def generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='scatter', config_path_prefix="network_config/spiral/", saved_network_path_prefix="data/spiral/", save=None, recompute=None):
-    '''
-    Plotting function for spiral dataset.
-    Parameter ```spiral_type``` can be:
-    - 'scatter': datapoints with incorrect preductions marked in red
-    - 'decison': decision boundary map of the network's predictions
-    '''
-    cols = max(len(model_list_heatmaps), 3)
-
-    fig = plt.figure(figsize=(cols * 3, cols * 2.5))
-    axes = gs.GridSpec(nrows=3, ncols=cols, figure=fig,                    
-                       left=0.03, right=0.97,
-                       top=0.95, bottom=0.5,
-                       wspace=0.5, hspace=0.7)
-
-    spirals_row =   0
-    heatmaps_row =  1 
-    ax_accuracy =   fig.add_subplot(axes[2, 0])  
-    ax_angle =      fig.add_subplot(axes[2, 1])
-    ax_dendstate =  fig.add_subplot(axes[2, 2])
-
-    all_models = list(dict.fromkeys(model_list_heatmaps + model_list_metrics))
-    generate_hdf5_all_seeds(all_models, model_dict_all, config_path_prefix, saved_network_path_prefix, recompute=recompute)
-
-    for model_idx, model_key in enumerate(all_models):
-        model_dict = model_dict_all[model_key]
-        network_name = model_dict['config'].split('.')[0]
-        hdf5_path = f"data/model_hdf5_plot_data/plot_data_{network_name}.h5"
-        with h5py.File(hdf5_path, 'r') as f:
-            data_dict = f[network_name]
-            print(f"Generating plots for {model_dict['label']}")
-            seed = model_dict['seeds'][0] # example seed to plot
-
-            # Plot heatmaps and spirals
-            if model_key in model_list_heatmaps:
-                ax = fig.add_subplot(axes[heatmaps_row, model_idx])
-                if model_key != "vanBP_0_hidden_learned_bias_spiral":
-                    population = 'H2E'
-                    # populations_to_plot = [population for population in data_dict[seed]['average_pop_activity_dict']]
-                    # Activity plots: batch accuracy of each population to the test dataset
-                    average_pop_activity_dict = data_dict[seed]['average_pop_activity_dict']
-                    pt.plot_batch_accuracy_from_data(average_pop_activity_dict, population=population, ax=ax, cbar=False)
-                    ax.set_aspect('auto')
-                    ax.set_yticks([0,average_pop_activity_dict[population].shape[0]-1])
-                    ax.set_yticklabels([1,average_pop_activity_dict[population].shape[0]])
-                    ax.set_ylabel(f'{population} unit', labelpad=-8)
-                    ax.set_title(model_dict["label"], pad=3)
-
-                # Plot spirals
-                ax = fig.add_subplot(axes[spirals_row, model_idx])
-                decision_data = data_dict[seed]['spiral_decision_data_dict']
-                pt.plot_spiral_decisions(decision_data, graph=spiral_type, ax=ax)
-                ax.set_aspect('equal')
-                ax.set_title(model_dict["label"], pad=4)
-                ax.set_xlabel('x1')
-                ax.set_ylabel('x2')
-
-            # Plot metrics
-            if model_key in model_list_metrics:                
-                plot_accuracy_all_seeds(data_dict, model_dict, ax=ax_accuracy)
-                plot_dendritic_state_all_seeds(data_dict, model_dict, ax=ax_dendstate)
-                plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax=ax_angle)
-
-    plt.tight_layout(rect=[0, 0.5, 1, 0.95])
-
-    if save:
-        fig.savefig(f"figures/{save}.png", dpi=300)
-        fig.savefig(f"figures/{save}.svg", dpi=300)
-
-
-
-########################################################################################################
-# Helper functions
-########################################################################################################
-
-def flatten_projection_config(projection_config):
-    """
-    Traverse the projection_config dict and extract weight_init_args, learning_rate, and theta_tau.
-    Returns a dict mapping flattened keys to their values.
-    """
-    model_hyperparams = {}
-    
-    def recurse(node, path): 
-        for key, val in node.items():
-            if isinstance(val, dict):
-                if 'weight_init' in val:
-                    projection_name = "".join(path + [key])
-                    if projection_name == "OutputEInputE":
-                        # Replace to avoid redundant rows in the final table
-                        projection_name = "OutputEH2E"
-
-                    if 'weight_init_args' in val:
-                        model_hyperparams[f"{projection_name} $_{{\mathrm{{init}}}}$"] = val['weight_init_args'][0]
-                    
-                    if 'learning_rule_kwargs' in val:
-                        learning_rule_kwargs = val['learning_rule_kwargs']
-                        model_hyperparams[f"{projection_name} $\eta$"] = learning_rule_kwargs['learning_rate']
-
-                        if 'theta_tau' in learning_rule_kwargs:
-                            model_hyperparams[f"{projection_name} $\\tau_{{\\theta}}$"] = learning_rule_kwargs['theta_tau']
-                    
-                        if 'temporal_discount' in learning_rule_kwargs:
-                            model_hyperparams[f"{projection_name} BTSP $\lambda$"] = val['learning_rule_kwargs']['temporal_discount']
-
-                        if 'k' in learning_rule_kwargs:
-                            model_hyperparams[f"{projection_name} BCM k"] = learning_rule_kwargs['k']
-
-                        if 'BTSP' in val['learning_rule']:
-                            model_hyperparams[f"{projection_name} BTSP W$_{{\mathrm{{max}}}}$"] = val['weight_bounds'][1]
-
-                    if 'weight_constraint' in val:
-                        if val['weight_constraint'] == 'normalize_weight':
-                            model_hyperparams[f"{projection_name} $_{{\mathrm{{sum}}}}$"] = val['weight_constraint_kwargs']['scale']
-
-                        if val['weight_constraint'] == 'clone_weight':
-                            model_hyperparams[f"{projection_name} $_{{\mathrm{{scale}}}}$"] = val['weight_constraint_kwargs']['scale']
-
-                recurse(val, path + [key]) # Keep recursive traversal until we get to the args
-
-    recurse(projection_config, []) 
-    return model_hyperparams
-
-
-def shorten_label(name):
-    """
-    Map full hyperparam key to abbreviated form using W, B, Q, Y, R rules.
-    
-    Parameters:
-    -----------
-    name : str
-        The full hyperparameter name to be shortened
-    
-    Returns:
-    --------
-    str
-        Shortened label based on specific connectivity patterns
-    """
-    # Split name into prefix and suffix parts
-    parts = name.split(' ', 1)
-    if len(parts) != 2:
-        return name
-    prefix, param_name = parts
-
-    # Parse connectivity pattern using regex
-    pattern = r'^(Input|Output|H\d+)(E|DendI|SomaI)(Input|Output|H\d+)(E|DendI|SomaI)$'
-    match = re.match(pattern, prefix)
-    if not match:
-        return name
-    
-    # Extract layer and cell types for pre and post components
-    post_layer, post_cell, pre_layer, pre_cell = match.groups()
-
-    def get_layer_index(layer):
-        """Convert layer name to a numeric index for comparison"""
-        if layer == 'Input':
-            return 0
-        if layer == 'Output':
-            return float('inf') # Output layer is considered the highest
-        if layer.startswith('H'):
-            return int(layer[1:])
-        return float('nan')
-
-    # Determine connection type code and details based on connectivity pattern
-    pre_layer_idx = get_layer_index(pre_layer)
-    post_layer_idx = get_layer_index(post_layer)
-    if post_layer_idx > pre_layer_idx:
-        direction = 'forward'
-    elif post_layer_idx < pre_layer_idx:
-        direction = 'backward'
-    elif post_layer_idx == pre_layer_idx:
-        direction = 'lateral'
-
-    pre_type = 'E' if pre_cell=='E' else 'I'
-    post_type = 'E' if post_cell=='E' else 'I'
-
-    match direction, pre_type, post_type:
-        case 'forward','E','E':
-            proj_name = 'W'
-            details = f'({post_layer})'
-        case 'forward','E','I':
-            proj_name = 'W'
-            details = f'({post_cell}, {post_layer})'
-
-        case 'backward','E','E':
-            proj_name = 'B'
-            details = f'({post_layer})'
-
-        case 'lateral','E','I':
-            proj_name = 'Q'
-            details = f'({post_cell}, {post_layer})'
-        case 'lateral','I','E':
-            proj_name = 'Y'
-            details = f'({pre_cell}, {pre_layer})'
-        case 'lateral','I','I':
-            proj_name = 'R'
-            details = f'({post_cell}, {post_layer})'
-        case _:
-            return name  # Default case for unmatched patterns
-        
-    # Return the shortened form
-    if '\eta' in param_name:
-        return f"{param_name}, {proj_name} {details}"
-    elif any(k in param_name for k in ('\\theta','gamma','lambda','BCM','BTSP')):
-        return f"{param_name}, {details}"
-    else:
-        return f"{proj_name}{param_name} {details}"
-    
-
-
-
 ########################################################################################################
 # Main script
 ########################################################################################################
@@ -1645,121 +839,6 @@ def main(figure, recompute):
         model_dict_all[model_key]["seeds"] = seeds
 
 
-    #-------------- Main Figures --------------
-
-    if figure == "all":
-        # Generate HDF5 files for all models
-        all_models = list(model_dict_all.keys())[9:]
-        all_mnist_models = [model_key for model_key in all_models if "spiral" not in model_key]
-        generate_hdf5_all_seeds(all_mnist_models, model_dict_all, config_path_prefix="network_config/mnist/", saved_network_path_prefix=saved_network_path_prefix+"MNIST/", recompute=recompute)
-        all_spiral_models = [model_key for model_key in all_models if "spiral" in model_key]
-        generate_hdf5_all_seeds(all_spiral_models, model_dict_all, config_path_prefix="network_config/spiral/", saved_network_path_prefix=saved_network_path_prefix+"spiral/", recompute=recompute)
-        recompute = None
-
-    # Forward (W) vs backward (B) alignment angle
-    if figure in ["all", "fig6"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list1 = ["bpLike_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend"]
-        model_list2 = ["BTSP_WT_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-        figure_name = "Fig6_WB_alignment_FA_bpLike_BTSP"
-        generate_fig6(model_dict_all, model_list1, model_list2, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-
-    #-------------- Supplementary Figures --------------
-
-    # S1: Population activity dynamics
-    if figure in ['all', "S1"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list = ["bpDale_learned", "HebbWN_topsup", "bpLike_WT_hebbdend"]
-        figure_name = "FigS1_dynamics"
-        generate_figS1(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-                  
-    # Analyze somaI selectivity (S2: supplement to Fig.2)
-    if figure in ["all", "S2"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list_heatmaps = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "FigS2_somaI"
-        generate_figS2(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-    # Extended receptive field comparison
-    if figure in ["all", "S3"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list = ["bpDale_learned", "bpDale_fixed", "HebbWN_topsup", "bpLike_WT_hebbdend"]
-        figure_name = "FigS3_receptive_fields"
-        generate_figS3(model_dict_all, model_list, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-        generate_figS3(model_dict_all, model_list, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-    # Extended fig5: receptive fields in biological learning rules
-    if figure in ["all", "S5"]:
-        saved_network_path_prefix += "MNIST/"
-        model_list = ["BTSP_WT_hebbdend", "Supervised_BCM_WT_hebbdend","SupHebbTempCont_WT_hebbdend"]
-        figure_name = "FigS5_biorule_receptive_fields"
-        generate_figS3(model_dict_all, model_list, population='H1E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-        generate_figS3(model_dict_all, model_list, population='H2E', save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-    #-------------- Supplementary Tables --------------
-
-
-    if figure in ["all", "T3"]:
-        # csv_filename = "data/FigT3_mnist_hyperparams.csv"
-        # figure_name = "FigT3_mnist_hyperparams_all"
-        # generate_hyperparams_table(csv_filename, save=figure_name)
-
-        csv_filename = "data/FigT3_mnist_hyperparams1.csv"
-        figure_name = "FigT3_mnist_hyperparams1"
-        generate_hyperparams_table(csv_filename, save=figure_name)
-
-    if figure in ["all", "T4"]:
-        csv_filename = "data/FigT3_mnist_hyperparams2.csv"
-        figure_name = "FigT4_mnist_hyperparams2"
-        generate_hyperparams_table(csv_filename, save=figure_name)
-
-    if figure in ["all", "T5"]:
-        csv_filename = "data/FigT3_mnist_hyperparams3.csv"
-        figure_name = "FigT5_mnist_hyperparams3"
-        generate_hyperparams_table(csv_filename, save=figure_name)
-
-    if figure in ["all", "T6"]:
-        csv_filename = "data/FigT4_spiral_hyperparams.csv"
-        figure_name = "FigT6_spiral_hyperparams"
-        generate_hyperparams_table(csv_filename, save=figure_name)
-
-    if figure in ["all", "T7"]:
-        saved_network_path_prefix += "FMNIST/"
-        figure_name = "FigT7_fmnist_table"
-        model_list = ["fmnist_DTP_TCWN_hebbdend", "fmnist_DTP_WT_hebbdend", "fmnist_BTSP_TCWN_hebbdend", "fmnist_BTSP_WT_nobias_hebbdend", 
-                      "fmnist_vanBP_nobias", "fmnist_bpDale_nobias", "fmnist_0hidden_vanBP_nobias", "fmnist_fixed_vanBP_nobias"]
-        generate_model_summary_table(model_dict_all, model_list, saved_network_path_prefix=saved_network_path_prefix+"extended/", config_path_prefix="network_config/fmnist/", save=figure_name, recompute=recompute)
-
-
-    if figure in ["all", "hyperparams"]:
-        model_list = ["vanBP", "vanBP_fixed_hidden", "vanBP_0hidden", "bpDale_fixed", "bpDale_learned", "bpDale_noI", "HebbWN_topsup",
-                      "bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend",
-                      "BTSP_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-        figure_name = "FigT3_mnist_hyperparams"
-        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
-
-        model_list = ["vanBP", "vanBP_fixed_hidden", "vanBP_0hidden",
-                      "bpDale_fixed", "bpDale_learned", "bpDale_noI", "HebbWN_topsup"]
-        figure_name = "FigT3_mnist_hyperparams1"
-        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
-
-        model_list = ["bpLike_WT_fixedDend", "bpLike_WT_localBP", "bpLike_WT_hebbdend", 
-                      "SupHebbTempCont_WT_hebbdend", "Supervised_BCM_WT_hebbdend"]
-        figure_name = "FigT3_mnist_hyperparams2"
-        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
-
-        model_list = ["BTSP_WT_hebbdend", "bpLike_fixedTD_hebbdend", "bpLike_TCWN_hebbdend", "BTSP_fixedTD_hebbdend", "BTSP_TCWN_hebbdend"]
-        figure_name = "FigT3_mnist_hyperparams3"
-        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
-
-        figure_name = "FigT4_spiral_hyperparams"
-        model_list = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
-                    "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", "DTP_learned_bias_spiral"]
-        generate_hyperparams_csv(model_dict_all, model_list, save=figure_name)
-
-
     #-------------- Other Figures --------------
 
     # Representational similarity analysis
@@ -1770,35 +849,9 @@ def main(figure, recompute):
         figure_name = "Suppl_similarity_analysis"
         compare_RSM_properties(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
 
-    # Supplementary Spirals Figure
-    if figure in ["all", "spiral-suppl"]:
-        saved_network_path_prefix += "spiral/"
-        model_list_heatmaps = ["vanBP_0_hidden_learned_bias_spiral", "vanBP_2_hidden_learned_bias_spiral", 
-                                "vanBP_2_hidden_zero_bias_spiral", "bpDale_learned_bias_spiral", 
-                                "bpLike_DTC_learned_bias_spiral", "DTP_learned_bias_spiral", "DTP_fixed_DendI_learned_bias_1_spiral"]
-        model_list_metrics = model_list_heatmaps
-        figure_name = "Suppl1_Spirals"
-
-        # Choose spiral_type='scatter' or 'decision'
-        generate_spirals_figure(model_dict_all, model_list_heatmaps, model_list_metrics, spiral_type='decision', config_path_prefix='network_config/spiral/',
-                                saved_network_path_prefix=saved_network_path_prefix, save=figure_name, recompute=recompute)
-
     if figure in ["all", "structure"]:
         saved_network_path_prefix += "MNIST/"
         figure_name = "structure"
         model_list_heatmaps = ["vanBP", "bpDale_fixed", "bpLike_WT_hebbdend"]
         model_list_metrics = model_list_heatmaps
         compare_structure(model_dict_all, model_list_heatmaps, model_list_metrics, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-    if figure in ["all", "metrics"]:
-        saved_network_path_prefix += "MNIST/"
-        # model_list = ["vanBP", "bpDale_learned", "bpLike_fixedDend", "bpLike_hebbdend", "bpLike_hebbTD", "bpLike_FA"]
-        # model_list = ["BTSP_WT_hebbdend", "BTSP_hebbTD_hebbdend", "BTSP_fixedTD_hebbdend"]
-        # model_list = ["bpLike_hebbTD_hebbdend_eq", "bpLike_WT_hebbdend_eq", "bpLike_hebbTD_hebbdend", "bpLike_WT_hebbdend"]
-        figure_name = "metrics_all_models"
-        generate_metrics_plot(model_dict_all, model_list, save=figure_name, saved_network_path_prefix=saved_network_path_prefix, recompute=recompute)
-
-
-
-if __name__=="__main__":
-    main()

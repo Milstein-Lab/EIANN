@@ -14,23 +14,38 @@ parts:
 
   - caption: Galloni et al. 2025 - EIANN models
     chapters:
-    - file: Galloni_etal_2025/1_feedforward_ANN_Backprop
-    - file: Galloni_etal_2025/2_EIANN_learned_somaI_Backprop
-    - file: Galloni_etal_2025/3_EIANN_fixed_somaI_Backprop
-    - file: Galloni_etal_2025/4_EIANN_learned_somaI_Hebbian
-    - file: Galloni_etal_2025/5_EIANN_DendTargetProp_LDS
-    - file: Galloni_etal_2025/6_EIANN_DendTargetProp_BTSP
+    - file: Galloni_etal_2025/model_summary1_feedforward_ANN_Backprop
+    - file: Galloni_etal_2025/model_summary2_EIANN_learned_somaI_Backprop
+    - file: Galloni_etal_2025/model_summary3_EIANN_fixed_somaI_Backprop
+    - file: Galloni_etal_2025/model_summary4_EIANN_learned_somaI_Hebbian
+    - file: Galloni_etal_2025/model_summary5_EIANN_DendTargetProp_LDS
+    - file: Galloni_etal_2025/model_summary6_EIANN_DendTargetProp_BTSP
+    - file: Galloni_etal_2025/model_summary7_EIANN_BCM
 
   - caption: Galloni et al. 2025 - Figures
     chapters:
+    - file: Galloni_etal_2025/Figure_1
     - file: Galloni_etal_2025/Figure_2
     - file: Galloni_etal_2025/Figure_3
     - file: Galloni_etal_2025/Figure_4
     - file: Galloni_etal_2025/Figure_5
     - file: Galloni_etal_2025/Figure_6
     - file: Galloni_etal_2025/Figure_7
-    - file: Galloni_etal_2025/Figure_S5
+    - file: Galloni_etal_2025/Figure_8
     
+  - caption: Galloni et al. 2025 - Supplementary Figures
+    chapters:
+    - file: Galloni_etal_2025/Figure_S1
+    - file: Galloni_etal_2025/Figure_S2
+    - file: Galloni_etal_2025/Figure_S3
+    - file: Galloni_etal_2025/Figure_S4
+    - file: Galloni_etal_2025/Figure_S5
+    - file: Galloni_etal_2025/Figure_S6
+    - file: Galloni_etal_2025/Figure_S7
+    - file: Galloni_etal_2025/Figure_S8
+    - file: Galloni_etal_2025/Supplementary_Accuracy_Tables
+    - file: Galloni_etal_2025/Supplementary_Params_Tables
+
   - caption: Python API  
     chapters:
       - file: yaml_glossary

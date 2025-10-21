@@ -5,6 +5,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 from skimage import metrics
 import scipy.stats as stats
 import copy
+import warnings
+warnings.filterwarnings('ignore', category=Warning)
+warnings.filterwarnings('ignore', message='.*tqdm.*')
 from tqdm.autonotebook import tqdm
 from scipy import signal
 from collections import defaultdict
@@ -676,7 +679,7 @@ def compute_dW_angles_vs_BP(predicted_dParam_history, actual_dParam_history, plo
             angle = compute_vector_angle(predicted_dParam, actual_dParam)
             angles[param_name].append(angle)
             if torch.isnan(angle):
-                print(f'Warning: angle is NaN at step {t}, {param_name}, dW norm={torch.norm(actual_dParam)}')
+                print(f'Warning: angle is NaN at step {t}, {param_name}, dW norm=({torch.norm(actual_dParam)},{torch.norm(predicted_dParam)})')
 
         if plot:
             ax = axes[n_params-(i+1)]
@@ -1219,6 +1222,10 @@ def sample_evenly_by_class(preferred_classes, num_units):
 
 def compute_rf_structure(receptive_fields, dimensions=None, method='moran'):
     structure_ls = []
+
+    if type(receptive_fields) != torch.Tensor:
+        receptive_fields = torch.tensor(receptive_fields)
+    
     for unit_rf in receptive_fields:
         similarity_to_noise = 0
 
@@ -1468,7 +1475,7 @@ def compute_maxact_receptive_fields(population, num_units=None, softplus=False, 
         _,_, test_dataloader,_ = data_utils.get_MNIST_dataloaders(batch_size='full_dataset')
     idx, data, target = next(iter(test_dataloader))
 
-    print("Optimizing receptive field images...")
+    print(f"Optimizing receptive field images {population.fullname}...")
 
     for i in tqdm(range(random_initializations)):   
         random_sample = data[np.random.choice(len(data))]

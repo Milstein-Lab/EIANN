@@ -5,11 +5,10 @@
 This repository contains the code described in the following publication:  
 Galloni A.R., Peddada A., Chennawar Y., Milstein A.D. (2025) Cellular and subcellular specialization enables biology-constrained deep learning. [*bioRxiv* 2025.05.22.655599](https://doi.org/10.1101/2025.05.22.655599)
 
+The full documentation for EIANN, as well as notebooks used for the paper, are available at [https://milstein-lab.github.io/EIANN](https://milstein-lab.github.io/EIANN/).
 
 
-
-
-## 🧠 About
+## About
 
 EIANN is a PyTorch-based tool to build and train rate-based biological neural networks, containing multiple layers of recurrently connected Excitatory (E) and Inhibitory (I) cell types.  
 
@@ -17,7 +16,7 @@ We provide a simple YAML-based configuration file interface for specifying netwo
 
 
 
-## 💻 Installation
+## Installation
 
 To use EIANN, clone this GitHub Repository and install the requirements by running the following commands in your terminal:
 
@@ -38,9 +37,7 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-## ⏱ Using EIANN
-
-The full documentation for EIANN is available at [https://milstein-lab.github.io/EIANN](https://milstein-lab.github.io/EIANN/).
+## Using EIANN
 
 Models can be created by specifying the model architecture and parameters either in a YAML configuration file or in a Python dictionary.
 
