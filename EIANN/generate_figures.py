@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import scipy.stats as stats
 import pandas as pd
 
 import matplotlib
@@ -122,11 +123,12 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
     ## Generate plot data
 
     if 'weights' in variables_to_save:
-        weights_dict = {'initial_weights': {}, 'final_weights': {}}
+        weights_dict = {'initial_weights': {}, 'final_weights': {}, 'kurtosis': {}}
         for proj in ['H1E_InputE', 'H2E_H1E']:
             proj_key = f"module_dict.{proj}.weight"
             weights_dict['initial_weights'][proj] = network.prev_param_history[0][proj_key]
             weights_dict['final_weights'][proj] = network.param_history[-1][proj_key]
+            weights_dict['kurtosis'][proj] = stats.kurtosis(weights_dict['final_weights'][proj].flatten())
         ut.save_plot_data(network.name, network.seed, data_key='weights', data=weights_dict, file_path=hdf5_path, overwrite=True)
 
     if 'average_pop_activity_dict' in variables_to_save:
@@ -613,6 +615,29 @@ def plot_confusion_all_seeds(data_dict, model_dict, ax, population):
     ax.set_xticklabels(range(10))
     ax.set_ylim(0, 8)
     ax.set_xlabel('Labels', labelpad=0)
+
+
+
+def plot_kurtosis_all_seeds(data_dict, model_dict, projection_name, ax):
+    kurtosis_all_seeds = []
+    for seed in data_dict:
+        kurtosis = data_dict[seed]['weights']['kurtosis'][projection_name][()]
+        kurtosis_all_seeds.append(kurtosis)
+        
+    avg_kurtosis = np.mean(kurtosis_all_seeds)
+    error = np.std(kurtosis_all_seeds)
+    num_seeds = len(kurtosis_all_seeds)
+
+    x = len(ax.patches)
+    bar = ax.bar(x, avg_kurtosis, color=model_dict["color"], width=0.6, alpha=0.4)
+    bar[0].set_label(model_dict["label"])
+    ax.errorbar(x, avg_kurtosis, yerr=error, fmt='none', ecolor='k', capsize=0, linewidth=0.5)
+    ax.axhline(y=0, color='gray', linewidth=0.3)
+    ax.set_ylabel("Kurtosis")
+    xticks = [-0.5] + [1 + i for i in range(x)]
+    ax.set_xticks(xticks)
+    xtick_labels = [patch.get_label() for patch in ax.patches]
+    ax.set_xticklabels(xtick_labels, rotation=45, ha='right')
 
 
 ########################################################################################################
