@@ -151,9 +151,9 @@ class Network(nn.Module):
                             projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
                         pre_pop = pre_layer.populations[pre_pop_name]
                         if hasattr(pre_pop, 'image_dim') and pre_pop.image_dim is not None:
-                            projection = Conv2DProjection(pre_pop, post_pop, device=self.device, **projection_kwargs)
+                            projection = Conv2DProjection(pre_pop, post_pop, device='cpu', **projection_kwargs)
                         else:
-                            projection = Projection(pre_pop, post_pop, device=self.device, **projection_kwargs)
+                            projection = Projection(pre_pop, post_pop, device='cpu', **projection_kwargs)
                         post_pop.append_projection(projection)
                         post_pop.incoming_projections[projection.name] = projection
                         pre_pop.outgoing_projections[projection.name] = projection
@@ -175,74 +175,11 @@ class Network(nn.Module):
 
         self.optimizer = optimizer
 
-        # Move network to device before weight init
-        self.to(self.device)
-
-        # Reset seed again after device placement to sync RNG state
-        if self.seed is not None:
-            torch.manual_seed(self.seed)
-            if torch.cuda.is_available():
-                torch.cuda.manual_seed(self.seed)
-                torch.cuda.manual_seed_all(self.seed)
-
         self.init_weights_and_biases()
+        self.to(self.device)
         self.reset_history()
 
-    # def init_weights_and_biases(self):
-    #     for post_layer in self:
-    #         for post_pop in post_layer:
-    #             total_fan_in = 0
-    #             for projection in post_pop:
-    #                 fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(projection.weight)
-    #                 if projection.weight_init is not None:
-    #                     if projection.weight_constraint_name == 'receptive_field_mask':
-    #                         if 'image_dims' in projection.weight_constraint_kwargs:
-    #                             image_dims = projection.weight_constraint_kwargs['image_dims']
-    #                         else:
-    #                             image_dims = (28, 28)  # default to mnist dimensions
-    #                         receptive_field_size = projection.weight_constraint_kwargs['receptive_field_size']
-    #                         fan_in = receptive_field_size ** 2
-    #                         if len(image_dims) > 2:
-    #                             fan_in *= image_dims[0]
-    #                     if projection.weight_init == 'half_kaiming':
-    #                         ut.half_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args,
-    #                                            bounds=projection.weight_bounds)
-    #                     elif projection.weight_init == 'scaled_kaiming':
-    #                         ut.scaled_kaiming_init(projection.weight.data, fan_in, *projection.weight_init_args)
-    #                     elif projection.weight_init in ['clone', 'clone_weight']:
-    #                         pass
-    #                     else:
-    #                         try:
-    #                             getattr(projection.weight.data,
-    #                                     projection.weight_init)(*projection.weight_init_args)
-    #                         except:
-    #                             raise RuntimeError('Network.init_weights_and_biases: callable for weight_init: %s '
-    #                                                'must be half_kaiming, scaled_kaiming, clone, or a method of '
-    #                                                'Tensor' % projection.weight_init)
-    #                 total_fan_in += fan_in
-    #             if post_pop.include_bias:
-    #                 if post_pop.bias_init is None:
-    #                     ut.scaled_kaiming_init(post_pop.bias.data, total_fan_in)
-    #                 elif post_pop.bias_init == 'scaled_kaiming':
-    #                     ut.scaled_kaiming_init(post_pop.bias.data, total_fan_in, *post_pop.bias_init_args)
-    #                 else:
-    #                     try:
-    #                         getattr(post_pop.bias.data, post_pop.bias_init)(*post_pop.bias_init_args)
-    #                     except:
-    #                         raise RuntimeError('Network.init_weights_and_biases: callable for bias_init: %s '
-    #                                            'must be scaled_kaiming, or a method of Tensor' % post_pop.bias_init)
-
-    #     self.constrain_weights_and_biases()
-
-    #     for projection in self.projections.values():
-    #         if projection.weight_init in ['clone', 'clone_weight']:
-    #             rules.weight_functions.clone_weight(projection, **projection.weight_init_args)
-    #             if projection.weight_bounds is not None:
-    #                 projection.weight.data = projection.weight.data.clamp(*projection.weight_bounds)
-    #             if projection.constrain_weight is not None:
-    #                 projection.constrain_weight()
-
-    def init_weights_and_biases(self): # TODO: test this to make sure its backward compatible
+    def init_weights_and_biases(self):
         with torch.no_grad():
             for post_layer in self:
                 for post_pop in post_layer:
