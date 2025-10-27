@@ -549,7 +549,7 @@ def print_hdf5_dataset_sizes(file_path):
         f.visititems(print_dataset_sizes)
 
 
-def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None):
+def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None, data_seed=None):
     """
     Load MNIST dataset and return custom dataloaders that include sample indices.
 
@@ -589,6 +589,8 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
         
     # Put data in dataloader
     data_generator = torch.Generator()
+    if data_seed is not None:
+        data_generator.manual_seed(data_seed)
 
     if batch_size in ['all', 'full_dataset']:
         batch_size = 50_000
