@@ -116,7 +116,7 @@ sphinx:
 
   config: 
     # AutoAPI configuration
-    autoapi_dirs: ['../EIANN']  # This points to EIANN/EIANN/ directory
+    autoapi_dirs: ['../']  # This points to EIANN/EIANN/ directory
     autoapi_type: 'python'
     autoapi_keep_files: false 
     autoapi_generate_api_docs: true 
