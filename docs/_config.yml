@@ -116,12 +116,13 @@ sphinx:
 
   config: 
     # AutoAPI configuration
-    autoapi_dirs: ['../']  # This points to EIANN/EIANN/ directory
+    autoapi_dirs: ['../EIANN']  # This points to EIANN/EIANN/ directory
     autoapi_type: 'python'
     autoapi_keep_files: false 
     autoapi_generate_api_docs: true 
     autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
     autoapi_add_toctree_entry: true
+    autoapi_own_page_level: 'function'
     nb_merge_streams: true    
     html_show_sourcelink: true    
     autoapi_ignore: 
@@ -136,6 +137,7 @@ sphinx:
     add_module_names: false
     viewcode_follow_imported_members: true
     html_copy_source: true
+    autoapi_python_use_implicit_namespaces: true
 
     # Napoleon settings for NumPy-style docstrings
     napoleon_google_docstring: false
