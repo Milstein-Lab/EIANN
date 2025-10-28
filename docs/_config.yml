@@ -103,9 +103,9 @@ myst_enable_extensions:
 
 sphinx:
   extra_extensions:
+    - sphinx.ext.viewcode   
     - autoapi.extension
     - sphinx.ext.napoleon
-    - sphinx.ext.viewcode
     - sphinx.ext.intersphinx
     - sphinx_togglebutton   
     - sphinx.ext.autosummary
@@ -118,7 +118,7 @@ sphinx:
     # AutoAPI configuration
     autoapi_dirs: ['../EIANN']  # This points to EIANN/EIANN/ directory
     autoapi_type: 'python'
-    autoapi_keep_files: false 
+    # autoapi_keep_files: false 
     autoapi_generate_api_docs: true 
     autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
     autoapi_add_toctree_entry: true
@@ -138,6 +138,9 @@ sphinx:
     viewcode_follow_imported_members: true
     html_copy_source: true
     autoapi_python_use_implicit_namespaces: true
+
+    templates_path: ['_templates']
+    autoapi_keep_files: true  # Change this to true temporarily to debug
 
     # Napoleon settings for NumPy-style docstrings
     napoleon_google_docstring: false
