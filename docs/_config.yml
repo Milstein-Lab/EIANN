@@ -103,9 +103,10 @@ myst_enable_extensions:
 
 sphinx:
   extra_extensions:
-    - sphinx.ext.viewcode   
+    # - sphinx.ext.viewcode   
     - autoapi.extension
     - sphinx.ext.napoleon
+    - sphinx.ext.linkcode
     - sphinx.ext.intersphinx
     - sphinx_togglebutton   
     - sphinx.ext.autosummary
@@ -133,14 +134,24 @@ sphinx:
     autosectionlabel_prefix_document: true
 
     # Other configurations
-    viewcode_enable_epub: false
     add_module_names: false
-    viewcode_follow_imported_members: true
     html_copy_source: true
     autoapi_python_use_implicit_namespaces: true
+    # viewcode_enable_epub: false
+    # viewcode_follow_imported_members: true
 
-    templates_path: ['_templates']
-    autoapi_keep_files: true  # Change this to true temporarily to debug
+    linkcode_resolve: |
+          def linkcode_resolve(domain, info):
+              if domain != 'py':
+                  return None
+              if not info['module']:
+                  return None
+              
+              filename = info['module'].replace('.', '/')
+              return f"https://github.com/Milstein-Lab/EIANN/blob/main/EIANN/{filename}.py"
+
+    # templates_path: ['_templates']
+    # autoapi_keep_files: true  # Change this to true temporarily to debug
 
     # Napoleon settings for NumPy-style docstrings
     napoleon_google_docstring: false
