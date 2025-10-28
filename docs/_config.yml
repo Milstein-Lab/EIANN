@@ -125,6 +125,7 @@ sphinx:
     nb_merge_streams: true    
     html_show_sourcelink: true    
     autoapi_ignore: 
+      - '*network.py'
       - '*external.py'
       - '*optimize*'
       - '*simulate*'
