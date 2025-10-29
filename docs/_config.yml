@@ -76,7 +76,7 @@ launch_buttons:
   binderhub_url             : ""  # The URL of the BinderHub (e.g., https://mybinder.org)
   jupyterhub_url            : ""  # The URL of the JupyterHub (e.g., https://datahub.berkeley.edu)
   thebe                     : false  # Add a thebe button to pages (requires the repository to run on Binder)
-  colab_url                 : "https://colab.research.google.com" # The URL of Google Colab (https://colab.research.google.com)
+  colab_url                 : "" #"https://colab.research.google.com" # The URL of Google Colab (https://colab.research.google.com)
   deepnote_url              : "" # The URL of Deepnote (https://deepnote.com)
 
 # Repository info (for GitHub links)
@@ -103,10 +103,9 @@ myst_enable_extensions:
 
 sphinx:
   extra_extensions:
-    # - sphinx.ext.viewcode   
+    - sphinx.ext.viewcode   
     - autoapi.extension
     - sphinx.ext.napoleon
-    - sphinx.ext.linkcode
     - sphinx.ext.intersphinx
     - sphinx_togglebutton   
     - sphinx.ext.autosummary
@@ -119,39 +118,26 @@ sphinx:
     # AutoAPI configuration
     autoapi_dirs: ['../EIANN']  # This points to EIANN/EIANN/ directory
     autoapi_type: 'python'
-    # autoapi_keep_files: false 
+    autoapi_keep_files: false 
     autoapi_generate_api_docs: true 
     autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
     autoapi_add_toctree_entry: true
     autoapi_own_page_level: 'function'
     nb_merge_streams: true    
-    html_show_sourcelink: true    
-    autoapi_ignore: 
-      - '*network.py'
-      - '*external.py'
-      - '*optimize*'
-      - '*simulate*'
-    autosectionlabel_prefix_document: true
+    html_show_sourcelink: true   
+    html_copy_source: true 
+    # autoapi_ignore: 
+    #   - '*network.py'
+    #   - '*external.py'
+    #   - '*optimize*'
+    #   - '*simulate*'
+    # autosectionlabel_prefix_document: true
 
     # Other configurations
     add_module_names: false
-    html_copy_source: true
     autoapi_python_use_implicit_namespaces: true
-    # viewcode_enable_epub: false
-    # viewcode_follow_imported_members: true
-
-    linkcode_resolve: |
-          def linkcode_resolve(domain, info):
-              if domain != 'py':
-                  return None
-              if not info['module']:
-                  return None
-              
-              filename = info['module'].replace('.', '/')
-              return f"https://github.com/Milstein-Lab/EIANN/blob/main/EIANN/{filename}.py"
-
-    # templates_path: ['_templates']
-    # autoapi_keep_files: true  # Change this to true temporarily to debug
+    viewcode_enable_epub: false
+    viewcode_follow_imported_members: true
 
     # Napoleon settings for NumPy-style docstrings
     napoleon_google_docstring: false
@@ -169,14 +155,14 @@ sphinx:
     napoleon_type_aliases: null
     napoleon_attr_annotations: true
   
-    # Intersphinx for linking to other docs
-    intersphinx_mapping:
-      numpy: ['https://numpy.org/doc/stable/', null]
-      scipy: ['https://docs.scipy.org/doc/scipy/', null]
-      matplotlib: ['https://matplotlib.org/stable/', null]
-      torch: ['https://pytorch.org/docs/stable/', null]
-    hoverxref_intersphinx:
-      - "sphinxproof"      
+    # # Intersphinx for linking to other docs
+    # intersphinx_mapping:
+    #   numpy: ['https://numpy.org/doc/stable/', null]
+    #   scipy: ['https://docs.scipy.org/doc/scipy/', null]
+    #   matplotlib: ['https://matplotlib.org/stable/', null]
+    #   torch: ['https://pytorch.org/docs/stable/', null]
+    # hoverxref_intersphinx:
+    #   - "sphinxproof"      
 
   # Add your package to Python path
   sys_path:
