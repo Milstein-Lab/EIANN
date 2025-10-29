@@ -131,7 +131,6 @@ sphinx:
       - '*simulate*'
 
     autosectionlabel_prefix_document: true # Add a prefix to the section labels to make them unique
-    # autoapi_own_page_level: 'function' # Show the function name in the API documentation
 
     # Other configurations
     add_module_names: false # Add the module name to the section labels (e.g. EIANN.optimize.optimize_EIANN)

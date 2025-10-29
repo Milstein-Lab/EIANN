@@ -634,7 +634,7 @@ def plot_kurtosis_all_seeds(data_dict, model_dict, projection_name, ax):
     ax.errorbar(x, avg_kurtosis, yerr=error, fmt='none', ecolor='k', capsize=0, linewidth=0.5)
     ax.axhline(y=0, color='gray', linewidth=0.3)
     ax.set_ylabel("Kurtosis")
-    xticks = [-0.5] + [1 + i for i in range(x)]
+    xticks = range(x+1)
     ax.set_xticks(xticks)
     xtick_labels = [patch.get_label() for patch in ax.patches]
     ax.set_xticklabels(xtick_labels, rotation=45, ha='right')
