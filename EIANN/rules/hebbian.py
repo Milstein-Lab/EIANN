@@ -89,6 +89,64 @@ class Ojas_rule(LearningRule):
         self.projection.weight.data += self.learning_rate * delta_weight
 
 
+class BCM_4(LearningRule):
+    def __init__(self, projection, theta_tau, k, sign=1, learning_rate=None):
+        """
+        Weight updates are proportional to local error and presynaptic firing rate (after
+        backward phase equilibration).
+        :param projection:
+        :param theta_tau: float
+        :param k: float
+        :param sign: int in {-1, 1}
+        :param learning_rate: float
+        """
+        super().__init__(projection, learning_rate)
+        self.theta_tau = theta_tau
+        self.k = k
+        self.projection.post.theta = torch.ones(projection.post.size, device=projection.post.network.device) * k
+        self.sign = sign
+        projection.post.register_attribute_history('theta')
+    
+    def reinit(self):
+        self.projection.post.BCM_theta_stored = False
+        self.projection.post.BCM_theta_updated = False
+    
+    def update(self):
+        if not self.projection.post.BCM_theta_updated:
+            delta_theta = ((-self.projection.post.theta + self.projection.post.activity ** 2. / self.k) /
+                           self.theta_tau).detach().clone()
+            self.projection.post.theta += delta_theta
+            self.projection.post.BCM_theta_updated = True
+            self.projection.post.BCM_theta_stored = False
+    
+    def step(self):
+        # post_activity = torch.clamp(self.projection.post.activity.detach().clone(), min=0, max=1)
+        post_activity = self.projection.post.activity.detach().clone()
+        if self.projection.direction in ['forward', 'F']:
+            delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.activity, min=0, max=1)) *
+                            (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
+        elif self.projection.direction in ['recurrent', 'R']:
+            delta_weight = (torch.outer(post_activity, torch.clamp(self.projection.pre.prev_activity, min=0, max=1)) *
+                            (post_activity - self.projection.post.theta).unsqueeze(1)).detach().clone()
+        if self.sign > 0:
+            self.projection.weight.data += self.learning_rate * delta_weight
+        else:
+            self.projection.weight.data -= self.learning_rate * delta_weight
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        for layer in network:
+            for pop in layer:
+                for projection in pop:
+                    if projection.learning_rule.__class__ == cls:
+                        # only update theta once per population
+                        pop.BCM_theta_updated = False
+                        if store_history and not pop.BCM_theta_stored:
+                            pop.append_attribute_history('theta', pop.theta.detach().clone())
+                            pop.BCM_theta_stored = True
+                        break
+
+
 class Supervised_BCM_4(LearningRule):
     def __init__(self, projection, theta_tau, k, sign=1, max_pop_fraction=0.025, stochastic=False, learning_rate=None,
                  relu_gate=False):
