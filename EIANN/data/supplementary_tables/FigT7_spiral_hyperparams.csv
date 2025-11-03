@@ -1,8 +1,9 @@
 Param name,"Feedforward ANN 
-(no hidden)","Feedforward ANN 
+(no hidden  layers)","Feedforward ANN 
 (learned bias)","Feedforward ANN 
-(no bias)",Backprop (EIANN),"Dendritic 
-Target Propagation"
+(no bias)","Backprop (EIANN) 
+(learned bias)","Dend Target Prop 
+(learned bias)"
 W$_{\mathrm{init}}$ (Output),5.386548065293654,0.5433568834277912,3.5188437031669753,5.977812184651836,5.42693091561223
 "$\eta$, W (Output)",0.08158367762594287,0.010809269605442658,0.0013093338567102416,0.6722278010177094,0.09769059583309837
 W$_{\mathrm{init}}$ (H1),-,3.092179371471005,0.7661562722497335,2.3272180408302083,3.744225231975699

@@ -575,7 +575,7 @@ def plot_dimensionality_all_seeds(data_dict, model_dict, ax):
     # ax.tick_params(axis='both', length=0)
 
 
-def plot_confusion_all_seeds(data_dict, model_dict, ax, population):
+def plot_confusion_all_seeds(data_dict, model_dict, ax, population, type='bar'):
     between_class_similarity = {label: [] for label in range(10)}
     between_class_similarity_all = []
     for seed in model_dict['seeds']:
@@ -597,13 +597,19 @@ def plot_confusion_all_seeds(data_dict, model_dict, ax, population):
             between_class_similarity_all.extend(confusion_ratio)
             between_class_similarity[label].extend(confusion_ratio)
 
-    for label in range(10):
-        mean_val = np.mean(between_class_similarity[label])
-        std_val = np.std(between_class_similarity[label])
-        ax.bar(label, mean_val, width=0.8, label='Between-class' if label==0 else None, color=model_dict["color"], alpha=0.3)
-        ax.errorbar(label, mean_val, yerr=std_val, fmt='none', ecolor=model_dict["color"], capsize=0, linewidth=0.5)
+    if type == 'bar':
+        for label in range(10):
+            mean_val = np.mean(between_class_similarity[label])
+            std_val = np.std(between_class_similarity[label])
+            ax.bar(label, mean_val, width=0.8, label='Between-class' if label==0 else None, color=model_dict["color"], alpha=0.3)
+            ax.errorbar(label, mean_val, yerr=std_val, fmt='none', ecolor=model_dict["color"], capsize=0, linewidth=0.5)
+    elif type == 'line':
+        mean_values = np.array([np.mean(between_class_similarity[label]) for label in range(10)])
+        std_values = np.array([np.std(between_class_similarity[label]) for label in range(10)])
+        ax.plot(range(10), mean_values, '-o', color=model_dict["color"], label=model_dict["label"], linewidth=0.5, markersize=2)
+        ax.fill_between(range(10), mean_values-std_values, mean_values+std_values, color=model_dict["color"], linewidth=0, alpha=0.1)
 
-    ax.set_ylabel('Confusion ratio (non-\npreferred class selectivity)')
+    ax.set_ylabel('Confusion ratio (non-\npreferred class selectivity)', y=0.45)
     ax.set_xticks(range(10))
     ax.set_xticklabels(range(10))
     ax.set_ylim(0, 8)

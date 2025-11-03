@@ -1,6 +1,6 @@
 Param name,Feedforward ANN,"Feedforward ANN 
-(fixed hidden)","Feedforward ANN 
-(no hidden)","Backprop 
+(fixed hidden layers)","Feedforward ANN 
+(no hidden layers)","Backprop 
 (fixed SomaI)","Backprop 
 (learned SomaI)","Backprop 
 (no SomaI)",Hebbian
