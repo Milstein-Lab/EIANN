@@ -32,26 +32,119 @@ jobs:
         pip install jupyter-book
         pip install sphinx-autoapi
         pip install sphinx-togglebutton
+        pip install PyYAML
+        
+    - name: Debug - Check current directory and structure
+      run: |
+        echo "Current working directory:"
+        pwd
+        echo ""
+        echo "Contents of root directory:"
+        ls -la
+        echo ""
+        echo "Contents of docs directory:"
+        ls -la docs/ || echo "docs directory not found"
+        echo ""
+        echo "Checking for _build directory:"
+        if [ -d "docs/_build" ]; then
+          echo "_build directory exists, contents:"
+          find docs/_build -type f -o -type d | head -20
+        else
+          echo "_build directory does not exist"
+        fi
+        
+    - name: Clean build directory
+      run: |
+        echo "Cleaning _build directory if it exists..."
+        rm -rf docs/_build || echo "No _build directory to clean"
+        echo "After cleaning, checking docs directory:"
+        ls -la docs/ | head -20
+        
+    - name: Debug - Check file types in docs
+      run: |
+        echo "Checking for problematic files/directories in docs:"
+        find docs/ -maxdepth 3 -type d -name "_build" -o -name ".ipynb_checkpoints" | head -10
+        echo ""
+        echo "Checking notebooks in docs:"
+        find docs/ -name "*.ipynb" | head -10
+        echo ""
+        echo "Checking for any files that might be directories:"
+        find docs/ -maxdepth 2 -type f -o -type d | head -20
+        echo ""
+        echo "Validating _toc.yml references:"
+        python3 << 'EOF'
+        import yaml
+        import os
+        with open('docs/_toc.yml', 'r') as f:
+            toc = yaml.safe_load(f)
+        
+        def check_file(path, base='docs'):
+            full_path = os.path.join(base, path)
+            if os.path.isdir(full_path):
+                return f"WARNING: {path} is a directory, not a file"
+            elif os.path.isfile(full_path):
+                return f"OK: {path} exists"
+            else:
+                return f"ERROR: {path} does not exist"
+        
+        def check_toc(entry, base='docs'):
+            if isinstance(entry, dict):
+                if 'file' in entry:
+                    print(check_file(entry['file'], base))
+                if 'glob' in entry:
+                    print(f"GLOB: {entry['glob']}")
+                if 'chapters' in entry:
+                    for ch in entry['chapters']:
+                        check_toc(ch, base)
+            elif isinstance(entry, list):
+                for item in entry:
+                    check_toc(item, base)
+        
+        if 'parts' in toc:
+            for part in toc['parts']:
+                if 'chapters' in part:
+                    check_toc(part['chapters'])
+        EOF
         
     - name: Build the book
       run: |
-        jupyter-book build docs/
+        echo "Starting jupyter-book build..."
+        echo "Working directory: $(pwd)"
+        echo "Building from: docs/"
+        echo "Python version:"
+        python --version
+        echo "jupyter-book version:"
+        jupyter-book --version || pip show jupyter-book
+        echo ""
+        echo "Running build (capturing full output)..."
+        set -x  # Enable command tracing
+        jupyter-book build docs/ 2>&1 | tee build_output.log
+        BUILD_EXIT=$?
+        set +x
+        echo ""
+        echo "Build command completed (exit code: $BUILD_EXIT)"
+        echo "Last 50 lines of build output:"
+        tail -50 build_output.log || echo "Could not read build output"
+        
+    - name: Debug - Check build output
+      run: |
+        echo "Checking if _build/html exists:"
+        if [ -d "docs/_build/html" ]; then
+          echo "_build/html is a directory (good)"
+          echo "Contents of _build/html:"
+          ls -la docs/_build/html | head -20
+          echo ""
+          echo "Checking size of _build/html:"
+          du -sh docs/_build/html
+        else
+          echo "ERROR: _build/html does not exist or is not a directory"
+          echo "Checking what _build contains:"
+          ls -la docs/_build/ 2>&1 || echo "Cannot list _build"
+        fi
         
     - name: Setup Pages
       uses: actions/configure-pages@v3
       
-    - name: List docs directory
-      run: |
-        echo "docs/ directory contents:"
-        ls -al docs/
-        echo "_build/html directory contents:"
-        ls -al docs/_build/html/
-
-    - name: Print working directory
-      run: |
-        echo "Current working directory:"
-        pwd
-
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
