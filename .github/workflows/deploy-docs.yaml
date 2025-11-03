@@ -40,10 +40,22 @@ jobs:
     - name: Setup Pages
       uses: actions/configure-pages@v3
       
+    - name: List docs directory
+      run: |
+        echo "docs/ directory contents:"
+        ls -al docs/
+        echo "_build/html directory contents:"
+        ls -al docs/_build/html/
+
+    - name: Print working directory
+      run: |
+        echo "Current working directory:"
+        pwd
+
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: _build/html
+        path: docs/_build/html
 
   # Deploy job
   deploy:
