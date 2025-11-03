@@ -29,7 +29,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install matplotlib
-        pip install jupyter-book
+        pip install "jupyter-book==1.0.4.post1"
         pip install sphinx-autoapi
         pip install sphinx-togglebutton
         pip install PyYAML
@@ -199,39 +199,20 @@ jobs:
         echo "jupyter-book version:"
         jupyter-book --version || pip show jupyter-book
         echo ""
-        echo "Running build with Python traceback for errors..."
-        python3 << 'PYEOF'
-        import subprocess
-        import sys
-        
-        result = subprocess.run(
-            ['jupyter-book', 'build', 'docs/'],
-            capture_output=True,
-            text=True,
-            cwd='.'
-        )
-        
-        print("STDOUT:")
-        print(result.stdout)
-        print("\nSTDERR:")
-        print(result.stderr)
-        print(f"\nReturn code: {result.returncode}")
-        
-        if result.returncode != 0:
-            print("\n=== BUILD FAILED ===")
-            # Try to extract the problematic file from error messages
-            import re
-            error_match = re.search(r'Error reading file.*?:\s*(.+?)(?:\n|$)', result.stderr + result.stdout)
-            if error_match:
-                print(f"Problematic path mentioned: {error_match.group(1)}")
-        else:
-            print("\n=== BUILD SUCCEEDED ===")
-        
-        sys.exit(result.returncode)
-PYEOF
-        BUILD_EXIT=$?
+        echo "Running build..."
+        set -x
+        jupyter-book build docs/ 2>&1 | tee build_output.log
+        BUILD_EXIT=${PIPESTATUS[0]}
+        set +x
         echo ""
         echo "Build command completed (exit code: $BUILD_EXIT)"
+        if [ $BUILD_EXIT -ne 0 ]; then
+          echo "=== BUILD FAILED ==="
+          echo "Last 100 lines of build output:"
+          tail -100 build_output.log
+        else
+          echo "=== BUILD SUCCEEDED ==="
+        fi
         
     - name: Debug - Check build output
       run: |
