@@ -28,6 +28,24 @@ import EIANN.utils as utils
 context = Context()
 
 
+def config_controller():
+    context.seed_start = int(context.seed_start)
+    context.num_instances = int(context.num_instances)
+    context.network_id = int(context.network_id)
+    context.task_id = int(context.task_id)
+    context.data_seed_start = int(context.data_seed_start)
+    context.epochs = int(context.epochs)
+    context.status_bar = str_to_bool(context.status_bar)
+    if 'debug' not in context():
+        context.debug = False
+    else:
+        context.debug = str_to_bool(context.debug)
+    if 'interactive' not in context():
+        context.interactive = False
+    else:
+        context.interactive = str_to_bool(context.interactive)
+
+
 def config_worker():
     EIANN.optimize.nested_optimize_EIANN_fashion_mnist.context = context
     context.seed_start = int(context.seed_start)
