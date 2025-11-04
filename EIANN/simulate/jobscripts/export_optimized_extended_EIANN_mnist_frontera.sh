@@ -1,6 +1,6 @@
 #!/bin/bash -l
 export DATE=$(date +%Y%m%d_%H%M%S)
-export JOB_NAME=export_optimized_EIANN_mnist_"$DATE"
+export JOB_NAME=export_optimized_extended_EIANN_mnist_"$DATE"
 export CONFIG_FILE_PATH="$1"
 sbatch <<EOT
 #!/bin/bash -l
