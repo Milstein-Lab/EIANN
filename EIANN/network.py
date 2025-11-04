@@ -18,7 +18,7 @@ import EIANN.external as external
 class Network(nn.Module):
     """
     Class for rate-based neural network with E/I cell types and biologically-plausible learning rules.
-    
+
     Unlike conventional pytorch networks, the structure of EIANNs is centered around "Populations" of units rather than "layers" of weights. Networks are structured as a sequence of "Layers", 
     each of which is a simple container for one or more "Populations" of neurons. The connections between populations are defined by "Projections", which are simply nn.Linear() weight matrices 
     with optional custom bio-plausible learning rules.
@@ -687,6 +687,11 @@ class AttrDict:
 
 
 class Layer(object):
+    """
+    Class for a Layer of neurons in a neural network.
+    A Layer serves as an organizational unit for grouping multiple Populations of neurons, 
+    analogous to a 'brain region' that can contain multiple distinct cell types.
+    """
     def __init__(self, network, name):
         self.name = name
         self.network = network
@@ -709,6 +714,10 @@ class Layer(object):
 
 
 class Population(object):
+    """
+    Class for a Population of neurons in a neural network.
+    Populations are the basic building blocks of EIANNs, containing the activations (both somatic and dendritic) and other state variables of neurons in the network.
+    """
     def __init__(self, network, layer, name, size, activation='linear', activation_kwargs=None, tau=None,
                  include_bias=False, bias_init=None, bias_init_args=None, bias_bounds=None,
                  bias_learning_rule=None, bias_learning_rule_kwargs=None, custom_update=None, custom_update_kwargs=None,

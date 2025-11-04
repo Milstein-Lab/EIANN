@@ -42,7 +42,6 @@ parts:
     - file: Galloni_etal_2025/Figure_S5
     - file: Galloni_etal_2025/Figure_S6
     - file: Galloni_etal_2025/Figure_S7
-    - file: Galloni_etal_2025/Figure_S8
     - file: Galloni_etal_2025/Supplementary_Accuracy_Tables
     - file: Galloni_etal_2025/Supplementary_Params_Tables
 

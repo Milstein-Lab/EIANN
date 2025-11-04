@@ -118,7 +118,7 @@ sphinx:
     # AutoAPI configuration
     autoapi_dirs: ['../EIANN']  # This points to EIANN/EIANN/ directory
     autoapi_type: 'python'
-    autoapi_keep_files: false 
+    autoapi_keep_files: true 
     autoapi_generate_api_docs: true 
     autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
     autoapi_add_toctree_entry: true
