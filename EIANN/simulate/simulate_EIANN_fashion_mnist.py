@@ -40,6 +40,10 @@ def config_controller():
         context.debug = False
     else:
         context.debug = str_to_bool(context.debug)
+    if 'interactive' not in context():
+        context.interactive = False
+    else:
+        context.interactive = str_to_bool(context.interactive)
 
 
 def config_worker():

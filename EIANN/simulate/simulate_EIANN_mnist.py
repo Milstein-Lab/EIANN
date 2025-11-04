@@ -40,6 +40,10 @@ def config_controller():
         context.debug = False
     else:
         context.debug = str_to_bool(context.debug)
+    if 'interactive' not in context():
+        context.interactive = False
+    else:
+        context.interactive = str_to_bool(context.interactive)
 
 
 def config_worker():
@@ -360,7 +364,6 @@ def main(cli, config_file_path, network_config_file_path, data_file_path, output
         context.num_instances = len(data_file_path)
         data_file_path_list = list(data_file_path)
     else:
-        print(type(context.num_instances))
         data_file_path_list = [None] * context.num_instances
     
     network_seeds, data_seeds = context.interface.execute(get_random_seeds)
