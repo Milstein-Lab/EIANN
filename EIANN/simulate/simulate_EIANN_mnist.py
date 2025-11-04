@@ -28,6 +28,19 @@ import EIANN.utils as utils
 
 context = Context()
 
+def config_controller():
+    context.seed_start = int(context.seed_start)
+    context.num_instances = int(context.num_instances)
+    context.network_id = int(context.network_id)
+    context.task_id = int(context.task_id)
+    context.data_seed_start = int(context.data_seed_start)
+    context.epochs = int(context.epochs)
+    context.status_bar = str_to_bool(context.status_bar)
+    if 'debug' not in context():
+        context.debug = False
+    else:
+        context.debug = str_to_bool(context.debug)
+
 
 def config_worker():
     EIANN.optimize.nested_optimize_EIANN_1_hidden_mnist.context = context
@@ -347,6 +360,7 @@ def main(cli, config_file_path, network_config_file_path, data_file_path, output
         context.num_instances = len(data_file_path)
         data_file_path_list = list(data_file_path)
     else:
+        print(type(context.num_instances))
         data_file_path_list = [None] * context.num_instances
     
     network_seeds, data_seeds = context.interface.execute(get_random_seeds)
