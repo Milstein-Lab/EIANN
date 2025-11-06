@@ -451,7 +451,7 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     return None
 
 
-def delete_plot_data(variable_name, file_name, file_path_prefix=None):
+def delete_plot_data(variable_name, file_name, file_path_prefix=None, network_seed=None):
     """
     Delete a specific variable from an HDF5 file and repack to reclaim disk space.
 
@@ -481,6 +481,10 @@ def delete_plot_data(variable_name, file_name, file_path_prefix=None):
                 del hdf5_file[network_name]
                 print(f"Deleted entire network group '{network_name}' from {file_name}")
                 continue
+            if network_seed == None:
+                all_seeds = hdf5_file[network_name].keys()
+            else:
+                all_seeds = network_seed
             for seed in list(hdf5_file[network_name].keys()):
                 if variable_name == seed:
                     del hdf5_file[network_name][seed]

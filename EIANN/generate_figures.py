@@ -157,7 +157,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         fraction_to_prune, accuracy_list = ut.compute_robustness_to_pruning(network, test_dataloader, projections='all')
         ut.save_plot_data(network.name, network.seed, data_key='robustness_to_pruning', data=(fraction_to_prune, accuracy_list), file_path=hdf5_path, overwrite=True)
 
-    if 'final_receptive_fields' in variables_to_save:
+    if set(['metrics_dict', 'initial_receptive_fields', 'final_receptive_fields']).intersection(variables_to_save):
         rf_populations = [population for population in network.populations.values() if population.name == "E" and population.fullname != "InputE"]
         
         initial_state_dict = network.prev_param_history[0]
