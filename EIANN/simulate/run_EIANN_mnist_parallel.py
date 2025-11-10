@@ -3,7 +3,7 @@ multiprocessing.set_start_method('spawn', force=True)
 
 import os
 import click
-from time import time
+import time
 import random
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -47,6 +47,14 @@ def run_single_seed(seed_idx, network_config_file_name, data_dir, num_gpus, debu
     # Import torch and EIANN.utils ONLY after setting CUDA_VISIBLE_DEVICES
     import torch
     import EIANN.utils as ut
+
+    # Calculate seeds (starting from your specified values)
+    network_seed = 66049 + seed_idx
+    data_seed = 257 + seed_idx
+
+    # Force reset CUDA random state for this seed
+    torch.cuda.manual_seed_all(network_seed)
+    torch.cuda.manual_seed(network_seed)
     
     # Determinism settings
     torch.backends.cudnn.deterministic = True
@@ -56,16 +64,12 @@ def run_single_seed(seed_idx, network_config_file_name, data_dir, num_gpus, debu
     except Exception:
         pass
     
-    # Calculate seeds (starting from your specified values)
-    network_seed = 66049 + seed_idx
-    data_seed = 257 + seed_idx
-    
     # Device - use 'cuda' like in the working implementation
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     print(f"Seed {seed_idx}: GPU {gpu_id}, NetSeed {network_seed}, DataSeed {data_seed}, Device {device}")
     
-    start_time = time()
+    start_time = time.time()
     
     try:
         # Seed with network_seed first (like working implementation)
@@ -73,7 +77,7 @@ def run_single_seed(seed_idx, network_config_file_name, data_dir, num_gpus, debu
         
         # Load dataset
         train_dataloader, val_dataloader, test_dataloader, data_generator = \
-            ut.get_MNIST_dataloaders(data_dir=data_dir)
+            ut.get_MNIST_dataloaders(data_dir=data_dir, data_seed=data_seed)
         
         if debug:
             print(f"Seed {seed_idx}: Loaded Data")
@@ -86,9 +90,9 @@ def run_single_seed(seed_idx, network_config_file_name, data_dir, num_gpus, debu
         
         if debug:
             print(f"Seed {seed_idx}: Built Network on {device}")
-        
-        # Seed data generator before training
-        data_generator.manual_seed(data_seed)
+
+        if debug:
+            print(f"Seed {seed_idx}: GPU Memory Before Training: {torch.cuda.memory_allocated()/1e9:.2f} GB used, {torch.cuda.memory_reserved()/1e9:.2f} GB reserved")
         
         # Train
         network.train(train_dataloader, val_dataloader,
@@ -101,7 +105,7 @@ def run_single_seed(seed_idx, network_config_file_name, data_dir, num_gpus, debu
                       store_params=False,
                       status_bar=False)
         
-        run_time = time() - start_time
+        run_time = time.time() - start_time
         
         result = {
             'seed_idx': seed_idx,
@@ -123,10 +127,16 @@ def run_single_seed(seed_idx, network_config_file_name, data_dir, num_gpus, debu
         print(f"  Run Time: {run_time:.2f} sec\n")
         
         # Clean up memory
+        import gc
         del network
         del train_dataloader, val_dataloader, test_dataloader
+        gc.collect()
         torch.cuda.empty_cache()
-        
+        torch.cuda.synchronize()  # Ensure all CUDA ops are done
+
+        if debug:
+            print(f"Seed {seed_idx}: GPU Memory After Cleanup: {torch.cuda.memory_allocated()/1e9:.2f} GB used, {torch.cuda.memory_reserved()/1e9:.2f} GB reserved")
+
         return result
         
     except Exception as e:
@@ -177,9 +187,14 @@ def main(network_config_file_name, data_dir, num_seeds, num_gpus, debug):
     
     # Run seeds in parallel
     results = []
+
+    # Use min(num_gpus, num_seeds) workers to avoid idle processes
+    max_workers = min(num_gpus, num_seeds)
+    
+    print(f"\nUsing {max_workers} parallel workers for {num_seeds} seeds")
     
     # Use ProcessPoolExecutor to run seeds in parallel
-    with ProcessPoolExecutor(max_workers=num_gpus) as executor:
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Submit all jobs
         future_to_seed = {
             executor.submit(run_single_seed, seed_idx, network_config_file_name, 

@@ -79,6 +79,7 @@ def seed_worker(worker_id):
 @click.option('--num-seeds', default=5, type=int, help="Number of different seeds to try")
 @click.option('--debug', default=False, is_flag=True)
 def main(network_config_file_name, data_dir, num_seeds, debug):
+    print('Using MPI')
     # Use global comm/rank/size from above
     global comm, rank, size
 
@@ -111,8 +112,8 @@ def main(network_config_file_name, data_dir, num_seeds, debug):
         data_generator.manual_seed(data_seed)
 
         # Load dataset with deterministic worker_init_fn and num_workers=0 or set worker_init_fn
-        train_dataloader, val_dataloader, test_dataloader = \
-            ut.get_MNIST_dataloaders(data_dir=data_dir, generator=data_generator)
+        train_dataloader, val_dataloader, test_dataloader, data_generator = \
+            ut.get_MNIST_dataloaders(data_dir=data_dir, data_seed=data_seed)
 
         if debug:
             print(f"Rank {rank}, Seed {network_seed}: Loaded Data")

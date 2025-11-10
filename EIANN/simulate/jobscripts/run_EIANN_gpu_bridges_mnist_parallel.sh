@@ -4,11 +4,11 @@
 #SBATCH -e /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_gpu_mnist_parallel.%j.e
 #SBATCH --requeue
 #SBATCH --nodes=1
-#SBATCH --ntasks=1                        # Single task, we'll use ProcessPoolExecutor internally
-#SBATCH --partition=GPU-shared
-#SBATCH --gres=gpu:v100-32:2              # Request 2 GPUs
+#SBATCH --ntasks=1                        # Single task, use ProcessPoolExecutor internally
+#SBATCH --partition=GPU
+#SBATCH --gres=gpu:v100-32:8
 #SBATCH --mem=80G
-#SBATCH --cpus-per-task=4                 # More CPUs for parallel processing
+#SBATCH --cpus-per-task=8
 #SBATCH --time=02:00:00
 #SBATCH -A bio240068p
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
@@ -36,12 +36,12 @@ conda activate eiann
 
 cd ~/EIANN
 
-# Run with parallel processing (no MPI needed)
+# Run with parallel processing 
 python EIANN/simulate/run_EIANN_mnist_parallel.py \
-  --network-config-file-name=20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml \
+  --network-config-file-name=20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml \
   --data-dir=/ocean/projects/bio250022p/$USER/data/EIANN \
   --num-seeds=5 \
-  --num-gpus=2 \
+  --num-gpus=8 \
   --debug
 
 # To submit:

@@ -85,9 +85,6 @@ def main(network_config_file_name, data_dir, debug, network_seed):
 if __name__ == '__main__':
     main()
 
-# TODO: test multiproc and mpi after verifying seeds
-# TODO raytune optimizer
-
 
 ######## Network Tracking (Bridges) ########
 

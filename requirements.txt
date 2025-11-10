@@ -18,3 +18,5 @@ mpi4py==4.1.1
 pandas==2.3.3
 nbimporter==0.3.4
 nbformat==5.10.4
+ray[tune]==2.51.0
+pydantic==2.12.4
