@@ -8,4 +8,8 @@ version = "0.1.0"
 dependencies = []
 
 [tool.setuptools]
-packages = ["EIANN"]
+packages = ["EIANN", "EIANN.rules", "EIANN.utils", "EIANN.optimize"]
+package-dir = {"" = "."}
+
+[tool.setuptools.package-data]
+EIANN = ["*.yaml", "network_config/**/*.yaml"]

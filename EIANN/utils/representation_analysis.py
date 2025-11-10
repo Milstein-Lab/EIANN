@@ -1222,6 +1222,10 @@ def sample_evenly_by_class(preferred_classes, num_units):
 
 def compute_rf_structure(receptive_fields, dimensions=None, method='moran'):
     structure_ls = []
+
+    if type(receptive_fields) != torch.Tensor:
+        receptive_fields = torch.tensor(receptive_fields)
+    
     for unit_rf in receptive_fields:
         similarity_to_noise = 0
 
@@ -1456,7 +1460,10 @@ def compute_maxact_receptive_fields(population, num_units=None, softplus=False, 
                 previous_activation_funcs[pop_name] = population.activation
         network_utils.set_new_activation(network, activation='softplus', population='all', activation_kwargs={'beta': 10})
 
-    data_utils.set_all_seeds(seed=123, verbose=False)
+    if hasattr(network, 'seed'):
+        data_utils.set_all_seeds(seed=int(network.seed), verbose=False)
+    else:
+        data_utils.set_all_seeds(seed=123, verbose=False)
 
     if network.backward_steps == 0:
         network.backward_steps = 3
@@ -1471,7 +1478,7 @@ def compute_maxact_receptive_fields(population, num_units=None, softplus=False, 
         _,_, test_dataloader,_ = data_utils.get_MNIST_dataloaders(batch_size='full_dataset')
     idx, data, target = next(iter(test_dataloader))
 
-    print("Optimizing receptive field images...")
+    print(f"Optimizing receptive field images {population.fullname}...")
 
     for i in tqdm(range(random_initializations)):   
         random_sample = data[np.random.choice(len(data))]
