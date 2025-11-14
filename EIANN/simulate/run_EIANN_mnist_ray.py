@@ -11,11 +11,18 @@ from ray.air.config import RunConfig
 
 import EIANN.utils as ut
 
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+
 def train_eiann(config):
     """
     Ray Tune trainable function.
     Each trial corresponds to one (seed_idx, config_file) pair.
     """
+
+    print("CUDA_VISIBLE_DEVICES:", os.environ.get("CUDA_VISIBLE_DEVICES"))
+    print("torch.cuda.device_count():", torch.cuda.device_count())
+    print("torch.cuda.current_device():", torch.cuda.current_device() if torch.cuda.is_available() else None)
 
     seed_idx = config["seed_idx"]
     network_config_file_name = config["network_config_file_name"]
@@ -64,8 +71,8 @@ def train_eiann(config):
         val_loss = network.val_loss_history[-1]
 
         result = {
-            "val_accuracy": val_acc,
-            "val_loss": val_loss,
+            "val_accuracy": float(val_acc) if torch.is_tensor(val_acc) else val_acc,
+            "val_loss": float(val_loss) if torch.is_tensor(val_loss) else val_loss,
             "run_time": time.time() - start_time,
             "gpu_id": gpu_id,
             "seed_idx": seed_idx,
@@ -87,6 +94,8 @@ def train_eiann(config):
 @click.option('--num-gpus', default=2, type=int, help="Number of GPUs to use")
 def main(network_config_file_name, data_dir, num_seeds, num_gpus):
 
+    overall_start_time = time.time()
+
     ray.init()
 
     # Define parameter space (each trial = one seed)
@@ -107,9 +116,16 @@ def main(network_config_file_name, data_dir, num_seeds, num_gpus):
 
     results = tuner.fit()
 
+    print(network_config_file_name)
+
+    overall_end_time = time.time()
+    print(f"Overall time for {num_seeds} seeds: {overall_end_time - overall_start_time:.2f} seconds")
+
     print("==== Summary ====")
     for res in results:
         print(res)
 
 if __name__ == "__main__":
     main()
+
+# interact -p GPU-shared -N 1 --gres=gpu:v100-32:3 -t 01:00:00

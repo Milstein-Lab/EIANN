@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --partition=GPU-shared
-#SBATCH --gres=gpu:v100-32:2
+#SBATCH --gres=gpu:v100-32:3
 #SBATCH --mem=80G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=02:00:00
@@ -22,7 +22,7 @@ conda activate eiann
 cd ~/EIANN
 
 # Start Ray (local mode)
-ray start --head --num-gpus=2 --num-cpus=4
+ray start --head --num-gpus=3 --num-cpus=12
 
 python EIANN/simulate/run_EIANN_mnist_ray.py \
   --network-config-file-name=20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml \
