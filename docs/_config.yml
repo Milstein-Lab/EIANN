@@ -76,7 +76,7 @@ launch_buttons:
   binderhub_url             : ""  # The URL of the BinderHub (e.g., https://mybinder.org)
   jupyterhub_url            : ""  # The URL of the JupyterHub (e.g., https://datahub.berkeley.edu)
   thebe                     : false  # Add a thebe button to pages (requires the repository to run on Binder)
-  colab_url                 : "https://colab.research.google.com" # The URL of Google Colab (https://colab.research.google.com)
+  colab_url                 : "" #"https://colab.research.google.com" # The URL of Google Colab (https://colab.research.google.com)
   deepnote_url              : "" # The URL of Deepnote (https://deepnote.com)
 
 # Repository info (for GitHub links)
@@ -103,9 +103,9 @@ myst_enable_extensions:
 
 sphinx:
   extra_extensions:
+    - sphinx.ext.viewcode   
     - autoapi.extension
     - sphinx.ext.napoleon
-    - sphinx.ext.viewcode
     - sphinx.ext.intersphinx
     - sphinx_togglebutton   
     - sphinx.ext.autosummary
@@ -118,23 +118,25 @@ sphinx:
     # AutoAPI configuration
     autoapi_dirs: ['../EIANN']  # This points to EIANN/EIANN/ directory
     autoapi_type: 'python'
-    autoapi_keep_files: false 
+    autoapi_keep_files: true 
     autoapi_generate_api_docs: true 
     autoapi_options: ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']    
     autoapi_add_toctree_entry: true
     nb_merge_streams: true    
-    html_show_sourcelink: true    
+    html_show_sourcelink: true   
+    html_copy_source: true
     autoapi_ignore: 
       - '*external.py'
       - '*optimize*'
       - '*simulate*'
-    autosectionlabel_prefix_document: true
+
+    autosectionlabel_prefix_document: true # Add a prefix to the section labels to make them unique
 
     # Other configurations
-    viewcode_enable_epub: false
-    add_module_names: false
-    viewcode_follow_imported_members: true
-    html_copy_source: true
+    add_module_names: false # Add the module name to the section labels (e.g. EIANN.optimize.optimize_EIANN)
+    autoapi_python_use_implicit_namespaces: true # Use implicit namespaces for the API documentation (e.g. EIANN.optimize.optimize_EIANN)
+    viewcode_enable_epub: true # Enable EPUB generation for the source code
+    viewcode_follow_imported_members: true # Follow imported members for the source code
 
     # Napoleon settings for NumPy-style docstrings
     napoleon_google_docstring: false
@@ -152,14 +154,14 @@ sphinx:
     napoleon_type_aliases: null
     napoleon_attr_annotations: true
   
-    # Intersphinx for linking to other docs
-    intersphinx_mapping:
-      numpy: ['https://numpy.org/doc/stable/', null]
-      scipy: ['https://docs.scipy.org/doc/scipy/', null]
-      matplotlib: ['https://matplotlib.org/stable/', null]
-      torch: ['https://pytorch.org/docs/stable/', null]
-    hoverxref_intersphinx:
-      - "sphinxproof"      
+    # # Intersphinx for linking to other docs
+    # intersphinx_mapping:
+    #   numpy: ['https://numpy.org/doc/stable/', null]
+    #   scipy: ['https://docs.scipy.org/doc/scipy/', null]
+    #   matplotlib: ['https://matplotlib.org/stable/', null]
+    #   torch: ['https://pytorch.org/docs/stable/', null]
+    # hoverxref_intersphinx:
+    #   - "sphinxproof"      
 
   # Add your package to Python path
   sys_path:

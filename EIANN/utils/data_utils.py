@@ -329,6 +329,7 @@ def convert_dict_to_hdf5_group(data_dict, group):
             # Save datasets to the HDF5 group
             group.create_dataset(key, data=value, track_order=True)
 
+
 def set_all_seeds(seed: int = 66049, verbose: bool = False) -> None:
     """Sets the random seed for PyTorch, NumPy, and Python's random module."""
     np.random.seed(seed)
@@ -450,7 +451,7 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     return None
 
 
-def delete_plot_data(variable_name, file_name, file_path_prefix=None):
+def delete_plot_data(variable_name, file_name, file_path_prefix=None, network_seed=None):
     """
     Delete a specific variable from an HDF5 file and repack to reclaim disk space.
 
@@ -480,6 +481,10 @@ def delete_plot_data(variable_name, file_name, file_path_prefix=None):
                 del hdf5_file[network_name]
                 print(f"Deleted entire network group '{network_name}' from {file_name}")
                 continue
+            if network_seed == None:
+                all_seeds = hdf5_file[network_name].keys()
+            else:
+                all_seeds = network_seed
             for seed in list(hdf5_file[network_name].keys()):
                 if variable_name == seed:
                     del hdf5_file[network_name][seed]
@@ -938,36 +943,4 @@ def generate_inhomogeneous_poisson_spikes(rate, refractory_period=3):
 
     spike_times_filtered = np.array(spike_times_filtered).round().astype(int) # Round to nearest ms
     return spike_times_filtered
-
-
-def n_choose_k(n, k):
-    """
-    Calculates number of ways to choose k things out of n, using binomial coefficients
-
-    :param n: number of things to choose from
-    :type n: int
-    :param k: number of things chosen
-    :type k: int
-    :return: int
-    """
-    assert n>k, "k must be smaller than n"
-    num_permutations = np.math.factorial(n) / (np.math.factorial(k)*np.math.factorial(n-k))
-    return int(num_permutations)
-
-
-def n_hot_patterns(n, length):
-    """
-    Generates all possible binary n-hot patterns of given length
-
-    :param n: number of bits set to 1
-    :type n: int
-    :param length: size of pattern (number of bits)
-    :type length: int
-    :return: torch.tensor
-    """
-    all_permutations = torch.tensor(list(itertools.product([0., 1.], repeat=length)))
-    pattern_hotness = torch.sum(all_permutations,axis=1)
-    idx = torch.where(pattern_hotness == n)[0]
-    n_hot_patterns = all_permutations[idx]
-    return n_hot_patterns
 

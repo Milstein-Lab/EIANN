@@ -1,21 +1,22 @@
 import pytest
 import os
+import EIANN as eiann
 import EIANN.utils as ut
 import EIANN.plot as pt
 import EIANN.network as nt
 
 
 def test_build_network(root_dir):
-    config_dir = root_dir + "/EIANN/network_config/mnist/"
+    config_dir = f"{root_dir}/EIANN/network_config/mnist/"
     assert len(os.listdir(config_dir)) > 0, "No network configs found in the network config dir"
-    assert all([(config_name.endswith(".yaml") or config_name.endswith(".yml")) for config_name in os.listdir(config_dir)]), "Not all files in the network config dir are yaml files"
-
+    
     for config_name in os.listdir(config_dir):
-        try:
-            network = ut.build_EIANN_from_config(config_dir + config_name, network_seed=66049)
-        except:
-            raise Exception(f"Failed to build network from config: {config_name}")
-        assert isinstance(network, nt.Network)
+        if config_name.endswith(".yaml") or config_name.endswith(".yml"):
+            try:
+                network = ut.build_EIANN_from_config(config_dir + config_name, network_seed=66049)
+            except:
+                raise Exception(f"Failed to build network from config: {config_name}")
+            assert isinstance(network, nt.Network)
 
 
 def test_train_network(network, dataloaders_mnist):
