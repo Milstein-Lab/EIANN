@@ -4,9 +4,9 @@
 #SBATCH -e /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_gpu_mnist_mpi.%j.e
 #SBATCH --requeue
 #SBATCH --nodes=1
-#SBATCH --ntasks=2                        # ONE MPI task per GPU (set to number of GPUs requested)
-#SBATCH --partition=GPU-shared
-#SBATCH --gres=gpu:v100-32:2              # Request 2 GPUs
+#SBATCH --partition=GPU
+#SBATCH --gres=gpu:v100-32:8
+#SBATCH --ntasks=5                        # ONE MPI task per GPU (set to number of seeds tested)
 #SBATCH --mem=80G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=02:00:00
@@ -38,7 +38,7 @@ conda activate eiann
 
 cd ~/EIANN
 
-# Launch MPI with 2 ranks (one per GPU). Each rank processes multiple seeds sequentially.
+# Launch MPI with as many ranks as GPUs. Each rank processes multiple seeds sequentially.
 mpirun -n $SLURM_NTASKS python EIANN/simulate/run_EIANN_mnist_mpi.py \
   --network-config-file-name=20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G_complete_optimized.yaml \
   --data-dir=/ocean/projects/bio250022p/$USER/data/EIANN \

@@ -17,7 +17,7 @@
 mkdir -p /ocean/projects/bio240068p/$USER/logs/EIANN
 mkdir -p /ocean/projects/bio240068p/$USER/data/EIANN
 
-export OMP_NUM_THREADS=1
+export OMP_NUM_THREADS=5
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1

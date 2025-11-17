@@ -109,7 +109,7 @@ def main(network_config_file_name, data_dir, num_seeds, num_gpus):
     ]
 
     tuner = tune.Tuner(
-        tune.with_resources(train_eiann, resources={"cpu": 1, "gpu": 0.5}),
+        tune.with_resources(train_eiann, resources={"cpu": 1, "gpu": 0.5}), # TODO: try with more CPUs
         param_space=tune.grid_search(param_space),
         run_config=RunConfig(name="eiann_mnist_parallel_ray")
     )

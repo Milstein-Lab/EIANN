@@ -61,7 +61,7 @@ class Network(nn.Module):
             Whether to print detailed information during initialization.
         """
         super().__init__()
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # TODO: make it possible to use cpu even when gpu is available
         self.seed = seed
         if self.seed is not None:
             torch.manual_seed(self.seed)
@@ -159,7 +159,7 @@ class Network(nn.Module):
                         if hasattr(pre_pop, 'image_dim') and pre_pop.image_dim is not None:
                             projection = Conv2DProjection(pre_pop, post_pop, device='cpu', **projection_kwargs)
                         else:
-                            projection = Projection(pre_pop, post_pop, device='cpu', **projection_kwargs)
+                            projection = Projection(pre_pop, post_pop, device='cpu', **projection_kwargs) # TODO: move this to self.device?
                         post_pop.append_projection(projection)
                         post_pop.incoming_projections[projection.name] = projection
                         pre_pop.outgoing_projections[projection.name] = projection

@@ -40,7 +40,7 @@ else:
     # Choose the gpu index (physical id from visible_list) for this rank
     chosen_index = rank % n_gpus_available
     chosen_gpu = visible_list[chosen_index]
-    # Override CUDA_VISIBLE_DEVICES so this process sees *only* that GPU
+    # Override CUDA_VISIBLE_DEVICES so this process sees *only* that GPU -> avoid resource contention
     os.environ["CUDA_VISIBLE_DEVICES"] = chosen_gpu
     print(f"[Rank {rank}] Setting CUDA_VISIBLE_DEVICES={chosen_gpu} (selected from {visible_list})")
 
@@ -66,22 +66,18 @@ except Exception:
     print("Warning: torch.use_deterministic_algorithms not available, proceeding without it.")
     pass
 
-def seed_worker(worker_id):
-    # Called in each DataLoader worker process
-    seed = (torch.initial_seed() + worker_id) % 2**32
-    np.random.seed(seed)
-    random.seed(seed)
-
 @click.command()
 @click.option('--network-config-file-name', required=True)
-@click.option("--data-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True),
-              default='../data/mnist')
+@click.option("--data-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), default='../data/mnist')
 @click.option('--num-seeds', default=5, type=int, help="Number of different seeds to try")
 @click.option('--debug', default=False, is_flag=True)
 def main(network_config_file_name, data_dir, num_seeds, debug):
     print('Using MPI')
     # Use global comm/rank/size from above
     global comm, rank, size
+
+    # Track wall clock time per rank
+    wall_start = time()
 
     # Each MPI rank handles multiple seeds sequentially.
     seeds_per_rank = (num_seeds + size - 1) // size  # Ceiling division
@@ -161,8 +157,14 @@ def main(network_config_file_name, data_dir, num_seeds, debug):
         del network
         torch.cuda.empty_cache()
 
+    # rank-local wall time
+    wall_end = time()
+    rank_wall = wall_end - wall_start
+
     # Gather and print summary on rank 0
     all_results = comm.gather(results_from_this_rank, root=0)
+    all_wall_times = comm.gather(rank_wall, root=0)
+
     if rank == 0:
         flattened_results = []
         for rank_results in all_results:
@@ -191,6 +193,9 @@ def main(network_config_file_name, data_dir, num_seeds, debug):
         print(f"\nRun Time:")
         print(f"  Mean: {sum(run_times)/len(run_times):.2f} sec")
         print(f"  Total: {sum(run_times):.2f} sec")
+
+        wall_clock = max(all_wall_times)  # longest rank determines MPI job wall time
+        print(f"\nTotal wall-clock time: {wall_clock:.2f} sec")
 
         print("\nIndividual Results:")
         for r in flattened_results:
