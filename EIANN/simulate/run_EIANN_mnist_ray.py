@@ -48,7 +48,7 @@ def train_eiann(config):
     try:
         ut.set_all_seeds(seed=network_seed)
 
-        train_loader, val_loader, test_loader, _ = ut.get_MNIST_dataloaders( data_dir=data_dir, data_seed=data_seed )
+        train_loader, val_loader, test_loader, _ = ut.get_MNIST_dataloaders(data_dir=data_dir, data_seed=data_seed)
 
         # Get the directory where this script is located
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -56,7 +56,7 @@ def train_eiann(config):
         project_root = os.path.dirname(os.path.dirname(script_dir))
         config_file_path = os.path.join(project_root, "EIANN", "network_config", "mnist", network_config_file_name)
         
-        network = ut.build_EIANN_from_config( config_file_path, network_seed=network_seed, device=device )
+        network = ut.build_EIANN_from_config(config_file_path, network_seed=network_seed, device=device)
 
         network.train(
             train_loader,
@@ -107,6 +107,9 @@ def main(network_config_file_name, data_dir, num_seeds, num_gpus):
         }
         for i in range(num_seeds)
     ]
+
+    # TODO: try 1 full gpu
+    # TODO: try less than 0.5 gpu
 
     tuner = tune.Tuner(
         tune.with_resources(train_eiann, resources={"cpu": 1, "gpu": 0.5}), # TODO: try with more CPUs

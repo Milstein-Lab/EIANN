@@ -61,7 +61,19 @@ class Network(nn.Module):
             Whether to print detailed information during initialization.
         """
         super().__init__()
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # TODO: make it possible to use cpu even when gpu is available
+        
+        # Default to CPU, use GPU if specified and available
+        if device.lower() in ('cuda', 'gpu') and torch.cuda.is_available():
+            self.device = torch.device('cuda')
+            if verbose:
+                print("Using device: CUDA")
+        else:
+            self.device = torch.device('cpu')
+            if verbose and device.lower() in ('cuda', 'gpu'):
+                print("CUDA requested but not available, falling back to CPU")
+            elif verbose:
+                print("Using device: CPU")
+
         self.seed = seed
         if self.seed is not None:
             torch.manual_seed(self.seed)
@@ -73,11 +85,11 @@ class Network(nn.Module):
         self.projection_config = projection_config
         self.training_kwargs = {'learning_rate': learning_rate, 'optimizer': optimizer,
                                 'optimizer_kwargs': optimizer_kwargs, 'criterion': criterion,
-                                'criterion_kwargs': criterion_kwargs, 'device': device, 'tau': tau,
+                                'criterion_kwargs': criterion_kwargs, 'device': self.device, 'tau': tau,
                                 'forward_steps': forward_steps, 'backward_steps': backward_steps}
 
         # AMP configuration (no speedup for biological networks)
-        self.use_amp = use_amp and device != 'cpu' and torch.cuda.is_available()
+        self.use_amp = use_amp and self.device != 'cpu' and torch.cuda.is_available()
         if self.use_amp:
             self.scaler = GradScaler()
             if verbose:
@@ -781,9 +793,9 @@ class Population(object):
         device : str, optional
             Device to run computations on ('cpu' or 'cuda'), by default 'cpu'
         """
-        self.device = device
         # Constants
         self.network = network
+        self.device = self.network.device
         self.layer = layer
         self.name = name
         self.size = size
@@ -946,12 +958,12 @@ class Population(object):
         Method for resetting state variables of a population
         """
         if batch_size > 1:
-            self.state = torch.zeros((batch_size, self.size), device=device)
+            self.state = torch.zeros((batch_size, self.size), device=self.device)
         else:
-            self.state = torch.zeros(self.size, device=device)
-        self.bias = self.bias.to(device)
+            self.state = torch.zeros(self.size, device=self.device)
+        self.bias = self.bias.to(self.device)
         self.state += self.bias
-        self.activity = self.activation(self.state).to(device)
+        self.activity = self.activation(self.state).to(self.device)
         self.forward_steps_activity = []
 
     def reset_history(self):
@@ -1072,17 +1084,17 @@ class Conv2DPopulation(Population):
         """
         if self.image_dim is None:
             if batch_size > 1:
-                self.state = torch.zeros((batch_size, self.size), device=device)
+                self.state = torch.zeros((batch_size, self.size), device=self.device)
             else:
-                self.state = torch.zeros(self.size, device=device)
+                self.state = torch.zeros(self.size, device=self.device)
             self.state += self.bias
         else:
             if batch_size > 1:
-                self.state = torch.zeros((batch_size, self.size, self.image_dim, self.image_dim), device=device)
+                self.state = torch.zeros((batch_size, self.size, self.image_dim, self.image_dim), device=self.device)
             else:
-                self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=device)
+                self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=self.device)
             self.state += self.bias.unsqueeze(-1).unsqueeze(-1)
-        self.activity = self.activation(self.state).to(device)
+        self.activity = self.activation(self.state).to(self.device)
         self.forward_steps_activity = []
 
 
@@ -1102,6 +1114,7 @@ class MaxPool2DPopulation(Population):
         :param kernel_size: int; height and width of pool kernel
         :param source: str; name of population with reference input image_dim
         """
+        self.device = network.device
         # Constants
         self.kernel_size = kernel_size
         self.pool = nn.MaxPool2d(kernel_size, **kwargs)
@@ -1129,17 +1142,17 @@ class MaxPool2DPopulation(Population):
         """
         if self.image_dim is None:
             if batch_size > 1:
-                self.state = torch.zeros((batch_size, self.size), device=device)
+                self.state = torch.zeros((batch_size, self.size), device=self.device)
             else:
-                self.state = torch.zeros(self.size, device=device)
+                self.state = torch.zeros(self.size, device=self.device)
             self.state += self.bias
         else:
             if batch_size > 1:
-                self.state = torch.zeros((batch_size, self.size, self.image_dim, self.image_dim), device=device)
+                self.state = torch.zeros((batch_size, self.size, self.image_dim, self.image_dim), device=self.device)
             else:
-                self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=device)
+                self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=self.device)
             self.state += self.bias.unsqueeze(-1).unsqueeze(-1)
-        self.activity = self.activation(self.state).to(device)
+        self.activity = self.activation(self.state).to(self.device)
         self.forward_steps_activity = []
 
 

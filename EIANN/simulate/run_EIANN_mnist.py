@@ -8,7 +8,8 @@ import EIANN.utils as ut
 @click.option("--data-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), default='../data/mnist')
 @click.option('--debug', default=False, is_flag=True, help="Enable debug mode")
 @click.option('--network-seed', type=int, default=None, help="Seed for network initialization")
-def main(network_config_file_name, data_dir, debug, network_seed):
+@click.option('--device', type=str, default='cpu', help="Device to use: 'cuda' or 'cpu'")
+def main(network_config_file_name, data_dir, debug, network_seed, device):
     start_time = time()
 
     seed_map = {
@@ -28,7 +29,6 @@ def main(network_config_file_name, data_dir, debug, network_seed):
     print(f'Network seed: {network_seed}')
     print(f'Data seed: {data_seed}')
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     ut.set_all_seeds(seed=network_seed)
 
     # Load dataset

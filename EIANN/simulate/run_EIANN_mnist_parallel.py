@@ -9,13 +9,6 @@ import numpy as np
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing as mp
 
-def seed_worker(worker_id):
-    """Called in each DataLoader worker process"""
-    import torch  # Import here too for worker processes
-    seed = (torch.initial_seed() + worker_id) % 2**32
-    np.random.seed(seed)
-    random.seed(seed)
-
 def run_single_seed(seed_idx, network_config_file_name, data_dir, num_gpus, debug=False):
     """
     Run training for a single seed on the assigned GPU.
