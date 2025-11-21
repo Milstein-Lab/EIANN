@@ -83,8 +83,6 @@ def run_single_seed(seed_idx, network_config_file_name, data_dir, num_gpus, debu
         
         if debug:
             print(f"Seed {seed_idx}: Built Network on {device}")
-
-        if debug:
             print(f"Seed {seed_idx}: GPU Memory Before Training: {torch.cuda.memory_allocated()/1e9:.2f} GB used, {torch.cuda.memory_reserved()/1e9:.2f} GB reserved")
         
         # Train

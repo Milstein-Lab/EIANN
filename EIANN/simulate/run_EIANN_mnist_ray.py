@@ -112,6 +112,7 @@ def main(network_config_file_name, data_dir, num_seeds, num_gpus):
 
     # TODO: try 1 full gpu
     # TODO: try less than 0.5 gpu
+    # TODO: try across different GPU nodes, perhaps with MPI
 
     tuner = tune.Tuner(
         tune.with_resources(train_eiann, resources={"cpu": 1, "gpu": 0.5}), # TODO: try with more CPUs

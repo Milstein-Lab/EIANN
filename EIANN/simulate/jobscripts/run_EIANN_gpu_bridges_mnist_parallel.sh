@@ -50,3 +50,5 @@ python EIANN/simulate/run_EIANN_mnist_parallel.py \
 
 # See logs:
 # cd /ocean/projects/bio240068p/$USER/logs/EIANN
+
+# interact -N 1 -p GPU --gres=gpu:v100-32:8 --mem=80G -n 5 --ntasks-per-node=5 -t 01:00:00

@@ -37,5 +37,3 @@ ray stop
 
 # See logs:
 # cd /ocean/projects/bio240068p/$USER/logs/EIANN
-
-# TODO: problem with ray in most current commit. should work in e57952d but waiting for results. last raytune run is on that older commiit

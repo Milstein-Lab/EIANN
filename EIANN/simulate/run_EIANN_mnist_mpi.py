@@ -92,7 +92,7 @@ def main(network_config_file_name, data_dir, num_seeds, debug):
         data_seed = 257 + i
 
         # Device selection: after setting CUDA_VISIBLE_DEVICES above, device is cuda:0
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Rank {rank}, Iter {i}: Device {device}, NetSeed {network_seed}, DataSeed {data_seed}")
 
         start_time = time()
