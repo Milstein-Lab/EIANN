@@ -63,13 +63,18 @@ class Network(nn.Module):
         super().__init__()
         
         # Default to CPU, use GPU if specified and available
-        if device.lower() in ('cuda', 'gpu') and torch.cuda.is_available():
+        if isinstance(device, torch.device):
+            device_name = device.type
+        else:
+            device_name = str(device).lower()
+
+        if device_name in ('cuda', 'gpu') and torch.cuda.is_available():
             self.device = torch.device('cuda')
             if verbose:
                 print("Using device: CUDA")
         else:
             self.device = torch.device('cpu')
-            if verbose and device.lower() in ('cuda', 'gpu'):
+            if verbose and device_name in ('cuda', 'gpu'):
                 print("CUDA requested but not available, falling back to CPU")
             elif verbose:
                 print("Using device: CPU")

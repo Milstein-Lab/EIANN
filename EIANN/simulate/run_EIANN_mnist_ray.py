@@ -5,6 +5,7 @@ import random
 import numpy as np
 import click
 import ray
+import traceback
 from ray import tune
 from ray.air import session
 from ray.air.config import RunConfig
@@ -84,6 +85,7 @@ def train_eiann(config):
         torch.cuda.empty_cache()
 
     except Exception as e:
+        traceback.print_exc()
         session.report({"error": str(e)})
 
 
