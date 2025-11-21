@@ -110,12 +110,10 @@ def main(network_config_file_name, data_dir, num_seeds, num_gpus):
         for i in range(num_seeds)
     ]
 
-    # TODO: try 1 full gpu
-    # TODO: try less than 0.5 gpu
     # TODO: try across different GPU nodes, perhaps with MPI
 
     tuner = tune.Tuner(
-        tune.with_resources(train_eiann, resources={"cpu": 1, "gpu": 0.5}), # TODO: try with more CPUs
+        tune.with_resources(train_eiann, resources={"cpu": 1, "gpu": 0.5}),
         param_space=tune.grid_search(param_space),
         run_config=RunConfig(name="eiann_mnist_parallel_ray")
     )
@@ -135,3 +133,16 @@ if __name__ == "__main__":
     main()
 
 # interact -p GPU-shared -N 1 --gres=gpu:v100-32:3 -t 01:00:00
+
+# bp Dale: 
+# baseline: 1 cpu 0.5 gpu per seed (GPU-shared)
+#     492.76 sec
+
+# 36148795 - ray, 4 cpu 0.5 gpu per seed (GPU-shared)
+#     474.12 sec
+
+# 36148818 - ray, 1 cpu 0.25 gpu per seed (GPU-shared)
+#     641.27 sec
+
+# 36148859 - ray, 1 cpu 1 gpu per seed (GPU)
+#     382.98 sec
