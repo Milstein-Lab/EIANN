@@ -168,7 +168,7 @@ class Network(nn.Module):
                         if hasattr(pre_pop, 'image_dim') and pre_pop.image_dim is not None:
                             projection = Conv2DProjection(pre_pop, post_pop, device='cpu', **projection_kwargs)
                         else:
-                            projection = Projection(pre_pop, post_pop, device='cpu', **projection_kwargs) # TODO: move this to self.device?
+                            projection = Projection(pre_pop, post_pop, device='cpu', **projection_kwargs) # cannot initialize on self.device --> accuracy goes down
                         post_pop.append_projection(projection)
                         post_pop.incoming_projections[projection.name] = projection
                         pre_pop.outgoing_projections[projection.name] = projection

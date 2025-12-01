@@ -93,8 +93,7 @@ def train_eiann(config):
 @click.option('--network-config-file-name', required=True, type=str, help="Network config file name")
 @click.option('--data-dir', default="../data/mnist", type=str, help="Directory for MNIST data")
 @click.option('--num-seeds', default=5, type=int, help="Number of different seeds to try")
-@click.option('--num-gpus', default=2, type=int, help="Number of GPUs to use")
-def main(network_config_file_name, data_dir, num_seeds, num_gpus):
+def main(network_config_file_name, data_dir, num_seeds):
 
     overall_start_time = time.time()
 
@@ -110,10 +109,8 @@ def main(network_config_file_name, data_dir, num_seeds, num_gpus):
         for i in range(num_seeds)
     ]
 
-    # TODO: try across different GPU nodes, perhaps with MPI
-
     tuner = tune.Tuner(
-        tune.with_resources(train_eiann, resources={"cpu": 1, "gpu": 0.5}),
+        tune.with_resources(train_eiann, resources={"cpu": 0, "gpu": 0.5}),
         param_space=tune.grid_search(param_space),
         run_config=RunConfig(name="eiann_mnist_parallel_ray")
     )
@@ -134,15 +131,48 @@ if __name__ == "__main__":
 
 # interact -p GPU-shared -N 1 --gres=gpu:v100-32:3 -t 01:00:00
 
+
+# ===== Single-node GPU runs =====
+
 # bp Dale: 
-# baseline: 1 cpu 0.5 gpu per seed (GPU-shared)
-#     492.76 sec
+# 36191138: 1 cpu 0.5 gpu per seed, request 12 cpus (GPU-shared)
+#   346.74 seconds
 
-# 36148795 - ray, 4 cpu 0.5 gpu per seed (GPU-shared)
-#     474.12 sec
+# 36191154: 1 cpu 0.5 gpu per seed, request 6 cpus (GPU-shared)
+#   382.83 seconds
 
-# 36148818 - ray, 1 cpu 0.25 gpu per seed (GPU-shared)
-#     641.27 sec
+# 36191200: 2 cpu 0.5 gpu per seed, request 12 cpus (GPU-shared)
+#   370.17 seconds
 
-# 36148859 - ray, 1 cpu 1 gpu per seed (GPU)
-#     382.98 sec
+# 36191244: 1 cpu 0.25 gpu per seed, request 12 cpus (GPU-shared)
+#   397.13 seconds
+
+# 36191248: 1 cpu 1 gpu per seed, request 12 cpus (GPU-shared)
+#   688.59 seconds -> did not request enough gpus -> retried with 36192557
+
+# 36192288: 1 cpu 0.5 gpu per seed (12 seeds), request 12 cpus (GPU-shared)
+#   722.51 seconds -> sequential
+
+# 36192294: 0 cpu 0.5 gpu per seed, request 12 cpus (GPU-shared)
+#   360.29 seconds
+
+# 36192324: 1 cpu 0.2 gpu per seed, request 6 cpus (GPU-shared)
+#   error
+
+# 36192511: 0 cpu 0.5 gpu per seed, request 15 cpus (GPU-shared)
+#   356.43 seconds
+
+# 36192512: 0 cpu 0.5 gpu per seed (12 seeds), request 15 cpus (GPU-shared)
+#   733.16 seconds
+
+# 36192557: 1 cpu 1 gpu per seed, request 15 cpus 5 gpus (GPU)
+#   error for some
+
+# ===== Multi-node GPU runs =====
+
+# bp Dale:
+# 36193643: 2 GPU nodes, 0 cpu 0.5 gpu per seed (32 seeds), request 15 cpus 16 gpus (GPU), with ray head only
+#   770.49 seconds -> only used 8 gpus
+
+# 36193950: 2 GPU nodes, 0 cpu 0.5 gpu per seed (32 seeds), request 8,8 cpus 8,7 gpus (GPU), with ray head+worker
+#   384.80 seconds
