@@ -607,6 +607,53 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
         return train_dataloader, val_dataloader, test_dataloader, data_generator
 
 
+def get_MNIST_dataloaders_CL(sub_dataloader_size=1000, classes=None):
+    """
+    Load MNIST dataset into custom dataloaders with sample index
+    """
+
+    # Load dataset
+    tensor_flatten = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Lambda(torch.flatten)])
+    MNIST_train_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=True, download=False, transform=tensor_flatten)
+    MNIST_test_dataset = torchvision.datasets.MNIST(root='../datasets/MNIST_data/', train=False, download=False, transform=tensor_flatten)
+
+    # Add index to train & test data
+    MNIST_train = []
+    MNIST_train_CL1 = [] # phase 1 dataset for continual learning
+    MNIST_train_CL2 = [] # phase 1 dataset for continual learning
+    for idx,(data,label) in enumerate(MNIST_train_dataset):
+        target = torch.eye(len(MNIST_train_dataset.classes))[label]
+        MNIST_train.append((idx, data, target))
+
+        if classes is not None:
+            if label in classes:
+                MNIST_train_CL1.append((idx, data, target))
+            else:
+                MNIST_train_CL2.append((idx, data, target))
+
+    MNIST_test = []
+    for idx,(data,target) in enumerate(MNIST_test_dataset):
+        target = torch.eye(len(MNIST_test_dataset.classes))[target]
+        MNIST_test.append((idx, data, target))
+
+    # Put data in dataloader
+    data_generator = torch.Generator()
+    train_dataloader = torch.utils.data.DataLoader(MNIST_train[0:50_000], batch_size=50_000)
+    train_sub_dataloader = torch.utils.data.DataLoader(MNIST_train[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=1)
+    val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10_000:], batch_size=10_000, shuffle=False)
+    test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10_000, shuffle=False)
+
+    if classes is not None:
+        train_dataloader_CL1 = torch.utils.data.DataLoader(MNIST_train_CL1[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=1)
+        train_dataloader_CL2 = torch.utils.data.DataLoader(MNIST_train_CL2[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=1)
+        train_dataloader_CL1_full = torch.utils.data.DataLoader(MNIST_train_CL1[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=sub_dataloader_size)
+        train_dataloader_CL2_full = torch.utils.data.DataLoader(MNIST_train_CL2[0:sub_dataloader_size], shuffle=True, generator=data_generator, batch_size=sub_dataloader_size)
+
+        return train_dataloader, train_dataloader_CL1_full, train_dataloader_CL2_full, train_dataloader_CL1, train_dataloader_CL2, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
+    else:
+        return train_dataloader, train_sub_dataloader, val_dataloader, test_dataloader, data_generator
+
+
 def get_MNIST_dataloaders_with_noise(sub_dataloader_size=None, batch_size=1, data_dir=None, mean=0.0, std=0.1, seed=42):
     """
     Load MNIST dataset with added Gaussian noise and return custom dataloaders that include sample indices.

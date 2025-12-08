@@ -401,6 +401,35 @@ def analyze_simple_EIANN_epoch_loss_and_accuracy(network, target, sorted_output_
     return best_epoch_index, epoch_loss, epoch_argmax_accuracy
 
 
+def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=None):
+    """
+    Assumes network has been trained with store_params=True. Evaluates test_loss at each train step in the
+    param_history.
+    :param network:
+    :param test_dataloader:
+    :param sorted_output_idx: tensor of int
+    :param store_history: bool
+    :param plot: bool
+    :param status_bar: bool
+    :param title: str
+    """
+    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
+
+    idx, test_data, test_target = next(iter(test_dataloader))
+    test_data = test_data.to(network.device)
+    test_target = test_target.to(network.device)
+    num_patterns = test_data.shape[0]
+    
+    output = network.forward(test_data, no_grad=True)
+    if sorted_output_idx is not None:
+        output = output[:, sorted_output_idx]
+    test_loss = network.criterion(output, test_target).item()
+    test_accuracy = 100 * torch.sum(torch.argmax(output, dim=1) ==
+                               torch.argmax(test_target, dim=1)) / num_patterns
+    
+    return test_loss, test_accuracy
+
+
 def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=None, store_history=False,
                                            plot=False, status_bar=False, title=None):
     """
