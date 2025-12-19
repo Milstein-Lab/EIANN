@@ -27,6 +27,40 @@ class Backprop(LearningRule):
             network.optimizer.step()
 
 
+class Backprop_INEL(LearningRule):
+    def __init__(self, projection, inel_threshold=0.5, learning_rate=None):
+        super().__init__(projection, learning_rate)
+        projection.weight.requires_grad = True
+        self.inel_threshold = inel_threshold
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        if network.use_amp:
+            # Use autocast for loss computation and scaled backward pass
+            with autocast():
+                loss = network.criterion(output, target)
+            
+            network.optimizer.zero_grad()
+            network.scaler.scale(loss).backward()
+            network.scaler.step(network.optimizer)
+            network.scaler.update()
+        else:
+            # Standard backward pass
+            loss = network.criterion(output, target)
+            network.optimizer.zero_grad()
+            loss.backward()
+            
+            with torch.no_grad():
+                for projection in network.projections.values():
+                    if projection.learning_rule.__class__ == cls:
+                        unit_mean_weights = torch.mean(projection.weight.data, dim=1)
+                        inel_indexes = (projection.learning_rule.inel_threshold *
+                                        torch.abs(projection.weight.data - unit_mean_weights.unsqueeze(1)) < 1).nonzero(as_tuple=True)
+                        projection.weight.grad[inel_indexes] = 0.
+            
+            network.optimizer.step()
+
+
 class Backprop_EWC(LearningRule):
     '''
     Implements the elastic weight consolidation (EWC) algorithm for continual learning.
