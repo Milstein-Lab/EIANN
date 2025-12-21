@@ -87,8 +87,6 @@ def config_worker():
         context.store_params = False
     else:
         context.store_params = str_to_bool(context.store_params)
-    if 'store_params_interval' not in context():
-        context.store_params_interval = (0, -1, 100)
     if context.debug:
         context.store_num_steps = None
     elif 'store_num_steps' not in context():
@@ -186,9 +184,9 @@ def config_worker():
         download = False
     tensor_flatten = T.Compose([T.ToTensor(), T.Lambda(torch.flatten)])
     MNIST_train_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=True,
-                                                     download=True, transform=tensor_flatten)
+                                                     download=download, transform=tensor_flatten)
     MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=False,
-                                                    download=False, transform=tensor_flatten)
+                                                    download=download, transform=tensor_flatten)
 
     # Add index to train & test data
     MNIST_phase1_train = []
@@ -283,6 +281,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     :param data_seed: int
     :param model_id: str
     :param export: bool
+    :param plot: bool
     :return: dict
     """
     update_source_contexts(x, context)
@@ -316,7 +315,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         except:
             pass
         if context.plot_initial:
-            plot_batch_accuracy(network, full_test_dataloader, population='all', title='Initial')
+            title = 'Initial (%i, %i)' % (seed, data_seed)
+            plot_batch_accuracy(network, full_test_dataloader, population='all', title=title)
     
     if 'data_file_path1' not in context():
         network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
@@ -419,7 +419,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                                                    status_bar=context.status_bar)
     
     if context.constrain_equilibration_dynamics or context.debug:
-        residuals = check_equilibration_dynamics(network, full_test_dataloader, context.equilibration_activity_tolerance,
+        residuals = check_equilibration_dynamics(network, phase1_test_dataloader, context.equilibration_activity_tolerance,
                                                  store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
         if context.include_equilibration_dynamics_objective:
             results['phase1_dynamics_residuals'] = residuals

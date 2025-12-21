@@ -124,7 +124,7 @@ def config_worker():
         context.retrain = str_to_bool(context.retrain)
     if not context.retrain:
         if 'data_file_path' not in context() or not os.path.exists(context.data_file_path):
-            raise Exception('nested_optimize_EIANN_spiral_2_hidden: missing valid data_file_path to load network from '
+            raise Exception('nested_optimize_EIANN_1_hidden_mnist: missing valid data_file_path to load network from '
                             'file')
     if 'plot_initial' not in context():
         context.plot_initial = False
