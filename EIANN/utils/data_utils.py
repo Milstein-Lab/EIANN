@@ -451,7 +451,7 @@ def load_plot_data(network_name, seed, data_key, file_path=None):
     return None
 
 
-def delete_plot_data(variable_name, file_name, file_path_prefix=None):
+def delete_plot_data(variable_name, file_name, file_path_prefix=None, network_seed=None):
     """
     Delete a specific variable from an HDF5 file and repack to reclaim disk space.
 
@@ -481,6 +481,10 @@ def delete_plot_data(variable_name, file_name, file_path_prefix=None):
                 del hdf5_file[network_name]
                 print(f"Deleted entire network group '{network_name}' from {file_name}")
                 continue
+            if network_seed == None:
+                all_seeds = hdf5_file[network_name].keys()
+            else:
+                all_seeds = network_seed
             for seed in list(hdf5_file[network_name].keys()):
                 if variable_name == seed:
                     del hdf5_file[network_name][seed]
@@ -550,7 +554,7 @@ def print_hdf5_dataset_sizes(file_path):
         f.visititems(print_dataset_sizes)
 
 
-def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None):
+def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None, data_seed=None):
     """
     Load MNIST dataset and return custom dataloaders that include sample indices.
 
@@ -590,6 +594,8 @@ def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None)
         
     # Put data in dataloader
     data_generator = torch.Generator()
+    if data_seed is not None:
+        data_generator.manual_seed(data_seed)
 
     if batch_size in ['all', 'full_dataset']:
         batch_size = 50_000

@@ -14,7 +14,10 @@ reportlab==4.2.5
 ipympl==0.9.3
 ipywidgets==8.1.7
 ipykernel==6.29.4
+mpi4py==4.1.1
 pandas==2.3.3
 nbimporter==0.3.4
 nbformat==5.10.4
 jupyter-book==1.0.4.post1
+ray[tune]==2.51.0
+pydantic==2.12.4

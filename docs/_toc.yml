@@ -12,6 +12,11 @@ parts:
     - file: Using_EIANN/training_feedforward_network
     - file: Using_EIANN/visualizing_network_properties
 
+  - caption: Python API  
+    chapters:
+      - file: yaml_glossary
+      - glob: autoapi/EIANN/*
+
   - caption: Galloni et al. 2025 - EIANN models
     chapters:
     - file: Galloni_etal_2025/model_summary1_feedforward_ANN_Backprop
@@ -45,10 +50,7 @@ parts:
     - file: Galloni_etal_2025/Supplementary_Accuracy_Tables
     - file: Galloni_etal_2025/Supplementary_Params_Tables
 
-  - caption: Python API  
-    chapters:
-      - file: yaml_glossary
-      - glob: autoapi/EIANN/*
+
       
 
 # - file: modules_reference

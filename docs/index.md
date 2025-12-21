@@ -1,8 +1,3 @@
-:::{note}
-🚧 **Work in Progress:** This documentation site is currently under construction. Content may change frequently.
-:::
-
-
 # EIANN Documentation
 
 **A framework for training neural networks with E/I cell types and biologically-plausible learning rules**
@@ -58,15 +53,14 @@ EIANN is particularly well-suited for:
 
 - **Computational Neuroscience Research**: Understanding how biological constraints affect learning
 - **Biologically-Inspired AI**: Developing AI systems that incorporate brain-like mechanisms  
-- **Educational Applications**: Teaching neural network principles with biological realism
 
 
-## Getting Started
+<!-- ## Getting Started
 
 1. **[Installation](installation.md)**: Set up EIANN in your environment
 2. **[Quick Start](quickstart.ipynb)**: Build your first E/I network
 3. **[Tutorials](tutorials/mnist_example.ipynb)**: Work through detailed examples
-4. **[User Guide](user_guide/basic_usage.ipynb)**: Learn about all features
+4. **[User Guide](user_guide/basic_usage.ipynb)**: Learn about all features -->
 
 ## Support
 

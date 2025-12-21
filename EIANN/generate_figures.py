@@ -157,7 +157,7 @@ def generate_data_hdf5(config_path, saved_network_path, hdf5_path, recompute=Non
         fraction_to_prune, accuracy_list = ut.compute_robustness_to_pruning(network, test_dataloader, projections='all')
         ut.save_plot_data(network.name, network.seed, data_key='robustness_to_pruning', data=(fraction_to_prune, accuracy_list), file_path=hdf5_path, overwrite=True)
 
-    if 'final_receptive_fields' in variables_to_save:
+    if set(['metrics_dict', 'initial_receptive_fields', 'final_receptive_fields']).intersection(variables_to_save):
         rf_populations = [population for population in network.populations.values() if population.name == "E" and population.fullname != "InputE"]
         
         initial_state_dict = network.prev_param_history[0]
@@ -450,9 +450,10 @@ def plot_metric_all_seeds(data_dict, model_dict, populations_to_plot, ax, metric
         # ax.errorbar(x, mean_value, yerr=error, color='k', fmt='none', capsize=0, capthick=0.5, zorder=5)
 
 
-def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
+def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, verbose=True):
     if 'dendritic_state' not in data_dict[next(iter(data_dict.keys()))]:
-        print(f"No dendritic state found for {model_dict['display_name']}")
+        if verbose:
+            print(f"No dendritic state found for {model_dict['display_name']}")
         return
     dendstate_all_seeds = []
     for seed in model_dict['seeds']:
@@ -467,9 +468,6 @@ def plot_dendritic_state_all_seeds(data_dict, model_dict, ax, scale='log'):
     ax.set_ylabel('Dendritic state')
     ax.set_ylim(bottom=-0.005, top=0.3)
     ax.set_yticks([0, 0.1, 0.2, 0.3])
-    # ax.set_yscale(scale)
-    # ax.hlines(0, *ax.get_xlim(), color='black', linestyle='--', linewidth=1)
-    
 
 def plot_angle_vs_bp_all_seeds(data_dict, model_dict, ax, stochastic=True, error='std'):
     angle_all_seeds = []
@@ -576,8 +574,7 @@ def plot_dimensionality_all_seeds(data_dict, model_dict, ax):
 
 
 def plot_confusion_all_seeds(data_dict, model_dict, ax, population, type='bar'):
-    between_class_similarity = {label: [] for label in range(10)}
-    between_class_similarity_all = []
+    between_class_similarity = []
     for seed in model_dict['seeds']:
         # Calculate the receptive field similarity for each unit (the histogram will pool data across all model seeds)
         unit_labels_dict = data_dict[seed]['unit_labels_dict']
@@ -589,25 +586,29 @@ def plot_confusion_all_seeds(data_dict, model_dict, ax, population, type='bar'):
         sorted_pop_activity = average_pop_activity[idx]
 
         # Calculate within-class and between-class receptive field similarity (accumulate across all seeds)
+        between_class_similarity_this_seed = []
         for label in range(10):
             class_idx = np.where(unit_labels == label)[0]
             max_activity_outside_class = np.max(sorted_pop_activity[class_idx][:, np.arange(10)!=label], axis=1)
             mean_activity_outside_class = np.mean(sorted_pop_activity[class_idx][:, np.arange(10)!=label], axis=1)
             confusion_ratio = max_activity_outside_class / (mean_activity_outside_class + 1e-10)
-            between_class_similarity_all.extend(confusion_ratio)
-            between_class_similarity[label].extend(confusion_ratio)
-
+            mean_confusion_ratio = np.nanmean(confusion_ratio) # average across all units in the class
+            between_class_similarity_this_seed.append(mean_confusion_ratio)
+        between_class_similarity.append(between_class_similarity_this_seed)
+    between_class_similarity = np.array(between_class_similarity)
+    
     if type == 'bar':
         for label in range(10):
-            mean_val = np.mean(between_class_similarity[label])
-            std_val = np.std(between_class_similarity[label])
+            mean_val = np.nanmean(between_class_similarity[label])
+            std_val = np.nanstd(between_class_similarity[label])
             ax.bar(label, mean_val, width=0.8, label='Between-class' if label==0 else None, color=model_dict["color"], alpha=0.3)
             ax.errorbar(label, mean_val, yerr=std_val, fmt='none', ecolor=model_dict["color"], capsize=0, linewidth=0.5)
     elif type == 'line':
-        mean_values = np.array([np.mean(between_class_similarity[label]) for label in range(10)])
-        std_values = np.array([np.std(between_class_similarity[label]) for label in range(10)])
-        ax.plot(range(10), mean_values, '-o', color=model_dict["color"], label=model_dict["label"], linewidth=0.5, markersize=2)
-        ax.fill_between(range(10), mean_values-std_values, mean_values+std_values, color=model_dict["color"], linewidth=0, alpha=0.1)
+        mean_values = between_class_similarity
+        mean_values = np.nanmean(between_class_similarity, axis=0)
+        ax.plot(range(10), mean_values.T, '-o', color=model_dict["color"], label=model_dict["label"], linewidth=0.5, markersize=2)
+        std_values = np.nanstd(between_class_similarity, axis=0)
+        ax.fill_between(range(10), mean_values-std_values, mean_values+std_values, color=model_dict["color"], linewidth=0, alpha=0.2)
 
     ax.set_ylabel('Confusion ratio (non-\npreferred class selectivity)', y=0.45)
     ax.set_xticks(range(10))
