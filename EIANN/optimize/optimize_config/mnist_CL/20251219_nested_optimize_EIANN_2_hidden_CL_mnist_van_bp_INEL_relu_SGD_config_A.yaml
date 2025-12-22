@@ -8,12 +8,21 @@ bounds:
     H1_init_weight_scale:
         - 0.01
         - 10.
+    H1_INEL_threshold_scale:
+        - 0.001
+        - 1.
     H2_init_weight_scale:
         - 0.01
         - 10.
+    H2_INEL_threshold_scale:
+        - 0.001
+        - 1.
     Output_init_weight_scale:
         - 0.01
         - 10.
+    Output_INEL_threshold_scale:
+        - 0.001
+        - 1.
 default_params:
 kwargs:
     network_id: 1
@@ -35,7 +44,7 @@ kwargs:
     constrain_equilibration_dynamics: False
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
-      function: update_EIANN_config_2_hidden_van_bp_relu_SGD_G
+      function: update_EIANN_config_2_hidden_van_bp_relu_SGD_CL_INEL_A
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
       get_args_static: get_random_seeds
@@ -49,3 +58,6 @@ x0:
     H1_init_weight_scale: 1.
     H2_init_weight_scale: 1.
     Output_init_weight_scale: 1.2
+    H1_INEL_threshold_scale: 0.2
+    H2_INEL_threshold_scale: 0.2
+    Output_INEL_threshold_scale: 0.2

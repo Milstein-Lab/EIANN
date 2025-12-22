@@ -53,9 +53,10 @@ class Backprop_INEL(LearningRule):
             with torch.no_grad():
                 for projection in network.projections.values():
                     if projection.learning_rule.__class__ == cls:
-                        unit_mean_weights = torch.mean(projection.weight.data, dim=1)
-                        inel_indexes = (projection.learning_rule.inel_threshold *
-                                        torch.abs(projection.weight.data - unit_mean_weights.unsqueeze(1)) < 1).nonzero(as_tuple=True)
+                        unit_mean_weights = torch.mean(torch.abs(projection.weight.data), dim=1)
+                        inel_indexes = (torch.abs(projection.weight.data - unit_mean_weights.unsqueeze(1)) <
+                                        projection.learning_rule.inel_threshold).nonzero(as_tuple=True)
+                        print(projection.name, len(inel_indexes[0]))
                         projection.weight.grad[inel_indexes] = 0.
             
             network.optimizer.step()

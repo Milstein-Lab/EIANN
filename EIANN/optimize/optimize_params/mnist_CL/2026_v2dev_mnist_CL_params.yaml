@@ -1,0 +1,12 @@
+van_bp:
+    #    final_accuracy: 47.678001403808594
+    #    final_loss: 0.07572007477283478
+    #    phase1_accuracy: 98.60182189941406
+    #    phase1_loss: 0.004666976630687714
+    #    phase2_accuracy: 97.18778228759766
+    #    phase2_loss: 0.007762429304420948
+    H_learning_rate: 0.06467530684633124
+    Output_learning_rate: 0.018721773180876915
+    H1_init_weight_scale: 0.8488586553625852
+    H2_init_weight_scale: 2.5080556895118544
+    Output_init_weight_scale: 3.1872520298276377
