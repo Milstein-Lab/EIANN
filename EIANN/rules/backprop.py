@@ -35,30 +35,51 @@ class Backprop_INEL(LearningRule):
     
     @classmethod
     def backward(cls, network, output, target, store_history=False, store_dynamics=False):
-        if network.use_amp:
-            # Use autocast for loss computation and scaled backward pass
-            with autocast():
-                loss = network.criterion(output, target)
-            
-            network.optimizer.zero_grad()
-            network.scaler.scale(loss).backward()
-            network.scaler.step(network.optimizer)
-            network.scaler.update()
-        else:
-            # Standard backward pass
-            loss = network.criterion(output, target)
-            network.optimizer.zero_grad()
-            loss.backward()
-            
-            with torch.no_grad():
-                for projection in network.projections.values():
-                    if projection.learning_rule.__class__ == cls:
-                        unit_mean_weights = torch.mean(torch.abs(projection.weight.data), dim=1)
+        
+        loss = network.criterion(output, target)
+        network.optimizer.zero_grad()
+        loss.backward()
+        
+        with torch.no_grad():
+            for projection in network.projections.values():
+                if projection.learning_rule.__class__ == cls:
+                    unit_mean_weights = torch.mean(torch.abs(projection.weight.data), dim=1)
+                    inel_indexes = (torch.abs(projection.weight.data - unit_mean_weights.unsqueeze(1)) <
+                                    projection.learning_rule.inel_threshold).nonzero(as_tuple=True)
+                    projection.weight.grad[inel_indexes] = 0.
+        
+        network.optimizer.step()
+
+
+class Backprop_INEL(LearningRule):
+    def __init__(self, projection, inel_threshold=0.5, learning_rate=None):
+        super().__init__(projection, learning_rate)
+        projection.weight.requires_grad = True
+        self.inel_threshold = inel_threshold
+        self.task_num = 0
+    
+    def update_CL_states(self):
+        self.task_num += 1
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        
+        loss = network.criterion(output, target)
+        network.optimizer.zero_grad()
+        loss.backward()
+        
+        with torch.no_grad():
+            for projection in network.projections.values():
+                if projection.learning_rule.__class__ == cls:
+                    if projection.learning_rule.task_num > 0:
+                        unit_mean_weights = torch.mean(projection.weight.data, dim=1)
                         inel_indexes = (torch.abs(projection.weight.data - unit_mean_weights.unsqueeze(1)) <
                                         projection.learning_rule.inel_threshold).nonzero(as_tuple=True)
+                        # if projection.post is network.output_pop:
+                        #     print(network.task_num, len(inel_indexes[0]))
                         projection.weight.grad[inel_indexes] = 0.
-            
-            network.optimizer.step()
+        
+        network.optimizer.step()
 
 
 class Backprop_EWC(LearningRule):

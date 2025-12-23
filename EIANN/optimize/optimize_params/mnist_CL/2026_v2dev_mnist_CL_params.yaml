@@ -10,3 +10,21 @@ van_bp:
     H1_init_weight_scale: 0.8488586553625852
     H2_init_weight_scale: 2.5080556895118544
     Output_init_weight_scale: 3.1872520298276377
+van_bp_CL_INEL_A:
+    # threshold based on distance from single unit mean weight
+    # calculated distance wrong
+    # learning rate masking was on during both task1 and task2
+    #    final_accuracy: 48.8380012512207
+    #    final_loss: 0.06680649667978286
+    #    phase1_accuracy: 98.94306182861328
+    #    phase1_loss: 0.0032474063336849213
+    #    phase2_accuracy: 97.9332275390625
+    #    phase2_loss: 0.006103566847741604
+    H_learning_rate: 0.40263621831207386
+    Output_learning_rate: 0.25062167170757943
+    H1_init_weight_scale: 0.5154374261359224
+    H1_INEL_threshold_scale: 0.818747668586589
+    H2_init_weight_scale: 0.49029008717749606
+    H2_INEL_threshold_scale: 0.622433876642832
+    Output_init_weight_scale: 8.266586408093703
+    Output_INEL_threshold_scale: 0.39574748099089385

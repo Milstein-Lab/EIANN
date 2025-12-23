@@ -449,6 +449,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i loaded phase2 network history from %s' %
                   (os.getpid(), context.data_file_path2))
     else:
+        network.update_CL_states()
         data_generator.manual_seed(data_seed)
         network.train(phase2_train_dataloader, phase2_val_dataloader, epochs=epochs,
                       val_interval=context.val_interval,  # e.g. (-201, -1, 10)

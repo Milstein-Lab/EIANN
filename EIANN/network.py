@@ -669,7 +669,12 @@ class Network(nn.Module):
                 loss = self.criterion(output, sample_target)
 
         return loss.item()
-           
+    
+    def update_CL_states(self):
+        for projection in self.projections.values():
+            if hasattr(projection.learning_rule, 'update_CL_states'):
+                projection.learning_rule.update_CL_states()
+        
     def __iter__(self):
         for layer in self.layers.values():
             yield layer
