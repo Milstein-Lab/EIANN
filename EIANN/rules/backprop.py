@@ -82,6 +82,42 @@ class Backprop_INEL(LearningRule):
         network.optimizer.step()
 
 
+class Backprop_SILR(LearningRule):
+    """
+    Inspired by "Synaptic Intelligence" (Zenke et al., 2019). Parameter updates are accumulated during a task,
+    and learning rates are modulated during subsequent tasks.
+    """
+    def __init__(self, projection, silr_threshold=0.5, silr_width=0.5, silr_min=0., learning_rate=None):
+        super().__init__(projection, learning_rate)
+        projection.weight.requires_grad = True
+        self.lr_mod = torch.ones_like(projection.weight.data)
+        self.lr_mod_func = pwlin(1., silr_min, silr_threshold, silr_threshold + silr_width)
+        self.accum_delta_weight = torch.zeros_like(projection.weight.data)
+        self.task_num = 0
+    
+    def update_CL_states(self):
+        self.task_num += 1
+        self.lr_mod = self.lr_mod_func(torch.abs(self.accum_delta_weight))
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        
+        loss = network.criterion(output, target)
+        network.optimizer.zero_grad()
+        loss.backward()
+        
+        with torch.no_grad():
+            for projection in network.projections.values():
+                if projection.learning_rule.__class__ == cls:
+                    delta_weight = (-projection.learning_rule.learning_rate * projection.learning_rule.lr_mod *
+                                    projection.weight.grad)
+                    projection.learning_rule.accum_delta_weight += delta_weight
+                    if projection.learning_rule.task_num > 0:
+                        projection.weight.grad *= projection.learning_rule.lr_mod
+        
+        network.optimizer.step()
+
+
 class Backprop_EWC(LearningRule):
     '''
     Implements the elastic weight consolidation (EWC) algorithm for continual learning.
@@ -190,3 +226,14 @@ class Backprop_DendriticLoss(LearningRule):
                                 local_optimizer.zero_grad()
                                 local_loss.backward()
                                 local_optimizer.step()
+
+
+def pwlin(y0=0., y1=1., x0=0., x1=1.):
+    slope = (y1 - y0) / (x1 - x0)
+    def pwlin_instance(x):
+        y = torch.ones_like(x) * y0
+        y[x > x1] = y1
+        indexes = ((x0 < x) & (x <= x1)).nonzero(as_tuple=True)
+        y[indexes] = slope * (x[indexes] - x0) + y0
+        return y
+    return pwlin_instance
