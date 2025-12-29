@@ -27,31 +27,8 @@ class Backprop(LearningRule):
             network.optimizer.step()
 
 
-class Backprop_INEL(LearningRule):
-    def __init__(self, projection, inel_threshold=0.5, learning_rate=None):
-        super().__init__(projection, learning_rate)
-        projection.weight.requires_grad = True
-        self.inel_threshold = inel_threshold
-    
-    @classmethod
-    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
-        
-        loss = network.criterion(output, target)
-        network.optimizer.zero_grad()
-        loss.backward()
-        
-        with torch.no_grad():
-            for projection in network.projections.values():
-                if projection.learning_rule.__class__ == cls:
-                    unit_mean_weights = torch.mean(torch.abs(projection.weight.data), dim=1)
-                    inel_indexes = (torch.abs(projection.weight.data - unit_mean_weights.unsqueeze(1)) <
-                                    projection.learning_rule.inel_threshold).nonzero(as_tuple=True)
-                    projection.weight.grad[inel_indexes] = 0.
-        
-        network.optimizer.step()
-
-
-class Backprop_INEL(LearningRule):
+class Backprop_INEL_A(LearningRule):
+    # Target weight is the unit mean
     def __init__(self, projection, inel_threshold=0.5, learning_rate=None):
         super().__init__(projection, learning_rate)
         projection.weight.requires_grad = True
@@ -75,14 +52,42 @@ class Backprop_INEL(LearningRule):
                         unit_mean_weights = torch.mean(projection.weight.data, dim=1)
                         inel_indexes = (torch.abs(projection.weight.data - unit_mean_weights.unsqueeze(1)) <
                                         projection.learning_rule.inel_threshold).nonzero(as_tuple=True)
-                        # if projection.post is network.output_pop:
-                        #     print(network.task_num, len(inel_indexes[0]))
                         projection.weight.grad[inel_indexes] = 0.
         
         network.optimizer.step()
 
 
-class Backprop_SILR(LearningRule):
+class Backprop_INEL_B(LearningRule):
+    # Target weight is the projection mean
+    def __init__(self, projection, inel_threshold=0.5, learning_rate=None):
+        super().__init__(projection, learning_rate)
+        projection.weight.requires_grad = True
+        self.inel_threshold = inel_threshold
+        self.task_num = 0
+    
+    def update_CL_states(self):
+        self.task_num += 1
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        
+        loss = network.criterion(output, target)
+        network.optimizer.zero_grad()
+        loss.backward()
+        
+        with torch.no_grad():
+            for projection in network.projections.values():
+                if projection.learning_rule.__class__ == cls:
+                    if projection.learning_rule.task_num > 0:
+                        projection_mean_weight = torch.mean(projection.weight.data)
+                        inel_indexes = (torch.abs(projection.weight.data - projection_mean_weight) <
+                                        projection.learning_rule.inel_threshold).nonzero(as_tuple=True)
+                        projection.weight.grad[inel_indexes] = 0.
+        
+        network.optimizer.step()
+
+
+class Backprop_SILR_A(LearningRule):
     """
     Inspired by "Synaptic Intelligence" (Zenke et al., 2019). Parameter updates are accumulated during a task,
     and learning rates are modulated during subsequent tasks.
@@ -114,6 +119,48 @@ class Backprop_SILR(LearningRule):
                     projection.learning_rule.accum_delta_weight += delta_weight
                     if projection.learning_rule.task_num > 0:
                         projection.weight.grad *= projection.learning_rule.lr_mod
+        
+        network.optimizer.step()
+
+
+class Backprop_SILR_B(LearningRule):
+    """
+    Inspired by "Synaptic Intelligence" (Zenke et al., 2019). Parameter updates are accumulated during a task,
+    and learning rates are modulated during subsequent tasks.
+    """
+    
+    def __init__(self, projection, silr_threshold=0.5, silr_width=0.5, silr_min=0., learning_rate=None):
+        super().__init__(projection, learning_rate)
+        projection.weight.requires_grad = True
+        self.lr_mod_func = pwlin(1., silr_min, silr_threshold, silr_threshold + silr_width)
+        self.accum_delta_weight = torch.zeros_like(projection.weight.data)
+        self.task_num = 0
+    
+    def update_CL_states(self):
+        self.task_num += 1
+        self.prev_task_accum_delta_weight = self.accum_delta_weight.detach().clone()
+        self.prev_task_weights = self.projection.weight.data.detach().clone()
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        
+        loss = network.criterion(output, target)
+        network.optimizer.zero_grad()
+        loss.backward()
+        
+        with torch.no_grad():
+            for projection in network.projections.values():
+                if projection.learning_rule.__class__ == cls:
+                    if projection.learning_rule.task_num > 0:
+                        lr_mod = projection.learning_rule.lr_mod_func(
+                            torch.abs(projection.learning_rule.prev_task_accum_delta_weight *
+                                      (projection.weight.data - projection.learning_rule.prev_task_weights)))
+                        projection.weight.grad *= lr_mod
+                    else:
+                        lr_mod = 1.
+                    delta_weight = (-projection.learning_rule.learning_rate * lr_mod *
+                                    projection.weight.grad)
+                    projection.learning_rule.accum_delta_weight += delta_weight
         
         network.optimizer.step()
 

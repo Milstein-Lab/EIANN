@@ -24,7 +24,7 @@ projection_config:
                     weight_init_args: !!python/tuple
                         - 1
                     direction: F
-                    learning_rule: Backprop_SILR
+                    learning_rule: Backprop_SILR_B
                     learning_rule_kwargs:
                         learning_rate: 0.2
                         silr_threshold: 0.5
@@ -38,7 +38,7 @@ projection_config:
                     weight_init_args: !!python/tuple
                         - 1
                     direction: F
-                    learning_rule: Backprop_SILR
+                    learning_rule: Backprop_SILR_B
                     learning_rule_kwargs:
                         learning_rate: 0.2
                         silr_threshold: 0.5
@@ -52,7 +52,7 @@ projection_config:
                     weight_init_args: !!python/tuple
                         - 1
                     direction: F
-                    learning_rule: Backprop_SILR
+                    learning_rule: Backprop_SILR_B
                     learning_rule_kwargs:
                         learning_rate: 0.2
                         silr_threshold: 0.5

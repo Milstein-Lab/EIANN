@@ -12,19 +12,38 @@ van_bp:
     Output_init_weight_scale: 3.1872520298276377
 van_bp_CL_INEL_A:
     # threshold based on distance from single unit mean weight
-    # calculated distance wrong
-    # learning rate masking was on during both task1 and task2
-    #    final_accuracy: 48.8380012512207
-    #    final_loss: 0.06680649667978286
-    #    phase1_accuracy: 98.94306182861328
-    #    phase1_loss: 0.0032474063336849213
-    #    phase2_accuracy: 97.9332275390625
-    #    phase2_loss: 0.006103566847741604
-    H_learning_rate: 0.40263621831207386
-    Output_learning_rate: 0.25062167170757943
-    H1_init_weight_scale: 0.5154374261359224
-    H1_INEL_threshold_scale: 0.818747668586589
-    H2_init_weight_scale: 0.49029008717749606
-    H2_INEL_threshold_scale: 0.622433876642832
-    Output_init_weight_scale: 8.266586408093703
-    Output_INEL_threshold_scale: 0.39574748099089385
+    #    final_accuracy: 48.314002990722656
+    #    final_loss: 0.07069863080978393
+    #    phase1_accuracy: 98.24436950683594
+    #    phase1_loss: 0.005615526344627142
+    #    phase2_accuracy: 97.4496078491211
+    #    phase2_loss: 0.006834632251411676
+    H_learning_rate: 0.38823573551270923
+    Output_learning_rate: 0.0907351762352522
+    H1_init_weight_scale: 1.6237719375255881
+    H1_INEL_threshold_scale: 0.4605551640645715
+    H2_init_weight_scale: 1.210633652017135
+    H2_INEL_threshold_scale: 0.4910106714455269
+    Output_init_weight_scale: 2.291165609101078
+    Output_INEL_threshold_scale: 0.4602182795101855
+van_bp_CL_SILR_A:
+    #    final_accuracy: 69.94200134277344
+    #    final_loss: 0.049778562784194944
+    #    phase1_accuracy: 95.60696411132812
+    #    phase1_loss: 0.012743276543915272
+    #    phase2_accuracy: 86.21366882324219
+    #    phase2_loss: 0.03192757070064545
+    H_learning_rate: 0.0001866302879671657
+    Output_learning_rate: 0.00758022982331291
+    H1_init_weight_scale: 1.716595164927433
+    H1_SILR_threshold_scale: 0.007921761621868143
+    H1_SILR_width_scale: 0.07602837441134191
+    H1_SILR_min_scale: 0.017883647601031276
+    H2_init_weight_scale: 2.890793165774495
+    H2_SILR_threshold_scale: 0.4440220030468698
+    H2_SILR_width_scale: 0.10693373420581646
+    H2_SILR_min_scale: 0.09971996681276157
+    Output_init_weight_scale: 0.010778303282754344
+    Output_SILR_threshold_scale: 0.13770611198836366
+    Output_SILR_width_scale: 0.003978625378845599
+    Output_SILR_min_scale: 0.0019062829555078703

@@ -8,37 +8,19 @@ bounds:
     H1_init_weight_scale:
         - 0.01
         - 10.
-    H1_SILR_threshold_scale:
-        - 0.001
-        - 1.
-    H1_SILR_width_scale:
-        - 0.001
-        - 1.
-    H1_SILR_min_scale:
+    H1_INEL_threshold_scale:
         - 0.001
         - 1.
     H2_init_weight_scale:
         - 0.01
         - 10.
-    H2_SILR_threshold_scale:
-        - 0.001
-        - 1.
-    H2_SILR_width_scale:
-        - 0.001
-        - 1.
-    H2_SILR_min_scale:
+    H2_INEL_threshold_scale:
         - 0.001
         - 1.
     Output_init_weight_scale:
         - 0.01
         - 10.
-    Output_SILR_threshold_scale:
-        - 0.001
-        - 1.
-    Output_SILR_width_scale:
-        - 0.001
-        - 1.
-    Output_SILR_min_scale:
+    Output_INEL_threshold_scale:
         - 0.001
         - 1.
 default_params:
@@ -53,7 +35,7 @@ kwargs:
     train_steps: 10000
     split: 0.5
     epochs: 1
-    network_config_file_path: optimize/network_config/MNIST_CL/20251223_EIANN_2_hidden_CL_mnist_van_bp_SILR_relu_SGD_config_A.yaml
+    network_config_file_path: optimize/network_config/MNIST_CL/20251229_EIANN_2_hidden_CL_mnist_van_bp_INEL_relu_SGD_config_B.yaml
     val_interval:
         - -1000
         - -1
@@ -62,26 +44,20 @@ kwargs:
     constrain_equilibration_dynamics: False
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
-      function: update_EIANN_config_2_hidden_van_bp_relu_SGD_CL_SILR_A
+      function: update_EIANN_config_2_hidden_van_bp_relu_SGD_CL_INEL_A  # works with B
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_CL_mnist_van_bp_SILR_relu_SGD_A
+optimization_title: EIANN_2_hidden_CL_mnist_van_bp_INEL_relu_SGD_B
 x0:
     H_learning_rate: 0.5
     Output_learning_rate: 0.5
     H1_init_weight_scale: 1.
     H2_init_weight_scale: 1.
     Output_init_weight_scale: 1.2
-    H1_SILR_threshold_scale: 0.2
-    H2_SILR_threshold_scale: 0.2
-    Output_SILR_threshold_scale: 0.2
-    H1_SILR_width_scale: 0.2
-    H2_SILR_width_scale: 0.2
-    Output_SILR_width_scale: 0.2
-    H1_SILR_min_scale: 0.1
-    H2_SILR_min_scale: 0.1
-    Output_SILR_min_scale: 0.1
+    H1_INEL_threshold_scale: 0.2
+    H2_INEL_threshold_scale: 0.2
+    Output_INEL_threshold_scale: 0.2
