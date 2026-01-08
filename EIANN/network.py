@@ -602,6 +602,7 @@ class Network(nn.Module):
                         del val_loss
                         accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
                                    output.shape[0]
+                        del output
                         self.val_accuracy_history.append(accuracy.item())
                         self.val_history_train_steps.append(train_step)
                         if status_bar: # Display the current loss and accuracy on the progress bar
