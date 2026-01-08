@@ -389,8 +389,8 @@ class Network(nn.Module):
                     post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state.detach().clone())
   
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
-              store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
-              store_params_interval=None, save_to_file=None, status_bar=False):
+              store_history=False, store_val_output_history=False, store_dynamics=False, store_params=False,
+              store_history_interval=None, store_params_interval=None, save_to_file=None, status_bar=False):
         """
         Train the network on training data with optional validation.
 
@@ -544,10 +544,12 @@ class Network(nn.Module):
                 else:
                     output = self.forward(sample_data, store_history=this_train_step_store_history,
                                       store_dynamics=store_dynamics)
-                    loss = self.criterion(output, sample_target)
+                    with torch.no_grad():
+                        loss = self.criterion(output, sample_target)
 
                 self.loss_history.append(loss.item())
-                self.target_history.append(sample_target.clone())
+                del loss
+                self.target_history.append(sample_target.detach().clone())
 
                 if store_params and (train_step in store_params_range) and store_params_step_size > 1:
                     self.prev_param_history.append(deepcopy(self.state_dict()))  # Store parameters for dW comparison
@@ -556,51 +558,57 @@ class Network(nn.Module):
                 self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
                 
                 for backward in self.backward_methods:
-                    backward(self, output, sample_target, store_history=this_train_step_store_history, store_dynamics=store_dynamics)
+                    backward(self, output, sample_target, store_history=this_train_step_store_history,
+                             store_dynamics=store_dynamics)
                 
-                # Step weights and biases
-                for i, post_layer in enumerate(self):
-                    for post_pop in post_layer:
-                        if post_pop.include_bias:
-                            post_pop.bias_learning_rule.step()
-                        for projection in post_pop:
-                            projection.learning_rule.step()
-
-                self.constrain_weights_and_biases()
-
-                # Update learning rule parameters
-                for i, post_layer in enumerate(self):
-                    for post_pop in post_layer:
-                        if post_pop.include_bias:
-                            post_pop.bias_learning_rule.update()
-                        for projection in post_pop:
-                            projection.learning_rule.update()
-
-                # Store history of weights and biases
-                if store_params and train_step in store_params_range:
-                    self.param_history.append(deepcopy(self.state_dict()))
-                    self.param_history_steps.append(train_step)
-                
-                # Compute validation loss
-                if val_dataloader is not None and train_step in val_range:
-                    if self.use_amp:
-                        with autocast():
-                            output = self.forward(val_data, store_dynamics=False, no_grad=True)
-                            val_loss = self.criterion(output, val_target)
-                    else:
-                        output = self.forward(val_data, store_dynamics=False, no_grad=True)
-                        val_loss = self.criterion(output, val_target)
+                with torch.no_grad():
+                    # Step weights and biases
+                    for i, post_layer in enumerate(self):
+                        for post_pop in post_layer:
+                            if post_pop.include_bias:
+                                post_pop.bias_learning_rule.step()
+                            for projection in post_pop:
+                                projection.learning_rule.step()
+    
+                    self.constrain_weights_and_biases()
+    
+                    # Update learning rule parameters
+                    for i, post_layer in enumerate(self):
+                        for post_pop in post_layer:
+                            if post_pop.include_bias:
+                                post_pop.bias_learning_rule.update()
+                            for projection in post_pop:
+                                projection.learning_rule.update()
+    
+                    # Store history of weights and biases
+                    if store_params and train_step in store_params_range:
+                        self.param_history.append(deepcopy(self.state_dict()))
+                        self.param_history_steps.append(train_step)
                     
-                    self.val_output_history.append(output.detach().clone())
-                    self.val_loss_history.append(val_loss.item())
-                    accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
-                               output.shape[0]
-                    self.val_accuracy_history.append(accuracy.item())
-                    self.val_history_train_steps.append(train_step)
-                    if status_bar: # Display the current loss and accuracy on the progress bar
-                        epoch_iter.set_description(f"Validation Loss: {self.val_loss_history[-1]:.4f}, Accuracy: {self.val_accuracy_history[-1]:.2f}% - Epoch")
+                    # Compute validation loss
+                    if val_dataloader is not None and train_step in val_range:
+                        if self.use_amp:
+                            with autocast():
+                                output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                                val_loss = self.criterion(output, val_target)
+                        else:
+                            output = self.forward(val_data, store_dynamics=False, no_grad=True)
+                            with torch.no_grad():
+                                val_loss = self.criterion(output, val_target)
+                        
+                        if store_val_output_history:
+                            self.val_output_history.append(output.detach().clone())
+                        self.val_loss_history.append(val_loss.item())
+                        del val_loss
+                        accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
+                                   output.shape[0]
+                        self.val_accuracy_history.append(accuracy.item())
+                        self.val_history_train_steps.append(train_step)
+                        if status_bar: # Display the current loss and accuracy on the progress bar
+                            epoch_iter.set_description(
+                                f"Validation Loss: {self.val_loss_history[-1]:.4f}, Accuracy: {self.val_accuracy_history[-1]:.2f}% - Epoch")
                 train_step += 1
-
+            
             epoch_sample_order = torch.concat(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
             self.sorted_sample_indexes.extend(torch.add(epoch * samples_per_epoch, torch.argsort(epoch_sample_order)))
@@ -610,7 +618,8 @@ class Network(nn.Module):
         self.loss_history = torch.tensor(self.loss_history)
         self.target_history = torch.stack(self.target_history)
         if val_dataloader is not None:
-            self.val_output_history = torch.stack(self.val_output_history)
+            if store_val_output_history:
+                self.val_output_history = torch.stack(self.val_output_history)
             self.val_loss_history = torch.tensor(self.val_loss_history)
             self.val_accuracy_history = torch.tensor(self.val_accuracy_history)
             self.val_history_train_steps = torch.tensor(self.val_history_train_steps)

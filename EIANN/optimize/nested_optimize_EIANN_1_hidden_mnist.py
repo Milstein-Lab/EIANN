@@ -191,7 +191,7 @@ def config_worker():
     for idx, (data, target) in enumerate(MNIST_train_dataset):
         target = torch.eye(len(MNIST_train_dataset.classes))[target]
         MNIST_train.append((idx, data, target))
-
+    
     MNIST_test = []
     for idx, (data, target) in enumerate(MNIST_test_dataset):
         target = torch.eye(len(MNIST_test_dataset.classes))[target]
@@ -296,6 +296,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
                       val_interval=context.val_interval,  # e.g. (-201, -1, 10),
                       samples_per_epoch=context.train_steps, store_history=context.store_history,
+                      store_val_output_history=not context.supervised,
                       store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
                       store_params=context.store_params, store_params_interval=context.store_params_interval,
                       status_bar=context.status_bar)
