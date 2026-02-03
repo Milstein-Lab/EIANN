@@ -1,6 +1,7 @@
 import torch
 from torch.cuda.amp import autocast
 from .base_classes import LearningRule, BiasLearningRule
+from EIANN.utils import pwlin
 
 
 class Backprop(LearningRule):
@@ -273,14 +274,3 @@ class Backprop_DendriticLoss(LearningRule):
                                 local_optimizer.zero_grad()
                                 local_loss.backward()
                                 local_optimizer.step()
-
-
-def pwlin(y0=0., y1=1., x0=0., x1=1.):
-    slope = (y1 - y0) / (x1 - x0)
-    def pwlin_instance(x):
-        y = torch.ones_like(x) * y0
-        y[x > x1] = y1
-        indexes = ((x0 < x) & (x <= x1)).nonzero(as_tuple=True)
-        y[indexes] = slope * (x[indexes] - x0) + y0
-        return y
-    return pwlin_instance

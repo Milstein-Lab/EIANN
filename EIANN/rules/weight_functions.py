@@ -38,6 +38,10 @@ def normalize_weight(projection, scale, autapses=False, axis=1):
     weight_sum = torch.sum(torch.abs(projection.weight.data), axis=axis).unsqueeze(1)
     valid_rows = torch.nonzero(weight_sum, as_tuple=True)[0]
     projection.weight.data[valid_rows,:] /= weight_sum[valid_rows,:]
+    if scale is None:
+        if not hasattr(projection.learning_rule, 'weight_norm_scale'):
+            projection.learning_rule.weight_norm_scale = weight_sum.detach().clone()
+        scale = projection.learning_rule.weight_norm_scale
     projection.weight.data *= scale
 
 

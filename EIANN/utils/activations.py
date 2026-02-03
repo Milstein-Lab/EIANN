@@ -101,3 +101,12 @@ def get_scaled_rectified_sigmoid(th, peak, x=None, ylim=None):
     return lambda xi: (target_amp / amp) * (1. / (1. + torch.exp(-slope * (torch.clamp(xi, x[0], x[-1]) - th))) -
                                             start_val) + ylim[0]
 
+def pwlin(y0=0., y1=1., x0=0., x1=1.):
+    slope = (y1 - y0) / (x1 - x0)
+    def pwlin_instance(x):
+        y = torch.ones_like(x) * y0
+        y[x > x1] = y1
+        indexes = ((x0 < x) & (x <= x1)).nonzero(as_tuple=True)
+        y[indexes] = slope * (x[indexes] - x0) + y0
+        return y
+    return pwlin_instance
