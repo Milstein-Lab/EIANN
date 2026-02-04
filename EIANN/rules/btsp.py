@@ -519,28 +519,29 @@ class BTSP_ELR_1(LearningRule):
         plateau_prob = plateau_prob.unsqueeze(1)
         
         if self.projection.direction in ['forward', 'F']:
-            ET = torch.clamp(self.projection.pre.activity, 0., 1.)
+            ET = torch.clamp(self.projection.pre.activity.detach().clone(), 0., 1.)
         elif self.projection.direction in ['recurrent', 'R']:
-            ET = torch.clamp(self.projection.pre.prev_activity, 0., 1.)
+            ET = torch.clamp(self.projection.pre.prev_activity.detach().clone(), 0., 1.)
         
         # pre activity and post plateau for current sample
-        delta_weight = (plateau_prob *
-                        ((self.w_max - self.projection.weight) * ET.unsqueeze(0) -
-                         self.projection.weight * self.dep_ratio *
-                         self.q_dep(ET).unsqueeze(0))).detach().clone()
+        BTSP_delta_weight_direction = ((self.w_max - self.projection.weight) * ET.unsqueeze(0) -
+                                       self.projection.weight * self.dep_ratio * self.q_dep(ET).unsqueeze(0))
+        delta_weight = plateau_prob * BTSP_delta_weight_direction
         
         # neg error - weight update proportional to loss and presynaptic activity
         neg_error = self.projection.post.plateau.detach().clone()
         neg_error[self.projection.post.plateau > 0.] = 0.
         delta_weight += ET.unsqueeze(0) * neg_error.unsqueeze(1)
         
-        pos_ET_indexes = (ET > 0.).nonzero(as_tuple=True)
-        w_eq = torch.zeros_like(ET)
-        w_eq[pos_ET_indexes] = (self.w_max * ET[pos_ET_indexes]) / (ET[pos_ET_indexes] - self.q_dep(ET[pos_ET_indexes]))
-        delta_lr_mod = (plateau_prob * ET.unsqueeze(0) *
-                        self.lr_mod_func(torch.abs(self.projection.weight.data - w_eq.unsqueeze(0))))
-        
         self.projection.weight.data += self.learning_rate * self.lr_mod * delta_weight
+        
+        # efficient shortcut to compute distance_to_w_eq
+        denom = ET + self.dep_ratio * self.q_dep(ET)
+        valid_indexes = (ET > 0.).nonzero()
+        distance_to_w_eq = -self.projection.weight.data.clone()
+        distance_to_w_eq[:, valid_indexes] = torch.abs(BTSP_delta_weight_direction[:, valid_indexes] /
+                                                       denom.unsqueeze(0)[:, valid_indexes])
+        delta_lr_mod = plateau_prob * ET.unsqueeze(0) * self.lr_mod_func(distance_to_w_eq)
         
         # elastic learning rate modulation
         self.lr_mod += delta_lr_mod
