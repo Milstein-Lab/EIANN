@@ -29,6 +29,7 @@ module load cuda/12.4.0
 
 source /opt/packages/anaconda3-2024.10-1/etc/profile.d/conda.sh
 conda activate eiann
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 cd ~/EIANN
 

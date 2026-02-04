@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH -J eiann_cpu_mnist
-#SBATCH -o /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_cpu_mnist.%j.o
-#SBATCH -e /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_cpu_mnist.%j.e
+#SBATCH -o /ocean/projects/bio250022p/chennawa/logs/EIANN/eiann_cpu_mnist.%j.o
+#SBATCH -e /ocean/projects/bio250022p/chennawa/logs/EIANN/eiann_cpu_mnist.%j.e
 #SBATCH --requeue
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -9,7 +9,7 @@
 #SBATCH --mem=32G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=02:00:00
-#SBATCH -A bio240068p
+#SBATCH -A bio250022p
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
 
@@ -25,7 +25,7 @@ export WANDB_START_METHOD=thread
 module purge
 
 source /opt/packages/anaconda3-2024.10-1/etc/profile.d/conda.sh
-conda activate eiann
+conda activate eiann1
 
 cd ~/EIANN
 
@@ -38,7 +38,7 @@ python EIANN/simulate/run_EIANN_mnist.py \
 # sbatch simulate_EIANN_cpu_bridges_mnist.sh
 
 # See logs:
-# cd /ocean/projects/bio240068p/$USER/logs/EIANN
+# cd /ocean/projects/bio250022p/$USER/logs/EIANN
 
 # See progress:
 # watch -n 1 squeue -u $USER

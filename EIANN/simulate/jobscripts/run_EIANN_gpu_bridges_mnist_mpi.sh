@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH -J eiann_gpu_mnist_mpi
-#SBATCH -o /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_gpu_mnist_mpi.%j.o
-#SBATCH -e /ocean/projects/bio240068p/chennawa/logs/EIANN/eiann_gpu_mnist_mpi.%j.e
+#SBATCH -o /ocean/projects/bio250022p/chennawa/logs/EIANN/eiann_gpu_mnist_mpi.%j.o
+#SBATCH -e /ocean/projects/bio250022p/chennawa/logs/EIANN/eiann_gpu_mnist_mpi.%j.e
 #SBATCH --requeue
 #SBATCH --nodes=1
 #SBATCH --partition=GPU
@@ -10,12 +10,12 @@
 #SBATCH --mem=80G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=02:00:00
-#SBATCH -A bio240068p
+#SBATCH -A bio250022p
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
 
-mkdir -p /ocean/projects/bio240068p/$USER/logs/EIANN
-mkdir -p /ocean/projects/bio240068p/$USER/data/EIANN
+mkdir -p /ocean/projects/bio250022p/$USER/logs/EIANN
+mkdir -p /ocean/projects/bio250022p/$USER/data/EIANN
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
@@ -50,4 +50,4 @@ mpirun -n $SLURM_NTASKS python EIANN/simulate/run_EIANN_mnist_mpi.py \
 # sbatch run_EIANN_gpu_bridges_mnist_mpi.sh
 
 # See logs:
-# cd /ocean/projects/bio240068p/$USER/logs/EIANN
+# cd /ocean/projects/bio250022p/$USER/logs/EIANN

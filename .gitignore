@@ -24,3 +24,5 @@ manuscript/
 
 EIANN/data/mnist
 EIANN/data/EIANN/*
+
+eiann5_environment.yml
