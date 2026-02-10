@@ -127,7 +127,8 @@ class Backprop_SILR_A(LearningRule):
 class Backprop_SILR_B(LearningRule):
     """
     Inspired by "Synaptic Intelligence" (Zenke et al., 2019). Parameter updates are accumulated during a task,
-    and learning rates are modulated during subsequent tasks.
+    and learning rates are modulated during subsequent tasks. Also depends on distance of each weight from its value in
+    the previous task.
     """
     
     def __init__(self, projection, silr_threshold=0.5, silr_width=0.5, silr_min=0., learning_rate=None):
@@ -162,6 +163,86 @@ class Backprop_SILR_B(LearningRule):
                     delta_weight = (-projection.learning_rule.learning_rate * lr_mod *
                                     projection.weight.grad)
                     projection.learning_rule.accum_delta_weight += delta_weight
+        
+        network.optimizer.step()
+
+
+class Backprop_SILR_C(LearningRule):
+    """
+    Inspired by "Synaptic Intelligence" (Zenke et al., 2019). The product of gradients and parameter updates are
+    accumulated during a task, and learning rates are modulated during subsequent tasks.
+    """
+    
+    def __init__(self, projection, silr_threshold=0.5, silr_width=0.5, silr_min=0., learning_rate=None):
+        super().__init__(projection, learning_rate)
+        projection.weight.requires_grad = True
+        self.lr_mod = torch.ones_like(projection.weight.data)
+        self.lr_mod_func = pwlin(1., silr_min, silr_threshold, silr_threshold + silr_width)
+        self.accum_delta_weight = torch.zeros_like(projection.weight.data)
+        self.task_num = 0
+    
+    def update_CL_states(self):
+        self.task_num += 1
+        self.lr_mod = self.lr_mod_func(self.accum_delta_weight)
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        
+        loss = network.criterion(output, target)
+        network.optimizer.zero_grad()
+        loss.backward()
+        
+        with torch.no_grad():
+            for projection in network.projections.values():
+                if projection.learning_rule.__class__ == cls:
+                    delta_weight = (-projection.learning_rule.learning_rate * projection.learning_rule.lr_mod *
+                                    projection.weight.grad)
+                    projection.learning_rule.accum_delta_weight -= projection.weight.grad * delta_weight
+                    if projection.learning_rule.task_num > 0:
+                        projection.weight.grad *= projection.learning_rule.lr_mod
+        
+        network.optimizer.step()
+
+
+class Backprop_SILR_D(LearningRule):
+    """
+    Inspired by "Synaptic Intelligence" (Zenke et al., 2019). The product of gradients and parameter updates are
+    accumulated during a task, and learning rates are modulated during subsequent tasks. Also depends on distance of
+    each weight from its value in the previous task.
+    """
+    
+    def __init__(self, projection, silr_threshold=0.5, silr_width=0.5, silr_min=0., learning_rate=None):
+        super().__init__(projection, learning_rate)
+        projection.weight.requires_grad = True
+        self.lr_mod_func = pwlin(1., silr_min, silr_threshold, silr_threshold + silr_width)
+        self.accum_delta_weight = torch.zeros_like(projection.weight.data)
+        self.task_num = 0
+    
+    def update_CL_states(self):
+        self.task_num += 1
+        self.prev_task_accum_delta_weight = self.accum_delta_weight.detach().clone()
+        self.prev_task_weights = self.projection.weight.data.detach().clone()
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        
+        loss = network.criterion(output, target)
+        network.optimizer.zero_grad()
+        loss.backward()
+        
+        with torch.no_grad():
+            for projection in network.projections.values():
+                if projection.learning_rule.__class__ == cls:
+                    if projection.learning_rule.task_num > 0:
+                        lr_mod = projection.learning_rule.lr_mod_func(
+                            torch.abs(projection.learning_rule.prev_task_accum_delta_weight *
+                                      (projection.weight.data - projection.learning_rule.prev_task_weights)))
+                        projection.weight.grad *= lr_mod
+                    else:
+                        lr_mod = 1.
+                    delta_weight = (-projection.learning_rule.learning_rate * lr_mod *
+                                    projection.weight.grad)
+                    projection.learning_rule.accum_delta_weight -= projection.weight.grad * delta_weight
         
         network.optimizer.step()
 
