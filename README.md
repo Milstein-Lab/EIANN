@@ -1,7 +1,7 @@
 # EIANN: A framework for training deep neural networks with E/I cell types and biologically-plausible learning rules
 
 [![DOI](https://img.shields.io/badge/DOI-10.1101/2025.05.22.655599-grey.svg?style=for-the-badge&logo=doi&labelColor=green&logoColor=white)](https://doi.org/10.1101/2025.05.22.655599) (Paper)<br>
-[![DOI](https://img.shields.io/badge/DOI-10.1101/2025.05.22.655599-grey.svg?style=for-the-badge&logo=doi&labelColor=green&logoColor=white)](https://doi.org/10.5281/zenodo.18602556) (Initial Code Release)
+[![DOI](https://img.shields.io/badge/DOI-10.5281/zenodo.18602556-grey.svg?style=for-the-badge&logo=doi&labelColor=green&logoColor=white)](https://doi.org/10.5281/zenodo.18602556) (Initial Code Release)
 
 This repository contains the code described in the following publication:  
 Galloni A.R., Peddada A., Chennawar Y., Milstein A.D. (2025) Cellular and subcellular specialization enables biology-constrained deep learning. [*bioRxiv* 2025.05.22.655599](https://doi.org/10.1101/2025.05.22.655599)
