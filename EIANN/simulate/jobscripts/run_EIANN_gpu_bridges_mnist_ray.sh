@@ -40,3 +40,5 @@ ray stop
 # cd /ocean/projects/bio250022p/$USER/logs/EIANN
 
 # interact -p GPU-shared --gres=gpu:v100-32:3 --mem=80G --ntasks-per-node=15 -t 01:00:00 -A bio250022p
+
+# Whatever we have here works: eiann_gpu_mnist_ray.37358310.o

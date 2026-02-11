@@ -36,7 +36,7 @@ sbatch <<EOT
 
 module purge
 module use /projects/community/modulefiles
-module load gcc/5.4
+module load gcc/10.2.0-bz186
 module load cuda/11.7
 
 set -x
@@ -60,13 +60,10 @@ EOT
 
 # Submit job:
 # cd $HOME/EIANN/EIANN/simulate/jobscripts
-# ./run_EIANN_gpu_amarel_mnist_ray.sh van_bp
+# sbatch run_EIANN_gpu_amarel_mnist_ray.sh van_bp
 
 # See logs:
 # cd /scratch/$USER/logs/eiann
-
-# See output pkl files:
-# cd /scratch/${USER}/data/eiann/
 
 # See the progress
 # watch -n 1 squeue -u $USER

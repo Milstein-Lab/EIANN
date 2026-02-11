@@ -1,7 +1,7 @@
 #!/bin/bash -l
-#SBATCH -J eiann_gpu_mnist_ray
-#SBATCH -o /ocean/projects/bio250022p/chennawa/logs/EIANN/eiann_gpu_mnist_ray.%j.o
-#SBATCH -e /ocean/projects/bio250022p/chennawa/logs/EIANN/eiann_gpu_mnist_ray.%j.e
+#SBATCH -J eiann_multi_gpu_mnist_ray
+#SBATCH -o /ocean/projects/bio250022p/chennawa/logs/EIANN/eiann_multi_gpu_mnist_ray.%j.o
+#SBATCH -e /ocean/projects/bio250022p/chennawa/logs/EIANN/eiann_multi_gpu_mnist_ray.%j.e
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=GPU
