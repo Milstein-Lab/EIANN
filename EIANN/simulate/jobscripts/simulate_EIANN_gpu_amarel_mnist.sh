@@ -6,9 +6,9 @@ export LABEL="$1"
 export JOB_NAME=eiann_gpu_mnist_"$LABEL"_"$DATE"
 
 # Environment variables to optimize performance
-export OMP_NUM_THREADS=4 
-export MKL_NUM_THREADS=1 
-export NUMEXPR_NUM_THREADS=1 
+export OMP_NUM_THREADS=4
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export WANDB_START_METHOD=thread
@@ -36,6 +36,7 @@ sbatch <<EOT
 
 module purge
 module use /projects/community/modulefiles
+module load gcc/5.4
 module load cuda/11.7
 
 set -x
@@ -43,11 +44,12 @@ set -x
 cd $HOME/EIANN/
 
 source ~/miniconda/etc/profile.d/conda.sh
-conda activate eiann
+conda activate eiann5
+LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 python EIANN/simulate/run_EIANN_mnist.py \
 --network-config-file-name=20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml \
---data-dir=/scratch/${USER}/data/eiann 
+--data-dir=/scratch/${USER}/data/eiann --device=cuda
 EOT
 
 # Submit job:
