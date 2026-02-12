@@ -36,7 +36,7 @@ sbatch <<EOT
 
 module purge
 module use /projects/community/modulefiles
-module load gcc/5.4
+module load gcc/10.2.0-bz186
 module load cuda/11.7
 
 set -x
