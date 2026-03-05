@@ -240,6 +240,66 @@ class Network(nn.Module):
                     if projection.constrain_weight is not None and projection.weight_constraint_name == 'clone_weight':
                         projection.constrain_weight()
 
+    def _move_to_device(self, device):
+        """Move the network and all population state to the given device."""
+
+        def _move_attr_history_dict(attr_history_dict, device):
+            """Move all tensors in an attribute_history_dict to the given device."""
+            for entry in attr_history_dict.values():
+                entry['buffer'] = [
+                    v.to(device) if isinstance(v, torch.Tensor) else v
+                    for v in entry['buffer']
+                ]
+                if isinstance(entry['history'], torch.Tensor):
+                    entry['history'] = entry['history'].to(device)
+
+        device = torch.device(device)
+        # Move all registered nn.Module parameters and buffers
+        self.to(device)
+        self.device = device
+
+        # Move per-population device refs, transient state, and training leftovers
+        _pop_tensor_attrs = (
+            'state', 'activity', 'prev_activity',
+            'forward_activity', 'forward_prev_activity',
+            'forward_dendritic_state', 'forward_dendritic_state_steps',
+        )
+        for pop in self.populations.values():
+            pop.device = device
+            for attr in _pop_tensor_attrs:
+                val = getattr(pop, attr, None)
+                if isinstance(val, torch.Tensor):
+                    setattr(pop, attr, val.to(device))
+            _move_attr_history_dict(pop.attribute_history_dict, device)
+
+        # Move projection attribute_history_dict (e.g. weight_history)
+        for proj in self.projections.values():
+            _move_attr_history_dict(proj.attribute_history_dict, device)
+
+        # Move history tensors created at end of train()
+        _self_tensor_attrs = (
+            'sample_order', 'sorted_sample_indexes', 'loss_history',
+            'target_history', 'val_output_history', 'val_loss_history',
+            'val_accuracy_history', 'val_history_train_steps', 'param_history_steps',
+        )
+        for attr in _self_tensor_attrs:
+            val = getattr(self, attr, None)
+            if isinstance(val, torch.Tensor):
+                setattr(self, attr, val.to(device))
+
+        # Move stored parameter history (list of state_dicts)
+        self.param_history = [
+            {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in sd.items()}
+            for sd in self.param_history
+        ]
+
+        # Move optimizer internal state (momentum buffers etc.)
+        # so a subsequent train() call on a different device stays consistent
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(device)
+
     def reset_history(self):
         self.sample_order = []
         self.sorted_sample_indexes = []
@@ -582,6 +642,8 @@ class Network(nn.Module):
             self.param_history_steps = torch.tensor(self.param_history_steps)
         
         if save_to_file is not None:
+            # Move to CPU before saving so files are portable to machines without GPU
+            self._move_to_device('cpu')
             ut.save_network(self, path=save_to_file)
 
     def test(self, dataloader, store_history=False, store_dynamics=False, status_bar=False):

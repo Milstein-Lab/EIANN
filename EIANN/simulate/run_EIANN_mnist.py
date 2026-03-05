@@ -85,6 +85,11 @@ def main(network_config_file_name, data_dir, debug, network_seed, device):
 if __name__ == '__main__':
     main()
 
+# Local run:
+# python EIANN/simulate/run_EIANN_mnist.py --network-config-file-name=20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G_complete_optimized.yaml --data-dir=EIANN/data/ --network-seed=66049 --device=cpu --debug
+# Replace cpu with cuda for GPU run
+
+# python -m nested.analyze --interactive --config-file-path=optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml --disp --model-key=van_bp_relu --param-file-path=optimize/optimize_params/mnist/20240816_nested_optimize_2_hidden_mnist_params.yaml --output-dir=data/MNIST --status_bar
 
 ######## Network Tracking (Bridges) ########
 
