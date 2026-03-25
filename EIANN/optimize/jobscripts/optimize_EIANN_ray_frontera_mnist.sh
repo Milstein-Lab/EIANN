@@ -37,12 +37,11 @@ ray start --head --num-gpus=4 --num-cpus=16
 
 python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
-  --pop_size=20 --max_iter=30 --path_length=3 \
-  --num_gpus=0.5 --num_cpus=2
+  --pop_size=20 --max_iter=50 --path_length=3
 
 ray stop
 
-# cd $HOME/EIANN/EIANN/optimize/jobscripts 
+# cd $HOME/EIANN/EIANN/optimize/jobscripts
 # sbatch optimize_EIANN_ray_frontera_mnist.sh optimize/optimize_config/mnist/20250103_nested_optimize_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G.yaml
 
 # See logs:
@@ -51,4 +50,3 @@ ray stop
 # Interactive node:
 # idev -p rtx-dev -N 1 -n 1 -t 02:00:00
 # export I_MPI_FABRICS=shm
-
