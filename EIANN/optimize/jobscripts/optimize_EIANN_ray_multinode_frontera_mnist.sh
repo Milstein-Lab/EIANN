@@ -68,7 +68,8 @@ export RAY_ADDRESS=$ip_head
 # --- RUN OPTIMIZATION ---
 
 python -m nested.optimize --config-file-path=$1 \
-  --output-dir=$SCRATCH/data/EIANN --framework=ray --dispi
+  --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
+  --pop_size=20 --max_iter=15 --path_length=3
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts 
 # sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20250103_nested_optimize_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G.yaml

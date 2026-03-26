@@ -11,7 +11,7 @@ sbatch <<EOT
 #SBATCH -p development
 #SBATCH -N 1
 #SBATCH -n 8
-#SBATCH -t 1:00:00
+#SBATCH -t 2:00:00
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
 
@@ -26,7 +26,7 @@ cd $HOME/EIANN/EIANN
 export MPI4PY_RC_RECV_MPROBE=false
 
 ibrun -n 8 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
-  --output-dir=$SCRATCH/data/EIANN --pop_size=20 --max_iter=1 --path_length=1 --disp \
+  --output-dir=$SCRATCH/data/EIANN --pop_size=15 --max_iter=15 --path_length=3 --disp \
   --framework=mpi
 EOT
 

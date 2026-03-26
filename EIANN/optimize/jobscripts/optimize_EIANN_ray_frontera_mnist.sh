@@ -8,7 +8,7 @@
 #SBATCH --partition=rtx
 #SBATCH --mem=80G
 #SBATCH --cpus-per-task=16
-#SBATCH --time=02:00:00
+#SBATCH --time=03:00:00
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
 
@@ -37,9 +37,9 @@ ray start --head --num-gpus=4 --num-cpus=16
 
 python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
-  --pop_size=20 --max_iter=50 --path_length=3
+  --pop_size=15 --max_iter=15 --path_length=3
 
-ray stop
+ray stop --force || true
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts
 # sbatch optimize_EIANN_ray_frontera_mnist.sh optimize/optimize_config/mnist/20250103_nested_optimize_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G.yaml
