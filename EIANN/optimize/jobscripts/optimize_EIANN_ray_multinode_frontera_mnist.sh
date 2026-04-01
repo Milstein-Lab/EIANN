@@ -72,7 +72,7 @@ python -m nested.optimize --config-file-path=$1 \
   --pop_size=20 --max_iter=15 --path_length=3
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts 
-# sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20250103_nested_optimize_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G.yaml
+# sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml
 
 # See logs:
 # cd $SCRATCH/logs/EIANN

@@ -30,4 +30,4 @@ ibrun -n 8 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFI
   --framework=mpi
 EOT
 
-# ./optimize_MPI_EIANN_frontera_MNIST.sh optimize/optimize_config/mnist/20250103_nested_optimize_EIANN_0_hidden_mnist_van_bp_relu_SGD_config_G.yaml van_bp
+# ./optimize_MPI_EIANN_frontera_MNIST.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml van_bp
