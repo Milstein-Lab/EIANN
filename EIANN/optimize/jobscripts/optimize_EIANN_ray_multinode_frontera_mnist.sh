@@ -33,6 +33,7 @@ conda activate eiann7
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 cd $HOME/EIANN/EIANN
+DEVICE="${2:-cpu}"
 
 export RAY_TMPDIR="/tmp/ray_${SLURM_JOB_ID}"
 mkdir -p $RAY_TMPDIR
@@ -88,13 +89,13 @@ export RAY_ADDRESS=$ip_head
 
 srun --overlap --nodes=1 --ntasks=1 -w "$head_node" python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
-  --pop_size=4 --max_iter=2 --path_length=2 --num_gpus=0.5 --num_cpus=1
+  --pop_size=4 --max_iter=2 --path_length=2 --num_gpus=0.5 --num_cpus=1 --device=$DEVICE
 
 # srun --num-gpus=4 must equal real number of gpus in frontera rtx node (4)
 # if we need more gpus, we can increase --nodes
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts 
-# sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml
+# sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml cuda
 
 # See logs:
 # cd $SCRATCH/logs/EIANN

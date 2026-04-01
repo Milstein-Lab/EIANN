@@ -3,6 +3,7 @@ export DATE=$(date +%Y%m%d_%H%M%S)
 export LABEL="$2"
 export JOB_NAME=optimize_EIANN_mnist_MPI_"$LABEL"_"$DATE"
 export CONFIG_FILE_PATH="$1"
+export DEVICE="${3:-cpu}"
 sbatch <<EOT
 #!/bin/bash -l
 #SBATCH -J $JOB_NAME
@@ -27,14 +28,14 @@ export MPI4PY_RC_RECV_MPROBE=false
 
 ibrun -n 21 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=$SCRATCH/data/EIANN --framework=mpi --disp \
-  --pop_size=4 --max_iter=2 --path_length=2 
+  --pop_size=4 --max_iter=2 --path_length=2 --device=$DEVICE
 EOT
 
 # -n: num procs = 1 master + pop_size * num_seeds (5)
 # num generations = max_iter * path_length
 # python -n must match ntasks in SBATCH lines
 
-# ./optimize_MPI_EIANN_frontera_MNIST.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml van_bp
+# ./optimize_MPI_EIANN_frontera_MNIST.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml van_bp cpu
 
 
 # TODO move to $WORK

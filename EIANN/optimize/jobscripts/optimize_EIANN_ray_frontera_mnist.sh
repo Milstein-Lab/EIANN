@@ -34,6 +34,7 @@ conda activate eiann7
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 cd $HOME/EIANN/EIANN
+DEVICE="${2:-cpu}"
 
 export RAY_TMPDIR="$SCRATCH/ray/${SLURM_JOB_ID}"
 mkdir -p $RAY_TMPDIR
@@ -50,7 +51,7 @@ trap cleanup_ray EXIT
 
 python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
-  --pop_size=4 --max_iter=2 --path_length=2 --num_cpus=1 --num_gpus=0.5 
+  --pop_size=4 --max_iter=2 --path_length=2 --num_cpus=1 --num_gpus=0.5 --device=$DEVICE
 
 # num models per generation = pop_size * num_instances (5 seeds) -> how many models evaluated in parallel
 # num generations = max_iter * path_length
@@ -61,7 +62,7 @@ python -m nested.optimize --config-file-path=$1 \
 # -----------------------------------------------------
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts
-# sbatch optimize_EIANN_ray_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml
+# sbatch optimize_EIANN_ray_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml cuda
 
 # See logs:
 # cd $SCRATCH/logs/EIANN
@@ -83,7 +84,7 @@ python -m nested.optimize --config-file-path=$1 \
 
 # ray (multi):
 # nodes=3, ntasks-per-node=1, cpus-per-task=16
-#   - 
+#   - 7626603: 4 generations took 256.53 s
 
 # mpi: 
 # nodes=1, ntasks=21
