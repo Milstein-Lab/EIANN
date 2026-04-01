@@ -2,7 +2,7 @@
 #SBATCH -J optimize_EIANN_mnist_ray_multi
 #SBATCH -o /scratch2/11358/yashchennawar5555/logs/EIANN/optimize_EIANN_mnist_ray_multi.%j.o
 #SBATCH -e /scratch2/11358/yashchennawar5555/logs/EIANN/optimize_EIANN_mnist_ray_multi.%j.e
-#SBATCH --nodes=2
+#SBATCH --nodes=3
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=rtx
 #SBATCH --mem=80G
@@ -53,7 +53,7 @@ echo "Head node IP: $head_node_ip"
 
 # 2. Start the Ray Head Node
 echo "Starting Head node on $head_node"
-srun --nodes=1 --ntasks=1 -w "$head_node" \
+srun --overlap --nodes=1 --ntasks=1 -w "$head_node" \
   ray start --head --node-ip-address="$head_node_ip" --port=$port --num-cpus=16 --num-gpus=4 \
   --temp-dir "$RAY_TMPDIR" --disable-usage-stats &
 
@@ -63,12 +63,15 @@ worker_num=$((SLURM_JOB_NUM_NODES - 1))
 for ((i=1; i<=worker_num; i++)); do
     node_i=${nodes_array[$i]}
     echo "Starting Worker node on $node_i"
-  srun --nodes=1 --ntasks=1 -w "$node_i" ray start --address "$ip_head" --num-cpus=16 --num-gpus=4 \
-  --temp-dir "$RAY_TMPDIR" --disable-usage-stats &
+  srun --overlap --nodes=1 --ntasks=1 -w "$node_i" ray start --address "$ip_head" --num-cpus=16 --num-gpus=4 \
+  --disable-usage-stats &
 done
 
 # 4. Wait for cluster to initialize
 sleep 20
+
+# 4b. Verify that ray is reachable from the head node before launching optimize.
+srun --overlap --nodes=1 --ntasks=1 -w "$head_node" ray status
 
 cleanup_ray() {
   set +e
@@ -81,9 +84,12 @@ export RAY_ADDRESS=$ip_head
 
 # --- RUN OPTIMIZATION ---
 
-python -m nested.optimize --config-file-path=$1 \
+srun --overlap --nodes=1 --ntasks=1 -w "$head_node" python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
   --pop_size=4 --max_iter=2 --path_length=2 --num_gpus=0.5 --num_cpus=1
+
+# srun --num-gpus=4 must equal real number of gpus in frontera rtx node (4)
+# if we need more gpus, we can increase --nodes
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts 
 # sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml

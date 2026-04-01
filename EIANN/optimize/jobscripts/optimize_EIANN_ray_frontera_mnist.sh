@@ -50,13 +50,15 @@ trap cleanup_ray EXIT
 
 python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
-  --pop_size=4 --max_iter=2 --path_length=2 --num_gpus=0.5 --num_cpus=1
+  --pop_size=4 --max_iter=2 --path_length=2 --num_cpus=1 --num_gpus=0.5 
 
-# num models per generation = pop_size * num_instances (5 seeds)
+# num models per generation = pop_size * num_instances (5 seeds) -> how many models evaluated in parallel
 # num generations = max_iter * path_length
 # total model evals = num models per generation * num generations
 # Ray workers = min(floor(total_gpus/num_gpus), floor(total_cpus/num_cpus))
 # must match num_cpus, num_gpus in ray start to the SBATCH lines
+
+# -----------------------------------------------------
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts
 # sbatch optimize_EIANN_ray_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml
@@ -68,9 +70,8 @@ python -m nested.optimize --config-file-path=$1 \
 # idev -p rtx-dev -N 1 -n 1 -t 02:00:00
 # export I_MPI_FABRICS=shm
 
-
-
 # -----------------------------------------------------
+
 # van_bp_2_hidden: 
 # pop_size=4, max_iter=2, path_length=2
 
@@ -81,6 +82,7 @@ python -m nested.optimize --config-file-path=$1 \
 #    - 7626472: 4 generations took 665.22 s
 
 # ray (multi):
+# nodes=3, ntasks-per-node=1, cpus-per-task=16
 #   - 
 
 # mpi: 
