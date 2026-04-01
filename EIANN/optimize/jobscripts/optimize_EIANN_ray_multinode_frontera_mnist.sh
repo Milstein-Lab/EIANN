@@ -34,7 +34,7 @@ export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 cd $HOME/EIANN/EIANN
 
-export RAY_TMPDIR="$SCRATCH/ray/${SLURM_JOB_ID}"
+export RAY_TMPDIR="/tmp/ray_${SLURM_JOB_ID}"
 mkdir -p $RAY_TMPDIR
 
 # --- RAY CLUSTER LAUNCH ---
@@ -71,11 +71,13 @@ done
 sleep 20
 
 # 4b. Verify that ray is reachable from the head node before launching optimize.
-srun --overlap --nodes=1 --ntasks=1 -w "$head_node" ray status
+srun --overlap --nodes=1 --ntasks=1 -w "$head_node" ray status --address "$ip_head"
 
 cleanup_ray() {
   set +e
-  ray stop --force || true
+  for node in "${nodes_array[@]}"; do
+    srun --overlap --nodes=1 --ntasks=1 -w "$node" ray stop --force || true
+  done
 }
 trap cleanup_ray EXIT
 
