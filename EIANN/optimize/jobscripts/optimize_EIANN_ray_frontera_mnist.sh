@@ -52,8 +52,9 @@ python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
   --pop_size=4 --max_iter=2 --path_length=2 --num_gpus=0.5 --num_cpus=1
 
-# num models tested = pop_size * num_seeds (5)
+# num models per generation = pop_size * num_instances (5 seeds)
 # num generations = max_iter * path_length
+# total model evals = num models per generation * num generations
 # Ray workers = min(floor(total_gpus/num_gpus), floor(total_cpus/num_cpus))
 # must match num_cpus, num_gpus in ray start to the SBATCH lines
 
@@ -70,16 +71,18 @@ python -m nested.optimize --config-file-path=$1 \
 
 
 # -----------------------------------------------------
-# van_bp_0_hidden: 
-# ray: 
-#   - 4 generations took 232.09 s (7613482)
-#   - 45 generations took 8466.89 s (7613450)
+# van_bp_2_hidden: 
+# pop_size=4, max_iter=2, path_length=2
+
+# ray (single): 
+# nodes=1, ntasks=1, cpus-per-task=8
+# ray start num-cpus=8 num-gpus=4
+# python num_cpus=1 num_gpus=0.5
+#    - 7626472: 4 generations took 665.22 s
+
+# ray (multi):
+#   - 
+
 # mpi: 
-#   - 4 generations took 458.27 s (7613483)
-
-# van_bp_2_hidden:
-# ray:
-#   - 4 generations took 680.48 s (7626273)
-# mpi:
-#   - 4 generations took 1110.16 s
-
+# nodes=1, ntasks=21
+#   - 7626474: 4 generations took 233.39 s

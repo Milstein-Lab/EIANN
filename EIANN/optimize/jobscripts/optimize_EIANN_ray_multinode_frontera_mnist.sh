@@ -11,10 +11,13 @@
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
 
+set -euo pipefail
+set -x
+
 mkdir -p $SCRATCH/logs/EIANN
 mkdir -p $SCRATCH/data/EIANN
 
-export OMP_NUM_THREADS=4
+export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
@@ -30,6 +33,9 @@ conda activate eiann7
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 cd $HOME/EIANN/EIANN
+
+export RAY_TMPDIR="$SCRATCH/ray/${SLURM_JOB_ID}"
+mkdir -p $RAY_TMPDIR
 
 # --- RAY CLUSTER LAUNCH ---
 
@@ -48,7 +54,8 @@ echo "Head node IP: $head_node_ip"
 # 2. Start the Ray Head Node
 echo "Starting Head node on $head_node"
 srun --nodes=1 --ntasks=1 -w "$head_node" \
-    ray start --head --node-ip-address="$head_node_ip" --port=$port --num-cpus=16 --num-gpus=4 --block &
+  ray start --head --node-ip-address="$head_node_ip" --port=$port --num-cpus=16 --num-gpus=4 \
+  --temp-dir "$RAY_TMPDIR" --disable-usage-stats &
 
 # 3. Start Ray Worker Nodes
 worker_num=$((SLURM_JOB_NUM_NODES - 1))
@@ -56,11 +63,18 @@ worker_num=$((SLURM_JOB_NUM_NODES - 1))
 for ((i=1; i<=worker_num; i++)); do
     node_i=${nodes_array[$i]}
     echo "Starting Worker node on $node_i"
-    srun --nodes=1 --ntasks=1 -w "$node_i" ray start --address "$ip_head" --num-cpus=16 --num-gpus=4 --block &
+  srun --nodes=1 --ntasks=1 -w "$node_i" ray start --address "$ip_head" --num-cpus=16 --num-gpus=4 \
+  --temp-dir "$RAY_TMPDIR" --disable-usage-stats &
 done
 
 # 4. Wait for cluster to initialize
 sleep 20
+
+cleanup_ray() {
+  set +e
+  ray stop --force || true
+}
+trap cleanup_ray EXIT
 
 # 5. Export the address so ray.init() in python finds the cluster
 export RAY_ADDRESS=$ip_head
@@ -69,7 +83,7 @@ export RAY_ADDRESS=$ip_head
 
 python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
-  --pop_size=20 --max_iter=15 --path_length=3
+  --pop_size=4 --max_iter=2 --path_length=2 --num_gpus=0.5 --num_cpus=1
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts 
 # sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml
