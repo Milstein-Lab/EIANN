@@ -45,7 +45,8 @@ ray start --head --port=6379 \
 
 cleanup_ray() {
   set +e
-  ray stop --force || true
+  stop_output=$(ray stop --force 2>&1) || true
+  echo "$stop_output" | grep -E "Stopped all [0-9]+ Ray processes|No active Ray processes" || true
 }
 trap cleanup_ray EXIT
 
@@ -80,12 +81,18 @@ python -m nested.optimize --config-file-path=$1 \
 # nodes=1, ntasks=1, cpus-per-task=8
 # ray start num-cpus=8 num-gpus=4
 # python num_cpus=1 num_gpus=0.5
-#    - 7626472: 4 generations took 665.22 s
+#   - 7626472: 4 generations took 665.22 s
+#   - 7626649: 4 generations took 743.14 s (with gpu)
 
 # ray (multi):
 # nodes=3, ntasks-per-node=1, cpus-per-task=16
 #   - 7626603: 4 generations took 256.53 s
+#   - 7626650: 4 generations took 259.73 s (with explicit gpu)
 
 # mpi: 
 # nodes=1, ntasks=21
 #   - 7626474: 4 generations took 233.39 s
+#   - 7626648: 4 generations took 234.63 s (with explicit cpu)
+
+
+# TODO: ray should be faster

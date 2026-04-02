@@ -11,7 +11,7 @@ sbatch <<EOT
 #SBATCH -e /scratch2/11358/yashchennawar5555/logs/EIANN/$JOB_NAME.%j.e
 #SBATCH -p development
 #SBATCH --nodes=1
-#SBATCH --ntasks=21
+#SBATCH --ntasks=46
 #SBATCH --time=2:00:00
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
@@ -26,9 +26,9 @@ cd $HOME/EIANN/EIANN
 
 export MPI4PY_RC_RECV_MPROBE=false
 
-ibrun -n 21 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
+ibrun -n 46 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=$SCRATCH/data/EIANN --framework=mpi --disp \
-  --pop_size=4 --max_iter=2 --path_length=2 --device=$DEVICE
+  --pop_size=9 --max_iter=2 --path_length=2 --device=$DEVICE
 EOT
 
 # -n: num procs = 1 master + pop_size * num_seeds (5)

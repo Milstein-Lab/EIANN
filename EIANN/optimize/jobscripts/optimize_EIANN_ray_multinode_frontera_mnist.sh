@@ -2,7 +2,7 @@
 #SBATCH -J optimize_EIANN_mnist_ray_multi
 #SBATCH -o /scratch2/11358/yashchennawar5555/logs/EIANN/optimize_EIANN_mnist_ray_multi.%j.o
 #SBATCH -e /scratch2/11358/yashchennawar5555/logs/EIANN/optimize_EIANN_mnist_ray_multi.%j.e
-#SBATCH --nodes=3
+#SBATCH --nodes=6
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=rtx
 #SBATCH --mem=80G
@@ -77,7 +77,8 @@ srun --overlap --nodes=1 --ntasks=1 -w "$head_node" ray status --address "$ip_he
 cleanup_ray() {
   set +e
   for node in "${nodes_array[@]}"; do
-    srun --overlap --nodes=1 --ntasks=1 -w "$node" ray stop --force || true
+    stop_output=$(srun --overlap --nodes=1 --ntasks=1 -w "$node" ray stop --force 2>&1) || true
+    echo "$stop_output" | grep -E "Stopped all [0-9]+ Ray processes|No active Ray processes" || true
   done
 }
 trap cleanup_ray EXIT
@@ -89,10 +90,11 @@ export RAY_ADDRESS=$ip_head
 
 srun --overlap --nodes=1 --ntasks=1 -w "$head_node" python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
-  --pop_size=4 --max_iter=2 --path_length=2 --num_gpus=0.5 --num_cpus=1 --device=$DEVICE
+  --pop_size=9 --max_iter=2 --path_length=2 --num_gpus=0.5 --num_cpus=1 --device=$DEVICE
 
 # srun --num-gpus=4 must equal real number of gpus in frontera rtx node (4)
 # if we need more gpus, we can increase --nodes
+# total worker gpus = nodes * gpus per node * num_gpus in python (how many gpus can run stuff)
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts 
 # sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml cuda
