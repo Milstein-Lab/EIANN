@@ -54,13 +54,14 @@ python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
   --pop_size=4 --max_iter=2 --path_length=2 --num_cpus=1 --num_gpus=0.5 --device=$DEVICE
 
+
 # num models per generation = pop_size * num_instances (5 seeds) -> how many models evaluated in parallel
 # num generations = max_iter * path_length
 # total model evals = num models per generation * num generations
 # Ray workers = min(floor(total_gpus/num_gpus), floor(total_cpus/num_cpus))
 # must match num_cpus, num_gpus in ray start to the SBATCH lines
 
-# -----------------------------------------------------
+# ————————————————————————————————————————————————————————————————————————————————————————————————
 
 # cd $HOME/EIANN/EIANN/optimize/jobscripts
 # sbatch optimize_EIANN_ray_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml cuda
@@ -72,27 +73,98 @@ python -m nested.optimize --config-file-path=$1 \
 # idev -p rtx-dev -N 1 -n 1 -t 02:00:00
 # export I_MPI_FABRICS=shm
 
-# -----------------------------------------------------
+# ————————————————————————————————————————————————————————————————————————————————————————————————
 
 # van_bp_2_hidden: 
 # pop_size=4, max_iter=2, path_length=2
 
-# ray (single): 
-# nodes=1, ntasks=1, cpus-per-task=8
-# ray start num-cpus=8 num-gpus=4
-# python num_cpus=1 num_gpus=0.5
-#   - 7626472: 4 generations took 665.22 s
-#   - 7626649: 4 generations took 743.14 s (with gpu)
+#   ray (single): 
+#   nodes=1, ntasks=1, cpus-per-task=8
+#   ray start num-cpus=8 num-gpus=4
+#   python num_cpus=1 num_gpus=0.5
+#     - 7626472: 4 generations took 665.22 s
+#     - 7626649: 4 generations took 743.14 s (with gpu)
 
-# ray (multi):
-# nodes=3, ntasks-per-node=1, cpus-per-task=16
-#   - 7626603: 4 generations took 256.53 s
-#   - 7626650: 4 generations took 259.73 s (with explicit gpu)
+#   ray (multi):
+#   nodes=3, ntasks-per-node=1, cpus-per-task=16
+#   python python num_cpus=1 num_gpus=0.5
+#     - 7626603: 4 generations took 256.53 s
+#     - 7626650: 4 generations took 259.73 s (with explicit gpu)
 
-# mpi: 
-# nodes=1, ntasks=21
-#   - 7626474: 4 generations took 233.39 s
-#   - 7626648: 4 generations took 234.63 s (with explicit cpu)
+#   ray (multi):
+#   nodes=6, ntasks-per-node=1, cpus-per-task=16
+#   python python num_cpus=1 num_gpus=1
+#     - 7628101: 4 generations took 229.25 s
+
+#   mpi: 
+#   nodes=1, ntasks=21
+#     - 7626474: 4 generations took 233.39 s
+#     - 7626648: 4 generations took 234.63 s (with explicit cpu)
 
 
-# TODO: ray should be faster
+# van_bp_2_hidden:
+# pop_size=9, max_iter=2, path_length=2
+
+#   ray (multi): 
+#   nodes=6, ntasks-per-node=1, cpus-per-task=16
+#   python num_cpus=1 num_gpus=0.5
+#   - 7628096: 4 generations took 266.09 s
+
+#   mpi:
+#   nodes=1, ntasks=46
+#   - 7628095: 4 generations took 342.36 s
+
+
+# van_bp_2_hidden:
+# pop_size=9, max_iter=2, path_length=4
+
+#   ray (multi): 
+#   nodes=6, ntasks-per-node=1, cpus-per-task=16
+#   python num_cpus=1 num_gpus=0.5
+#   - 7628103: 8 generations took 519.41 s
+
+#   mpi:
+#   nodes=1, ntasks=46
+#   - 7628105: 8 generations took 682.56 s
+
+
+# bpDale:
+# pop_size=9, max_iter=2, path_length=2
+
+#   ray (multi):
+#   nodes=6, ntasks-per-node=1, cpus-per-task=16
+#   python num_cpus=1 num_gpus=0.5
+#   - 7628135: 4 generations took 2659.40 s
+#     - 655 to 675 s per generation
+
+#   ray (multi):
+#   nodes=12, ntasks-per-node=1, cpus-per-task=16
+#   python num_cpus=1 num_gpus=1
+#   - 7628261: 4 generations took 2463.66 s
+#    - 613-618 s per generation
+
+#   mpi:
+#   nodes=1, ntasks=46
+#   - 7628140: 4 generations took 2578.07 s
+#     - 641-648 s per generation
+
+# BP_like_5J:
+# pop_size=9, max_iter=2, path_length=2
+
+#   ray (multi):
+#   nodes=6, ntasks-per-node=1, cpus-per-task=16
+#   python num_cpus=1 num_gpus=0.5
+#   - 7628148: 4 generations took 3595.75 s
+#     - 850-960 s per generation
+
+#   ray (multi):
+#   nodes=12, ntasks-per-node=1, cpus-per-task=16
+#   python num_cpus=1 num_gpus=1
+#   - 7628260: 4 generations took 3441.65 s
+#     - 820-890 s per generation
+
+#   mpi:
+#   nodes=1, ntasks=46
+#   - 7628149: 4 generations took 2646.20 s
+
+# TODO try 2 gpus

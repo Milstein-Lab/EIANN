@@ -35,7 +35,7 @@ EOT
 # num generations = max_iter * path_length
 # python -n must match ntasks in SBATCH lines
 
-# ./optimize_MPI_EIANN_frontera_MNIST.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml van_bp cpu
+# ./optimize_MPI_EIANN_frontera_MNIST.sh optimize/optimize_config/mnist/20241009_nested_optimize_EIANN_2_hidden_mnist_BP_like_config_5J.yaml BP_like_5J cpu
 
 
 # TODO move to $WORK
