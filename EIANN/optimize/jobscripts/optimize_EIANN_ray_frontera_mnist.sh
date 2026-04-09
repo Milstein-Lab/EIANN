@@ -109,11 +109,18 @@ python -m nested.optimize --config-file-path=$1 \
 #   nodes=6, ntasks-per-node=1, cpus-per-task=16
 #   python num_cpus=1 num_gpus=0.5
 #   - 7628096: 4 generations took 266.09 s
+#     - 64-70 s per generation
+
+#   ray (multi):
+#   nodes=6, ntasks-per-node=1, cpus-per-task=16
+#   python num_cpus=2 num_gpus=0.5
+#   - 7639752: 4 generations took 260.66 s
+#     - 63-68 s per generation
 
 #   mpi:
 #   nodes=1, ntasks=46
 #   - 7628095: 4 generations took 342.36 s
-
+#     - 85 s per generation
 
 # van_bp_2_hidden:
 # pop_size=9, max_iter=2, path_length=4
@@ -136,6 +143,12 @@ python -m nested.optimize --config-file-path=$1 \
 #   python num_cpus=1 num_gpus=0.5
 #   - 7628135: 4 generations took 2659.40 s
 #     - 655 to 675 s per generation
+
+#   ray (multi):
+#   nodes=6, ntasks-per-node=1, cpus-per-task=16
+#   python num_cpus=2 num_gpus=0.5
+#   - 7639739: 4 generations took 2580.89 s
+#     - 639-653 s per generation
 
 #   ray (multi):
 #   nodes=12, ntasks-per-node=1, cpus-per-task=16
@@ -166,5 +179,3 @@ python -m nested.optimize --config-file-path=$1 \
 #   mpi:
 #   nodes=1, ntasks=46
 #   - 7628149: 4 generations took 2646.20 s
-
-# TODO try 2 gpus
