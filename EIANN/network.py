@@ -1001,7 +1001,7 @@ class Conv2DPopulation(Population):
     def __init__(self, network, layer, name, size=None, channels=None, population_type=None, activation='linear',
                  activation_kwargs=None, tau=None, include_bias=False, bias_init=None, bias_init_args=None,
                  bias_bounds=None, bias_learning_rule=None, bias_learning_rule_kwargs=None, custom_update=None,
-                 custom_update_kwargs=None, output_pop=False, image_dim=None, kernel_size=5, image_source=None,
+                 custom_update_kwargs=None, output_pop=False, image_dim=None, kernel_size=5, image_source=None, device=None, 
                  **kwargs):
         """
         Class for population of neurons that receive projections of type Conv2DProjection from one or more populations
@@ -1029,6 +1029,7 @@ class Conv2DPopulation(Population):
         :param image_source: str; name of population with reference input image_dim
         """
         # Constants
+        self.device = device
         self.kernel_size = kernel_size
         self.channels = channels
         if size is None:
@@ -1053,7 +1054,7 @@ class Conv2DPopulation(Population):
                          tau=tau, include_bias=include_bias, bias_init=bias_init, bias_init_args=bias_init_args,
                          bias_bounds=bias_bounds, bias_learning_rule=bias_learning_rule,
                          bias_learning_rule_kwargs=bias_learning_rule_kwargs, custom_update=custom_update,
-                         custom_update_kwargs=custom_update_kwargs, output_pop=output_pop)
+                         custom_update_kwargs=custom_update_kwargs, output_pop=output_pop, device=self.device)
     
     def forward(self):
         delta_state = -self.state + self.bias.unsqueeze(-1).unsqueeze(-1)
@@ -1091,7 +1092,7 @@ class Conv2DPopulation(Population):
 
 class MaxPool2DPopulation(Population):
     def __init__(self, network, layer, name, population_type, custom_update=None, custom_update_kwargs=None,
-                 output_pop=False, kernel_size=2, source=None, **kwargs):
+                 output_pop=False, kernel_size=2, source=None, device=None, **kwargs):
         """
         Class for population of neurons that performs a MaxPool2D operation on the output of a Conv2DPopulation.
         Currently automatic calculation of output image_dim assumes default stride, padding, and dilation.
@@ -1106,6 +1107,7 @@ class MaxPool2DPopulation(Population):
         :param source: str; name of population with reference input image_dim
         """
         # Constants
+        self.device=device
         self.kernel_size = kernel_size
         self.pool = nn.MaxPool2d(kernel_size, **kwargs)
         try:
@@ -1120,7 +1122,7 @@ class MaxPool2DPopulation(Population):
         size = self.source_pop.size
         
         super().__init__(network, layer, name, size, custom_update=custom_update,
-                         custom_update_kwargs=custom_update_kwargs, output_pop=output_pop)
+                         custom_update_kwargs=custom_update_kwargs, output_pop=output_pop, device=self.device)
     
     def forward(self):
         self.activity = self.pool(self.source_pop.activity)
@@ -1148,7 +1150,7 @@ class MaxPool2DPopulation(Population):
 
 class FlattenPopulation(Population):
     def __init__(self, network, layer, name, population_type, custom_update=None, custom_update_kwargs=None,
-                 output_pop=False, source=None, **kwargs):
+                 output_pop=False, source=None, device=None, **kwargs):
         """
         Class for population of neurons that performs a flatten operation on the output of a Conv2DPopulation or
         MaxPool2DPopulation.
@@ -1162,6 +1164,7 @@ class FlattenPopulation(Population):
         :param source: str; name of Conv2DPopulation to flatten
         """
         # Constants
+        self.device = device
         try:
             source_layer_name, source_pop_name = source.split('.')
             source_pop = network.layers[source_layer_name].populations[source_pop_name]
@@ -1173,7 +1176,7 @@ class FlattenPopulation(Population):
         size = source_pop.size * source_pop.image_dim * source_pop.image_dim
         
         super().__init__(network, layer, name, size, custom_update=custom_update,
-                         custom_update_kwargs=custom_update_kwargs, output_pop=output_pop)
+                         custom_update_kwargs=custom_update_kwargs, output_pop=output_pop, device=self.device)
     
     def forward(self):
         # last 3 dimensions are (size, source_image_dim, source_image_dim)
@@ -1411,9 +1414,10 @@ class Conv2DProjection(nn.Conv2d):
         
         if weight_constraint is None:
             self.constrain_weight = None
+            self.weight_constraint_name = None
+            self.weight_constraint_kwargs = {}
         else:
             if isinstance(weight_constraint, str):
-                self.weight_constraint_name = weight_constraint
                 if hasattr(rules, weight_constraint):
                     weight_constraint = getattr(rules, weight_constraint)
                 elif hasattr(external, weight_constraint):
@@ -1422,10 +1426,10 @@ class Conv2DProjection(nn.Conv2d):
                 raise RuntimeError \
                     ('Projection: weight_constraint: %s must be imported and callable' %
                      weight_constraint)
-            else:
-                self.weight_constraint_name = weight_constraint.__name__
             if weight_constraint_kwargs is None:
                 weight_constraint_kwargs = {}
+            self.weight_constraint_name = weight_constraint.__name__
+            self.weight_constraint_kwargs = weight_constraint_kwargs
             self.constrain_weight = \
                 lambda projection=self, kwargs=weight_constraint_kwargs: \
                     weight_constraint(projection, **weight_constraint_kwargs)

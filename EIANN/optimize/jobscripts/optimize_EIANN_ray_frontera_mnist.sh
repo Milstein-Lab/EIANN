@@ -87,13 +87,13 @@ python -m nested.optimize --config-file-path=$1 \
 
 #   ray (multi):
 #   nodes=3, ntasks-per-node=1, cpus-per-task=16
-#   python python num_cpus=1 num_gpus=0.5
+#   python num_cpus=1 num_gpus=0.5
 #     - 7626603: 4 generations took 256.53 s
 #     - 7626650: 4 generations took 259.73 s (with explicit gpu)
 
 #   ray (multi):
 #   nodes=6, ntasks-per-node=1, cpus-per-task=16
-#   python python num_cpus=1 num_gpus=1
+#   python num_cpus=1 num_gpus=1
 #     - 7628101: 4 generations took 229.25 s
 
 #   mpi: 
@@ -160,6 +160,13 @@ python -m nested.optimize --config-file-path=$1 \
 #   nodes=1, ntasks=46
 #   - 7628140: 4 generations took 2578.07 s
 #     - 641-648 s per generation
+
+# pop_size=9, max_iter=1, path_length=1
+#  ray (multi):
+#   nodes=6, ntasks-per-node=16, cpus-per-task=1
+#   python num_cpus=1 num_gpus=0.5
+#   - 7643490: 1 generations took 662.27 s
+#     - 662 s per generation 
 
 # BP_like_5J:
 # pop_size=9, max_iter=2, path_length=2

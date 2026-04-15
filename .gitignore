@@ -24,5 +24,8 @@ manuscript/
 
 EIANN/data/mnist
 EIANN/data/EIANN/*
+EIANN/data/cifar10/*
 
 eiann5_environment.yml
+
+CLAUDE.md

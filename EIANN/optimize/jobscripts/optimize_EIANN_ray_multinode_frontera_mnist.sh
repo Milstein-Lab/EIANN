@@ -3,10 +3,10 @@
 #SBATCH -o /scratch2/11358/yashchennawar5555/logs/EIANN/optimize_EIANN_mnist_ray_multi.%j.o
 #SBATCH -e /scratch2/11358/yashchennawar5555/logs/EIANN/optimize_EIANN_mnist_ray_multi.%j.e
 #SBATCH --nodes=6
-#SBATCH --ntasks-per-node=16
+#SBATCH --ntasks-per-node=1
 #SBATCH --partition=rtx
 #SBATCH --mem=80G
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=16
 #SBATCH --time=02:00:00
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
@@ -103,6 +103,7 @@ srun --overlap --nodes=1 --ntasks=1 -w "$head_node" python -m nested.optimize --
 # See logs:
 # cd $SCRATCH/logs/EIANN
 
-# TODO: 16 tasks per node
-# TODO: CNN test
-# larger backprop test
+# TODO: CNN test -> need to download cifar from simulate
+# TODO: larger backprop test
+# TODO: try ibrun (and check frontera docs)
+# TODO: try 0.25 gpu

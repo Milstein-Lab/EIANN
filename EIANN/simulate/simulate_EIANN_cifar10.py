@@ -328,11 +328,11 @@ def main(cli, config_file_path, network_config_file_path, data_file_path, output
          interactive, debug, disp, framework):
     """
     To execute on a single process:
-    python -i simulate_EIANN_simulate_EIANN_cifar10.py --plot --interactive --config-file-path=$PATH_TO_CONFIG_YAML \
+    python -i simulate_EIANN_cifar10.py --plot --interactive --config-file-path=$PATH_TO_CONFIG_YAML \
         --network-config-file-path=$PATH_TO_NETWORK_CONFIG_YAML
 
     To execute using MPI parallelism with 1 controller process and N - 1 worker processes:
-    mpirun -n N python -i -m mpi4py.futures simulate_EIANN_simulate_EIANN_cifar10.py --plot --interactive --framework=mpi \
+    mpirun -n N python -i -m mpi4py.futures simulate_EIANN_cifar10.py --plot --interactive --framework=mpi \
         --config-file-path=$PATH_TO_CONFIG_YAML --network-config-file-path=$PATH_TO_NETWORK_CONFIG_YAML
 
     :param cli: contains unrecognized args as list of str
