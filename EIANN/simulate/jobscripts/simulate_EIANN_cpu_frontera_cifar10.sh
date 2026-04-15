@@ -32,7 +32,7 @@ cd $HOME/EIANN
 
 python EIANN/simulate/run_EIANN_cifar10.py \
   --network-config-file-name=20250812_EIANN_2_hidden_convnet_cifar10_van_bp_relu_SGD_CE_config_G_learned_bias.yaml \
-  --data-dir=$SCRATCH/data/EIANN --network-seed=66049 --device=cpu --debug
+  --data-dir=$SCRATCH/data/EIANN --network-seed=66049 --device=cpu
 
 
 # cd $HOME/EIANN/EIANN/simulate/jobscripts

@@ -8,10 +8,9 @@ import EIANN.utils as ut
 @click.command()
 @click.option('--network-config-file-name', help="YAML file in EIANN/network_config/cifar10", required=True)
 @click.option("--data-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), default='../data/cifar10')
-@click.option('--debug', default=False, is_flag=True, help="Enable debug mode")
 @click.option('--network-seed', type=int, default=None, help="Seed for network initialization")
 @click.option('--device', type=str, default='cpu', help="Device to use: 'cuda' or 'cpu'")
-def main(network_config_file_name, data_dir, debug, network_seed, device, flatten_data=False):
+def main(network_config_file_name, data_dir, network_seed, device, flatten_data=False):
     start_time = time()
 
     seed_map = {
@@ -70,12 +69,6 @@ def main(network_config_file_name, data_dir, debug, network_seed, device, flatte
     config_file_path = f"EIANN/optimize/network_config/cifar10/{network_config_file_name}"
     network = ut.build_EIANN_from_config(config_file_path, network_seed=network_seed, device=device)
 
-    if debug:
-        print('Weights before train')
-        weights_before = network.module_dict['H1E_InputE'].weight.detach().clone().cpu()[0, 350:360]
-        print(weights_before)
-        state_dict_before = {k: v.detach().clone().cpu() for k, v in network.state_dict().items()}
-
     # Train network
     data_generator.manual_seed(data_seed)
     network.train(train_sub_dataloader, val_dataloader, 
@@ -96,32 +89,17 @@ def main(network_config_file_name, data_dir, debug, network_seed, device, flatte
     print(f'Final Val Loss: {network.val_loss_history[-1]}')
     print(f'Network Run Time: {network.run_time} sec')
 
-    if debug:
-        print('\nWeights after train')
-        weights_after = network.module_dict['H1E_InputE'].weight.detach().clone().cpu()[0, 350:360]
-        print(weights_after)
-        state_dict_after = {k: v.detach().clone().cpu() for k, v in network.state_dict().items()}
-    
-        print('\nWeight difference:')
-        weight_diff = weights_after - weights_before
-        print(weight_diff)
-        print(f'Max absolute change: {weight_diff.abs().max().item():.6f}')
-        print(f'Mean absolute change: {weight_diff.abs().mean().item():.6f}')
-
-        for key in state_dict_before:
-            diff = (state_dict_after[key] - state_dict_before[key]).abs()
-            print(f"{key}: max_change={diff.max().item():.6f}, mean_change={diff.mean().item():.6f}")
-
-        print(f"Network Sample Order: {network.sample_order}")
-
 if __name__ == '__main__':
     main()
 
 # Local run:
-# python EIANN/simulate/run_EIANN_cifar10.py --network-config-file-name=20250812_EIANN_2_hidden_convnet_cifar10_van_bp_relu_SGD_CE_config_G_learned_bias.yaml --data-dir=EIANN/data/ --network-seed=66049 --device=cpu --debug
+# python EIANN/simulate/run_EIANN_cifar10.py --network-config-file-name=20250812_EIANN_2_hidden_convnet_cifar10_van_bp_relu_SGD_CE_config_G_learned_bias.yaml --data-dir=EIANN/data/ --network-seed=66049 --device=cpu
 # Replace cpu with cuda for GPU run
 
 # python -m nested.analyze --interactive --config-file-path=optimize/optimize_config/cifar10/20250814_nested_optimize_EIANN_2_hidden_convnet_cifar10_van_bp_relu_SGD_CE_config_G_learned_bias.yaml --disp --model-key=van_bp_CE_learned_bias --param-file-path=optimize/optimize_params/cifar10/20250815_nested_optimize_convnet_cifar10_params.yaml --output-dir=/data/cifar10 --status_bar
 
 ######## Network Tracking (Frontera) ########
 
+# EIANN_2_hidden_convnet_cifar10_van_bp_relu
+# 7659073 (GPU): 160.15 s
+# 7659074 (CPU): 1221.05 s
