@@ -1,12 +1,11 @@
 #!/bin/bash -l
-#SBATCH -J eiann_gpu_cifar10
-#SBATCH -o /scratch2/11358/yashchennawar5555/logs/EIANN/cifar10_gpu_cifar10.%j.o
-#SBATCH -e /scratch2/11358/yashchennawar5555/logs/EIANN/cifar10_gpu_cifar10.%j.e
+#SBATCH -J eiann_cpu_cifar10
+#SBATCH -o /scratch2/11358/yashchennawar5555/logs/EIANN/cifar10_cpu_cifar10.%j.o
+#SBATCH -e /scratch2/11358/yashchennawar5555/logs/EIANN/cifar10_cpu_cifar10.%j.e
 #SBATCH --requeue
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --partition=development
-#SBATCH --mem=32G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=02:00:00
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu

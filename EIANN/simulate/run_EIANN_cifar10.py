@@ -67,7 +67,7 @@ def main(network_config_file_name, data_dir, debug, network_seed, device, flatte
     test_dataloader = torch.utils.data.DataLoader(CIFAR10_test, batch_size=10000, shuffle=False)
 
     # Create network
-    config_file_path = f"EIANN/network_config/cifar10/{network_config_file_name}"
+    config_file_path = f"EIANN/optimize/network_config/cifar10/{network_config_file_name}"
     network = ut.build_EIANN_from_config(config_file_path, network_seed=network_seed, device=device)
 
     if debug:
