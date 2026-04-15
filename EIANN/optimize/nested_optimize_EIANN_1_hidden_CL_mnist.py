@@ -448,7 +448,6 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     else:
         context.update(locals())
     
-    print(results)
     return results
 
 
