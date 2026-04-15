@@ -1,7 +1,7 @@
 import torch
 import torchvision
 import torchvision.transforms as T
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 import os, sys, math
 from copy import deepcopy
 import numpy as np
@@ -42,6 +42,8 @@ context = Context()
 
 # python -m nested.analyze --framework=serial --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=btsp --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --status_bar=True --plot --full_analysis=True
 
+# added param: num_splits (int) determines how many different tasks to split mnist into
+# added param: train_steps_per_class (int) indicates how many steps to train a specific task (if not provided, will split train_steps equally across tasks)
 
 def config_controller():
     if 'debug' not in context():
@@ -157,20 +159,28 @@ def config_worker():
             context.store_history = True
             if context.store_history_interval is None:
                 context.store_history_interval = context.val_interval
+    
+    # Split MNIST Into Different Tasks
+    if 'num_splits' not in context():
+        context.num_splits = 2
+    else:
+        context.num_splits = int(context.num_splits)
 
     context.train_steps = int(context.train_steps)
-    context.train_steps1 = context.train_steps
     
-    if 'train_steps2' not in context() or context.train_steps2 is None:
-        context.train_steps2 = context.train_steps
+    if 'train_steps_per_class' not in context() or context.train_steps_per_class is None:
+        context.train_steps_per_class = context.train_steps // context.num_splits
     else:
-        context.train_steps2 = int(context.train_steps2)
+        context.train_steps_per_class = int(context.train_steps_per_class)
     
     if 'data_file_path' in context():
         context.base_data_file_path = context.data_file_path
     else:
         network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
         context.base_data_file_path = f"{context.output_dir}/{network_name}.pkl"
+
+    if 'data_file_paths' not in context():
+        context.data_file_paths = []
     
     network_config = read_from_yaml(context.network_config_file_path)
     context.layer_config = network_config['layer_config']
@@ -188,55 +198,47 @@ def config_worker():
     MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=False,
                                                     download=download, transform=tensor_flatten)
 
-    # Add index to train & test data
-    MNIST_phase1_train = []
-    MNIST_phase2_train = []
-    MNIST_phase1_val = []
-    MNIST_phase2_val = []
-    num_classes = len(MNIST_train_dataset.classes)
-    phase_label_split = round(num_classes * context.split)
-    for idx, (data, label) in enumerate(MNIST_train_dataset):
-        target = torch.eye(num_classes)[label]
-        if idx < 50000:
-            if label < phase_label_split:
-                MNIST_phase1_train.append((idx, data, target))
-            else:
-                MNIST_phase2_train.append((idx, data, target))
-        else:
-            if label < phase_label_split:
-                MNIST_phase1_val.append((idx, data, target))
-            else:
-                MNIST_phase2_val.append((idx, data, target))
 
-    MNIST_full_test = []
-    MNIST_phase1_test = []
-    MNIST_phase2_test = []
+    # split data
+    num_classes = len(MNIST_train_dataset.classes)
+    classes_per_task = num_classes // context.num_splits
+
+    labels_in_tasks = [list(range(t, t+classes_per_task)) for t in range(0, num_classes, classes_per_task)]
+    train_datasets = [[] for _ in range(len(labels_in_tasks))]
+    val_datasets = [[] for _ in range(len(labels_in_tasks))]
+    test_datasets = [[] for _ in range(len(labels_in_tasks))]
+    full_test_dataset = []
+
+    for idx, (data, label) in enumerate(MNIST_train_dataset): 
+        target = torch.eye(num_classes)[label]
+        task_membership = [i for i, labels in enumerate(labels_in_tasks) if label in labels][0]
+        
+        if idx < 50000:
+            train_datasets[task_membership].append((idx, data, target))
+        else:
+            val_datasets[task_membership].append((idx, data, target))
+
     for idx, (data, label) in enumerate(MNIST_test_dataset):
         target = torch.eye(num_classes)[label]
-        MNIST_full_test.append((idx, data, target))
-        if label < phase_label_split:
-            MNIST_phase1_test.append((idx, data, target))
-        else:
-            MNIST_phase2_test.append((idx, data, target))
+        task_membership = [i for i, labels in enumerate(labels_in_tasks) if label in labels][0]
 
-    # Put data in dataloader
+        full_test_dataset.append((idx, data, target))
+        test_datasets[task_membership].append((idx, data, target))
+
+
+    context.train_dataloaders = []
+    context.val_dataloaders = []
+    context.test_dataloaders = []
+
+    # put data into dataloaders
     context.data_generator = torch.Generator()
-    context.phase1_train_dataloader = \
-        torch.utils.data.DataLoader(MNIST_phase1_train, shuffle=True, generator=context.data_generator)
-    context.phase1_val_dataloader = torch.utils.data.DataLoader(MNIST_phase1_val, batch_size=len(MNIST_phase1_val),
-                                                                shuffle=False)
 
-    context.phase2_train_dataloader = \
-        torch.utils.data.DataLoader(MNIST_phase2_train, shuffle=True, generator=context.data_generator)
-    context.phase2_val_dataloader = torch.utils.data.DataLoader(MNIST_phase2_val, batch_size=len(MNIST_phase2_val),
-                                                                shuffle=False)
+    for task_train, task_val, task_test in zip(train_datasets, val_datasets, test_datasets):
+        context.train_dataloaders.append(torch.utils.data.DataLoader(task_train, shuffle=True, generator=context.data_generator))
+        context.val_dataloaders.append(torch.utils.data.DataLoader(task_val, batch_size=len(task_val), shuffle=False))
+        context.test_dataloaders.append(torch.utils.data.DataLoader(task_test, batch_size=len(task_test), shuffle=False))
 
-    context.full_test_dataloader = torch.utils.data.DataLoader(MNIST_full_test, batch_size=len(MNIST_full_test),
-                                                               shuffle=False)
-    context.phase1_test_dataloader = torch.utils.data.DataLoader(MNIST_phase1_test, batch_size=len(MNIST_phase1_test),
-                                                               shuffle=False)
-    context.phase2_test_dataloader = torch.utils.data.DataLoader(MNIST_phase2_test, batch_size=len(MNIST_phase2_test),
-                                                                 shuffle=False)
+    context.full_test_dataloader = torch.utils.data.DataLoader(full_test_dataset, batch_size=len(full_test_dataset), shuffle=False)
 
 
 def get_mean_forward_dend_loss(network, num_steps, abs=True):
@@ -288,12 +290,6 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     data_generator = context.data_generator
     full_test_dataloader = context.full_test_dataloader
-    phase1_train_dataloader = context.phase1_train_dataloader
-    phase1_test_dataloader = context.phase1_test_dataloader
-    phase1_val_dataloader = context.phase1_val_dataloader
-    phase2_train_dataloader = context.phase2_train_dataloader
-    phase2_test_dataloader = context.phase2_test_dataloader
-    phase2_val_dataloader = context.phase2_val_dataloader
 
     epochs = context.epochs
 
@@ -317,258 +313,142 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.plot_initial:
             title = 'Initial (%i, %i)' % (seed, data_seed)
             plot_batch_accuracy(network, full_test_dataloader, population='all', title=title)
-    
-    if 'data_file_path1' not in context():
-        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-        if context.label is None:
-            context.data_file_path1 = f"{context.output_dir}/{network_name}_phase1_{seed}_{data_seed}.pkl"
+
+    results = {}
+    for i, (train_loader, val_loader, test_loader) in enumerate(zip(context.train_dataloaders, context.val_dataloaders, context.test_dataloaders)):
+        if f'data_file_path{i}' not in context():
+            network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+            if context.label is None:
+                context.data_file_paths.append(f"{context.output_dir}/{network_name}_phase{i}_{seed}_{data_seed}.pkl")
+            else:
+                context.data_file_paths.append(f"{context.output_dir}/{network_name}_phase{i}_{seed}_{data_seed}_{context.label}.pkl")
+        
+        if os.path.exists(context.data_file_paths[-1]) and not context.retrain:
+            network = utils.load_network(context.data_file_paths[-1])
+            if context.disp:
+                print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i loaded phase1 network history from %s' %
+                    (os.getpid(), context.context.data_file_paths[-1]))
         else:
-            context.data_file_path1 = f"{context.output_dir}/{network_name}_phase1_{seed}_{data_seed}_{context.label}.pkl"
-    
-    if os.path.exists(context.data_file_path1) and not context.retrain:
-        network = utils.load_network(context.data_file_path1)
-        if context.disp:
-            print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i loaded phase1 network history from %s' %
-                  (os.getpid(), context.data_file_path1))
-    else:
-        data_generator.manual_seed(data_seed)
-        if context.debug:
-            import time
-            current_time = time.time()
-        network.train(phase1_train_dataloader, phase1_val_dataloader, epochs=epochs,
-                      val_interval=context.val_interval,  # e.g. (-201, -1, 10)
-                      samples_per_epoch=context.train_steps1,
-                      store_history=context.store_history, store_dynamics=context.store_dynamics,
-                      store_history_interval=context.store_history_interval,
-                      store_params=context.store_params, store_params_interval=context.store_params_interval,
-                      status_bar=context.status_bar)
-    
-    # reorder output units if using unsupervised/Hebbian rule
-    if not context.supervised:
+            data_generator.manual_seed(data_seed)
+            if context.debug:
+                import time
+                current_time = time.time()
+            network.train(train_loader, val_loader, epochs=epochs,
+                        val_interval=context.val_interval,  # e.g. (-201, -1, 10)
+                        samples_per_epoch=context.train_steps_per_class,
+                        store_history=context.store_history, store_dynamics=context.store_dynamics,
+                        store_history_interval=context.store_history_interval,
+                        store_params=context.store_params, store_params_interval=context.store_params_interval,
+                        status_bar=context.status_bar)
+        
+        # reorder output units if using unsupervised/Hebbian rule
+        if not context.supervised:
+            if context.eval_accuracy == 'final':
+                min_loss_idx = len(network.val_loss_history) - 1
+                sorted_output_idx = sort_by_class_averaged_val_output(network, val_loader)
+            elif context.eval_accuracy == 'best':
+                min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_loader, plot=plot)
+            else:
+                raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: eval_accuracy must be final or best, not %s' %
+                                context.eval_accuracy)
+            sorted_val_loss_history, sorted_val_accuracy_history = \
+                recompute_validation_loss_and_accuracy(network, val_loader, sorted_output_idx=sorted_output_idx,
+                                                    store=True)
+        else:
+            min_loss_idx = torch.argmin(network.val_loss_history)
+            sorted_output_idx = None
+            sorted_val_loss_history = network.val_loss_history
+            sorted_val_accuracy_history = network.val_accuracy_history
+
+        if context.store_history and (context.store_history_interval is None):
+            binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
+                recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot, title=f'Phase {i}')
+
+        # Select for stability by computing mean accuracy in a window after the best validation step
+        val_stepsize = int(context.val_interval[2])
+        num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
+        
         if context.eval_accuracy == 'final':
-            min_loss_idx = len(network.val_loss_history) - 1
-            sorted_output_idx = sort_by_class_averaged_val_output(network, phase1_val_dataloader)
+            final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
+            final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
+            
+            results[f'phase{i}_loss'] = final_loss
+            results[f'phase{i}_accuracy'] = final_argmax_accuracy
+
         elif context.eval_accuracy == 'best':
-            min_loss_idx, sorted_output_idx = sort_by_val_history(network, phase1_val_dataloader, plot=plot)
+            if min_loss_idx + num_val_steps_accuracy_window > len(
+                    sorted_val_loss_history):  # if best loss too close to the end
+                best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
+                best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
+            else:
+                best_accuracy_window = \
+                    torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+                best_loss_window = torch.mean(
+                    sorted_val_loss_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+            
+            results[f'phase{i}_loss'] = best_loss_window
+            results[f'phase{i}_accuracy'] = best_accuracy_window
+
         else:
             raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: eval_accuracy must be final or best, not %s' %
                             context.eval_accuracy)
-        sorted_val_loss_history, sorted_val_accuracy_history = \
-            recompute_validation_loss_and_accuracy(network, phase1_val_dataloader, sorted_output_idx=sorted_output_idx,
-                                                   store=True)
-    else:
-        min_loss_idx = torch.argmin(network.val_loss_history)
-        sorted_output_idx = None
-        sorted_val_loss_history = network.val_loss_history
-        sorted_val_accuracy_history = network.val_accuracy_history
-
-    if context.store_history and (context.store_history_interval is None):
-        binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
-            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot, title='Phase 1')
-
-    # Select for stability by computing mean accuracy in a window after the best validation step
-    val_stepsize = int(context.val_interval[2])
-    num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
-    
-    if context.eval_accuracy == 'final':
-        final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
-        final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
         
-        results = {'phase1_loss': final_loss,
-                   'phase1_accuracy': final_argmax_accuracy}
-    elif context.eval_accuracy == 'best':
-        if min_loss_idx + num_val_steps_accuracy_window > len(
-                sorted_val_loss_history):  # if best loss too close to the end
-            best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
-            best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
-        else:
-            best_accuracy_window = \
-                torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
-            best_loss_window = torch.mean(
-                sorted_val_loss_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
-        
-        results = {'phase1_loss': best_loss_window,
-                   'phase1_accuracy': best_accuracy_window}
-    else:
-        raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: eval_accuracy must be final or best, not %s' %
-                        context.eval_accuracy)
-    
-    if torch.isnan(results['phase1_loss']) or np.isinf(results['phase1_loss']):
-        if context.debug and context.interactive:
-            context.update(locals())
-        return dict()
-    
-    if context.include_dend_loss_objective:
-        if context.store_history_interval is None:
-            dend_loss_window = int(context.num_training_steps_accuracy_window)
-        else:
-            dend_loss_window = num_val_steps_accuracy_window
-        mean_forward_dend_loss = get_mean_forward_dend_loss(network, dend_loss_window)
-        results['phase1_mean_forward_dend_loss'] = mean_forward_dend_loss
-    
-    if plot:
-        plot_batch_accuracy(network, full_test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
-                            title='After Phase 1')
-        plot_train_loss_history(network, title='Phase 1')
-        plot_validate_loss_history(network, title='Phase 1')
-
-    if context.full_analysis:
-        test_loss_history, test_accuracy_history = \
-            compute_test_loss_and_accuracy_history(network, phase1_test_dataloader,
-                                                   sorted_output_idx=sorted_output_idx, plot=plot,
-                                                   status_bar=context.status_bar)
-    
-    if context.constrain_equilibration_dynamics or context.debug:
-        residuals = check_equilibration_dynamics(network, phase1_test_dataloader, context.equilibration_activity_tolerance,
-                                                 store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
-        if context.include_equilibration_dynamics_objective:
-            results['phase1_dynamics_residuals'] = residuals
-        elif residuals > 0. and not context.debug:
-            if context.interactive:
+        if torch.isnan(results[f'phase{i}_loss']) or np.isinf(results[f'phase{i}_loss']):
+            if context.debug and context.interactive:
                 context.update(locals())
             return dict()
-    
-    if export:
-        utils.save_network(network, path=context.data_file_path1, disp=False)
-        if context.disp:
-            print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i exported phase1 network history to %s' %
-                  (os.getpid(), context.data_file_path1))
-    
-    network.reset_history()
-    
-    if 'data_file_path2' not in context():
-        network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
-        if context.label is None:
-            context.data_file_path2 = f"{context.output_dir}/{network_name}_phase2_{seed}_{data_seed}.pkl"
-        else:
-            context.data_file_path2 = f"{context.output_dir}/{network_name}_phase2_{seed}_{data_seed}_{context.label}.pkl"
-    
-    if os.path.exists(context.data_file_path2) and not context.retrain:
-        network = utils.load_network(context.data_file_path2)
-        if context.disp:
-            print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i loaded phase2 network history from %s' %
-                  (os.getpid(), context.data_file_path2))
-    else:
-        network.update_CL_states()
-        data_generator.manual_seed(data_seed)
-        network.train(phase2_train_dataloader, phase2_val_dataloader, epochs=epochs,
-                      val_interval=context.val_interval,  # e.g. (-201, -1, 10)
-                      samples_per_epoch=context.train_steps2, store_history=context.store_history,
-                      store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
-                      store_params=context.store_params, store_params_interval=context.store_params_interval,
-                      status_bar=context.status_bar)
-    
-    if not context.supervised:
-        if context.eval_accuracy == 'final':
-            min_loss_idx = len(network.val_loss_history) - 1
-            sorted_output_idx = sort_by_class_averaged_val_output(network, phase2_val_dataloader)
-        elif context.eval_accuracy == 'best':
-            min_loss_idx, sorted_output_idx = sort_by_val_history(network, phase2_val_dataloader, plot=plot)
-        else:
-            raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: eval_accuracy must be final or best, not %s' %
-                            context.eval_accuracy)
-        sorted_val_loss_history, sorted_val_accuracy_history = \
-            recompute_validation_loss_and_accuracy(network, phase2_val_dataloader, sorted_output_idx=sorted_output_idx,
-                                                   store=True)
-    else:
-        min_loss_idx = torch.argmin(network.val_loss_history)
-        sorted_output_idx = None
-        sorted_val_loss_history = network.val_loss_history
-        sorted_val_accuracy_history = network.val_accuracy_history
-
-    if context.store_history and (context.store_history_interval is None):
-        binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
-            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot, title='Phase 2')
-
-    # Select for stability by computing mean accuracy in a window after the best validation step
-    val_stepsize = int(context.val_interval[2])
-    num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
-    
-    if context.eval_accuracy == 'final':
-        final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
-        final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
         
-        results['phase2_loss'] = final_loss
-        results['phase2_accuracy'] = final_argmax_accuracy
-    elif context.eval_accuracy == 'best':
-        if min_loss_idx + num_val_steps_accuracy_window > len(
-                sorted_val_loss_history):  # if best loss too close to the end
-            best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
-            best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
-        else:
-            best_accuracy_window = \
-                torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
-            best_loss_window = torch.mean(
-                sorted_val_loss_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+        if context.include_dend_loss_objective:
+            if context.store_history_interval is None:
+                dend_loss_window = int(context.num_training_steps_accuracy_window)
+            else:
+                dend_loss_window = num_val_steps_accuracy_window
+            mean_forward_dend_loss = get_mean_forward_dend_loss(network, dend_loss_window)
+            results[f'phase{i}_mean_forward_dend_loss'] = mean_forward_dend_loss
         
-        results['phase2_loss'] = best_loss_window
-        results['phase2_accuracy'] = best_accuracy_window
-    else:
-        raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
-                        context.eval_accuracy)
+        if plot:
+            plot_batch_accuracy(network, full_test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
+                                title=f'After Phase {i}')
+            plot_train_loss_history(network, title=f'Phase {i}')
+            plot_validate_loss_history(network, title=f'Phase {i}')
 
-    if torch.isnan(results['phase2_loss']) or np.isinf(results['phase2_loss']):
-        if context.debug and context.interactive:
-            context.update(locals())
-        return dict()
-    
-    if context.include_dend_loss_objective:
-        if context.store_history_interval is None:
-            dend_loss_window = int(context.num_training_steps_accuracy_window)
-        else:
-            dend_loss_window = num_val_steps_accuracy_window
-        mean_forward_dend_loss = get_mean_forward_dend_loss(network, dend_loss_window)
-        results['phase2_mean_forward_dend_loss'] = mean_forward_dend_loss
-    
-    if plot:
-        plot_batch_accuracy(network, full_test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
-                            title='After Phase 2')
-        plot_train_loss_history(network, title='Phase 2')
-        plot_validate_loss_history(network, title='Phase 2')
-
-    if context.compute_receptive_fields:
-        # Compute receptive fields
-        population = network.H1.E
-        receptive_fields = utils.compute_maxact_receptive_fields(population)
-    else:
-        receptive_fields = network.H1.E.Input.E.weight.detach()
-    
-    if plot:
-        plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
-
-    if context.full_analysis:
-        test_loss_history, test_accuracy_history = \
-            compute_test_loss_and_accuracy_history(network, phase2_test_dataloader, sorted_output_idx=sorted_output_idx,
-                                                   plot=plot, status_bar=context.status_bar, title='Phase 2')
-    
-    if context.constrain_equilibration_dynamics or context.debug:
-        residuals = check_equilibration_dynamics(network, phase2_test_dataloader, context.equilibration_activity_tolerance,
-                                                 store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
-        if context.include_equilibration_dynamics_objective:
-            results['phase2_dynamics_residuals'] = residuals
-        elif residuals > 0. and not context.debug:
-            if context.interactive:
-                context.update(locals())
-            return dict()
+        if context.full_analysis:
+            test_loss_history, test_accuracy_history = \
+                compute_test_loss_and_accuracy_history(network, test_loader,
+                                                    sorted_output_idx=sorted_output_idx, plot=plot,
+                                                    status_bar=context.status_bar)
+        
+        if context.constrain_equilibration_dynamics or context.debug:
+            residuals = check_equilibration_dynamics(network, test_loader, context.equilibration_activity_tolerance,
+                                                    store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
+            if context.include_equilibration_dynamics_objective:
+                results[f'phase{i}_dynamics_residuals'] = residuals
+            elif residuals > 0. and not context.debug:
+                if context.interactive:
+                    context.update(locals())
+                return dict()
+        
+        if export:
+            utils.save_network(network, path=context.data_file_paths[-1], disp=False)
+            if context.disp:
+                print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i exported phase1 network history to %s' %
+                    (os.getpid(), context.data_file_paths[-1]))
+        
+        network.reset_history()
     
     final_total_loss, final_total_accuracy = (
         utils.compute_test_loss_and_accuracy(network, full_test_dataloader, sorted_output_idx=sorted_output_idx))
     
     results['final_loss'] = final_total_loss
     results['final_accuracy'] = final_total_accuracy
-    
-    if export:
-        utils.save_network.save(network, path=context.data_file_path2, disp=False)
-        if context.disp:
-            print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i exported phase2 network history to %s' %
-                  (os.getpid(), context.data_file_path2))
-    
+        
     if not context.interactive:
         del network
         gc.collect()
     else:
         context.update(locals())
-
+    
+    print(results)
     return results
 
 
