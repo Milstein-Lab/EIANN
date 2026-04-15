@@ -90,7 +90,6 @@ if __name__ == '__main__':
 # Replace cpu with cuda for GPU run
 
 # python -m nested.analyze --interactive --config-file-path=optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml --disp --model-key=van_bp_relu --param-file-path=optimize/optimize_params/mnist/20240816_nested_optimize_2_hidden_mnist_params.yaml --output-dir=data/MNIST --status_bar
-# python -m nested.analyze --interactive --config-file-path=optimize/optimize_config/cifar10/20250814_nested_optimize_EIANN_2_hidden_convnet_cifar10_van_bp_relu_SGD_CE_config_G_learned_bias.yaml --disp --model-key=van_bp_CE_learned_bias --param-file-path=optimize/optimize_params/cifar10/20250815_nested_optimize_convnet_cifar10_params.yaml --output-dir=/data/cifar10 --status_bar
 
 ######## Network Tracking (Bridges) ########
 
