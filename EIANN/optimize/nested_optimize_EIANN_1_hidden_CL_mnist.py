@@ -308,10 +308,12 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     for i, (train_steps, train_loader, val_loader, test_loader) in enumerate(zip(context.train_steps_per_task, context.train_dataloaders, context.val_dataloaders, context.test_dataloaders)):
         if f'data_file_path{i}' not in context():
             network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+            if not os.path.exists(f"{context.output_dir}/{network_name}/{seed}"):
+                os.makedirs(f"{context.output_dir}/{network_name}/{seed}", exist_ok=True)
             if context.label is None:
-                context.data_file_paths.append(f"{context.output_dir}/{network_name}_phase{i}_{seed}_{data_seed}.pkl")
+                context.data_file_paths.append(f"{context.output_dir}/{network_name}/{seed}/{network_name}_phase{i}_{seed}_{data_seed}.pkl")
             else:
-                context.data_file_paths.append(f"{context.output_dir}/{network_name}_phase{i}_{seed}_{data_seed}_{context.label}.pkl")
+                context.data_file_paths.append(f"{context.output_dir}/{network_name}/{seed}/{network_name}_phase{i}_{seed}_{data_seed}_{context.label}.pkl")
         
         if os.path.exists(context.data_file_paths[-1]) and not context.retrain:
             network = utils.load_network(context.data_file_paths[-1])
