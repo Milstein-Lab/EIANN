@@ -154,6 +154,23 @@ def config_worker():
     context.layer_config = network_config['layer_config']
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
+    requested_device = str(context.device).lower() if 'device' in context() else 'cpu'
+    if requested_device not in ('cpu', 'cuda', 'auto'):
+        raise Exception('nested_optimize_EIANN_cifar10: device must be one of cpu|cuda|auto, not %s' %
+                        requested_device)
+    if requested_device == 'auto':
+        resolved_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    elif requested_device == 'cuda' and not torch.cuda.is_available():
+        raise Exception('nested_optimize_EIANN_cifar10: device was set to cuda, but cuda is not available')
+    else:
+        resolved_device = requested_device
+    context.training_kwargs['device'] = resolved_device
+    if (('disp' in context() and context.disp) or context.debug):
+        print('nested_optimize_EIANN_cifar10: pid: %i requested_device=%s resolved_device=%s '
+              'cuda_available=%s cuda_device_count=%i CUDA_VISIBLE_DEVICES=%s' %
+              (os.getpid(), requested_device, resolved_device, torch.cuda.is_available(),
+               torch.cuda.device_count(), os.environ.get('CUDA_VISIBLE_DEVICES', 'unset')))
+        sys.stdout.flush()
     
     if 'criterion' in context():
         context.training_kwargs['criterion'] = context.criterion

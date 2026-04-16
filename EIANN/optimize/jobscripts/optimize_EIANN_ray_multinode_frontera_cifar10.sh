@@ -2,7 +2,7 @@
 #SBATCH -J optimize_EIANN_cifar10_ray_multi
 #SBATCH -o /scratch2/11358/yashchennawar5555/logs/EIANN/optimize_EIANN_cifar10_ray_multi.%j.o
 #SBATCH -e /scratch2/11358/yashchennawar5555/logs/EIANN/optimize_EIANN_cifar10_ray_multi.%j.e
-#SBATCH --nodes=12
+#SBATCH --nodes=6
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=rtx
 #SBATCH --mem=80G
@@ -90,7 +90,7 @@ export RAY_ADDRESS=$ip_head
 
 srun --overlap --nodes=1 --ntasks=1 -w "$head_node" python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
-  --pop_size=9 --max_iter=1 --path_length=1 --num_gpus=1 --num_cpus=1 --device=$DEVICE
+  --pop_size=4 --max_iter=2 --path_length=2 --num_gpus=1 --num_cpus=1 --device=$DEVICE
 
 # srun --num-gpus=4 must equal real number of gpus in frontera rtx node (4)
 # if we need more gpus, we can increase --nodes
