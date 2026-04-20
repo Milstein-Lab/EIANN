@@ -33,7 +33,7 @@ kwargs:
     supervised: True
     status_bar: False
     train_steps_per_class: 10000
-    num_splits: 2
+    num_splits: 5
     epochs: 1
     network_config_file_path: optimize/network_config/MNIST_CL/20251229_EIANN_2_hidden_CL_mnist_van_bp_INEL_relu_SGD_config_B.yaml
     val_interval:
