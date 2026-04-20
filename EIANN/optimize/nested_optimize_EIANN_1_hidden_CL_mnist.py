@@ -425,8 +425,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             if context.disp:
                 print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i exported phase1 network history to %s' %
                     (os.getpid(), context.data_file_paths[-1]))
-        
+                
         network.reset_history()
+        network.update_CL_states()
     
     final_total_loss, final_total_accuracy = (
         utils.compute_test_loss_and_accuracy(network, full_test_dataloader, sorted_output_idx=sorted_output_idx))

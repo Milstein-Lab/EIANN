@@ -60,9 +60,6 @@ def get_split_mnist_dataset(data_dir, num_splits):
 @click.option("--data-dir", help="directory containing train/test data")
 @click.option("--task", default='split_mnist', help="continual learning task")
 @click.option("--num-splits", help="how many splits (or subtasks) the task was split into")
-
-
-
 def main(model_folder_path, config_file_path, data_dir, task, num_splits):
 
     num_splits = int(num_splits)
