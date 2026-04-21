@@ -319,7 +319,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             network = utils.load_network(context.data_file_paths[-1])
             if context.disp:
                 print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i loaded phase1 network history from %s' %
-                    (os.getpid(), context.context.data_file_paths[-1]))
+                    (os.getpid(), context.data_file_paths[-1]))
         else:
             data_generator.manual_seed(data_seed)
             if context.debug:
