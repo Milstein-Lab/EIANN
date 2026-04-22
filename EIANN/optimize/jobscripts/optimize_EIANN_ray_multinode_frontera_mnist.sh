@@ -105,4 +105,3 @@ srun --overlap --nodes=1 --ntasks=1 -w "$head_node" python -m nested.optimize --
 
 # TODO: larger backprop test
 # TODO: try ibrun (and check frontera docs)
-# TODO: try 0.25 gpu

@@ -68,6 +68,10 @@ def config_worker():
         context.store_params = False
     else:
         context.store_params = str_to_bool(context.store_params)
+    if 'autocast' not in context():
+        context.autocast = False
+    else:
+        context.autocast = str_to_bool(context.autocast)
     if context.debug:
         context.store_num_steps = None
     elif 'store_num_steps' not in context():
@@ -341,12 +345,13 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.debug:
             import time
             current_time = time.time()
-        network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
-                      val_interval=context.val_interval,  # e.g. (-201, -1, 10),
-                      samples_per_epoch=context.train_steps, store_history=context.store_history,
-                      store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
-                      store_params=context.store_params, store_params_interval=context.store_params_interval,
-                      status_bar=context.status_bar)
+        with torch.amp.autocast(enabled=context.autocast):
+            network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
+                          val_interval=context.val_interval,  # e.g. (-201, -1, 10),
+                          samples_per_epoch=context.train_steps, store_history=context.store_history,
+                          store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
+                          store_params=context.store_params, store_params_interval=context.store_params_interval,
+                          status_bar=context.status_bar)
     
     if plot:
         try:

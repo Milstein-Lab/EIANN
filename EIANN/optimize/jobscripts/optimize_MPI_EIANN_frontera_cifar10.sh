@@ -3,8 +3,8 @@
 #SBATCH -o /scratch2/11358/yashchennawar5555/logs/EIANN/optimize_EIANN_cifar10_MPI.%j.o
 #SBATCH -e /scratch2/11358/yashchennawar5555/logs/EIANN/optimize_EIANN_cifar10_MPI.%j.e
 #SBATCH -p development
-#SBATCH --nodes=1
-#SBATCH --ntasks=21
+#SBATCH --nodes=2
+#SBATCH --ntasks=46
 #SBATCH --time=2:00:00
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
@@ -30,9 +30,9 @@ DEVICE="${2:-cpu}"
 
 export MPI4PY_RC_RECV_MPROBE=false
 
-ibrun -n 21 python -m mpi4py.futures -m nested.optimize --config-file-path=$1 \
+ibrun -n 46 python -m mpi4py.futures -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=mpi --disp \
-  --pop_size=4 --max_iter=2 --path_length=2 --device="$DEVICE"
+  --pop_size=9 --max_iter=2 --path_length=2 --device="$DEVICE"
 
 # -n: num procs = 1 master + pop_size * num_seeds (5)
 # num generations = max_iter * path_length
@@ -43,5 +43,3 @@ ibrun -n 21 python -m mpi4py.futures -m nested.optimize --config-file-path=$1 \
 
 # See logs:
 # cd $SCRATCH/logs/EIANN
-
-# TODO move to $WORK
