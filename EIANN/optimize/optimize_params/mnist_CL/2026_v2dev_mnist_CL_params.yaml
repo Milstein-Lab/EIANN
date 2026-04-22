@@ -369,6 +369,49 @@ BP_like_5J:
     H_I_size: 50.0
     Output_I_size: 10.0
 
+BP_like_CL_5J:
+    #    final_accuracy: 62.245994567871094
+    #    final_loss: 0.05899887382984161
+    #    phase1_accuracy: 96.76750183105469
+    #    phase1_dynamics_residuals: 0.0
+    #    phase1_loss: 0.012732088565826416
+    #    phase1_mean_forward_dend_loss: 0.027611476182937623
+    #    phase2_accuracy: 92.7547607421875
+    #    phase2_dynamics_residuals: 0.0
+    #    phase2_loss: 0.01947718858718872
+    #    phase2_mean_forward_dend_loss: 0.016279721073806284
+    H1_E_Input_E_init_weight_scale: 4.513824127275658
+    H2_E_H1_E_init_weight_scale: 0.4282875763121348
+    H_E_E_learning_rate: 0.004865447606393328
+    H1_E_H2_E_weight_scale: 0.5043971923345941
+    H2_E_Output_E_weight_scale: 0.17882323011027076
+    H1_E_H1_SomaI_init_weight_scale: 2.1708720484495516
+    H1_SomaI_H1_E_init_weight_scale: 0.3197624648249586
+    H1_SomaI_Input_E_init_weight_scale: 2.8134082177193545
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.1689303104621864
+    H_E_DendI_learning_rate: 0.12461466928634803
+    H1_E_H1_DendI_init_weight_scale: 0.9344779190241581
+    H1_DendI_H1_E_weight_scale: 5.458310682593345
+    H1_DendI_H1_DendI_weight_scale: 1.0700461726864328
+    H2_E_H2_SomaI_init_weight_scale: 0.3539721312137547
+    H2_SomaI_H2_E_init_weight_scale: 0.8348957700723503
+    H2_SomaI_H1_E_init_weight_scale: 0.6114694915294601
+    H2_SomaI_H2_SomaI_init_weight_scale: 1.5788614782139923
+    H2_E_H2_DendI_init_weight_scale: 1.3301734025801655
+    H2_DendI_H2_E_weight_scale: 1.2194836118142995
+    H2_DendI_H2_DendI_weight_scale: 0.8902935155839063
+    Output_E_H2_E_init_weight_scale: 3.7536458211916393
+    DendI_E_learning_rate: 0.044335013944480764
+    DendI_DendI_learning_rate: 0.02604233892645499
+    Output_E_H2_E_learning_rate: 0.003169056422509983
+    Output_E_Output_I_init_weight_scale: 0.49137235734895274
+    Output_I_Output_E_init_weight_scale: 0.11573843963560425
+    Output_I_H2_E_init_weight_scale: 4.248745688577045
+    Output_I_Output_I_init_weight_scale: 1.577660672507586
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
+
 BTSP_6L:
     # no cross-sample temporal comparison
     # standard training, not CL
