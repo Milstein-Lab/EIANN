@@ -483,11 +483,7 @@ class Network(nn.Module):
         
         # Load validation data and initialize intermediate variables
         if val_dataloader is not None:
-            assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
-            idx, val_data, val_target = next(iter(val_dataloader))
-            if not val_data.device == self.device:
-                val_data = val_data.to(self.device)
-                val_target = val_target.to(self.device)
+            val_chunks = [(vd.to(self.device), vt.to(self.device)) for _, vd, vt in val_dataloader]
             self.val_output_history = []
             self.val_loss_history = []
             self.val_accuracy_history = []
@@ -614,14 +610,19 @@ class Network(nn.Module):
                 
                 # Compute validation loss
                 if val_dataloader is not None and train_step in val_range:
-                    output = self.forward(val_data, store_dynamics=False, no_grad=True)
-                    self.val_output_history.append(output.detach().clone())
-                    self.val_loss_history.append(self.criterion(output, val_target).item())
-                    accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
-                               output.shape[0]
-                    self.val_accuracy_history.append(accuracy.item())
+                    chunk_outputs, total_loss, total_correct, total_samples = [], 0.0, 0, 0
+                    for vd, vt in val_chunks:
+                        out = self.forward(vd, store_dynamics=False, no_grad=True).detach()
+                        chunk_outputs.append(out)
+                        total_loss += self.criterion(out, vt).item() * vd.shape[0]
+                        total_correct += torch.sum(torch.argmax(out, dim=1) == torch.argmax(vt, dim=1)).item()
+                        total_samples += vd.shape[0]
+                    output = torch.cat(chunk_outputs, dim=0)
+                    self.val_output_history.append(output)
+                    self.val_loss_history.append(total_loss / total_samples)
+                    self.val_accuracy_history.append(100 * total_correct / total_samples)
                     self.val_history_train_steps.append(train_step)
-                    if status_bar: # Display the current loss and accuracy on the progress bar
+                    if status_bar:
                         epoch_iter.set_description(f"Validation Loss: {self.val_loss_history[-1]:.4f}, Accuracy: {self.val_accuracy_history[-1]:.2f}% - Epoch")
                 train_step += 1
 

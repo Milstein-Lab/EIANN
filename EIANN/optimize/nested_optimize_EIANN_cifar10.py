@@ -249,7 +249,8 @@ def config_worker():
     
     context.train_sub_dataloader = \
         torch.utils.data.DataLoader(CIFAR10_train, shuffle=True, generator=context.data_generator)
-    context.val_dataloader = torch.utils.data.DataLoader(CIFAR10_val, batch_size=10000, shuffle=False)
+    val_batch_size = int(context.val_batch_size) if 'val_batch_size' in context() else 10000
+    context.val_dataloader = torch.utils.data.DataLoader(CIFAR10_val, batch_size=val_batch_size, shuffle=False)
     context.test_dataloader = torch.utils.data.DataLoader(CIFAR10_test, batch_size=10000, shuffle=False)
 
 
