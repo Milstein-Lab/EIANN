@@ -59,8 +59,12 @@ def config_worker():
     context.task_id = int(context.task_id)
     context.data_seed_start = int(context.data_seed_start)
     context.epochs = int(context.epochs)
-    context.split = float(context.split)
     context.status_bar = str_to_bool(context.status_bar)
+    
+    # CL specific #
+    context.train_steps_per_class = int(context.train_steps_per_class)
+    context.num_splits = int(context.num_splits)
+
     if 'debug' not in context():
         context.debug = False
     else:
@@ -140,9 +144,7 @@ def config_worker():
     if 'store_history_interval' not in context():
         context.store_history_interval = None
     
-    context.train_steps = int(context.train_steps)
-    
-    history_interval = max(int(context.train_steps * context.epochs / 200), 100)
+    history_interval = max(int(context.train_steps_per_class * 10 // context.num_splits * context.epochs / 200), 100)
     if 'store_params_interval' not in context():
         context.store_params_interval = (0, -1, history_interval)
     
@@ -159,20 +161,7 @@ def config_worker():
             context.store_history = True
             if context.store_history_interval is None:
                 context.store_history_interval = context.val_interval
-    
-    # Split MNIST Into Different Tasks
-    if 'num_splits' not in context():
-        context.num_splits = 2
-    else:
-        context.num_splits = int(context.num_splits)
-
-    context.train_steps = int(context.train_steps)
-    
-    if 'train_steps_per_class' not in context() or context.train_steps_per_class is None:
-        context.train_steps_per_class = context.train_steps // context.num_splits
-    else:
-        context.train_steps_per_class = int(context.train_steps_per_class)
-    
+        
     if 'data_file_path' in context():
         context.base_data_file_path = context.data_file_path
     else:
@@ -198,12 +187,13 @@ def config_worker():
     MNIST_test_dataset = torchvision.datasets.MNIST(root=context.output_dir + '/datasets/MNIST_data/', train=False,
                                                     download=download, transform=tensor_flatten)
 
-
     # split data
     num_classes = len(MNIST_train_dataset.classes)
     classes_per_task = num_classes // context.num_splits
 
-    labels_in_tasks = [list(range(t, t+classes_per_task)) for t in range(0, num_classes, classes_per_task)]
+    labels_in_tasks = [list(range(t, min(num_classes, t+classes_per_task))) for t in range(0, num_classes, classes_per_task)]
+    context.train_steps_per_task = [len(x) * context.train_steps_per_class for x in labels_in_tasks]
+
     train_datasets = [[] for _ in range(len(labels_in_tasks))]
     val_datasets = [[] for _ in range(len(labels_in_tasks))]
     test_datasets = [[] for _ in range(len(labels_in_tasks))]
@@ -315,19 +305,21 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             plot_batch_accuracy(network, full_test_dataloader, population='all', title=title)
 
     results = {}
-    for i, (train_loader, val_loader, test_loader) in enumerate(zip(context.train_dataloaders, context.val_dataloaders, context.test_dataloaders)):
+    for i, (train_steps, train_loader, val_loader, test_loader) in enumerate(zip(context.train_steps_per_task, context.train_dataloaders, context.val_dataloaders, context.test_dataloaders)):
         if f'data_file_path{i}' not in context():
             network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+            if not os.path.exists(f"{context.output_dir}/{network_name}/{seed}"):
+                os.makedirs(f"{context.output_dir}/{network_name}/{seed}", exist_ok=True)
             if context.label is None:
-                context.data_file_paths.append(f"{context.output_dir}/{network_name}_phase{i}_{seed}_{data_seed}.pkl")
+                context.data_file_paths.append(f"{context.output_dir}/{network_name}/{seed}/{network_name}_phase{i}_{seed}_{data_seed}.pkl")
             else:
-                context.data_file_paths.append(f"{context.output_dir}/{network_name}_phase{i}_{seed}_{data_seed}_{context.label}.pkl")
+                context.data_file_paths.append(f"{context.output_dir}/{network_name}/{seed}/{network_name}_phase{i}_{seed}_{data_seed}_{context.label}.pkl")
         
         if os.path.exists(context.data_file_paths[-1]) and not context.retrain:
             network = utils.load_network(context.data_file_paths[-1])
             if context.disp:
                 print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i loaded phase1 network history from %s' %
-                    (os.getpid(), context.context.data_file_paths[-1]))
+                    (os.getpid(), context.data_file_paths[-1]))
         else:
             data_generator.manual_seed(data_seed)
             if context.debug:
@@ -335,7 +327,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                 current_time = time.time()
             network.train(train_loader, val_loader, epochs=epochs,
                         val_interval=context.val_interval,  # e.g. (-201, -1, 10)
-                        samples_per_epoch=context.train_steps_per_class,
+                        samples_per_epoch=train_steps,
                         store_history=context.store_history, store_dynamics=context.store_dynamics,
                         store_history_interval=context.store_history_interval,
                         store_params=context.store_params, store_params_interval=context.store_params_interval,
@@ -433,8 +425,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             if context.disp:
                 print('nested_optimize_EIANN_1_hidden_CL_mnist: pid: %i exported phase1 network history to %s' %
                     (os.getpid(), context.data_file_paths[-1]))
-        
+                
         network.reset_history()
+        network.update_CL_states()
     
     final_total_loss, final_total_accuracy = (
         utils.compute_test_loss_and_accuracy(network, full_test_dataloader, sorted_output_idx=sorted_output_idx))
@@ -464,6 +457,7 @@ def filter_features(primitives, current_features, model_id=None, export=False, p
     for key, val in features.items():
         features[key] = np.mean(val)
 
+    print(features)
     return features
 
 
