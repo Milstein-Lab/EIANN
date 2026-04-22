@@ -311,7 +311,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     epochs = context.epochs
     
     network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
-    
+    if context.autocast:
+        network.grad_scaler = torch.amp.GradScaler(context.training_kwargs['device'].split(':')[0])
+
     if export:
         config_dict = {'layer_config': context.layer_config,
                        'projection_config': context.projection_config,

@@ -11,8 +11,14 @@ class Backprop(LearningRule):
     def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         loss = network.criterion(output, target)
         network.optimizer.zero_grad()
-        loss.backward()
-        network.optimizer.step()
+        scaler = getattr(network, 'grad_scaler', None)
+        if scaler is not None:
+            scaler.scale(loss).backward()
+            scaler.step(network.optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            network.optimizer.step()
 
 
 class BackpropBias(BiasLearningRule):
@@ -54,7 +60,8 @@ class Backprop_DendriticLoss(LearningRule):
         :param store_dynamics:
         """
         local_optimizer_list = []
-        
+        scaler = getattr(network, 'grad_scaler', None)
+
         reversed_layers = list(network)[1:]
         reversed_layers.reverse()
         
@@ -69,6 +76,12 @@ class Backprop_DendriticLoss(LearningRule):
                             local_target = torch.zeros(source_pop.size, device=network.device)
                             local_loss = network.criterion(source_pop.forward_dendritic_state, local_target)
                             local_optimizer.zero_grad()
-                            local_loss.backward()
-                            local_optimizer.step()
+                            if scaler is not None:
+                                scaler.scale(local_loss).backward()
+                                scaler.step(local_optimizer)
+                            else:
+                                local_loss.backward()
+                                local_optimizer.step()
+        if scaler is not None:
+            scaler.update()
 
