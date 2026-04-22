@@ -345,7 +345,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.debug:
             import time
             current_time = time.time()
-        with torch.amp.autocast(enabled=context.autocast):
+        with torch.amp.autocast(device_type=context.training_kwargs['device'].split(':')[0], enabled=context.autocast):
             network.train(train_sub_dataloader, val_dataloader, epochs=epochs,
                           val_interval=context.val_interval,  # e.g. (-201, -1, 10),
                           samples_per_epoch=context.train_steps, store_history=context.store_history,
