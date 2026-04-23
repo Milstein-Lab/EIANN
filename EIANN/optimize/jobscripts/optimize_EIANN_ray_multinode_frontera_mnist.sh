@@ -90,7 +90,7 @@ export RAY_ADDRESS=$ip_head
 
 srun --overlap --nodes=1 --ntasks=1 -w "$head_node" python -m nested.optimize --config-file-path=$1 \
   --output-dir=$SCRATCH/data/EIANN --framework=ray --disp \
-  --pop_size=9 --max_iter=1 --path_length=1 --num_gpus=0.5 --num_cpus=1 --device=$DEVICE
+  --pop_size=4 --max_iter=2 --path_length=2 --num_gpus=1 --num_cpus=1 --device=$DEVICE
 
 # srun --num-gpus=4 must equal real number of gpus in frontera rtx node (4)
 # if we need more gpus, we can increase --nodes
@@ -100,8 +100,8 @@ srun --overlap --nodes=1 --ntasks=1 -w "$head_node" python -m nested.optimize --
 # sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G.yaml cuda
 # sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20231129_nested_optimize_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G.yaml cuda
 
+# sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20260423_nested_optimize_EIANN_2_hidden_mnist_van_bp_relu_SGD_large.yaml cuda
+# sbatch optimize_EIANN_ray_multinode_frontera_mnist.sh optimize/optimize_config/mnist/20260423_nested_optimize_EIANN_3_hidden_mnist_van_bp_relu_SGD_large.yaml cuda
+
 # See logs:
 # cd $SCRATCH/logs/EIANN
-
-# TODO: larger backprop test
-# TODO: try ibrun (and check frontera docs)

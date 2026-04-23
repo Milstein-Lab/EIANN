@@ -718,4 +718,14 @@ Supervised_BCM_4_20240911:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
-
+van_bp_relu_3_hidden:
+    # Seed params for the 3-hidden van_bp MNIST benchmark driver
+    # (update_EIANN_config_3_hidden_van_bp_relu_SGD_G_learned_bias).
+    H_learning_rate: 0.1
+    H_bias_learning_rate: 0.1
+    Output_learning_rate: 0.02
+    Output_bias_learning_rate: 0.02
+    H1_init_weight_scale: 2.5
+    H2_init_weight_scale: 1.0
+    H3_init_weight_scale: 0.5
+    Output_init_weight_scale: 1.5
