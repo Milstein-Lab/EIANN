@@ -15,13 +15,15 @@ import EIANN.rules as rules
 import EIANN.external as external
 
 
-class Network(nn.Module):
+class Q_Network(nn.Module):
     """
     Class for rate-based neural network with E/I cell types and biologically-plausible learning rules.
 
     Unlike conventional pytorch networks, the structure of EIANNs is centered around "Populations" of units rather than "layers" of weights. Networks are structured as a sequence of "Layers", 
     each of which is a simple container for one or more "Populations" of neurons. The connections between populations are defined by "Projections", which are simply nn.Linear() weight matrices 
     with optional custom bio-plausible learning rules.
+
+    Contains training and testing loops for Q Learning
     """
     def __init__(self, layer_config, projection_config, learning_rate=None, optimizer=SGD, optimizer_kwargs=None,
                  criterion=MSELoss, criterion_kwargs=None, seed=None, device='cpu', tau=1, forward_steps=1,
@@ -105,7 +107,7 @@ class Network(nn.Module):
         if self.seed is not None:
             torch.manual_seed(self.seed)
             self.rng = np.random.default_rng(seed)
-            
+
         self.run_time = None
 
         self.backward_methods = []
@@ -316,6 +318,7 @@ class Network(nn.Module):
 
         with autocast_context:
             for t in range(self.forward_steps):
+                # store intermediates from the previous sample that need to be updated once per sample
                 if (t >= self.forward_steps - self.backward_steps) and not no_grad:
                     track_grad = True
                 else:
@@ -392,24 +395,20 @@ class Network(nn.Module):
                 else:
                     post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state.detach().clone())
   
-    def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
-              store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
+    def train(self, environments, epsilon, gamma, episodes=100, val_interval=(0, -1, 50), store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
               store_params_interval=None, save_to_file=None, status_bar=False):
         """
-        Train the network on training data with optional validation.
+        Train the network using Q Learning.
 
         Parameters
         ----------
-        train_dataloader : torch.utils.data.DataLoader
-            DataLoader for training data returning (index, sample_data, sample_target).
-        val_dataloader : torch.utils.data.DataLoader, optional
-            DataLoader for validation data (must contain single large batch).
-        epochs : int, default 1
-            Number of training epochs.
+        environments : environment or list of environments over which to run Q Learning. If a list, will randomly select a different environment for each episode.
+        epsilon: epsilon for e-greedy exploration
+        gamma: discount factor for td learning
+        episodes : int, default 100
+            Number of training episodes.
         val_interval : tuple of int, default (0, -1, 50)
             Validation interval as (start_index, stop_index, interval).
-        samples_per_epoch : int, optional
-            Number of samples per epoch. Defaults to length of train_dataloader.
         store_history : bool, default False
             Whether to store activity history during training.
         store_dynamics : bool, default False
@@ -432,11 +431,12 @@ class Network(nn.Module):
         single batch with all validation data.
         """
         self.reset_history()
-        if samples_per_epoch is None:
-            samples_per_epoch = len(train_dataloader)
+
+        if not isinstance(environments, list):
+            environments = [environments]
         
         # Define timepoints for validation
-        train_step_range = torch.arange(epochs * samples_per_epoch)
+        train_step_range = torch.arange(episodes)
         if val_interval[0] < 0 and abs(val_interval[0]) > len(train_step_range):
             val_start_index = 0
         else:
@@ -446,19 +446,10 @@ class Network(nn.Module):
         val_range = torch.arange(val_end_index, val_start_index - 1, -val_step_size).flip(0)
         if val_start_index == 0 and 0 not in val_range:
             val_range = torch.cat((torch.tensor([0]), val_range))
-        
-        # Load validation data and initialize intermediate variables
-        if val_dataloader is not None:
-            assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
-            idx, val_data, val_target = next(iter(val_dataloader))
-            if not val_data.device == self.device:
-                val_data = val_data.to(self.device)
-                val_target = val_target.to(self.device)
-            self.val_output_history = []
-            self.val_loss_history = []
-            self.val_accuracy_history = []
-            self.val_history_train_steps = []
-            
+
+        self.val_reward_history = []
+        self.val_history_train_steps = []
+                    
         # Store history of weights and biases
         if store_history:
             if store_history_interval is not None:
@@ -496,9 +487,9 @@ class Network(nn.Module):
         
         if status_bar:
             from tqdm.autonotebook import tqdm
-            epoch_iter = tqdm(range(epochs), desc='Epochs')
+            episode_iter = tqdm(range(episodes), desc='Episodes')
         else:
-            epoch_iter = range(epochs)
+            episode_iter = range(episodes)
 
         # Initialize learning rule parameters
         for post_layer in self:
@@ -513,54 +504,62 @@ class Network(nn.Module):
         #*************     Main training loop     *************
         #######################################################
         train_step = 0
-        for epoch in epoch_iter:
-            epoch_sample_order = []
-            if status_bar and len(train_dataloader) > epochs:
-                dataloader_iter = tqdm(train_dataloader, desc='Samples', total=samples_per_epoch,
-                                       leave=epoch == epochs - 1)
-            else:
-                dataloader_iter = train_dataloader
-            
-            for sample_count, (sample_idx, sample_data, sample_target) in enumerate(dataloader_iter):
-                if sample_count >= samples_per_epoch:
-                    break
-                
-                sample_target = torch.squeeze(sample_target)
-                if not sample_data.device == self.device:
-                    sample_data = sample_data.to(self.device)
-                    sample_target = sample_target.to(self.device)
-                epoch_sample_order.append(sample_idx)
-                
-                if store_history:
-                    if store_history_interval is None:
-                        this_train_step_store_history = True
-                    else:
-                        this_train_step_store_history = train_step in store_history_range
+        for episode in episode_iter:
+            if store_history:
+                if store_history_interval is None:
+                    this_train_step_store_history = True
                 else:
-                    this_train_step_store_history = False
+                    this_train_step_store_history = train_step in store_history_range
+            else:
+                this_train_step_store_history = False
+
+            environment_index = self.rng.integers(0, len(environments))
+            environment = environments[environment_index]
+
+            # Reset Environment
+            environment.reset()
+            terminated = False
+            step_number = 0
+            episode_loss = 0
+
+            previous_output = None
+            previous_action = None
+            previous_reward = None
+
+
+            ## COMPUTE FULL PASS OVER TREADMILL ##
+            while not terminated:
+                current_observation = environment.get_observation(environment.current_state)
+                obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
 
                 # Use autocast for forward pass when AMP is enabled
                 if self.use_amp:
                     with autocast():
-                        output = self.forward(sample_data, store_history=this_train_step_store_history,
-                                              store_dynamics=store_dynamics)
-                        loss = self.criterion(output, sample_target)
+                        output = self.forward(obs_tensor, store_history=this_train_step_store_history,
+                                                store_dynamics=store_dynamics)
                 else:
-                    output = self.forward(sample_data, store_history=this_train_step_store_history,
-                                      store_dynamics=store_dynamics)
-                    loss = self.criterion(output, sample_target)
+                    output = self.forward(obs_tensor, store_history=this_train_step_store_history,
+                                        store_dynamics=store_dynamics)
+                    
+                # epsilon greedy exploration
+                if self.rng.random() < epsilon:
+                    action = int(self.rng.choice(environment.get_action_list()))
+                else:
+                    action = int(torch.argmax(output).item())
 
-                self.loss_history.append(loss.item())
-                self.target_history.append(sample_target.clone())
+                _, reward, _, terminated = environment.take_action(action)
 
-                if store_params and (train_step in store_params_range) and store_params_step_size > 1:
-                    self.prev_param_history.append(deepcopy(self.state_dict()))  # Store parameters for dW comparison
-                
+                # compute loss wrt previous time step
+                if step_number > 0:
+                    q_val = previous_output.gather(1, torch.tensor([previous_action])[..., None])
+                    target = previous_reward + gamma * output.detach()
+            
                 # Update state variables required for weight and bias updates
                 self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
                 
                 for backward in self.backward_methods:
-                    backward(self, output, sample_target, store_history=this_train_step_store_history, store_dynamics=store_dynamics)
+                    loss = backward(self, q_val, target, store_history=this_train_step_store_history, store_dynamics=store_dynamics)
+                    episode_loss += loss
                 
                 # Step weights and biases
                 for i, post_layer in enumerate(self):
@@ -584,54 +583,49 @@ class Network(nn.Module):
                 if store_params and train_step in store_params_range:
                     self.param_history.append(deepcopy(self.state_dict()))
                     self.param_history_steps.append(train_step)
-                
-                # Compute validation loss
-                if val_dataloader is not None and train_step in val_range:
-                    if self.use_amp:
-                        with autocast():
-                            output = self.forward(val_data, store_dynamics=False, no_grad=True)
-                            val_loss = self.criterion(output, val_target)
-                    else:
-                        output = self.forward(val_data, store_dynamics=False, no_grad=True)
-                        val_loss = self.criterion(output, val_target)
-                    
-                    self.val_output_history.append(output.detach().clone())
-                    self.val_loss_history.append(val_loss.item())
-                    accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
-                               output.shape[0]
-                    self.val_accuracy_history.append(accuracy.item())
-                    self.val_history_train_steps.append(train_step)
-                    if status_bar: # Display the current loss and accuracy on the progress bar
-                        epoch_iter.set_description(f"Validation Loss: {self.val_loss_history[-1]:.4f}, Accuracy: {self.val_accuracy_history[-1]:.2f}% - Epoch")
-                train_step += 1
 
-            epoch_sample_order = torch.concat(epoch_sample_order)
-            self.sample_order.extend(epoch_sample_order)
-            self.sorted_sample_indexes.extend(torch.add(epoch * samples_per_epoch, torch.argsort(epoch_sample_order)))
+                step_number += 1
+                previous_output = output
+                previous_action = action
+                previous_reward = reward
 
-        self.sample_order = torch.stack(self.sample_order)
-        self.sorted_sample_indexes = torch.stack(self.sorted_sample_indexes)
+
+            self.loss_history.append(episode_loss)
+            self.target_history.append(target.clone())
+
+            if store_params and (train_step in store_params_range) and store_params_step_size > 1:
+                self.prev_param_history.append(deepcopy(self.state_dict()))  # Store parameters for dW comparison
+            
+            # Compute validation performance over all environments
+            if train_step in val_range:
+                val_rewards = self.test(environments)
+                self.val_reward_history.append(val_rewards)
+                self.val_history_train_steps.append(train_step)
+
+                if status_bar: # Display the current loss and accuracy on the progress bar
+                    episode_iter.set_description(f"Validation Rewards: {self.val_reward_history[-1]:.4f} - Episode")
+            train_step += 1
+
         self.loss_history = torch.tensor(self.loss_history)
         self.target_history = torch.stack(self.target_history)
-        if val_dataloader is not None:
-            self.val_output_history = torch.stack(self.val_output_history)
-            self.val_loss_history = torch.tensor(self.val_loss_history)
-            self.val_accuracy_history = torch.tensor(self.val_accuracy_history)
-            self.val_history_train_steps = torch.tensor(self.val_history_train_steps)
+
+        self.val_reward_history = torch.tensor(self.val_accuracy_history)
+        self.val_history_train_steps = torch.tensor(self.val_history_train_steps)
+
         if store_params:
             self.param_history_steps = torch.tensor(self.param_history_steps)
         
         if save_to_file is not None:
             ut.save_network(self, path=save_to_file)
 
-    def test(self, dataloader, store_history=False, store_dynamics=False, status_bar=False):
+    def test(self, environments, store_history=False, store_dynamics=False):
         """
-        Evaluate the network on test data without parameter updates.
+        Evaluate the network when epsilon=0
 
         Parameters
         ----------
-        dataloader : torch.utils.data.DataLoader
-            DataLoader that returns (index, sample_data: torch.Tensor, sample_target: torch.Tensor) tuples.
+        environments : list
+            List of environments to evaluate performance over
         store_history : bool, default False
             Whether to store activity history during testing.
         store_dynamics : bool, default False
@@ -641,38 +635,34 @@ class Network(nn.Module):
 
         Returns
         -------
-        float
-            Final loss value on the test dataset.
+        reward per environment
         """
-        if status_bar:
-            from tqdm.autonotebook import tqdm
 
-        if status_bar:
-            dataloader_iter = tqdm(dataloader, desc='Samples')
-        else:
-            dataloader_iter = dataloader
+        rewards = [0 for _ in environments]
 
-        on_device = False
+        for i, environment in enumerate(environments):
 
-        for sample_idx, sample_data, sample_target in dataloader_iter:
-            sample_data = torch.squeeze(sample_data)
-            sample_target = torch.squeeze(sample_target)
-            if not on_device:
-                if sample_data.device == self.device:
-                    on_device = True
+            # Reset Environment
+            environment.reset()
+            terminated = False
+
+            ## COMPUTE FULL PASS OVER TREADMILL ##
+            while not terminated:
+                current_observation = environment.get_observation(environment.current_state)
+                obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
+
+                # Use autocast for forward pass when AMP is enabled
+                if self.use_amp:
+                    with autocast():
+                        output = self.forward(obs_tensor, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
                 else:
-                    sample_data = sample_data.to(self.device)
-                    sample_target = sample_target.to(self.device)
-
-            if self.use_amp:
-                with autocast():
-                    output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
-                    loss = self.criterion(output, sample_target)
-            else:
-                output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
-                loss = self.criterion(output, sample_target)
-
-        return loss.item()
+                    output = self.forward(obs_tensor, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
+                    
+                action = int(torch.argmax(output).item())
+                _, reward, _, terminated = environment.take_action(action)
+                rewards[i] += reward
+ 
+        return rewards
            
     def __iter__(self):
         for layer in self.layers.values():

@@ -25,7 +25,7 @@ class Backprop(LearningRule):
             network.optimizer.zero_grad()
             loss.backward()
             network.optimizer.step()
-
+        return loss.item()
 
 class Backprop_EWC(LearningRule):
     '''
