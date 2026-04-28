@@ -274,9 +274,9 @@ class Q_Network(nn.Module):
                 population.reinit(device=self.device)
                 population.reset_history()
 
-    def forward(self, sample, store_history=False, store_dynamics=False, store_num_steps=None, no_grad=False):
+    def forward(self, sample, store_history=False, store_dynamics=False, store_num_steps=None, no_grad=False, reinit=False):
         """
-        Perform forward pass through the network.
+        Perform forward pass through the network. # MOVED REINIT OUT OF HERE
 
         Parameters
         ----------
@@ -291,6 +291,8 @@ class Q_Network(nn.Module):
             Defaults to forward_steps if None.
         no_grad : bool, default False
             Whether to disable gradient computation.
+        reinit : bool, default False
+            Whether to reinitialize state during forward pass
 
         Returns
         -------
@@ -300,11 +302,12 @@ class Q_Network(nn.Module):
         if store_num_steps is None:
             store_num_steps = self.forward_steps
         
-        for population in self.populations.values():
-            if sample.ndim == 1:
-                population.reinit(device=self.device, batch_size=1)
-            else:
-                population.reinit(device=self.device, batch_size=sample.shape[0])
+        if reinit:
+            for population in self.populations.values():
+                if sample.ndim == 1:
+                    population.reinit(device=self.device, batch_size=1)
+                else:
+                    population.reinit(device=self.device, batch_size=sample.shape[0])
     
         if not hasattr(self, 'input_pop'):
             self.input_pop = next(iter(list(self)[0]))
@@ -504,7 +507,7 @@ class Q_Network(nn.Module):
         #*************     Main training loop     *************
         #######################################################
         train_step = 0
-        for episode in episode_iter:
+        for episode in episode_iter:            
             if store_history:
                 if store_history_interval is None:
                     this_train_step_store_history = True
@@ -526,9 +529,13 @@ class Q_Network(nn.Module):
             previous_action = None
             previous_reward = None
 
+            treadmill_preds = []
+            treadmill_targets = []
 
             ## COMPUTE FULL PASS OVER TREADMILL ##
             while not terminated:
+                reinit = step_number == 0
+
                 current_observation = environment.get_observation(environment.current_state)
                 obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
 
@@ -536,62 +543,85 @@ class Q_Network(nn.Module):
                 if self.use_amp:
                     with autocast():
                         output = self.forward(obs_tensor, store_history=this_train_step_store_history,
-                                                store_dynamics=store_dynamics)
+                                                store_dynamics=store_dynamics, reinit=reinit)
                 else:
                     output = self.forward(obs_tensor, store_history=this_train_step_store_history,
-                                        store_dynamics=store_dynamics)
-                    
+                                        store_dynamics=store_dynamics, reinit=reinit)
+                
                 # epsilon greedy exploration
                 if self.rng.random() < epsilon:
                     action = int(self.rng.choice(environment.get_action_list()))
                 else:
                     action = int(torch.argmax(output).item())
 
-                _, reward, _, terminated = environment.take_action(action)
+                _, reward, next_state, terminated = environment.take_action(action)
 
                 # compute loss wrt previous time step
                 if step_number > 0:
-                    q_val = previous_output.gather(1, torch.tensor([previous_action])[..., None])
-                    target = previous_reward + gamma * output.detach()
-            
-                # Update state variables required for weight and bias updates
-                self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
-                
-                for backward in self.backward_methods:
-                    loss = backward(self, q_val, target, store_history=this_train_step_store_history, store_dynamics=store_dynamics)
-                    episode_loss += loss
-                
-                # Step weights and biases
-                for i, post_layer in enumerate(self):
-                    for post_pop in post_layer:
-                        if post_pop.include_bias:
-                            post_pop.bias_learning_rule.step()
-                        for projection in post_pop:
-                            projection.learning_rule.step()
+                    q_val = previous_output.gather(0, torch.tensor([previous_action]))
+                    target = previous_reward + gamma * output.detach().max().item()
 
-                self.constrain_weights_and_biases()
+                    treadmill_preds.append(q_val)
+                    treadmill_targets.append(target)
 
-                # Update learning rule parameters
-                for i, post_layer in enumerate(self):
-                    for post_pop in post_layer:
-                        if post_pop.include_bias:
-                            post_pop.bias_learning_rule.update()
-                        for projection in post_pop:
-                            projection.learning_rule.update()
-
-                # Store history of weights and biases
-                if store_params and train_step in store_params_range:
-                    self.param_history.append(deepcopy(self.state_dict()))
-                    self.param_history_steps.append(train_step)
+                    self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
 
                 step_number += 1
                 previous_output = output
                 previous_action = action
                 previous_reward = reward
 
+                # account for being in the last step
+                if terminated:
+                    q_val = output.gather(0, torch.tensor([action]))
+
+                    treadmill_preds.append(q_val)
+                    treadmill_targets.append(reward)
+
+                    # Update state variables required for weight and bias updates
+                    self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
+                                   
+
+            treadmill_preds = torch.cat(treadmill_preds)
+            treadmill_targets = torch.tensor(treadmill_targets, dtype=torch.float32)
+
+            if self.use_amp:
+                with autocast():
+                    episode_loss = self.criterion(treadmill_preds, treadmill_targets)
+            else:
+                episode_loss = self.criterion(treadmill_preds, treadmill_targets)
+
+            # Update state variables required for weight and bias updates
+    
+            # STEP WEIGHTS AND BIASES ONLY AFTER FULL EPISODE (ACCUMULATE GRADIENTS THROUGHOUT TRACK THEN APPLY)
+            for backward in self.backward_methods:
+                backward(self, treadmill_preds, treadmill_targets, store_history=this_train_step_store_history, store_dynamics=store_dynamics)
+
+            # Step weights and biases
+            for i, post_layer in enumerate(self):
+                for post_pop in post_layer:
+                    if post_pop.include_bias:
+                        post_pop.bias_learning_rule.step()
+                    for projection in post_pop:
+                        projection.learning_rule.step()
+
+            self.constrain_weights_and_biases()
+
+            # Update learning rule parameters
+            for i, post_layer in enumerate(self):
+                for post_pop in post_layer:
+                    if post_pop.include_bias:
+                        post_pop.bias_learning_rule.update()
+                    for projection in post_pop:
+                        projection.learning_rule.update()
+
+            # Store history of weights and biases
+            if store_params and train_step in store_params_range:
+                self.param_history.append(deepcopy(self.state_dict()))
+                self.param_history_steps.append(train_step)
 
             self.loss_history.append(episode_loss)
-            self.target_history.append(target.clone())
+            self.target_history.append(treadmill_targets.clone())
 
             if store_params and (train_step in store_params_range) and store_params_step_size > 1:
                 self.prev_param_history.append(deepcopy(self.state_dict()))  # Store parameters for dW comparison
@@ -604,6 +634,7 @@ class Q_Network(nn.Module):
 
                 if status_bar: # Display the current loss and accuracy on the progress bar
                     episode_iter.set_description(f"Validation Rewards: {self.val_reward_history[-1]:.4f} - Episode")
+            
             train_step += 1
 
         self.loss_history = torch.tensor(self.loss_history)
@@ -648,21 +679,22 @@ class Q_Network(nn.Module):
 
             ## COMPUTE FULL PASS OVER TREADMILL ##
             while not terminated:
+                reinit = environment.current_state == 0
                 current_observation = environment.get_observation(environment.current_state)
                 obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
 
                 # Use autocast for forward pass when AMP is enabled
                 if self.use_amp:
                     with autocast():
-                        output = self.forward(obs_tensor, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
+                        output = self.forward(obs_tensor, store_history=store_history, store_dynamics=store_dynamics, no_grad=True, reinit=reinit)
                 else:
-                    output = self.forward(obs_tensor, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
+                    output = self.forward(obs_tensor, store_history=store_history, store_dynamics=store_dynamics, no_grad=True, reinit=reinit)
                     
                 action = int(torch.argmax(output).item())
                 _, reward, _, terminated = environment.take_action(action)
                 rewards[i] += reward
- 
-        return rewards
+
+        return np.mean(rewards)
            
     def __iter__(self):
         for layer in self.layers.values():
@@ -1856,7 +1888,7 @@ class NetworkBuilder:
         projection_config = self.get_projection_config()
         training_kwargs = self.get_training_kwargs()
 
-        network = Network(layer_config, projection_config, **training_kwargs, seed=seed)
+        network = Q_Network(layer_config, projection_config, **training_kwargs, seed=seed)
         print(network)
         return network
 

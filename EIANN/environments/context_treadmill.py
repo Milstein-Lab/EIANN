@@ -65,9 +65,6 @@ class Cue_Treadmill():
         
         return new_state, False
         
-    def move_state(self, new_state):
-        self.current_state = new_state
-
     def _get_reward(self, action):
         if action == 0:
             # if self.current_state == self.reward_position: # ignoring at the reward is the same now as licking incorrectly
@@ -88,11 +85,15 @@ class Cue_Treadmill():
         observation = self.get_observation(self.current_state)
         
         next_state, terminated = self.get_next_state(action)
+        self.current_state = next_state
 
         return observation, reward, next_state, terminated
 
     def get_observation(self, state):
         return self.state_representations[state]
+    
+    def reset(self):
+        self.current_state = 0
     
     def __str__(self):
         out_string = "length: {}, cue position: {}, cue value: {}, reward position: {}".format(self.length, self.cue_position, self.cue_number, self.reward_position)
@@ -106,7 +107,6 @@ if __name__ == '__main__':
     length = 23
     cue_position = 8
     cue_length = 3
-    reward_position = 15
     reward_length = 2
     reward_positions = [15, 19]
     cue_numbers = list(range(len(reward_positions)))
