@@ -398,7 +398,7 @@ class Q_Network(nn.Module):
                 else:
                     post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state.detach().clone())
   
-    def train(self, environments, epsilon, gamma, episodes=100, val_interval=(0, -1, 50), store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
+    def train(self, environments, epsilon, epsilon_decay, gamma, episodes=100, val_interval=(0, -1, 50), store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
               store_params_interval=None, save_to_file=None, status_bar=False):
         """
         Train the network using Q Learning.
@@ -532,6 +532,8 @@ class Q_Network(nn.Module):
             treadmill_preds = []
             treadmill_targets = []
 
+            epsilon *= epsilon_decay
+
             ## COMPUTE FULL PASS OVER TREADMILL ##
             while not terminated:
                 reinit = step_number == 0
@@ -640,7 +642,7 @@ class Q_Network(nn.Module):
         self.loss_history = torch.tensor(self.loss_history)
         self.target_history = torch.stack(self.target_history)
 
-        self.val_reward_history = torch.tensor(self.val_accuracy_history)
+        self.val_reward_history = torch.tensor(self.val_reward_history)
         self.val_history_train_steps = torch.tensor(self.val_history_train_steps)
 
         if store_params:
@@ -649,7 +651,7 @@ class Q_Network(nn.Module):
         if save_to_file is not None:
             ut.save_network(self, path=save_to_file)
 
-    def test(self, environments, store_history=False, store_dynamics=False):
+    def test(self, environments, store_history=False, store_dynamics=False, return_q_vals=False):
         """
         Evaluate the network when epsilon=0
 
@@ -670,12 +672,15 @@ class Q_Network(nn.Module):
         """
 
         rewards = [0 for _ in environments]
+        q_vals = []
 
         for i, environment in enumerate(environments):
 
             # Reset Environment
             environment.reset()
             terminated = False
+
+            environment_q_vals = []
 
             ## COMPUTE FULL PASS OVER TREADMILL ##
             while not terminated:
@@ -689,10 +694,19 @@ class Q_Network(nn.Module):
                         output = self.forward(obs_tensor, store_history=store_history, store_dynamics=store_dynamics, no_grad=True, reinit=reinit)
                 else:
                     output = self.forward(obs_tensor, store_history=store_history, store_dynamics=store_dynamics, no_grad=True, reinit=reinit)
+
+                if return_q_vals:
+                    environment_q_vals.append(output.detach().numpy())
                     
                 action = int(torch.argmax(output).item())
                 _, reward, _, terminated = environment.take_action(action)
                 rewards[i] += reward
+
+            if return_q_vals:
+                q_vals.append(environment_q_vals)
+
+        if return_q_vals:
+            return np.mean(rewards), np.array(q_vals)
 
         return np.mean(rewards)
            

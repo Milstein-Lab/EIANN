@@ -14,8 +14,7 @@ from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epo
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
     recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, sort_by_class_averaged_val_output,
                          get_binned_mean_population_attribute_history_dict)
-from EIANN.plot import (plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields,
-                        plot_representation_metrics)
+from EIANN.plot_rl import plot_validation_rewards, plot_final_q_vals
 from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from EIANN.optimize.network_config_updates import *
@@ -276,7 +275,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.debug:
             import time
             current_time = time.time()
-        network.train(environments=context.environments, epsilon=param_dict['epsilon'], 
+        network.train(environments=context.environments, epsilon=param_dict['epsilon'], epsilon_decay=param_dict['epsilon_decay'],
                       gamma=param_dict['gamma'], episodes=context.train_episodes,
                       val_interval=context.val_interval,  # e.g. (-201, -1, 10),
                       store_history=context.store_history,
@@ -291,57 +290,58 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         except:
             pass
 
-    # reorder output units if using unsupervised learning rule
-    if not context.supervised:
-        if context.eval_accuracy == 'final':
-            min_loss_idx = len(network.val_loss_history) - 1
-            sorted_output_idx = sort_by_class_averaged_val_output(network, val_dataloader)
-        elif context.eval_accuracy == 'best':
-            min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_dataloader, plot=plot)
-        else:
-            raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
-                            context.eval_accuracy)
-        sorted_val_loss_history, sorted_val_accuracy_history = \
-            recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx=sorted_output_idx,
-                                                   store=True)
-    else:
-        min_loss_idx = torch.argmin(network.val_loss_history)
-        sorted_output_idx = None
-        sorted_val_loss_history = network.val_loss_history
-        sorted_val_accuracy_history = network.val_accuracy_history
-    
-    if context.store_history and (context.store_history_interval is None):
-        binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
-            recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
+    # WILL FIGURE THIS OUT LATER
+    # # reorder output units if using unsupervised learning rule
+    # if not context.supervised:
+    #     if context.eval_accuracy == 'final':
+    #         min_loss_idx = len(network.val_loss_history) - 1
+    #         sorted_output_idx = sort_by_class_averaged_val_output(network, val_dataloader)
+    #     elif context.eval_accuracy == 'best':
+    #         min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_dataloader, plot=plot)
+    #     else:
+    #         raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
+    #                         context.eval_accuracy)
+    #     sorted_val_loss_history, sorted_val_accuracy_history = \
+    #         recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx=sorted_output_idx,
+    #                                                store=True)
+    # else:
+    #     min_loss_idx = torch.argmin(network.val_loss_history)
+    #     sorted_output_idx = None
+    #     sorted_val_loss_history = network.val_loss_history
+    #     sorted_val_accuracy_history = network.val_accuracy_history
+
+    max_reward_idx = torch.argmax(network.val_reward_history)
+    sorted_output_idx = None
+    sorted_val_reward_history = network.val_reward_history
+
+    # if context.store_history and (context.store_history_interval is None):
+    #     binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
+    #         recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
     
     # Select for stability by computing mean accuracy in a window after the best validation step
     val_stepsize = int(context.val_interval[2])
     num_val_steps_accuracy_window = int(context.num_training_steps_accuracy_window) // val_stepsize
     
     if context.eval_accuracy == 'final':
-        final_loss = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
-        final_argmax_accuracy = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
+        final_reward = torch.mean(sorted_val_reward_history[-num_val_steps_accuracy_window:])
         
-        results = {'loss': final_loss,
-                   'accuracy': final_argmax_accuracy}
+        results = {'reward': final_reward}
+
     elif context.eval_accuracy == 'best':
-        if min_loss_idx + num_val_steps_accuracy_window > len(
-                sorted_val_loss_history):  # if best loss too close to the end
-            best_accuracy_window = torch.mean(sorted_val_accuracy_history[-num_val_steps_accuracy_window:])
-            best_loss_window = torch.mean(sorted_val_loss_history[-num_val_steps_accuracy_window:])
+        if max_reward_idx + num_val_steps_accuracy_window > len(
+                sorted_val_reward_history):  # if best loss too close to the end
+            best_reward_window = torch.mean(sorted_val_reward_history[-num_val_steps_accuracy_window:])
+
         else:
-            best_accuracy_window = \
-                torch.mean(sorted_val_accuracy_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
-            best_loss_window = torch.mean(
-                sorted_val_loss_history[min_loss_idx:min_loss_idx + num_val_steps_accuracy_window])
+            best_reward_window = \
+                torch.mean(sorted_val_reward_history[max_reward_idx:max_reward_idx + num_val_steps_accuracy_window])
         
-        results = {'loss': best_loss_window,
-                   'accuracy': best_accuracy_window}
+        results = {'reward': best_reward_window}
     else:
         raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
                         context.eval_accuracy)
 
-    if np.isnan(results['loss']) or np.isinf(results['loss']):
+    if np.isnan(results['reward']) or np.isinf(results['reward']):
         if context.debug and context.interactive:
             context.update(locals())
         return dict()
@@ -356,39 +356,23 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     
     if plot:
         title = 'Final (%i, %i)' % (seed, data_seed)
-        plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
-                            title=title)
-        plot_train_loss_history(network)
-        plot_validate_loss_history(network)
+        plot_validation_rewards(network)
+        plot_final_q_vals(network, context.environments)
     
-    if 'H1' in network.layers:
-        if plot:
-            if context.compute_receptive_fields:
-                # Compute receptive fields
-                population = network.H1.E
-                receptive_fields = utils.compute_maxact_receptive_fields(population, test_dataloader=test_dataloader)
-            else:
-                receptive_fields = network.H1.E.Input.E.weight.detach()
-            plot_receptive_fields(receptive_fields, sort=True, num_cols=10, num_rows=10)
-            
-            if context.full_analysis:
-                metrics_dict = utils.compute_representation_metrics(network.H1.E, test_dataloader, receptive_fields)
-                plot_representation_metrics(metrics_dict)
-            
-    if context.full_analysis:
-        test_loss_history, test_accuracy_history = \
-            compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
-                                                   plot=plot, status_bar=context.status_bar)
+    # if context.full_analysis:
+    #     test_loss_history, test_accuracy_history = \
+    #         compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
+    #                                                plot=plot, status_bar=context.status_bar)
     
-    if context.constrain_equilibration_dynamics or context.debug:
-        residuals = check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                                 store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
-        if context.include_equilibration_dynamics_objective:
-            results['dynamics_residuals'] = residuals
-        elif residuals > 0. and not context.debug:
-            if context.interactive:
-                context.update(locals())
-            return dict()
+    # if context.constrain_equilibration_dynamics or context.debug:
+    #     residuals = check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
+    #                                              store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
+    #     if context.include_equilibration_dynamics_objective:
+    #         results['dynamics_residuals'] = residuals
+    #     elif residuals > 0. and not context.debug:
+    #         if context.interactive:
+    #             context.update(locals())
+    #         return dict()
     
     if export:
         base_data_file_path_prefix = context.base_data_file_path.split('.')[0]

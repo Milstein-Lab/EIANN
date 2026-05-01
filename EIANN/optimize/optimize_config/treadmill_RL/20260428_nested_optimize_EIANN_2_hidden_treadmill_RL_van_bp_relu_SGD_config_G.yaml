@@ -17,6 +17,9 @@ bounds:
     epsilon:
         - 0.01
         - 0.999
+    epsilon_decay:
+        - 0.9
+        - 1
     gamma:
         - 0.01
         - 0.99
@@ -45,7 +48,7 @@ kwargs:
     val_interval:
         - -1000
         - -1
-        - 50
+        - 10
     num_training_steps_accuracy_window: 1000
     constrain_equilibration_dynamics: False
 update_context:
@@ -65,4 +68,5 @@ x0:
     H2_init_weight_scale: 1.
     Output_init_weight_scale: 1.2
     epsilon: 0.9
+    epsilon_decay: 1
     gamma: 0.9
