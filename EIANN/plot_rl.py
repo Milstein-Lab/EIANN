@@ -120,7 +120,7 @@ def plot_validation_rewards(network, title=None, train_step_range=None, ax=None)
 
 
 def plot_final_q_vals(network, environments):
-    fig, axes = plt.subplots(1, 1 + len(environments), gridspec_kw={'width_ratios': [20, 20, 1]})
+    fig, axes = plt.subplots(1, 1 + len(environments), gridspec_kw={'width_ratios': [20 for _ in environments] + [1]})
     _, final_q_vals = network.test(environments, return_q_vals=True)
 
     vmin = final_q_vals.min()

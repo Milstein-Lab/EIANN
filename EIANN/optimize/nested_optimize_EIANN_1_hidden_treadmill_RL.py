@@ -57,6 +57,7 @@ def config_worker():
     context.task_id = int(context.task_id)
     context.data_seed_start = int(context.data_seed_start)
     context.status_bar = str_to_bool(context.status_bar)
+    context.train_online = str_to_bool(context.train_online)
     if 'debug' not in context():
         context.debug = False
     else:
@@ -275,13 +276,23 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.debug:
             import time
             current_time = time.time()
-        network.train(environments=context.environments, epsilon=param_dict['epsilon'], epsilon_decay=param_dict['epsilon_decay'],
-                      gamma=param_dict['gamma'], episodes=context.train_episodes,
-                      val_interval=context.val_interval,  # e.g. (-201, -1, 10),
-                      store_history=context.store_history,
-                      store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
-                      store_params=context.store_params, store_params_interval=context.store_params_interval,
-                      status_bar=context.status_bar)
+        if context.train_online:
+            network.train_online(environments=context.environments, epsilon=param_dict['epsilon'], epsilon_decay=param_dict['epsilon_decay'],
+                        gamma=param_dict['gamma'], episodes=context.train_episodes,
+                        val_interval=context.val_interval,  # e.g. (-201, -1, 10),
+                        store_history=context.store_history,
+                        store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
+                        store_params=context.store_params, store_params_interval=context.store_params_interval,
+                        status_bar=context.status_bar)
+        else:
+            network.train(environments=context.environments, epsilon=param_dict['epsilon'], epsilon_decay=param_dict['epsilon_decay'],
+                        gamma=param_dict['gamma'], episodes=context.train_episodes,
+                        val_interval=context.val_interval,  # e.g. (-201, -1, 10),
+                        store_history=context.store_history,
+                        store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
+                        store_params=context.store_params, store_params_interval=context.store_params_interval,
+                        status_bar=context.status_bar)
+
     
     if plot:
         try:

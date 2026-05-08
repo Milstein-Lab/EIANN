@@ -1,7 +1,7 @@
 layer_config:
     Input:
         E:
-            size: 5
+            size: 3
     H1:
         E:
             size: 100
