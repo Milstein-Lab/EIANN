@@ -29,8 +29,8 @@ def polynomial(x, a=1., n=2.):
     return a * torch.clamp(x, 0.) ** n
 
 
-def srelu(x, min=0, max=1):
-    return torch.clamp(x, min, max)
+def srelu(x, min=0, max=None, slope=1.):
+    return torch.clamp(slope * x, min, max)
 
 
 def linear(x):

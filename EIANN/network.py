@@ -813,8 +813,8 @@ class Population(object):
         if activation_kwargs is None:
             activation_kwargs = {}
         self.activation = lambda x: activation(x, **activation_kwargs)
-        self.activation.name = activation_name
-        self.activation.kwargs = activation_kwargs
+        self.activation_name = activation_name
+        self.activation_kwargs = activation_kwargs
 
         # Set bias parameters
         self.bias = nn.Parameter(torch.zeros(self.size, device=self.device), requires_grad=False)

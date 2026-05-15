@@ -213,7 +213,7 @@ def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):
             data_file_path = f"{context.output_dir}/{network_name}_{seed}_{data_seed}_{context.label}.pkl"
     
     network_start_time = time()
-
+    
     if os.path.exists(data_file_path) and not context.retrain:
         network = utils.load_network(data_file_path)
         if context.disp:

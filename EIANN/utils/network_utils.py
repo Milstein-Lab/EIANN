@@ -408,8 +408,8 @@ def set_new_activation(network, activation, population='all', activation_kwargs=
 
     for population in populations:
         population.activation = lambda x: activation(x, **activation_kwargs)
-        population.activation.name = activation_name
-        population.activation.kwargs = activation_kwargs
+        population.activation_name = activation_name
+        population.activation_kwargs = activation_kwargs
 
 
 def recompute_history(network, output_sorting):
