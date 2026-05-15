@@ -21,11 +21,11 @@ sbatch <<EOT
 
 set -x
 
-source $HOME/cpu_py311.sh
+source $HOME/cpu_py311_intelmpi.sh
 
 cd $PROJECT/EIANN/EIANN
 
-srun -n 1001 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
+srun -n 1001 --mpi=mpi2 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=$SCRATCH/data/EIANN --pop_size=200 --max_iter=1 --path_length=1 --disp \
   --framework=mpi
 EOT
