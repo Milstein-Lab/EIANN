@@ -57,7 +57,10 @@ def config_worker():
     context.task_id = int(context.task_id)
     context.data_seed_start = int(context.data_seed_start)
     context.status_bar = str_to_bool(context.status_bar)
-    context.train_online = str_to_bool(context.train_online)
+    if 'train_online' not in context():
+        context.train_online = False
+    else:
+        context.train_online = str_to_bool(context.train_online)
     if 'debug' not in context():
         context.debug = False
     else:
