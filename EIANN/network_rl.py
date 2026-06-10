@@ -451,8 +451,9 @@ class Q_Network(nn.Module):
             val_range = torch.cat((torch.tensor([0]), val_range))
 
         self.val_reward_history = []
+        self.val_action_history = []
         self.val_history_train_steps = []
-                    
+
         # Store history of weights and biases
         if store_history:
             if store_history_interval is not None:
@@ -467,7 +468,7 @@ class Q_Network(nn.Module):
                                  -store_history_step_size).flip(0))
                 if store_history_start_index == 0 and 0 not in store_history_range:
                     store_history_range = torch.cat((torch.tensor([0]), store_history_range))
-        
+
         # Store history of weights and biases
         if store_params:
             if store_params_interval is None:
@@ -487,7 +488,7 @@ class Q_Network(nn.Module):
             if (0 in store_params_range) and store_params_step_size == 1: # store initial state of the network
                 self.param_history.append(deepcopy(self.state_dict()))
                 self.param_history_steps.append(-1)
-        
+
         if status_bar:
             from tqdm.autonotebook import tqdm
             episode_iter = tqdm(range(episodes), desc='Episodes')
@@ -501,13 +502,13 @@ class Q_Network(nn.Module):
                     post_pop.bias_learning_rule.reinit()
                 for projection in post_pop:
                     projection.learning_rule.reinit()
-        
+
 
         #######################################################
         #*************     Main training loop     *************
         #######################################################
         train_step = 0
-        for episode in episode_iter:            
+        for episode in episode_iter:
             if store_history:
                 if store_history_interval is None:
                     this_train_step_store_history = True
@@ -549,7 +550,7 @@ class Q_Network(nn.Module):
                 else:
                     output = self.forward(obs_tensor, store_history=this_train_step_store_history,
                                         store_dynamics=store_dynamics, reinit=reinit)
-                
+
                 # epsilon greedy exploration
                 if self.rng.random() < epsilon:
                     action = int(self.rng.choice(environment.get_action_list()))
@@ -582,7 +583,7 @@ class Q_Network(nn.Module):
 
                     # Update state variables required for weight and bias updates
                     self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
-                                   
+
 
             treadmill_preds = torch.cat(treadmill_preds)
             treadmill_targets = torch.tensor(treadmill_targets, dtype=torch.float32)
@@ -630,8 +631,9 @@ class Q_Network(nn.Module):
             
             # Compute validation performance over all environments
             if train_step in val_range:
-                val_rewards = self.test(environments)
+                val_rewards, val_actions = self.test(environments, return_actions=True)
                 self.val_reward_history.append(val_rewards)
+                self.val_action_history.append(val_actions)
                 self.val_history_train_steps.append(train_step)
 
                 if status_bar: # Display the current loss and accuracy on the progress bar
@@ -643,6 +645,7 @@ class Q_Network(nn.Module):
         self.target_history = torch.stack(self.target_history)
 
         self.val_reward_history = torch.tensor(self.val_reward_history)
+        self.val_action_history = np.array(self.val_action_history)
         self.val_history_train_steps = torch.tensor(self.val_history_train_steps)
 
         if store_params:
@@ -704,8 +707,9 @@ class Q_Network(nn.Module):
             val_range = torch.cat((torch.tensor([0]), val_range))
 
         self.val_reward_history = []
+        self.val_action_history = []
         self.val_history_train_steps = []
-                    
+
         # Store history of weights and biases
         if store_history:
             if store_history_interval is not None:
@@ -885,8 +889,9 @@ class Q_Network(nn.Module):
             
             # Compute validation performance over all environments
             if train_step in val_range:
-                val_rewards = self.test(environments)
+                val_rewards, val_actions = self.test(environments, return_actions=True)
                 self.val_reward_history.append(val_rewards)
+                self.val_action_history.append(val_actions)
                 self.val_history_train_steps.append(train_step)
 
                 if status_bar: # Display the current loss and accuracy on the progress bar
@@ -898,6 +903,7 @@ class Q_Network(nn.Module):
         self.target_history = torch.stack(self.target_history)
 
         self.val_reward_history = torch.tensor(self.val_reward_history)
+        self.val_action_history = np.array(self.val_action_history)
         self.val_history_train_steps = torch.tensor(self.val_history_train_steps)
 
         if store_params:
@@ -906,7 +912,7 @@ class Q_Network(nn.Module):
         if save_to_file is not None:
             ut.save_network(self, path=save_to_file)
 
-    def test(self, environments, store_history=False, store_dynamics=False, return_q_vals=False):
+    def test(self, environments, store_history=False, store_dynamics=False, return_q_vals=False, return_actions=False):
         """
         Evaluate the network when epsilon=0
 
@@ -918,16 +924,21 @@ class Q_Network(nn.Module):
             Whether to store activity history during testing.
         store_dynamics : bool, default False
             Whether to store step-by-step dynamics during testing.
-        status_bar : bool, default False
-            Whether to display a progress bar during testing.
+        return_q_vals : bool, default False
+            Whether to also return the greedy Q values at every position of each environment.
+        return_actions : bool, default False
+            Whether to also return the greedy action taken at every position of each environment.
 
         Returns
         -------
-        reward per environment
+        mean reward across environments. If return_q_vals and/or return_actions are set, additionally
+        returns the per-environment Q values (shape [n_environments, length, n_actions]) and/or the
+        per-environment greedy actions (shape [n_environments, length]).
         """
 
         rewards = [0 for _ in environments]
         q_vals = []
+        actions = []
 
         for i, environment in enumerate(environments):
 
@@ -936,6 +947,7 @@ class Q_Network(nn.Module):
             terminated = False
 
             environment_q_vals = []
+            environment_actions = []
 
             ## COMPUTE FULL PASS OVER TREADMILL ##
             while not terminated:
@@ -952,19 +964,71 @@ class Q_Network(nn.Module):
 
                 if return_q_vals:
                     environment_q_vals.append(output.detach().numpy())
-                    
+
                 action = int(torch.argmax(output).item())
+                if return_actions:
+                    environment_actions.append(action)
                 _, reward, _, terminated = environment.take_action(action)
                 rewards[i] += reward
 
             if return_q_vals:
                 q_vals.append(environment_q_vals)
+            if return_actions:
+                actions.append(environment_actions)
 
+        result = [np.mean(rewards)]
         if return_q_vals:
-            return np.mean(rewards), np.array(q_vals)
+            result.append(np.array(q_vals))
+        if return_actions:
+            result.append(np.array(actions))
 
-        return np.mean(rewards)
-           
+        if len(result) == 1:
+            return result[0]
+        return tuple(result)
+
+    def get_treadmill_hidden_activity(self, environments, population_name=None):
+        """
+        Run a clean (greedy, epsilon=0) pass over each environment and collect the activity of a hidden
+        population at every position on the treadmill. Used to compare representations across treadmills
+        (e.g. cross-correlation of hidden states).
+
+        Parameters
+        ----------
+        environments : list
+            List of environments to evaluate over.
+        population_name : str, optional
+            Fullname of the population to collect activity from (e.g. 'H1E'). If None, defaults to the
+            first population of the layer immediately preceding the output layer.
+
+        Returns
+        -------
+        list of np.ndarray
+            One array per environment, each of shape [length, n_units].
+        """
+        if population_name is None:
+            layer_names = list(self.layers)
+            hidden_layer = self.layers[layer_names[-2]]
+            population = next(iter(hidden_layer))
+        else:
+            population = self.populations[population_name]
+
+        activities = []
+        for environment in environments:
+            environment.reset()
+            terminated = False
+            environment_activity = []
+            while not terminated:
+                reinit = environment.current_state == 0
+                current_observation = environment.get_observation(environment.current_state)
+                obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
+                output = self.forward(obs_tensor, no_grad=True, reinit=reinit)
+                environment_activity.append(np.squeeze(population.activity.detach().cpu().numpy()))
+                action = int(torch.argmax(output).item())
+                _, _, _, terminated = environment.take_action(action)
+            activities.append(np.array(environment_activity))
+
+        return activities
+
     def __iter__(self):
         for layer in self.layers.values():
             yield layer

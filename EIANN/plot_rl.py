@@ -7,6 +7,7 @@ import gc
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
+import matplotlib.patches as patches
 
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
@@ -138,4 +139,116 @@ def plot_final_q_vals(network, environments):
 
     cbar = plt.colorbar(im, cax=axes[-1])
     fig.suptitle('Final Q Values', fontsize=16)
+
+
+def plot_actions_over_training(network, environments, title=None):
+    """
+    Scatter the positions at which the greedy agent licks (action == 1) across the treadmill as a
+    function of training step, one panel per treadmill. Reward locations of every treadmill are shaded
+    so it is clear whether licking is appropriately gated by context.
+
+    :param network: trained Q_Network with a populated val_action_history (set during network.train)
+    :param environments: list of Cue_Treadmill environments
+    :param title: optional str appended to the figure title
+    """
+    if not hasattr(network, 'val_action_history') or len(network.val_action_history) == 0:
+        print('plot_actions_over_training: network has no val_action_history; skipping')
+        return
+
+    action_history = np.asarray(network.val_action_history)  # [n_val_steps, n_environments, length]
+    train_steps = np.asarray(network.val_history_train_steps)
+
+    n_env = len(environments)
+    fig, axes = plt.subplots(1, n_env, figsize=(4 * n_env, 4), squeeze=False)
+    axes = axes[0]
+
+    colors = ['r', 'b', 'y', 'g', 'm', 'c'][:n_env]
+    legend_elements = [patches.Patch(facecolor=color, alpha=0.2, label=f'Treadmill {j + 1} reward')
+                       for j, color in enumerate(colors)]
+
+    for i, environment in enumerate(environments):
+        ax = axes[i]
+        # shade the reward location of every treadmill for context
+        for environment_j, color in zip(environments, colors):
+            ax.axvspan(environment_j.reward_position - 1, environment_j.reward_position + 1,
+                       alpha=0.2, color=color, ls='')
+        # cue location
+        ax.axvline(environment.cue_position, color='gray', linestyle='--', linewidth=1)
+
+        lick_idx = np.argwhere(action_history[:, i, :] > 0)  # (val_step_index, position)
+        if lick_idx.size > 0:
+            ax.scatter(lick_idx[:, 1], train_steps[lick_idx[:, 0]], marker='o', c='g', s=4)
+
+        ax.invert_yaxis()
+        ax.set_xlabel('Position')
+        ax.set_title('Treadmill {}'.format(i + 1))
+        ax.set_xlim(-0.5, environment.length - 0.5)
+        if i == 0:
+            ax.set_ylabel('Training step')
+            ax.legend(handles=legend_elements, loc='lower left')
+
+    if title is None:
+        title_str = ''
+    else:
+        title_str = ': %s' % str(title)
+    fig.suptitle('Agent licks over training%s' % title_str)
+    fig.tight_layout()
+    plt.show(block=False)
+
+
+def plot_hidden_state_cross_correlation(network, environments, population_name=None, title=None):
+    """
+    Plot the cross-correlation between hidden-population representations of the trained network across
+    pairs of treadmills. For each pair (i, j), entry [a, b] of the heatmap is the correlation (across
+    hidden units) between the activity vector at position a of treadmill i and position b of treadmill j.
+
+    :param network: trained Q_Network
+    :param environments: list of Cue_Treadmill environments
+    :param population_name: optional str fullname of hidden population (e.g. 'H1E'). Defaults to the
+        first population of the layer feeding the output layer.
+    :param title: optional str appended to the figure title
+    """
+    activities = network.get_treadmill_hidden_activity(environments, population_name=population_name)
+
+    n_env = len(environments)
+    pairs = [(i, j) for i in range(n_env) for j in range(i + 1, n_env)]
+    if len(pairs) == 0:
+        print('plot_hidden_state_cross_correlation: need at least two environments; skipping')
+        return
+
+    fig, axes = plt.subplots(1, len(pairs), figsize=(4 * len(pairs), 4), squeeze=False)
+    axes = axes[0]
+
+    im = None
+    for k, (i, j) in enumerate(pairs):
+        ax = axes[k]
+        t1 = activities[i]  # [length_i, n_units]
+        t2 = activities[j]  # [length_j, n_units]
+        length_i = t1.shape[0]
+        # rows = treadmill i positions, cols = treadmill j positions
+        corr = np.corrcoef(t1, t2)[:length_i, length_i:]
+
+        im = ax.imshow(corr, cmap='RdBu_r', vmin=-1, vmax=1, origin='upper')
+
+        env_i, env_j = environments[i], environments[j]
+        # cue location (dashed gray) along both axes
+        ax.axhline(env_i.cue_position, color='gray', linestyle='--', linewidth=0.75)
+        ax.axvline(env_j.cue_position, color='gray', linestyle='--', linewidth=0.75)
+        # reward locations (dashed red): row for treadmill i, col for treadmill j
+        ax.axhline(env_i.reward_position, color='r', linestyle='--', linewidth=0.75)
+        ax.axvline(env_j.reward_position, color='r', linestyle='--', linewidth=0.75)
+
+        ax.set_xlabel('Treadmill {} position'.format(j + 1))
+        ax.set_ylabel('Treadmill {} position'.format(i + 1))
+        ax.set_title('Treadmill {} vs {}'.format(i + 1, j + 1))
+
+    if im is not None:
+        fig.colorbar(im, ax=axes, orientation='vertical', fraction=0.04, pad=0.04)
+
+    if title is None:
+        title_str = ''
+    else:
+        title_str = ': %s' % str(title)
+    fig.suptitle('Cross-correlation of hidden states%s' % title_str)
+    plt.show(block=False)
 

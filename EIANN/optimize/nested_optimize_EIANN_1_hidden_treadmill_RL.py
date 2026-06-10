@@ -14,7 +14,8 @@ from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epo
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
     recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, sort_by_class_averaged_val_output,
                          get_binned_mean_population_attribute_history_dict)
-from EIANN.plot_rl import plot_validation_rewards, plot_final_q_vals
+from EIANN.plot_rl import plot_validation_rewards, plot_final_q_vals, plot_actions_over_training, \
+    plot_hidden_state_cross_correlation
 from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from EIANN.optimize.network_config_updates import *
@@ -372,6 +373,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         title = 'Final (%i, %i)' % (seed, data_seed)
         plot_validation_rewards(network)
         plot_final_q_vals(network, context.environments)
+        plot_actions_over_training(network, context.environments, title=title)
+        plot_hidden_state_cross_correlation(network, context.environments, 'H2E', title=title)
     
     # if context.full_analysis:
     #     test_loss_history, test_accuracy_history = \

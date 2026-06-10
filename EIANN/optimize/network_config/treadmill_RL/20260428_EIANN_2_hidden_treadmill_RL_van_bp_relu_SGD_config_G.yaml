@@ -27,6 +27,15 @@ projection_config:
                     learning_rule: Backprop
                     learning_rule_kwargs:
                         learning_rate: 0.2
+            H1:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                        - 1
+                    direction: R
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.2
     H2:
         E:
             H1:
@@ -35,6 +44,15 @@ projection_config:
                     weight_init_args: !!python/tuple
                         - 1
                     direction: F
+                    learning_rule: Backprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.2
+            H2:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                        - 1
+                    direction: R
                     learning_rule: Backprop
                     learning_rule_kwargs:
                         learning_rate: 0.2
