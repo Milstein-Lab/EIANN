@@ -170,7 +170,7 @@ def plot_actions_over_training(network, environments, title=None):
         ax = axes[i]
         # shade the reward location of every treadmill for context
         for environment_j, color in zip(environments, colors):
-            ax.axvspan(environment_j.reward_position - 1, environment_j.reward_position + 1,
+            ax.axvspan(environment_j.reward_position - 0.5, environment_j.reward_position + 0.5,
                        alpha=0.2, color=color, ls='')
         # cue location
         ax.axvline(environment.cue_position, color='gray', linestyle='--', linewidth=1)
