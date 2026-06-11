@@ -252,3 +252,78 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
     fig.suptitle('Cross-correlation of hidden states%s' % title_str)
     plt.show(block=False)
 
+
+def plot_equilibration_dynamics(network, environments, env_idx=0, position=None, store_num_steps=None, title=None):
+    """
+    Plot the within-trial equilibration dynamics of each population's activity for a single observation
+    drawn from a treadmill environment. This is the RL analog of
+    ``EIANN.utils.check_equilibration_dynamics``, which relies on a torch DataLoader to provide a batch
+    of inputs. Here the input is instead a single observation taken from one Cue_Treadmill environment.
+
+    The agent is walked from the start of the treadmill up to ``position``: a forward pass is run at
+    every position along the way, with ``reinit=True`` only at position 0 so the recurrent state
+    accumulated over the preceding positions is carried forward (matching how ``network.test`` traverses
+    a treadmill). Step-by-step dynamics are recorded only at the final target position, so the plotted
+    settling reflects the recurrent state the network actually arrives at, not an isolated reinitialized
+    pass. The average population activity is then plotted across the network's recurrent ``forward_steps``,
+    one subplot per population (rows) and per layer (cols, excluding the input layer).
+
+    :param network: trained Q_Network
+    :param environments: list of Cue_Treadmill environments
+    :param env_idx: int index into ``environments`` selecting which treadmill to probe
+    :param position: int treadmill position to record settling at; defaults to the cue position
+    :param store_num_steps: int number of trailing forward steps to record; defaults to all forward_steps
+    :param title: optional str appended to the figure title
+    """
+    environment = environments[env_idx]
+    if position is None:
+        position = environment.cue_position
+
+    # walk from the start up to the target position, carrying recurrent state forward (reinit only at
+    # position 0). The agent advances one position per step regardless of action, and actions are not
+    # fed back into the network, so stepping through observations by index reproduces the traversal.
+    environment.reset()
+    for state in range(position + 1):
+        current_observation = environment.get_observation(state)
+        obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
+        # only record dynamics at the final position; reinit (which clears forward_steps_activity)
+        # fires solely at position 0, leaving a clean trace for the target forward pass
+        store_state = state == position
+        network.forward(obs_tensor, store_dynamics=store_state, store_num_steps=store_num_steps,
+                        no_grad=True, reinit=(state == 0))
+
+    max_rows = 1
+    for layer in network:
+        max_rows = max(max_rows, len(layer.populations))
+    cols = len(network.layers) - 1
+    fig, axes = plt.subplots(max_rows, cols, figsize=(3.2 * cols, 3. * max_rows), squeeze=False)
+
+    for i, layer in enumerate(network):
+        if i == 0:
+            continue
+        col = i - 1
+        for row, population in enumerate(layer):
+            if population.forward_steps_activity:
+                # for memory efficiency, reduce each stored step to its population mean
+                average_activity = torch.tensor(
+                    [torch.mean(step) for step in population.forward_steps_activity])
+                ax = axes[row][col]
+                ax.plot(average_activity)
+                ax.set_xlabel('Equilibration time steps')
+                ax.set_ylabel('Average population activity')
+                ax.set_title('%s.%s' % (layer.name, population.name))
+                ax.set_ylim((0., ax.get_ylim()[1]))
+            population.forward_steps_activity = []
+        # hide any unused axes in this column's grid
+        for row in range(len(layer.populations), max_rows):
+            axes[row][col].axis('off')
+
+    if title is None:
+        title_str = ''
+    else:
+        title_str = ': %s' % str(title)
+    fig.suptitle('Activity equilibration dynamics (treadmill %i, position %i)%s' %
+                 (env_idx + 1, position, title_str))
+    fig.tight_layout()
+    plt.show(block=False)
+

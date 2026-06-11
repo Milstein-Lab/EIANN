@@ -32,6 +32,7 @@ projection_config:
                     weight_init: scaled_kaiming
                     weight_init_args: !!python/tuple
                         - 1
+                    weight_constraint: no_autapses
                     direction: R
                     learning_rule: Backprop
                     learning_rule_kwargs:
@@ -52,6 +53,7 @@ projection_config:
                     weight_init: scaled_kaiming
                     weight_init_args: !!python/tuple
                         - 1
+                    weight_constraint: no_autapses
                     direction: R
                     learning_rule: Backprop
                     learning_rule_kwargs:

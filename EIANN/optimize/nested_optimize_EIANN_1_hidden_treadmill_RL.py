@@ -15,10 +15,10 @@ from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epo
     recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, sort_by_class_averaged_val_output,
                          get_binned_mean_population_attribute_history_dict)
 from EIANN.plot_rl import plot_validation_rewards, plot_final_q_vals, plot_actions_over_training, \
-    plot_hidden_state_cross_correlation
+    plot_hidden_state_cross_correlation, plot_equilibration_dynamics
 from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
-from EIANN.optimize.network_config_updates import *
+from EIANN.optimize.network_rl_config_updates import *
 import EIANN.utils as utils
 
 
@@ -35,13 +35,17 @@ context = Context()
 #   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=bpDale \
 #   --export --export-file-path=multiseed_mnist_metrics.hdf5 --store_history=True --retrain=False --full_analysis=True --status_bar=True
 
-# run a single seed (must be run from the root directory of EIANN):
 # python -m nested.analyze --framework=serial \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis=True --status_bar=True
+# --config-file-path=optimize/optimize_config/treadmill_RL/20260428_nested_optimize_EIANN_2_hidden_treadmill_RL_van_bp_relu_SGD_config_G.yaml \
+# --param-file-path=optimize/optimize_params/treadmill_RL/20260610_treadmill_RL_params.yaml --model-key=van_bp_relu_SGD \
+# --output-dir=data --compute_receptive_fields=False --num_instances=1 --store_history=True \
+# --retrain=True --status_bar=True --plot --disp --debug
 
-# python -m nested.analyze --framework=serial --config-file-path=optimize/optimize_config/treadmill_RL/20260428_nested_optimize_EIANN_2_hidden_treadmill_RL_van_bp_relu_SGD_config_G.yaml --output-dir=data --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=True --status_bar=True --plot --disp
+# python -m nested.analyze --framework=serial \
+# --config-file-path=optimize/optimize_config/treadmill_RL/20231129_nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_relu_SGD_config_G.yaml \
+# --output-dir=data --compute_receptive_fields=False --num_instances=1 --store_history=True \
+# --retrain=True --status_bar=True --plot --disp --debug
+
 
 
 def config_controller():
@@ -375,6 +379,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         plot_final_q_vals(network, context.environments)
         plot_actions_over_training(network, context.environments, title=title)
         plot_hidden_state_cross_correlation(network, context.environments, 'H2E', title=title)
+        if context.constrain_equilibration_dynamics or context.debug:
+            # store_num_steps left as None to capture the full forward_steps settling trace
+            plot_equilibration_dynamics(network, context.environments, title=title)
     
     # if context.full_analysis:
     #     test_loss_history, test_accuracy_history = \
