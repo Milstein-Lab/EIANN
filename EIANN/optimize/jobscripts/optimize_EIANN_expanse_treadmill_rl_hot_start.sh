@@ -3,6 +3,7 @@ export DATE=$(date +%Y%m%d_%H%M%S)
 export LABEL="$2"
 export JOB_NAME="$LABEL"_"$DATE"
 export CONFIG_FILE_PATH="$1"
+export HISTORY_FILE_PATH="$3"
 sbatch <<EOT
 #!/bin/bash -l
 #SBATCH -J $JOB_NAME
@@ -27,5 +28,5 @@ cd $PROJECT/EIANN/EIANN
 
 srun -n 200 --mpi=pmi2 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=$SCRATCH/data/EIANN --pop_size=200 --max_iter=50 --path_length=3 --disp \
-  --framework=mpi
+  --framework=mpi --hot-start --history-file-path=$HISTORY_FILE_PATH
 EOT
