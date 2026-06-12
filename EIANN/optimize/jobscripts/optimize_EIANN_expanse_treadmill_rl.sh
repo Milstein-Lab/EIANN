@@ -9,7 +9,7 @@ sbatch <<EOT
 #SBATCH -o /expanse/lustre/scratch/rpemmaraju/temp_project/logs/EIANN/$JOB_NAME.%j.o
 #SBATCH -e /expanse/lustre/scratch/rpemmaraju/temp_project/logs/EIANN/$JOB_NAME.%j.e
 #SBATCH -p compute
-#SBATCH -N 8
+#SBATCH -N 16
 #SBATCH -n 1001
 #SBATCH -t 48:00:00
 #SBATCH --mem=0

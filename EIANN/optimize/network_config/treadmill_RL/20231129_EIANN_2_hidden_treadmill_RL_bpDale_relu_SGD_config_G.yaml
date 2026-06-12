@@ -1,3 +1,5 @@
+# bash optimize_EIANN_expanse_treadmill_rl.sh optimize/optimize_config/treadmill_RL/20231129_nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_relu_SGD_config_G.yaml hidden_treadmill_bpDale_relu_SGD
+
 layer_config:
     Input:
         E:
