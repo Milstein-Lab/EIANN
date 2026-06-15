@@ -378,7 +378,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         plot_validation_rewards(network)
         plot_final_q_vals(network, context.environments)
         plot_actions_over_training(network, context.environments, title=title)
-        plot_hidden_state_cross_correlation(network, context.environments, 'H2E', title=title)
+        plot_hidden_state_cross_correlation(network, context.environments, 'H1E', title=title)
         if context.constrain_equilibration_dynamics or context.debug:
             # store_num_steps left as None to capture the full forward_steps settling trace
             plot_equilibration_dynamics(network, context.environments, title=title)
