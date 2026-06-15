@@ -20,6 +20,7 @@ EIANN/optimize/figures
 EIANN/figures/
 EIANN/data/datasets/
 EIANN/data/mnist/*
+EIANN/data/rl_plots/
 manuscript/
 
 EIANN/data/mnist

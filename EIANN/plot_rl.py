@@ -84,10 +84,28 @@ def clean_axes(axes, left=True, right=False):
         axis.get_yaxis().tick_left()
 
 
+def _save_or_show(fig, save_path, dpi=600):
+    """
+    Save the figure to save_path if provided (creating parent directories as needed) and close it;
+    otherwise display it without blocking.
+
+    :param fig: matplotlib Figure
+    :param save_path: str or None
+    :param dpi: int; resolution for the saved raster figure (publication-quality by default)
+    """
+    if save_path is not None:
+        import os
+        os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
+        fig.savefig(save_path, dpi=dpi, bbox_inches='tight')
+        plt.close(fig)
+    else:
+        plt.show(block=False)
+
+
 # *******************************************************************
 # Network summary functions
 # *******************************************************************
-def plot_validation_rewards(network, title=None, train_step_range=None, ax=None):
+def plot_validation_rewards(network, title=None, train_step_range=None, ax=None, save_path=None):
     assert len(network.val_reward_history) > 0, 'Network must contain a stored val_loss_history'
 
     if title is None:
@@ -114,13 +132,13 @@ def plot_validation_rewards(network, title=None, train_step_range=None, ax=None)
         # plt.xlim(train_step_range[0], train_step_range[1])
         fig.suptitle('Validation rewards%s' % title_str)
         fig.tight_layout()
-        plt.show(block=False)
-    else: 
+        _save_or_show(fig, save_path)
+    else:
         ax.plot(train_steps, val_reward_history, label='Validation rewards', color='r', linewidth=1)
         ax.set_xlabel('Training steps')
 
 
-def plot_final_q_vals(network, environments):
+def plot_final_q_vals(network, environments, save_path=None):
     fig, axes = plt.subplots(1, 1 + len(environments), gridspec_kw={'width_ratios': [20 for _ in environments] + [1]})
     _, final_q_vals = network.test(environments, return_q_vals=True)
 
@@ -139,9 +157,10 @@ def plot_final_q_vals(network, environments):
 
     cbar = plt.colorbar(im, cax=axes[-1])
     fig.suptitle('Final Q Values', fontsize=16)
+    _save_or_show(fig, save_path)
 
 
-def plot_actions_over_training(network, environments, title=None):
+def plot_actions_over_training(network, environments, title=None, save_path=None):
     """
     Scatter the positions at which the greedy agent licks (action == 1) across the treadmill as a
     function of training step, one panel per treadmill. Reward locations of every treadmill are shaded
@@ -193,10 +212,10 @@ def plot_actions_over_training(network, environments, title=None):
         title_str = ': %s' % str(title)
     fig.suptitle('Agent licks over training%s' % title_str)
     fig.tight_layout()
-    plt.show(block=False)
+    _save_or_show(fig, save_path)
 
 
-def plot_hidden_state_cross_correlation(network, environments, population_name=None, title=None):
+def plot_hidden_state_cross_correlation(network, environments, population_name=None, title=None, save_path=None):
     """
     Plot the cross-correlation between hidden-population representations of the trained network across
     pairs of treadmills. For each pair (i, j), entry [a, b] of the heatmap is the correlation (across
@@ -250,7 +269,7 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
     else:
         title_str = ': %s' % str(title)
     fig.suptitle('Cross-correlation of hidden states%s' % title_str)
-    plt.show(block=False)
+    _save_or_show(fig, save_path)
 
 
 def plot_equilibration_dynamics(network, environments, env_idx=0, position=None, store_num_steps=None, title=None):

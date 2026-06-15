@@ -134,6 +134,12 @@ def config_worker():
         context.plot_initial = False
     else:
         context.plot_initial - str_to_bool(context.plot_initial)
+    if 'save_plots' not in context():
+        context.save_plots = False
+    else:
+        context.save_plots = str_to_bool(context.save_plots)
+    if 'save_plots_dir' not in context():
+        context.save_plots_dir = f"{context.output_dir}/rl_plots"
     if 'include_dend_loss_objective' not in context():
         context.include_dend_loss_objective = False
     else:
@@ -373,12 +379,25 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         mean_forward_dend_loss = get_mean_forward_dend_loss(network, dend_loss_window)
         results['mean_forward_dend_loss'] = mean_forward_dend_loss
     
-    if plot:
+    if plot or context.save_plots:
         title = 'Final (%i, %i)' % (seed, data_seed)
-        plot_validation_rewards(network)
-        plot_final_q_vals(network, context.environments)
-        plot_actions_over_training(network, context.environments, title=title)
-        plot_hidden_state_cross_correlation(network, context.environments, 'H1E', title=title)
+        if context.save_plots:
+            network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
+            plot_prefix = f"{context.save_plots_dir}/{network_name}_{seed}_{data_seed}"
+            if context.label is not None:
+                plot_prefix += f"_{context.label}"
+            save_paths = {name: f"{plot_prefix}_{name}.png"
+                          for name in ['validation_rewards', 'final_q_vals', 'actions_over_training',
+                                       'hidden_state_cross_correlation']}
+        else:
+            save_paths = {name: None for name in ['validation_rewards', 'final_q_vals',
+                                                  'actions_over_training', 'hidden_state_cross_correlation']}
+        plot_validation_rewards(network, save_path=save_paths['validation_rewards'])
+        plot_final_q_vals(network, context.environments, save_path=save_paths['final_q_vals'])
+        plot_actions_over_training(network, context.environments, title=title,
+                                   save_path=save_paths['actions_over_training'])
+        plot_hidden_state_cross_correlation(network, context.environments, 'H1E', title=title,
+                                            save_path=save_paths['hidden_state_cross_correlation'])
         if context.constrain_equilibration_dynamics or context.debug:
             # store_num_steps left as None to capture the full forward_steps settling trace
             plot_equilibration_dynamics(network, context.environments, title=title)
