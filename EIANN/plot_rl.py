@@ -8,6 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 import matplotlib.patches as patches
+import seaborn as sns  # registers the 'icefire' (and 'rocket', 'mako', ...) colormaps with matplotlib
 
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
@@ -215,17 +216,44 @@ def plot_actions_over_training(network, environments, title=None, save_path=None
     _save_or_show(fig, save_path)
 
 
+def _treadmill_zone_spans(environment):
+    """
+    Recover the contiguous cue and reward zones of a Cue_Treadmill from its one-hot state encoding.
+    Returns (cue_span, reward_spans) where each span is a (low, high) tuple with an exclusive upper
+    bound (i.e. cells low..high-1), suitable for drawing box outlines in heatmap coordinates.
+    """
+    rep = np.asarray(environment.state_representations)
+    total_cues = environment.total_cues
+
+    def span(col):
+        idx = np.where(rep[:, col] == 1)[0]
+        if len(idx) == 0:
+            return None
+        return (int(idx.min()), int(idx.max()) + 1)
+
+    cue_span = span(1 + environment.cue_number)
+    reward_spans = []
+    for i in range(total_cues):
+        reward_span = span(1 + total_cues + i)
+        if reward_span is not None:
+            reward_spans.append(reward_span)
+    return cue_span, reward_spans
+
+
 def plot_hidden_state_cross_correlation(network, environments, population_name=None, title=None, save_path=None):
     """
     Plot the cross-correlation between hidden-population representations of the trained network across
-    pairs of treadmills. For each pair (i, j), entry [a, b] of the heatmap is the correlation (across
-    hidden units) between the activity vector at position a of treadmill i and position b of treadmill j.
+    pairs of treadmills, following the style of the Spruston lab OSM paper figures
+    (fig_4_f_Hebbian_RNN.ipynb). For each pair (i, j), entry [a, b] of the heatmap is the Pearson
+    correlation (across hidden units) between the activity vector at position a of treadmill i and
+    position b of treadmill j.
 
     :param network: trained Q_Network
     :param environments: list of Cue_Treadmill environments
     :param population_name: optional str fullname of hidden population (e.g. 'H1E'). Defaults to the
         first population of the layer feeding the output layer.
     :param title: optional str appended to the figure title
+    :param save_path: optional str; if provided the figure is saved (high dpi) instead of shown.
     """
     activities = network.get_treadmill_hidden_activity(environments, population_name=population_name)
 
@@ -235,31 +263,52 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
         print('plot_hidden_state_cross_correlation: need at least two environments; skipping')
         return
 
-    fig, axes = plt.subplots(1, len(pairs), figsize=(4 * len(pairs), 4), squeeze=False)
+    # Cue/reward zones (shared geometry across treadmills) used to annotate every panel
+    cue_span, reward_spans = _treadmill_zone_spans(environments[0])
+    zones = ([cue_span] if cue_span is not None else []) + reward_spans
+    boundary_lines = sorted({bound for span in zones for bound in span} | {environments[0].length})
+
+    icefire = sns.color_palette('icefire', as_cmap=True)
+
+    fig, axes = plt.subplots(1, len(pairs), figsize=(4.4 * len(pairs), 4.4), squeeze=False)
     axes = axes[0]
 
     im = None
     for k, (i, j) in enumerate(pairs):
         ax = axes[k]
-        t1 = activities[i]  # [length_i, n_units]
-        t2 = activities[j]  # [length_j, n_units]
-        length_i = t1.shape[0]
-        # rows = treadmill i positions, cols = treadmill j positions
-        corr = np.corrcoef(t1, t2)[:length_i, length_i:]
+        t1 = activities[i]  # [length_i, n_units]; rows of the heatmap
+        t2 = activities[j]  # [length_j, n_units]; columns of the heatmap
+        length_i, length_j = t1.shape[0], t2.shape[0]
 
-        im = ax.imshow(corr, cmap='RdBu_r', vmin=-1, vmax=1, origin='upper')
+        corr = np.zeros((length_i, length_j))
+        for a in range(length_i):
+            zeroi = np.nan_to_num(t1[a])
+            for b in range(length_j):
+                onej = np.nan_to_num(t2[b])
+                corr[a, b] = stats.pearsonr(zeroi, onej)[0]
 
-        env_i, env_j = environments[i], environments[j]
-        # cue location (dashed gray) along both axes
-        ax.axhline(env_i.cue_position, color='gray', linestyle='--', linewidth=0.75)
-        ax.axvline(env_j.cue_position, color='gray', linestyle='--', linewidth=0.75)
-        # reward locations (dashed red): row for treadmill i, col for treadmill j
-        ax.axhline(env_i.reward_position, color='r', linestyle='--', linewidth=0.75)
-        ax.axvline(env_j.reward_position, color='r', linestyle='--', linewidth=0.75)
+        sns.heatmap(corr, ax=ax, cmap=icefire, vmin=-1, vmax=1, cbar=False, rasterized=True)
+        im = ax.collections[0]
 
-        ax.set_xlabel('Treadmill {} position'.format(j + 1))
-        ax.set_ylabel('Treadmill {} position'.format(i + 1))
-        ax.set_title('Treadmill {} vs {}'.format(i + 1, j + 1))
+        # thick black border frame
+        ax.axhline(y=0, color='k', linewidth=5)
+        ax.axhline(y=corr.shape[0], color='k', linewidth=5)
+        ax.axvline(x=0, color='k', linewidth=5)
+        ax.axvline(x=corr.shape[1], color='k', linewidth=5)
+
+        # white dashed divider lines at zone boundaries
+        for line in boundary_lines:
+            ax.axvline(line, linestyle=(0, (2, 5)), color='white', linewidth=1.5)
+            ax.axhline(line, linestyle=(0, (2, 5)), color='white', linewidth=1.5)
+
+        # white box outlines around the cue and reward zones
+        for (low, high) in zones:
+            ax.plot([low, high, high, low, low], [low, low, high, high, low], color='white', linewidth=3)
+
+        ax.set_aspect('equal')
+        ax.axis('off')
+        ax.grid(False)
+        ax.set_title('Treadmill {} (rows) vs {} (cols)'.format(i + 1, j + 1))
 
     if im is not None:
         fig.colorbar(im, ax=axes, orientation='vertical', fraction=0.04, pad=0.04)
