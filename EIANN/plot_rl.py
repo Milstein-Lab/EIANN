@@ -106,13 +106,15 @@ def _save_or_show(fig, save_path, dpi=600):
 # *******************************************************************
 # Network summary functions
 # *******************************************************************
+def _prefix_title(title, base):
+    """Prefix the (optional) title onto a base figure title, e.g. 'model_key: Validation rewards'."""
+    if title is None or str(title) == '':
+        return base
+    return '%s: %s' % (str(title), base)
+
+
 def plot_validation_rewards(network, title=None, train_step_range=None, ax=None, save_path=None):
     assert len(network.val_reward_history) > 0, 'Network must contain a stored val_loss_history'
-
-    if title is None:
-        title_str = ''
-    else:
-        title_str = ': %s' % str(title)
 
     if train_step_range is None:
         train_steps = network.val_history_train_steps
@@ -131,7 +133,7 @@ def plot_validation_rewards(network, title=None, train_step_range=None, ax=None,
         plt.xlabel('Training steps')
         plt.ylabel('Average reward')
         # plt.xlim(train_step_range[0], train_step_range[1])
-        fig.suptitle('Validation rewards%s' % title_str)
+        fig.suptitle(_prefix_title(title, 'Validation rewards'))
         fig.tight_layout()
         _save_or_show(fig, save_path)
     else:
@@ -139,7 +141,7 @@ def plot_validation_rewards(network, title=None, train_step_range=None, ax=None,
         ax.set_xlabel('Training steps')
 
 
-def plot_final_q_vals(network, environments, save_path=None):
+def plot_final_q_vals(network, environments, title=None, save_path=None):
     fig, axes = plt.subplots(1, 1 + len(environments), gridspec_kw={'width_ratios': [20 for _ in environments] + [1]})
     _, final_q_vals = network.test(environments, return_q_vals=True)
 
@@ -157,7 +159,7 @@ def plot_final_q_vals(network, environments, save_path=None):
         axes[i].set_title('Treadmill {}'.format(i+1))
 
     cbar = plt.colorbar(im, cax=axes[-1])
-    fig.suptitle('Final Q Values', fontsize=16)
+    fig.suptitle(_prefix_title(title, 'Final Q Values'), fontsize=16)
     _save_or_show(fig, save_path)
 
 
@@ -207,11 +209,7 @@ def plot_actions_over_training(network, environments, title=None, save_path=None
             ax.set_ylabel('Training step')
             ax.legend(handles=legend_elements, loc='lower left')
 
-    if title is None:
-        title_str = ''
-    else:
-        title_str = ': %s' % str(title)
-    fig.suptitle('Agent licks over training%s' % title_str)
+    fig.suptitle(_prefix_title(title, 'Agent licks over training'))
     fig.tight_layout()
     _save_or_show(fig, save_path)
 
@@ -313,11 +311,7 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
     if im is not None:
         fig.colorbar(im, ax=axes, orientation='vertical', fraction=0.04, pad=0.04)
 
-    if title is None:
-        title_str = ''
-    else:
-        title_str = ': %s' % str(title)
-    fig.suptitle('Cross-correlation of hidden states%s' % title_str)
+    fig.suptitle(_prefix_title(title, 'Cross-correlation of hidden states'))
     _save_or_show(fig, save_path)
 
 

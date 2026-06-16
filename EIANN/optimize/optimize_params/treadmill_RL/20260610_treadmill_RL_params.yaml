@@ -42,5 +42,31 @@ bpDale_fixedI_relu_SGD:
 # python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/20231129_nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_fixedI_relu_SGD_config_G.yaml --disp --num_instances=1 --model-key=bpDale_fixedI_relu_SGD --param-file-path=optimize/optimize_params/treadmill_RL/20260610_treadmill_RL_params.yaml --plot
 
 bpDale_relu_SGD:
-
+  # reward: 1.0
+  H_E_E_learning_rate: 0.43420901029984993
+  H_E_I_learning_rate: 0.3834023115676584
+  H_I_E_learning_rate: 0.1286275180354829
+  Output_E_E_learning_rate: 0.1766088203536286
+  H1_E_Input_E_init_weight_scale: 0.9611158918992545
+  H1_E_H1_E_init_weight_scale: 0.2779497364362825
+  H1_E_H1_I_init_weight_scale: 1.4657460216827154
+  H1_I_Input_E_init_weight_scale: 0.2889448300825227
+  H1_I_H1_E_init_weight_scale: 1.1282676981493893
+  H1_I_H1_I_init_weight_scale: 3.5816238775142466
+  H2_E_H1_E_init_weight_scale: 1.1155215372764575
+  H2_E_H2_E_init_weight_scale: 0.42141614507549696
+  H2_E_H2_I_init_weight_scale: 1.7829730314101926
+  H2_I_H1_E_init_weight_scale: 1.114365717184956
+  H2_I_H2_E_init_weight_scale: 1.215732036462136
+  H2_I_H2_I_init_weight_scale: 1.7759602360908637
+  Output_E_H2_E_init_weight_scale: 3.2113050020154907
+  Output_E_Output_I_init_weight_scale: 0.2667354895182376
+  Output_I_H2_E_init_weight_scale: 2.717570831315474
+  Output_I_Output_E_init_weight_scale: 1.480134192043798
+  Output_I_Output_I_init_weight_scale: 1.2956215075690731
+  H_I_size: 50.0
+  Output_I_size: 2.0
+  epsilon: 0.4121999700795728
+  epsilon_decay: 0.9680906455311008
+  gamma: 0.9593636934617314
 # python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/20231129_nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_relu_SGD_config_G.yaml --disp --num_instances=1 --model-key=bpDale_relu_SGD --param-file-path=optimize/optimize_params/treadmill_RL/20260610_treadmill_RL_params.yaml --plot
