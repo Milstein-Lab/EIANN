@@ -10,7 +10,7 @@ van_bp_relu_SGD:
   epsilon: 0.9
   epsilon_decay: 1.0
   gamma: 0.9
-# python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/20260428_nested_optimize_EIANN_2_hidden_treadmill_RL_van_bp_relu_SGD_config_G.yaml --disp --num_instances=1 --model-key=van_bp_relu_SGD --param-file-path=optimize/optimize_params/treadmill_RL/20260610_treadmill_RL_params.yaml --plot
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/nested_optimize_EIANN_2_hidden_treadmill_RL_van_bp_relu_SGD_config.yaml --disp --num_instances=1 --model-key=van_bp_relu_SGD --param-file-path=optimize/optimize_params/treadmill_RL/treadmill_RL_params.yaml --plot
 
 bpDale_fixedI_relu_SGD:
   # reward: 1.0
@@ -38,8 +38,7 @@ bpDale_fixedI_relu_SGD:
   epsilon: 0.5778886589968514
   epsilon_decay: 0.9101285081171548
   gamma: 0.19264063775255028
-
-# python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/20231129_nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_fixedI_relu_SGD_config_G.yaml --disp --num_instances=1 --model-key=bpDale_fixedI_relu_SGD --param-file-path=optimize/optimize_params/treadmill_RL/20260610_treadmill_RL_params.yaml --plot
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_fixedI_relu_SGD_config.yaml --disp --num_instances=1 --model-key=bpDale_fixedI_relu_SGD --param-file-path=optimize/optimize_params/treadmill_RL/treadmill_RL_params.yaml --plot
 
 bpDale_relu_SGD:
   # reward: 1.0
@@ -69,4 +68,4 @@ bpDale_relu_SGD:
   epsilon: 0.4121999700795728
   epsilon_decay: 0.9680906455311008
   gamma: 0.9593636934617314
-# python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/20231129_nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_relu_SGD_config_G.yaml --disp --num_instances=1 --model-key=bpDale_relu_SGD --param-file-path=optimize/optimize_params/treadmill_RL/20260610_treadmill_RL_params.yaml --plot
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_relu_SGD_config.yaml --disp --num_instances=1 --model-key=bpDale_relu_SGD --param-file-path=optimize/optimize_params/treadmill_RL/treadmill_RL_params.yaml --plot

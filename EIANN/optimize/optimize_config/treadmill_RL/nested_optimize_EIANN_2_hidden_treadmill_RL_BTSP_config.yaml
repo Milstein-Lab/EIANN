@@ -138,7 +138,7 @@ kwargs:
         - 0
         - 1
         - -0.1
-    network_config_file_path: optimize/network_config/treadmill_RL/20241212_EIANN_2_hidden_treadmill_RL_BTSP_config_5L.yaml
+    network_config_file_path: optimize/network_config/treadmill_RL/EIANN_2_hidden_treadmill_RL_BTSP_config.yaml
     val_interval:
         - -1000
         - -1

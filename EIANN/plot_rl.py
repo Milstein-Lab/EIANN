@@ -1,4 +1,5 @@
 import itertools
+import os
 import torch
 import numpy as np
 import math
@@ -238,7 +239,8 @@ def _treadmill_zone_spans(environment):
     return cue_span, reward_spans
 
 
-def plot_hidden_state_cross_correlation(network, environments, population_name=None, title=None, save_path=None):
+def plot_hidden_state_cross_correlation(network, environments, population_name=None, title=None,
+                                        normalize=False, save_path=None):
     """
     Plot the cross-correlation between hidden-population representations of the trained network across
     pairs of treadmills, following the style of the Spruston lab OSM paper figures
@@ -251,6 +253,9 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
     :param population_name: optional str fullname of hidden population (e.g. 'H1E'). Defaults to the
         first population of the layer feeding the output layer.
     :param title: optional str appended to the figure title
+    :param normalize: bool; if True (default) each pair's correlation matrix is min-max rescaled across
+        all location pairs onto the full [-1, 1] colormap range (weakest match at -1, strongest at +1)
+        to maximize contrast/stratification.
     :param save_path: optional str; if provided the figure is saved (high dpi) instead of shown.
     """
     activities = network.get_treadmill_hidden_activity(environments, population_name=population_name)
@@ -285,6 +290,12 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
                 onej = np.nan_to_num(t2[b])
                 corr[a, b] = stats.pearsonr(zeroi, onej)[0]
 
+        if normalize:
+            # min-max rescale onto the full [-1, 1] colormap range to maximize contrast
+            min_corr, max_corr = np.nanmin(corr), np.nanmax(corr)
+            if max_corr > min_corr:
+                corr = 2. * (corr - min_corr) / (max_corr - min_corr) - 1.
+
         sns.heatmap(corr, ax=ax, cmap=icefire, vmin=-1, vmax=1, cbar=False, rasterized=True)
         im = ax.collections[0]
 
@@ -313,6 +324,69 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
 
     fig.suptitle(_prefix_title(title, 'Cross-correlation of hidden states'))
     _save_or_show(fig, save_path)
+
+
+def plot_treadmill_hidden_activity(network, environments, population_names=('H1E', 'H2E'), title=None,
+                                   save_path=None):
+    """
+    Plot hidden-population activity as a neuron-by-position heatmap, comparing all treadmills side by
+    side. For each population in ``population_names`` a separate figure is produced with one panel per
+    treadmill; each panel is a [n_units, length] heatmap (hidden unit on the y-axis, treadmill position
+    on the x-axis) drawn with the shared ``icefire`` colormap and a common color scale so activity is
+    directly comparable across treadmills. Units are sorted by the position of their peak activity on
+    the first treadmill (as in place-cell sequence plots), and that same ordering is applied to every
+    panel so a preserved sequence is visible across treadmills. The cue position and each treadmill's
+    reward zone are marked with dashed lines.
+
+    :param network: trained Q_Network
+    :param environments: list of Cue_Treadmill environments
+    :param population_names: iterable of str fullnames of hidden populations to plot (e.g. ('H1E', 'H2E'))
+    :param title: optional str appended to each figure title
+    :param save_path: optional str; if provided figures are saved (the population name is inserted before
+        the file extension, e.g. '..._H1E.png') instead of shown.
+    """
+    n_env = len(environments)
+    # reversed grayscale: zero activity is white, increasing activity darkens toward black, for
+    # maximum contrast (black activity on a white background)
+    cmap = plt.get_cmap('gray_r')
+
+    for population_name in population_names:
+        activities = network.get_treadmill_hidden_activity(environments, population_name=population_name)
+
+        # shared color scale across treadmills; pin vmin to 0 so zero activity is black
+        vmin = 0.
+        vmax = max(np.nanmax(a) for a in activities)
+
+        # sort units by peak position on the first treadmill (place-cell style ordering), applied to all
+        order = np.argsort(np.argmax(np.nan_to_num(activities[0]), axis=0))
+
+        fig, axes = plt.subplots(1, n_env, figsize=(3.2 * n_env, 3.4), squeeze=False, sharey=True)
+        axes = axes[0]
+
+        im = None
+        for env_idx, (activity, ax) in enumerate(zip(activities, axes)):
+            # transpose to [n_units, length] and apply the shared sequence ordering
+            im = ax.imshow(activity[:, order].T, cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto',
+                           interpolation='nearest')
+            cue_span, reward_spans = _treadmill_zone_spans(environments[env_idx])
+            if cue_span is not None:
+                ax.axvline(cue_span[0] - 0.5, color='tab:blue', linestyle='--', linewidth=0.75)
+            for (low, high) in reward_spans:
+                ax.axvline(low - 0.5, color='tab:red', linestyle='--', linewidth=0.75)
+                ax.axvline(high - 0.5, color='tab:red', linestyle='--', linewidth=0.75)
+            ax.set_xlabel('Treadmill position')
+            ax.set_title('Treadmill %i' % (env_idx + 1))
+        axes[0].set_ylabel('Hidden unit (sorted by peak)')
+
+        if im is not None:
+            fig.colorbar(im, ax=axes, fraction=0.04, pad=0.04, label='Activity')
+
+        fig.suptitle(_prefix_title(title, 'Hidden unit activity (%s)' % population_name))
+        if save_path is not None:
+            base, ext = os.path.splitext(save_path)
+            _save_or_show(fig, '%s_%s%s' % (base, population_name, ext))
+        else:
+            _save_or_show(fig, None)
 
 
 def plot_equilibration_dynamics(network, environments, env_idx=0, position=None, store_num_steps=None, title=None):

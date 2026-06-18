@@ -21,6 +21,8 @@ EIANN/figures/
 EIANN/data/datasets/
 EIANN/data/mnist/*
 EIANN/data/rl_plots/
+EIANN/data/*.yaml
+
 manuscript/
 
 EIANN/data/mnist

@@ -15,7 +15,7 @@ from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epo
     recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, sort_by_class_averaged_val_output,
                          get_binned_mean_population_attribute_history_dict)
 from EIANN.plot_rl import plot_validation_rewards, plot_final_q_vals, plot_actions_over_training, \
-    plot_hidden_state_cross_correlation, plot_equilibration_dynamics
+    plot_hidden_state_cross_correlation, plot_equilibration_dynamics, plot_treadmill_hidden_activity
 from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from EIANN.optimize.network_rl_config_updates import *
@@ -157,7 +157,10 @@ def config_worker():
         context.include_equilibration_dynamics_objective = False
     else:
         context.include_equilibration_dynamics_objective = str_to_bool(context.include_equilibration_dynamics_objective)
-    
+    if 'include_behavior_loss_objective' not in context():
+        context.include_behavior_loss_objective = False
+    else:
+        context.include_behavior_loss_objective = str_to_bool(context.include_behavior_loss_objective)
     if 'store_history_interval' not in context():
         context.store_history_interval = None
     
@@ -324,33 +327,11 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         except:
             pass
 
-    # WILL FIGURE THIS OUT LATER
-    # # reorder output units if using unsupervised learning rule
-    # if not context.supervised:
-    #     if context.eval_accuracy == 'final':
-    #         min_loss_idx = len(network.val_loss_history) - 1
-    #         sorted_output_idx = sort_by_class_averaged_val_output(network, val_dataloader)
-    #     elif context.eval_accuracy == 'best':
-    #         min_loss_idx, sorted_output_idx = sort_by_val_history(network, val_dataloader, plot=plot)
-    #     else:
-    #         raise Exception('nested_optimize_EIANN_1_hidden_mnist: eval_accuracy must be final or best, not %s' %
-    #                         context.eval_accuracy)
-    #     sorted_val_loss_history, sorted_val_accuracy_history = \
-    #         recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_output_idx=sorted_output_idx,
-    #                                                store=True)
-    # else:
-    #     min_loss_idx = torch.argmin(network.val_loss_history)
-    #     sorted_output_idx = None
-    #     sorted_val_loss_history = network.val_loss_history
-    #     sorted_val_accuracy_history = network.val_accuracy_history
 
     max_reward_idx = torch.argmax(network.val_reward_history)
     sorted_output_idx = None
     sorted_val_reward_history = network.val_reward_history
 
-    # if context.store_history and (context.store_history_interval is None):
-    #     binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
-    #         recompute_train_loss_and_accuracy(network, sorted_output_idx=sorted_output_idx, plot=plot)
     
     # Select for stability by computing mean accuracy in a window after the best validation step
     val_stepsize = int(context.val_interval[2])
@@ -387,6 +368,22 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             dend_loss_window = num_val_steps_accuracy_window
         mean_forward_dend_loss = get_mean_forward_dend_loss(network, dend_loss_window)
         results['mean_forward_dend_loss'] = mean_forward_dend_loss
+
+    # behavior proxy: we want the ratio of wrong location licks to be lower for the closer treadmill
+    if context.include_behavior_loss_objective:
+        if not hasattr(network, 'val_action_history') or len(network.val_action_history) == 0:
+            print('plot_actions_over_training: network has no val_action_history; skipping')
+        else:
+            action_history = np.asarray(network.val_action_history)  # [n_val_steps, n_environments, length]
+            t0_position = context.environments[0].reward_position
+            t1_position = context.environments[1].reward_position
+
+            action_ratio = action_history[:, 0, t1_position].sum() / (action_history[:, 1, t0_position].sum() +  + 1e-6)
+            if t0_position > t1_position:
+                action_ratio = 1 / action_ratio
+        
+            results['behavior_ratio'] = action_ratio
+            
     
     if plot or context.save_plots:
         if context.model_key:
@@ -394,7 +391,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         else:
             title = 'Final (%i, %i)' % (seed, data_seed)
         plot_names = ['validation_rewards', 'final_q_vals', 'actions_over_training',
-                      'cross_correlation_H1E', 'cross_correlation_H2E']
+                      'cross_correlation_H1E', 'cross_correlation_H2E', 'hidden_activity']
         if context.save_plots:
             network_name = context.network_config_file_path.split('/')[-1].split('.')[0]
             plot_prefix = f"{context.save_plots_dir}/{network_name}_{seed}_{data_seed}"
@@ -411,24 +408,19 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                                             save_path=save_paths['cross_correlation_H1E'])
         plot_hidden_state_cross_correlation(network, context.environments, 'H2E', title=f'{title} (H2E)',
                                             save_path=save_paths['cross_correlation_H2E'])
+        plot_treadmill_hidden_activity(network, context.environments, population_names=('H1E', 'H2E'),
+                                       title=title, save_path=save_paths['hidden_activity'])
         if context.constrain_equilibration_dynamics or context.debug:
             # store_num_steps left as None to capture the full forward_steps settling trace
             plot_equilibration_dynamics(network, context.environments, title=title)
-    
-    # if context.full_analysis:
-    #     test_loss_history, test_accuracy_history = \
-    #         compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
-    #                                                plot=plot, status_bar=context.status_bar)
-    
-    # if context.constrain_equilibration_dynamics or context.debug:
-    #     residuals = check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-    #                                              store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
-    #     if context.include_equilibration_dynamics_objective:
-    #         results['dynamics_residuals'] = residuals
-    #     elif residuals > 0. and not context.debug:
-    #         if context.interactive:
-    #             context.update(locals())
-    #         return dict()
+        
+    if context.debug:
+        activities = network.get_treadmill_hidden_activity(context.environments, population_name='H2E')
+
+        for pos in range(len(activities[0])):
+            print('Position {}'.format(pos))
+            print(np.round(activities[0][pos], 2))
+            print(np.round(activities[1][pos], 2))
     
     if export:
         base_data_file_path_prefix = context.base_data_file_path.split('.')[0]

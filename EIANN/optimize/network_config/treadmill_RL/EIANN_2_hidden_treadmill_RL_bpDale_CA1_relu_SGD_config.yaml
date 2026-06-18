@@ -1,4 +1,8 @@
-# bash optimize_EIANN_expanse_treadmill_rl.sh optimize/optimize_config/treadmill_RL/20231129_nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_relu_SGD_config_G.yaml hidden_treadmill_bpDale_relu_SGD
+# all weights to and from I cells are fixed
+# removed E-to-E recurrence in H2 (to act like CA1)
+# made output E excitatory (ReLU)
+# removed output SomaI
+# bash optimize_EIANN_expanse_treadmill_rl.sh optimize/optimize_config/treadmill_RL/nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_CA1_relu_SGD_config.yaml hidden_treadmill_bpDale_CA1_relu_SGD
 
 layer_config:
     Input:
@@ -20,9 +24,6 @@ layer_config:
             activation: relu
     Output:
         E:
-            size: 2
-            activation: linear
-        SomaI:
             size: 2
             activation: relu
 projection_config:
@@ -61,9 +62,7 @@ projection_config:
                         - null
                         - 0
                     direction: R
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
+                    learning_rule: null
         SomaI:
             Input:
                 E:
@@ -74,9 +73,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
+                    learning_rule: null
             H1:
                 E:
                     weight_init: half_kaiming
@@ -86,9 +83,7 @@ projection_config:
                         - 0
                         - null
                     direction: R
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
+                    learning_rule: null
                 SomaI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
@@ -98,9 +93,7 @@ projection_config:
                         - 0.
                     weight_constraint: no_autapses
                     direction: R
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
+                    learning_rule: null
     H2:
         E:
             H1:
@@ -116,18 +109,6 @@ projection_config:
                     learning_rule_kwargs:
                         learning_rate: 0.1
             H2:
-                E:
-                    weight_init: half_kaiming
-                    weight_init_args: !!python/tuple
-                        - 1.
-                    weight_bounds:
-                        - 0
-                        - null
-                    weight_constraint: no_autapses
-                    direction: R
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
                 SomaI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
@@ -136,9 +117,7 @@ projection_config:
                         - null
                         - 0
                     direction: R
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
+                    learning_rule: null
         SomaI:
             H1:
                 E:
@@ -149,9 +128,7 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
+                    learning_rule: null
             H2:
                 E:
                     weight_init: half_kaiming
@@ -161,9 +138,7 @@ projection_config:
                         - 0
                         - null
                     direction: R
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
+                    learning_rule: null
                 SomaI:
                     weight_init: half_kaiming
                     weight_init_args: !!python/tuple
@@ -173,9 +148,7 @@ projection_config:
                         - 0.
                     weight_constraint: no_autapses
                     direction: R
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
+                    learning_rule: null
     Output:
         E:
             H2:
@@ -187,55 +160,6 @@ projection_config:
                         - 0
                         - null
                     direction: F
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
-            Output:
-                SomaI:
-                    weight_init: half_kaiming
-                    weight_init_args: !!python/tuple
-                        - 1.
-                    weight_bounds:
-                        - null
-                        - 0
-                    direction: R
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
-        SomaI:
-            H2:
-                E:
-                    weight_init: half_kaiming
-                    weight_init_args: !!python/tuple
-                        - 1.
-                    weight_bounds:
-                        - 0
-                        - null
-                    direction: F
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
-            Output:
-                E:
-                    weight_init: half_kaiming
-                    weight_init_args: !!python/tuple
-                        - 1.
-                    weight_bounds:
-                        - 0
-                        - null
-                    direction: R
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1
-                SomaI:
-                    weight_init: half_kaiming
-                    weight_init_args: !!python/tuple
-                        - 1.
-                    weight_bounds:
-                        - null
-                        - 0
-                    weight_constraint: no_autapses
-                    direction: R
                     learning_rule: Backprop
                     learning_rule_kwargs:
                         learning_rate: 0.1
