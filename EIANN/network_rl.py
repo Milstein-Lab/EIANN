@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 from torch.nn import MSELoss, BCELoss, CrossEntropyLoss
 from torch.optim import Adam, SGD
@@ -399,7 +400,7 @@ class Q_Network(nn.Module):
                     post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state.detach().clone())
   
     def train(self, environments, epsilon, epsilon_decay, gamma, episodes=100, val_interval=(0, -1, 50), store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
-              store_params_interval=None, save_to_file=None, status_bar=False):
+              store_params_interval=None, save_to_file=None, status_bar=False, meta=False):
         """
         Train the network using Q Learning.
 
@@ -426,6 +427,8 @@ class Q_Network(nn.Module):
             File path to save the trained network.
         status_bar : bool, default False
             Whether to display tqdm progress bars during training.
+        meta : bool, default False
+            Whether to input previous action and reward
 
         Notes
         -----
@@ -527,8 +530,10 @@ class Q_Network(nn.Module):
             episode_loss = 0
 
             previous_output = None
-            previous_action = None
-            previous_reward = None
+            previous_action = 0
+            previous_reward = 0
+
+            action_one_hots = F.one_hot(torch.arange(0, len(environment.actions)))
 
             treadmill_preds = []
             treadmill_targets = []
@@ -541,6 +546,9 @@ class Q_Network(nn.Module):
 
                 current_observation = environment.get_observation(environment.current_state)
                 obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
+
+                if meta:
+                    obs_tensor = torch.cat([obs_tensor, action_one_hots[previous_action].unsqueeze(0), torch.tensor([[previous_reward]])], dim=1)                    
 
                 # Use autocast for forward pass when AMP is enabled
                 if self.use_amp:
@@ -631,7 +639,7 @@ class Q_Network(nn.Module):
             
             # Compute validation performance over all environments
             if train_step in val_range:
-                val_rewards, val_actions = self.test(environments, return_actions=True)
+                val_rewards, val_actions = self.test(environments, return_actions=True, meta=meta)
                 self.val_reward_history.append(val_rewards)
                 self.val_action_history.append(val_actions)
                 self.val_history_train_steps.append(train_step)
@@ -654,41 +662,9 @@ class Q_Network(nn.Module):
         if save_to_file is not None:
             ut.save_network(self, path=save_to_file)
 
-    def train_online(self, environments, epsilon, epsilon_decay, gamma, episodes=100, val_interval=(0, -1, 50), store_history=False, store_dynamics=False, store_params=False, store_history_interval=None, 
-              store_params_interval=None, save_to_file=None, status_bar=False):
-        """
-        Train the network using Q Learning.
+    def train_online(self, environments, epsilon, epsilon_decay, gamma, episodes=100, val_interval=(0, -1, 50), store_history=False, store_dynamics=False, store_params=False, store_history_interval=None,
+              store_params_interval=None, save_to_file=None, status_bar=False, meta=False):
 
-        Parameters
-        ----------
-        environments : environment or list of environments over which to run Q Learning. If a list, will randomly select a different environment for each episode.
-        epsilon: epsilon for e-greedy exploration
-        gamma: discount factor for td learning
-        episodes : int, default 100
-            Number of training episodes.
-        val_interval : tuple of int, default (0, -1, 50)
-            Validation interval as (start_index, stop_index, interval).
-        store_history : bool, default False
-            Whether to store activity history during training.
-        store_dynamics : bool, default False
-            Whether to store step-by-step dynamics during training.
-        store_params : bool, default False
-            Whether to store parameter history during training.
-        store_history_interval : tuple of int, optional
-            Interval for storing history as (start_index, stop_index, interval).
-        store_params_interval : tuple of int, optional
-            Interval for storing parameters as (start_index, stop_index, interval).
-        save_to_file : str, optional
-            File path to save the trained network.
-        status_bar : bool, default False
-            Whether to display tqdm progress bars during training.
-
-        Notes
-        -----
-        Starting at validate_start, validation is performed every validate_interval
-        steps until >= validate_stop. The validation dataloader must contain a 
-        single batch with all validation data.
-        """
         self.reset_history()
 
         if not isinstance(environments, list):
@@ -762,7 +738,7 @@ class Q_Network(nn.Module):
 
         #######################################################
         #*************     Main training loop     *************
-        #######################################################
+        #######################################################        
         train_step = 0
         for episode in episode_iter:            
             if store_history:
@@ -783,20 +759,36 @@ class Q_Network(nn.Module):
             episode_loss = 0
 
             previous_output = None
-            previous_action = None
-            previous_reward = None
+            previous_action = 0
+            previous_reward = 0
+
+            action_one_hots = F.one_hot(torch.arange(0, len(environment.actions)))
 
             treadmill_preds = []
             treadmill_targets = []
 
             epsilon *= epsilon_decay
 
+            # Reset accumulated gradients at the start of each episode. Per-timestep
+            # backward passes accumulate into weight.grad throughout the episode and
+            # are applied once below, after the full track is traversed.
+            if self.optimizer is not None:
+                self.optimizer.zero_grad()
+
             ## COMPUTE FULL PASS OVER TREADMILL ##
             while not terminated:
                 reinit = step_number == 0
 
+                for post_pop in self.populations.values():
+                    if hasattr(post_pop, 'state'):
+                        post_pop.state = post_pop.state.detach()
+                        post_pop.activity = post_pop.activity.detach()
+
                 current_observation = environment.get_observation(environment.current_state)
                 obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
+
+                if meta:
+                    obs_tensor = torch.cat([obs_tensor, action_one_hots[previous_action].unsqueeze(0), torch.tensor([[previous_reward]])], dim=1)
 
                 # Use autocast for forward pass when AMP is enabled
                 if self.use_amp:
@@ -806,7 +798,7 @@ class Q_Network(nn.Module):
                 else:
                     output = self.forward(obs_tensor, store_history=this_train_step_store_history,
                                         store_dynamics=store_dynamics, reinit=reinit)
-                
+
                 # epsilon greedy exploration
                 if self.rng.random() < epsilon:
                     action = int(self.rng.choice(environment.get_action_list()))
@@ -824,15 +816,29 @@ class Q_Network(nn.Module):
                     treadmill_targets.append(target)
 
                     self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
-                    # STEP WEIGHTS AND BIASES ONLY AFTER FULL EPISODE (ACCUMULATE GRADIENTS THROUGHOUT TRACK THEN APPLY)
+                    
+                    # ACCUMULATE GRADIENTS THROUGHOUT TRACK THEN APPLY (STEP WEIGHTS AND BIASES ONLY AFTER FULL EPISODE)
                     for backward in self.backward_methods:
                         backward(self, q_val, torch.tensor(target, dtype=q_val.dtype), store_history=this_train_step_store_history, store_dynamics=store_dynamics)
 
+                    # modify gradient if needed
+                    for _, post_layer in enumerate(self):
+                        for post_pop in post_layer:
+                            for projection in post_pop:
+                                if hasattr(projection.learning_rule, 'modify_grad'):
+                                    projection.learning_rule.modify_gradient()
 
                 step_number += 1
-                previous_output = output
+                previous_output = output.clone()
                 previous_action = action
                 previous_reward = reward
+
+                # update eligibility traces if needed
+                for _, post_layer in enumerate(self):
+                    for post_pop in post_layer:
+                        for projection in post_pop:
+                            if hasattr(projection.learning_rule, 'eligibility_trace'):
+                                projection.learning_rule.update_eligibility_trace(reinit=reinit)
 
                 # account for being in the last step
                 if terminated:
@@ -844,9 +850,19 @@ class Q_Network(nn.Module):
                     # Update state variables required for weight and bias updates
                     self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
 
+                    # NB: the eligibility trace for this terminal step was already
+                    # advanced by the unconditional update above; do not update it again.
+
                     # STEP WEIGHTS AND BIASES ONLY AFTER FULL EPISODE (ACCUMULATE GRADIENTS THROUGHOUT TRACK THEN APPLY)
                     for backward in self.backward_methods:
                         backward(self, q_val, torch.tensor(reward, dtype=q_val.dtype), store_history=this_train_step_store_history, store_dynamics=store_dynamics)
+
+                    # modify gradient if needed (accumulate the terminal step's e-prop gradient)
+                    for _, post_layer in enumerate(self):
+                        for post_pop in post_layer:
+                            for projection in post_pop:
+                                if hasattr(projection.learning_rule, 'modify_grad'):
+                                    projection.learning_rule.modify_gradient()
 
             treadmill_preds = torch.cat(treadmill_preds)
             treadmill_targets = torch.tensor(treadmill_targets, dtype=torch.float32)
@@ -857,6 +873,14 @@ class Q_Network(nn.Module):
                         episode_loss = self.criterion(treadmill_preds, treadmill_targets)
                 else:
                     episode_loss = self.criterion(treadmill_preds, treadmill_targets)
+
+            # Apply the gradients accumulated over the episode (single update).
+            if self.optimizer is not None:
+                if self.use_amp:
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                else:
+                    self.optimizer.step()
 
             # Step weights and biases
             for i, post_layer in enumerate(self):
@@ -889,7 +913,7 @@ class Q_Network(nn.Module):
             
             # Compute validation performance over all environments
             if train_step in val_range:
-                val_rewards, val_actions = self.test(environments, return_actions=True)
+                val_rewards, val_actions = self.test(environments, return_actions=True, meta=meta)
                 self.val_reward_history.append(val_rewards)
                 self.val_action_history.append(val_actions)
                 self.val_history_train_steps.append(train_step)
@@ -912,7 +936,7 @@ class Q_Network(nn.Module):
         if save_to_file is not None:
             ut.save_network(self, path=save_to_file)
 
-    def test(self, environments, store_history=False, store_dynamics=False, return_q_vals=False, return_actions=False):
+    def test(self, environments, store_history=False, store_dynamics=False, return_q_vals=False, return_actions=False, meta=False):
         """
         Evaluate the network when epsilon=0
 
@@ -928,6 +952,8 @@ class Q_Network(nn.Module):
             Whether to also return the greedy Q values at every position of each environment.
         return_actions : bool, default False
             Whether to also return the greedy action taken at every position of each environment.
+        meta : bool, default False
+            Whether to input previous action and reward
 
         Returns
         -------
@@ -946,6 +972,10 @@ class Q_Network(nn.Module):
             environment.reset()
             terminated = False
 
+            previous_action = 0
+            previous_reward = 0
+            action_one_hots = F.one_hot(torch.arange(0, len(environment.actions)))
+
             environment_q_vals = []
             environment_actions = []
 
@@ -954,6 +984,9 @@ class Q_Network(nn.Module):
                 reinit = environment.current_state == 0
                 current_observation = environment.get_observation(environment.current_state)
                 obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
+
+                if meta:
+                    obs_tensor = torch.cat([obs_tensor, action_one_hots[previous_action].unsqueeze(0), torch.tensor([[previous_reward]])], dim=1)
 
                 # Use autocast for forward pass when AMP is enabled
                 if self.use_amp:
@@ -971,6 +1004,9 @@ class Q_Network(nn.Module):
                 _, reward, _, terminated = environment.take_action(action)
                 rewards[i] += reward
 
+                previous_action = action
+                previous_reward = reward
+
             if return_q_vals:
                 q_vals.append(environment_q_vals)
             if return_actions:
@@ -986,7 +1022,7 @@ class Q_Network(nn.Module):
             return result[0]
         return tuple(result)
 
-    def get_treadmill_hidden_activity(self, environments, population_name=None):
+    def get_treadmill_hidden_activity(self, environments, population_name=None, meta=False):
         """
         Run a clean (greedy, epsilon=0) pass over each environment and collect the activity of a hidden
         population at every position on the treadmill. Used to compare representations across treadmills
@@ -999,6 +1035,8 @@ class Q_Network(nn.Module):
         population_name : str, optional
             Fullname of the population to collect activity from (e.g. 'H1E'). If None, defaults to the
             first population of the layer immediately preceding the output layer.
+        meta : bool, default False
+            Whether to input previous action and reward
 
         Returns
         -------
@@ -1017,14 +1055,26 @@ class Q_Network(nn.Module):
             environment.reset()
             terminated = False
             environment_activity = []
+
+            previous_action = 0
+            previous_reward = 0
+            action_one_hots = F.one_hot(torch.arange(0, len(environment.actions)))
+
             while not terminated:
                 reinit = environment.current_state == 0
                 current_observation = environment.get_observation(environment.current_state)
                 obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
+
+                if meta:
+                    obs_tensor = torch.cat([obs_tensor, action_one_hots[previous_action].unsqueeze(0), torch.tensor([[previous_reward]])], dim=1)
+
                 output = self.forward(obs_tensor, no_grad=True, reinit=reinit)
                 environment_activity.append(np.squeeze(population.activity.detach().cpu().numpy()))
                 action = int(torch.argmax(output).item())
-                _, _, _, terminated = environment.take_action(action)
+                _, reward, _, terminated = environment.take_action(action)
+
+                previous_action = action
+                previous_reward = reward
             activities.append(np.array(environment_activity))
 
         return activities

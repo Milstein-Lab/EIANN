@@ -142,9 +142,9 @@ def plot_validation_rewards(network, title=None, train_step_range=None, ax=None,
         ax.set_xlabel('Training steps')
 
 
-def plot_final_q_vals(network, environments, title=None, save_path=None):
+def plot_final_q_vals(network, environments, title=None, save_path=None, meta=False):
     fig, axes = plt.subplots(1, 1 + len(environments), gridspec_kw={'width_ratios': [20 for _ in environments] + [1]})
-    _, final_q_vals = network.test(environments, return_q_vals=True)
+    _, final_q_vals = network.test(environments, return_q_vals=True, meta=meta)
 
     vmin = final_q_vals.min()
     vmax = final_q_vals.max()
@@ -240,7 +240,7 @@ def _treadmill_zone_spans(environment):
 
 
 def plot_hidden_state_cross_correlation(network, environments, population_name=None, title=None,
-                                        normalize=False, save_path=None):
+                                        normalize=False, save_path=None, meta=False):
     """
     Plot the cross-correlation between hidden-population representations of the trained network across
     pairs of treadmills, following the style of the Spruston lab OSM paper figures
@@ -258,7 +258,7 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
         to maximize contrast/stratification.
     :param save_path: optional str; if provided the figure is saved (high dpi) instead of shown.
     """
-    activities = network.get_treadmill_hidden_activity(environments, population_name=population_name)
+    activities = network.get_treadmill_hidden_activity(environments, population_name=population_name, meta=meta)
 
     n_env = len(environments)
     pairs = [(i, j) for i in range(n_env) for j in range(i + 1, n_env)]
@@ -327,7 +327,7 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
 
 
 def plot_treadmill_hidden_activity(network, environments, population_names=('H1E', 'H2E'), title=None,
-                                   save_path=None):
+                                   save_path=None, meta=False):
     """
     Plot hidden-population activity as a neuron-by-position heatmap, comparing all treadmills side by
     side. For each population in ``population_names`` a separate figure is produced with one panel per
@@ -351,7 +351,7 @@ def plot_treadmill_hidden_activity(network, environments, population_names=('H1E
     cmap = plt.get_cmap('gray_r')
 
     for population_name in population_names:
-        activities = network.get_treadmill_hidden_activity(environments, population_name=population_name)
+        activities = network.get_treadmill_hidden_activity(environments, population_name=population_name, meta=meta)
 
         # shared color scale across treadmills; pin vmin to 0 so zero activity is black
         vmin = 0.
@@ -389,7 +389,8 @@ def plot_treadmill_hidden_activity(network, environments, population_names=('H1E
             _save_or_show(fig, None)
 
 
-def plot_equilibration_dynamics(network, environments, env_idx=0, position=None, store_num_steps=None, title=None):
+def plot_equilibration_dynamics(network, environments, env_idx=0, position=None, store_num_steps=None, title=None,
+                                meta=False):
     """
     Plot the within-trial equilibration dynamics of each population's activity for a single observation
     drawn from a treadmill environment. This is the RL analog of
@@ -419,14 +420,26 @@ def plot_equilibration_dynamics(network, environments, env_idx=0, position=None,
     # position 0). The agent advances one position per step regardless of action, and actions are not
     # fed back into the network, so stepping through observations by index reproduces the traversal.
     environment.reset()
+    previous_action = 0
+    previous_reward = 0
+    action_one_hots = torch.nn.functional.one_hot(torch.arange(0, len(environment.actions)))
     for state in range(position + 1):
         current_observation = environment.get_observation(state)
         obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
+
+        if meta:
+            obs_tensor = torch.cat([obs_tensor, action_one_hots[previous_action].unsqueeze(0), torch.tensor([[previous_reward]])], dim=1)
+
         # only record dynamics at the final position; reinit (which clears forward_steps_activity)
         # fires solely at position 0, leaving a clean trace for the target forward pass
         store_state = state == position
-        network.forward(obs_tensor, store_dynamics=store_state, store_num_steps=store_num_steps,
+        output = network.forward(obs_tensor, store_dynamics=store_state, store_num_steps=store_num_steps,
                         no_grad=True, reinit=(state == 0))
+        # feed the greedy action and its reward back into the next meta observation
+        action = int(torch.argmax(output).item())
+        _, reward, _, _ = environment.take_action(action)
+        previous_action = action
+        previous_reward = reward
 
     max_rows = 1
     for layer in network:

@@ -78,6 +78,10 @@ def config_worker():
         context.interactive = False
     else:
         context.interactive = str_to_bool(context.interactive)
+    if 'meta' not in context():
+        context.meta = False
+    else:
+        context.meta = str_to_bool(context.meta)
     if 'eval_accuracy' not in context():
         context.eval_accuracy = 'final'
     else:
@@ -309,7 +313,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                         store_history=context.store_history,
                         store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
                         store_params=context.store_params, store_params_interval=context.store_params_interval,
-                        status_bar=context.status_bar)
+                        status_bar=context.status_bar, meta=context.meta)
         else:
             network.train(environments=context.environments, epsilon=param_dict['epsilon'], epsilon_decay=param_dict['epsilon_decay'],
                         gamma=param_dict['gamma'], episodes=context.train_episodes,
@@ -317,7 +321,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                         store_history=context.store_history,
                         store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
                         store_params=context.store_params, store_params_interval=context.store_params_interval,
-                        status_bar=context.status_bar)
+                        status_bar=context.status_bar, meta=context.meta)
 
     
     if plot:
@@ -401,21 +405,21 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         else:
             save_paths = {name: None for name in plot_names}
         plot_validation_rewards(network, title=title, save_path=save_paths['validation_rewards'])
-        plot_final_q_vals(network, context.environments, title=title, save_path=save_paths['final_q_vals'])
+        plot_final_q_vals(network, context.environments, title=title, save_path=save_paths['final_q_vals'], meta=context.meta)
         plot_actions_over_training(network, context.environments, title=title,
                                    save_path=save_paths['actions_over_training'])
         plot_hidden_state_cross_correlation(network, context.environments, 'H1E', title=f'{title} (H1E)',
-                                            save_path=save_paths['cross_correlation_H1E'])
+                                            save_path=save_paths['cross_correlation_H1E'], meta=context.meta)
         plot_hidden_state_cross_correlation(network, context.environments, 'H2E', title=f'{title} (H2E)',
-                                            save_path=save_paths['cross_correlation_H2E'])
+                                            save_path=save_paths['cross_correlation_H2E'], meta=context.meta)
         plot_treadmill_hidden_activity(network, context.environments, population_names=('H1E', 'H2E'),
-                                       title=title, save_path=save_paths['hidden_activity'])
+                                       title=title, save_path=save_paths['hidden_activity'], meta=context.meta)
         if context.constrain_equilibration_dynamics or context.debug:
             # store_num_steps left as None to capture the full forward_steps settling trace
-            plot_equilibration_dynamics(network, context.environments, title=title)
+            plot_equilibration_dynamics(network, context.environments, title=title, meta=context.meta)
         
     if context.debug:
-        activities = network.get_treadmill_hidden_activity(context.environments, population_name='H2E')
+        activities = network.get_treadmill_hidden_activity(context.environments, population_name='H2E', meta=context.meta)
 
         for pos in range(len(activities[0])):
             print('Position {}'.format(pos))

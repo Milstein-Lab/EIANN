@@ -1,0 +1,81 @@
+bounds:
+    H_learning_rate:
+        - 0.0001
+        - 1.
+    Output_learning_rate:
+        - 0.0001
+        - 1.
+    H1_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_H1_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_H2_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_init_weight_scale:
+        - 0.01
+        - 10.
+    epsilon:
+        - 0.01
+        - 0.999
+    epsilon_decay:
+        - 0.9
+        - 1
+    gamma:
+        - 0.01
+        - 0.99
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_episodes: 1000
+    treadmill_length: 23
+    treadmill_cue_position: 8
+    treadmill_cue_length: 3
+    treadmill_reward_length: 2
+    treadmill_reward_positions:
+        - 15
+        - 19
+    treadmill_reward_values: 
+        - 0
+        - 1
+        - -0.1
+    network_config_file_path: optimize/network_config/treadmill_RL/EIANN_2_hidden_treadmill_RL_eprop_relu_SGD_config.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 10
+    train_online: True
+    num_training_steps_accuracy_window: 200
+    constrain_equilibration_dynamics: False
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_treadmill_RL
+      function: update_EIANN_config_2_hidden_eprop_relu_SGD_G
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_treadmill_RL
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_treadmill_RL_eprop_relu_SGD_G
+x0:
+    H_learning_rate: 0.5
+    Output_learning_rate: 0.5
+    H1_init_weight_scale: 1.
+    H1_H1_init_weight_scale: 1.
+    H2_init_weight_scale: 1.
+    H2_H2_init_weight_scale: 1.
+    Output_init_weight_scale: 1.2
+    epsilon: 0.9
+    epsilon_decay: 1
+    gamma: 0.9
