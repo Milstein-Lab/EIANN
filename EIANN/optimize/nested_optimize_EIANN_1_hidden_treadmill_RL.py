@@ -124,21 +124,8 @@ def config_worker():
         context.constrain_equilibration_dynamics = True
     else:
         context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
-    if 'model_key' not in context():
-        # nested consumes the recognized --model-key/-k option on the controller and does not forward it
-        # to worker contexts, so recover it directly from the command-line args (default to empty).
-        context.model_key = ''
-        for i, arg in enumerate(sys.argv):
-            if arg.startswith(('--model-key=', '--model_key=', '-k=')):
-                context.model_key = arg.split('=', 1)[1]
-            elif arg in ('--model-key', '--model_key', '-k') and i + 1 < len(sys.argv):
-                context.model_key = sys.argv[i + 1]
-    # Name exported files and plots by the model_key when one is provided, otherwise by the
-    # optimize config basename.
-    if context.model_key:
-        context.run_name = context.model_key
-    else:
-        context.run_name = context.config_file_path.split('/')[-1].split('.')[0]
+    # Name exported files and plots by the optimize config basename.
+    context.run_name = context.config_file_path.split('/')[-1].split('.')[0]
     if 'export_network_config_file_path' not in context():
         if context.label is None:
             context.export_network_config_file_path = f"{context.output_dir}/{context.run_name}_optimized.yaml"
@@ -158,6 +145,15 @@ def config_worker():
         context.save_plots = str_to_bool(context.save_plots)
     if 'save_plots_dir' not in context():
         context.save_plots_dir = f"{context.output_dir}/rl_plots"
+    if 'model_key' not in context():
+        # nested consumes the recognized --model-key/-k option on the controller and does not forward it
+        # to worker contexts, so recover it directly from the command-line args (default to empty).
+        context.model_key = ''
+        for i, arg in enumerate(sys.argv):
+            if arg.startswith(('--model-key=', '--model_key=', '-k=')):
+                context.model_key = arg.split('=', 1)[1]
+            elif arg in ('--model-key', '--model_key', '-k') and i + 1 < len(sys.argv):
+                context.model_key = sys.argv[i + 1]
     if 'include_dend_loss_objective' not in context():
         context.include_dend_loss_objective = False
     else:
