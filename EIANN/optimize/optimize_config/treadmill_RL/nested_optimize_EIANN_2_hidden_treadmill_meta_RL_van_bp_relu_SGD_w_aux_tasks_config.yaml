@@ -69,7 +69,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_treadmill_RL_van_bp_relu_SGD_G_w_aux_tasks
+optimization_title: EIANN_2_hidden_treadmill_meta_RL_van_bp_relu_SGD_w_aux_tasks_G
 x0:
     H_learning_rate: 0.5
     Output_learning_rate: 0.5
