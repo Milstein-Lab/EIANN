@@ -104,3 +104,18 @@ meta_RL_van_bp_relu_SGD:
   epsilon_decay: 0.9096210049549879
   gamma: 0.16801270126311676
 # python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/nested_optimize_EIANN_2_hidden_treadmill_meta_RL_van_bp_relu_SGD_config.yaml --disp --num_instances=1 --model-key=meta_RL_van_bp_relu_SGD --param-file-path=optimize/optimize_params/treadmill_RL/treadmill_RL_params.yaml --plot
+
+meta_RL_van_bp_relu_SGD_w_aux_tasks:
+  # reward: 1.0
+  # behavior_ratio: 0.3061827867625595
+  H_learning_rate: 0.5779544028302501
+  Output_learning_rate: 0.0254929119512726
+  H1_init_weight_scale: 0.6523395600840194
+  H1_H1_init_weight_scale: 0.6653475917132164
+  H2_init_weight_scale: 4.853687668198729
+  H2_H2_init_weight_scale: 0.9091025590898518
+  Output_init_weight_scale: 2.522537016216079
+  epsilon: 0.5313499193359196
+  epsilon_decay: 0.962766720433841
+  gamma: 0.6487030806004285
+# python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/nested_optimize_EIANN_2_hidden_treadmill_meta_RL_van_bp_relu_SGD_config.yaml --disp --num_instances=1 --model-key=meta_RL_van_bp_relu_SGD --param-file-path=optimize/optimize_params/treadmill_RL/treadmill_RL_params.yaml --plot
