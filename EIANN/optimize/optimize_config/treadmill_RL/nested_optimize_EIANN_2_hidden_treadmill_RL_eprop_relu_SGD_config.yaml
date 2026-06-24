@@ -29,6 +29,9 @@ bounds:
     gamma:
         - 0.01
         - 0.99
+    tau:
+        - 1.
+        - 100.
 default_params:
 kwargs:
     network_id: 1
@@ -79,3 +82,4 @@ x0:
     epsilon: 0.9
     epsilon_decay: 1
     gamma: 0.9
+    tau: 1

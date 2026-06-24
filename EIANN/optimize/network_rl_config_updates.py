@@ -57,6 +57,7 @@ def update_EIANN_config_2_hidden_eprop_relu_SGD_G(x, context):
     context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_init_weight_scale,)
     
     context.training_kwargs['optimizer'] = 'SGD'
+    context.training_kwargs['tau'] = param_dict['tau']
 
 def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_G(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
