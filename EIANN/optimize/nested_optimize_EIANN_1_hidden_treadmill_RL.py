@@ -124,8 +124,18 @@ def config_worker():
         context.constrain_equilibration_dynamics = True
     else:
         context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
-    # Name exported files and plots by the optimize config basename.
-    context.run_name = context.config_file_path.split('/')[-1].split('.')[0]
+    # Name exported files and plots by the optimize config basename. nested does not forward
+    # config_file_path to worker contexts, so recover it from the command-line args when absent.
+    if 'config_file_path' in context() and context.config_file_path is not None:
+        config_file_path = context.config_file_path
+    else:
+        config_file_path = ''
+        for i, arg in enumerate(sys.argv):
+            if arg.startswith(('--config-file-path=', '--config_file_path=')):
+                config_file_path = arg.split('=', 1)[1]
+            elif arg in ('--config-file-path', '--config_file_path') and i + 1 < len(sys.argv):
+                config_file_path = sys.argv[i + 1]
+    context.run_name = config_file_path.split('/')[-1].split('.')[0]
     if 'export_network_config_file_path' not in context():
         if context.label is None:
             context.export_network_config_file_path = f"{context.output_dir}/{context.run_name}_optimized.yaml"
