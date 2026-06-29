@@ -119,3 +119,75 @@ meta_RL_van_bp_relu_SGD_w_aux_tasks:
   epsilon_decay: 0.962766720433841
   gamma: 0.6487030806004285
 # python -m  nested.analyze --config-file-path=optimize/optimize_config/treadmill_RL/nested_optimize_EIANN_2_hidden_treadmill_meta_RL_van_bp_relu_SGD_w_aux_tasks_config.yaml --disp --num_instances=1 --model-key=meta_RL_van_bp_relu_SGD_w_aux_tasks --param-file-path=optimize/optimize_params/treadmill_RL/treadmill_RL_params.yaml --plot
+
+meta_RL_bpDale_relu_SGD:
+  # reward: 1.0
+  H_E_E_learning_rate: 0.21519202528573098
+  H_E_I_learning_rate: 0.06440153989319558
+  H_I_E_learning_rate: 0.11794533937379256
+  Output_E_E_learning_rate: 0.13582628551527598
+  H1_E_Input_E_init_weight_scale: 1.6700318202395088
+  H1_E_H1_E_init_weight_scale: 0.628136139747656
+  H1_E_H1_I_init_weight_scale: 3.3151172009274426
+  H1_I_Input_E_init_weight_scale: 1.1639479994724347
+  H1_I_H1_E_init_weight_scale: 0.9531947704754222
+  H1_I_H1_I_init_weight_scale: 3.151640785948107
+  H2_E_H1_E_init_weight_scale: 1.0315660628417462
+  H2_E_H2_E_init_weight_scale: 0.1111097582691194
+  H2_E_H2_I_init_weight_scale: 1.0610857691590736
+  H2_I_H1_E_init_weight_scale: 1.5684221186766858
+  H2_I_H2_E_init_weight_scale: 0.675541779113341
+  H2_I_H2_I_init_weight_scale: 1.2853323745291434
+  Output_E_H2_E_init_weight_scale: 1.0942410079844005
+  Output_E_Output_I_init_weight_scale: 0.2679782128502219
+  Output_I_H2_E_init_weight_scale: 1.5504908613078725
+  Output_I_Output_E_init_weight_scale: 2.9192372047010644
+  Output_I_Output_I_init_weight_scale: 2.9607853809566906
+  H_I_size: 50.0
+  Output_I_size: 2.0
+  epsilon: 0.3714550391284592
+  epsilon_decay: 0.911072134271161
+  gamma: 0.0170087579752264
+
+meta_RL_bpDale_relu_SGD_w_aux_tasks:
+  # reward: 0.998
+  # behavior_ratio: 0.446
+  H_E_E_learning_rate: 0.458246586086189
+  H_E_I_learning_rate: 0.061916004616248944
+  H_I_E_learning_rate: 0.3407182526101563
+  Output_E_E_learning_rate: 0.16726321877615952
+  H1_E_Input_E_init_weight_scale: 1.1720661730082766
+  H1_E_H1_E_init_weight_scale: 0.38081609887902584
+  H1_E_H1_I_init_weight_scale: 1.2524004478042894
+  H1_I_Input_E_init_weight_scale: 0.6713164047180664
+  H1_I_H1_E_init_weight_scale: 0.6579587265316766
+  H1_I_H1_I_init_weight_scale: 0.9057989069337862
+  H2_E_H1_E_init_weight_scale: 0.4171160891667728
+  H2_E_H2_E_init_weight_scale: 0.03321600828962002
+  H2_E_H2_I_init_weight_scale: 0.22729851723316677
+  H2_I_H1_E_init_weight_scale: 1.4272770605103244
+  H2_I_H2_E_init_weight_scale: 1.15773265915788
+  H2_I_H2_I_init_weight_scale: 0.8654232523256161
+  Output_E_H2_E_init_weight_scale: 1.5330484905074837
+  Output_E_Output_I_init_weight_scale: 0.6024439812696843
+  Output_I_H2_E_init_weight_scale: 0.04154321619210425
+  Output_I_Output_E_init_weight_scale: 0.04825405446175861
+  Output_I_Output_I_init_weight_scale: 1.810336591826054
+  H_I_size: 50.0
+  Output_I_size: 2.0
+  epsilon: 0.16638454997497057
+  epsilon_decay: 0.9128506840870647
+  gamma: 0.04865514674878777
+
+eprop_relu_SGD:
+  H_learning_rate: 0.4211909955009705
+  Output_learning_rate: 0.0309943791143026
+  H1_init_weight_scale: 0.3153865561556863
+  H1_H1_init_weight_scale: 0.7165045726081581
+  H2_init_weight_scale: 2.7214570643454503
+  H2_H2_init_weight_scale: 0.18089540508755217
+  Output_init_weight_scale: 1.781651018264462
+  epsilon: 0.6070376073482587
+  epsilon_decay: 0.9984025483962401
+  gamma: 0.15056280945389777
+  tau: 2.1984036407984133
