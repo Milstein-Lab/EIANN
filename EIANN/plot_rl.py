@@ -1,6 +1,7 @@
 import itertools
 import os
 import torch
+import torch.nn.functional as F
 import numpy as np
 import math
 import gc
@@ -239,8 +240,45 @@ def _treadmill_zone_spans(environment):
     return cue_span, reward_spans
 
 
+def _draw_cross_correlation_heatmap(ax, corr, zones, boundary_lines, normalize=False):
+    """
+    Draw a single across-track cross-correlation matrix onto ax in the Spruston-lab OSM style: icefire
+    colormap on [-1, 1], thick black border frame, white dashed lines at zone boundaries, and white box
+    outlines around the cue/reward zones. Returns the heatmap image (for a shared colorbar).
+    """
+    icefire = sns.color_palette('icefire', as_cmap=True)
+    if normalize:
+        # min-max rescale onto the full [-1, 1] colormap range to maximize contrast
+        min_corr, max_corr = np.nanmin(corr), np.nanmax(corr)
+        if max_corr > min_corr:
+            corr = 2. * (corr - min_corr) / (max_corr - min_corr) - 1.
+
+    sns.heatmap(corr, ax=ax, cmap=icefire, vmin=-1, vmax=1, cbar=False, rasterized=True)
+    im = ax.collections[0]
+
+    # thick black border frame
+    ax.axhline(y=0, color='k', linewidth=5)
+    ax.axhline(y=corr.shape[0], color='k', linewidth=5)
+    ax.axvline(x=0, color='k', linewidth=5)
+    ax.axvline(x=corr.shape[1], color='k', linewidth=5)
+
+    # white dashed divider lines at zone boundaries
+    for line in boundary_lines:
+        ax.axvline(line, linestyle=(0, (2, 5)), color='white', linewidth=1.5)
+        ax.axhline(line, linestyle=(0, (2, 5)), color='white', linewidth=1.5)
+
+    # white box outlines around the cue and reward zones
+    for (low, high) in zones:
+        ax.plot([low, high, high, low, low], [low, low, high, high, low], color='white', linewidth=3)
+
+    ax.set_aspect('equal')
+    ax.axis('off')
+    ax.grid(False)
+    return im
+
+
 def plot_hidden_state_cross_correlation(network, environments, population_name=None, title=None,
-                                        normalize=False, save_path=None, meta=False):
+                                        normalize=False, nonzero_only=True, save_path=None, meta=False):
     """
     Plot the cross-correlation between hidden-population representations of the trained network across
     pairs of treadmills, following the style of the Spruston lab OSM paper figures
@@ -256,6 +294,8 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
     :param normalize: bool; if True (default) each pair's correlation matrix is min-max rescaled across
         all location pairs onto the full [-1, 1] colormap range (weakest match at -1, strongest at +1)
         to maximize contrast/stratification.
+    :param nonzero_only: bool, default True; restrict the correlation to units with non-zero activity
+        somewhere on either track of the pair (drop units silent across all positions of both tracks).
     :param save_path: optional str; if provided the figure is saved (high dpi) instead of shown.
     """
     activities = network.get_treadmill_hidden_activity(environments, population_name=population_name, meta=meta)
@@ -271,58 +311,203 @@ def plot_hidden_state_cross_correlation(network, environments, population_name=N
     zones = ([cue_span] if cue_span is not None else []) + reward_spans
     boundary_lines = sorted({bound for span in zones for bound in span} | {environments[0].length})
 
-    icefire = sns.color_palette('icefire', as_cmap=True)
-
     fig, axes = plt.subplots(1, len(pairs), figsize=(4.4 * len(pairs), 4.4), squeeze=False)
     axes = axes[0]
 
     im = None
     for k, (i, j) in enumerate(pairs):
         ax = axes[k]
-        t1 = activities[i]  # [length_i, n_units]; rows of the heatmap
-        t2 = activities[j]  # [length_j, n_units]; columns of the heatmap
+        t1 = np.nan_to_num(activities[i])  # [length_i, n_units]; rows of the heatmap
+        t2 = np.nan_to_num(activities[j])  # [length_j, n_units]; columns of the heatmap
+        if nonzero_only:
+            active = (np.abs(t1).sum(axis=0) > 0) | (np.abs(t2).sum(axis=0) > 0)
+            t1 = t1[:, active]
+            t2 = t2[:, active]
         length_i, length_j = t1.shape[0], t2.shape[0]
 
         corr = np.zeros((length_i, length_j))
         for a in range(length_i):
-            zeroi = np.nan_to_num(t1[a])
             for b in range(length_j):
-                onej = np.nan_to_num(t2[b])
-                corr[a, b] = stats.pearsonr(zeroi, onej)[0]
+                corr[a, b] = stats.pearsonr(t1[a], t2[b])[0]
 
-        if normalize:
-            # min-max rescale onto the full [-1, 1] colormap range to maximize contrast
-            min_corr, max_corr = np.nanmin(corr), np.nanmax(corr)
-            if max_corr > min_corr:
-                corr = 2. * (corr - min_corr) / (max_corr - min_corr) - 1.
-
-        sns.heatmap(corr, ax=ax, cmap=icefire, vmin=-1, vmax=1, cbar=False, rasterized=True)
-        im = ax.collections[0]
-
-        # thick black border frame
-        ax.axhline(y=0, color='k', linewidth=5)
-        ax.axhline(y=corr.shape[0], color='k', linewidth=5)
-        ax.axvline(x=0, color='k', linewidth=5)
-        ax.axvline(x=corr.shape[1], color='k', linewidth=5)
-
-        # white dashed divider lines at zone boundaries
-        for line in boundary_lines:
-            ax.axvline(line, linestyle=(0, (2, 5)), color='white', linewidth=1.5)
-            ax.axhline(line, linestyle=(0, (2, 5)), color='white', linewidth=1.5)
-
-        # white box outlines around the cue and reward zones
-        for (low, high) in zones:
-            ax.plot([low, high, high, low, low], [low, low, high, high, low], color='white', linewidth=3)
-
-        ax.set_aspect('equal')
-        ax.axis('off')
-        ax.grid(False)
+        im = _draw_cross_correlation_heatmap(ax, corr, zones, boundary_lines, normalize=normalize)
         ax.set_title('Treadmill {} (rows) vs {} (cols)'.format(i + 1, j + 1))
 
     if im is not None:
         fig.colorbar(im, ax=axes, orientation='vertical', fraction=0.04, pad=0.04)
 
     fig.suptitle(_prefix_title(title, 'Cross-correlation of hidden states'))
+    _save_or_show(fig, save_path)
+
+
+def plot_hidden_state_cross_correlation_over_training(network, environments, populations=('H1E', 'H2E'),
+                                                      n_timepoints=4, pair_index=0, title=None, save_path=None):
+    """
+    Plot the across-track hidden-state cross-correlation heatmap at several points during training, using
+    the matrices logged in network.val_cross_correlation_matrix_history (populated by network.train at
+    each validation step). One figure per population, with n_timepoints subplots spanning training
+    (initial, evenly-spaced middles, final); each subplot is subtitled with its epoch (train step). No
+    hidden activity is recomputed here. Heatmaps use the same OSM style as
+    plot_hidden_state_cross_correlation.
+
+    :param network: trained Q_Network with a populated val_cross_correlation_matrix_history
+    :param environments: list of Cue_Treadmill environments (used only for cue/reward zone annotations)
+    :param populations: iterable of population fullnames; a separate figure is produced for each
+    :param n_timepoints: number of training snapshots to show (default 4)
+    :param pair_index: which track-pair's matrix to plot (default 0; the only pair when 2 treadmills)
+    :param title: optional str prefixed to each figure title
+    :param save_path: optional str; if provided the population name is inserted before the file extension
+        (e.g. '..._H1E.png') and the figure is saved instead of shown.
+    """
+    history = getattr(network, 'val_cross_correlation_matrix_history', None)
+    if not history:
+        print('plot_hidden_state_cross_correlation_over_training: no val_cross_correlation_matrix_history; skipping')
+        return
+
+    train_steps = np.asarray(network.val_history_train_steps)
+    n_steps = len(history)
+    if n_steps <= n_timepoints:
+        timepoints = list(range(n_steps))
+    else:
+        timepoints = sorted(set(np.linspace(0, n_steps - 1, n_timepoints).round().astype(int).tolist()))
+
+    cue_span, reward_spans = _treadmill_zone_spans(environments[0])
+    zones = ([cue_span] if cue_span is not None else []) + reward_spans
+    boundary_lines = sorted({bound for span in zones for bound in span} | {environments[0].length})
+
+    pops = [pop for pop in populations if pop in history[0]]
+    for population_name in pops:
+        fig, axes = plt.subplots(1, len(timepoints), figsize=(4.0 * len(timepoints), 4.0), squeeze=False)
+        axes = axes[0]
+
+        im = None
+        for ax, t in zip(axes, timepoints):
+            corr = np.asarray(history[t][population_name])[pair_index]  # [length, length]
+            im = _draw_cross_correlation_heatmap(ax, corr, zones, boundary_lines)
+            ax.set_title('Epoch {}'.format(int(train_steps[t])))
+
+        if im is not None:
+            fig.colorbar(im, ax=axes, orientation='vertical', fraction=0.02, pad=0.04)
+
+        fig.suptitle(_prefix_title(title, 'Cross-correlation over training (%s)' % population_name))
+        if save_path is not None:
+            base, ext = os.path.splitext(save_path)
+            _save_or_show(fig, '%s_%s%s' % (base, population_name, ext))
+        else:
+            _save_or_show(fig, None)
+
+
+def plot_region_cross_correlation_over_training(network, populations=('H1E', 'H2E'), title=None, save_path=None):
+    """
+    Line plot of the region-summarized across-track cross-correlation as a function of training step, with
+    one panel per region and one line per hidden population. Requires network.val_cross_correlation_history,
+    which network.train populates at each validation step (each entry is
+    {population: [per-track-pair {region: value}]}).
+
+    :param network: trained Q_Network with a populated val_cross_correlation_history
+    :param populations: iterable of population fullnames to plot (e.g. ('H1E', 'H2E'))
+    :param title: optional str prefixed to the figure title
+    :param save_path: optional str; if provided the figure is saved (high dpi) instead of shown.
+    """
+    if not getattr(network, 'val_cross_correlation_history', None):
+        print('plot_region_cross_correlation_over_training: no val_cross_correlation_history; skipping')
+        return
+
+    history = network.val_cross_correlation_history  # list over val steps of {pop: [per-pair {region: val}]}
+    train_steps = np.asarray(network.val_history_train_steps)
+    pops = [pop for pop in populations if pop in history[0]]
+    if not pops:
+        print('plot_region_cross_correlation_over_training: requested populations not logged; skipping')
+        return
+
+    # order regions sensibly, but adapt to whatever region_cross_correlation produced
+    available = list(history[0][pops[0]][0].keys())
+    preferred = ['initial_region', 'indicator', 'pre_r1', 'pre_r2', 'end_region', 'off_diagonal']
+    regions = [r for r in preferred if r in available] + [r for r in available if r not in preferred]
+    region_labels = {'initial_region': 'Initial', 'indicator': 'Indicator', 'pre_r1': 'Pre R1',
+                     'pre_r2': 'Pre R2', 'end_region': 'End', 'off_diagonal': 'Off Diagonal'}
+
+    ncols = 3
+    nrows = int(np.ceil(len(regions) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(2.8 * ncols, 2.4 * nrows), squeeze=False, sharey=True)
+    axes = axes.flatten()
+
+    for ri, region in enumerate(regions):
+        ax = axes[ri]
+        for pop in pops:
+            n_pairs = len(history[0][pop])
+            for pair in range(n_pairs):
+                values = [step[pop][pair][region] for step in history]
+                label = pop if n_pairs == 1 else '{} pair {}'.format(pop, pair)
+                ax.plot(train_steps, values, label=label)
+        ax.axhline(0, color='gray', linestyle='--', linewidth=0.5)
+        ax.set_ylim(-0.2, 1.2)
+        ax.set_title(region_labels.get(region, region))
+        if ri % ncols == 0:
+            ax.set_ylabel('Cross-correlation')
+        if ri // ncols == nrows - 1:
+            ax.set_xlabel('Training step')
+
+    # hide any unused panels and label the legend once
+    for ax in axes[len(regions):]:
+        ax.set_visible(False)
+    axes[0].legend(loc='best')
+
+    fig.suptitle(_prefix_title(title, 'Region cross-correlation over training'))
+    fig.tight_layout()
+    _save_or_show(fig, save_path)
+
+
+def plot_region_cross_correlation_by_population(network, populations=('H1E', 'H2E'),
+                                                regions=('pre_r1', 'pre_r2', 'off_diagonal'),
+                                                title=None, save_path=None):
+    """
+    Line plot of selected region cross-correlations over training, with one panel per hidden population
+    and one line per region (Pre R1, Pre R2, Off Diagonal by default). Complements
+    plot_region_cross_correlation_over_training (which is one panel per region). Requires
+    network.val_cross_correlation_history.
+
+    :param network: trained Q_Network with a populated val_cross_correlation_history
+    :param populations: iterable of population fullnames, one subplot each (e.g. ('H1E', 'H2E'))
+    :param regions: iterable of region keys to draw as lines within each subplot
+    :param title: optional str prefixed to the figure title
+    :param save_path: optional str; if provided the figure is saved (high dpi) instead of shown.
+    """
+    if not getattr(network, 'val_cross_correlation_history', None):
+        print('plot_region_cross_correlation_by_population: no val_cross_correlation_history; skipping')
+        return
+
+    history = network.val_cross_correlation_history  # list over val steps of {pop: [per-pair {region: val}]}
+    train_steps = np.asarray(network.val_history_train_steps)
+    pops = [pop for pop in populations if pop in history[0]]
+    if not pops:
+        print('plot_region_cross_correlation_by_population: requested populations not logged; skipping')
+        return
+
+    region_labels = {'initial_region': 'Initial', 'indicator': 'Indicator', 'pre_r1': 'Pre R1',
+                     'pre_r2': 'Pre R2', 'end': 'End', 'end_region': 'End', 'off_diagonal': 'Off Diagonal'}
+
+    fig, axes = plt.subplots(1, len(pops), figsize=(3.4 * len(pops), 2.8), squeeze=False, sharey=True)
+    axes = axes[0]
+
+    for pi, pop in enumerate(pops):
+        ax = axes[pi]
+        n_pairs = len(history[0][pop])
+        for region in regions:
+            for pair in range(n_pairs):
+                values = [step[pop][pair][region] for step in history]
+                label = region_labels.get(region, region) + ('' if n_pairs == 1 else ' pair {}'.format(pair))
+                ax.plot(train_steps, values, label=label)
+        ax.axhline(0, color='gray', linestyle='--', linewidth=0.5)
+        # ax.set_ylim(-0.2, 1.2)
+        ax.set_title(pop)
+        ax.set_xlabel('Training step')
+        if pi == 0:
+            ax.set_ylabel('Cross-correlation')
+    axes[0].legend(loc='best')
+
+    fig.suptitle(_prefix_title(title, 'Region cross-correlation by population'))
+    fig.tight_layout()
     _save_or_show(fig, save_path)
 
 
@@ -345,48 +530,134 @@ def plot_treadmill_hidden_activity(network, environments, population_names=('H1E
     :param save_path: optional str; if provided figures are saved (the population name is inserted before
         the file extension, e.g. '..._H1E.png') instead of shown.
     """
+    for population_name in population_names:
+        activities = network.get_treadmill_hidden_activity(environments, population_name=population_name, meta=meta)
+        _draw_hidden_activity_figure(activities, environments, population_name, title=title, save_path=save_path)
+
+
+def _draw_hidden_activity_figure(activities, environments, population_name, title=None, save_path=None):
+    """
+    Draw the neuron-by-position hidden-activity heatmap (one panel per treadmill) from a list of
+    per-environment [length, n_units] activity arrays. Shared by the q-network and qnext-network hidden
+    activity plots so they render identically.
+    """
     n_env = len(environments)
     # reversed grayscale: zero activity is white, increasing activity darkens toward black, for
     # maximum contrast (black activity on a white background)
     cmap = plt.get_cmap('gray_r')
 
+    # shared color scale across treadmills; pin vmin to 0 so zero activity is black
+    vmin = 0.
+    vmax = max(np.nanmax(a) for a in activities)
+
+    # sort units by peak position on the first treadmill (place-cell style ordering), applied to all
+    order = np.argsort(np.argmax(np.nan_to_num(activities[0]), axis=0))
+
+    fig, axes = plt.subplots(1, n_env, figsize=(3.2 * n_env, 3.4), squeeze=False, sharey=True)
+    axes = axes[0]
+
+    im = None
+    for env_idx, (activity, ax) in enumerate(zip(activities, axes)):
+        # transpose to [n_units, length] and apply the shared sequence ordering
+        im = ax.imshow(activity[:, order].T, cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto',
+                       interpolation='nearest')
+        cue_span, reward_spans = _treadmill_zone_spans(environments[env_idx])
+        if cue_span is not None:
+            ax.axvline(cue_span[0] - 0.5, color='tab:blue', linestyle='--', linewidth=0.75)
+        for (low, high) in reward_spans:
+            ax.axvline(low - 0.5, color='tab:red', linestyle='--', linewidth=0.75)
+            ax.axvline(high - 0.5, color='tab:red', linestyle='--', linewidth=0.75)
+        ax.set_xlabel('Treadmill position')
+        ax.set_title('Treadmill %i' % (env_idx + 1))
+    axes[0].set_ylabel('Hidden unit (sorted by peak)')
+
+    if im is not None:
+        fig.colorbar(im, ax=axes, fraction=0.04, pad=0.04, label='Activity')
+
+    fig.suptitle(_prefix_title(title, 'Hidden unit activity (%s)' % population_name))
+    if save_path is not None:
+        base, ext = os.path.splitext(save_path)
+        _save_or_show(fig, '%s_%s%s' % (base, population_name, ext))
+    else:
+        _save_or_show(fig, None)
+
+
+def get_qnext_treadmill_hidden_activity(q_network, qnext_network, environments, shared_population='H1E',
+                                        population_name='H1E', meta=False):
+    """
+    Run a clean (greedy, epsilon=0) pass over each treadmill in the DNQL setting: q_network is driven by
+    the observation, and qnext_network is driven by q_network's ``shared_population`` activity (detached),
+    exactly as during training. Collect qnext_network's ``population_name`` activity at every position.
+
+    Returns one np.ndarray of shape [length, n_units] per environment.
+    """
+    qnext_pop = qnext_network.populations[population_name]
+    activities = []
+    for environment in environments:
+        environment.reset()
+        terminated = False
+        environment_activity = []
+
+        previous_action = 0
+        previous_reward = 0
+        action_one_hots = F.one_hot(torch.arange(0, len(environment.actions)))
+
+        while not terminated:
+            reinit = environment.current_state == 0
+            current_observation = environment.get_observation(environment.current_state)
+            obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0)
+
+            if meta:
+                obs_tensor = torch.cat([obs_tensor, action_one_hots[previous_action].unsqueeze(0),
+                                        torch.tensor([[previous_reward]])], dim=1)
+
+            output = q_network.forward(obs_tensor, no_grad=True, reinit=reinit)
+            qnext_network.forward(q_network.populations[shared_population].activity.detach(),
+                                  no_grad=True, reinit=reinit)
+            environment_activity.append(np.squeeze(qnext_pop.activity.detach().cpu().numpy()))
+
+            action = int(torch.argmax(output).item())
+            _, reward, _, terminated = environment.take_action(action)
+
+            previous_action = action
+            previous_reward = reward
+        activities.append(np.array(environment_activity))
+
+    return activities
+
+
+def plot_qnext_treadmill_hidden_activity(q_network, qnext_network, environments, shared_population='H1E',
+                                         population_names=('H1E',), title=None, save_path=None, meta=False):
+    """
+    Hidden-activity heatmap (as plot_treadmill_hidden_activity) for qnext_network populations. qnext is
+    driven by q_network's ``shared_population`` activity over each treadmill, as in DNQL training.
+    """
     for population_name in population_names:
-        activities = network.get_treadmill_hidden_activity(environments, population_name=population_name, meta=meta)
+        activities = get_qnext_treadmill_hidden_activity(
+            q_network, qnext_network, environments, shared_population=shared_population,
+            population_name=population_name, meta=meta)
+        _draw_hidden_activity_figure(activities, environments, population_name, title=title, save_path=save_path)
 
-        # shared color scale across treadmills; pin vmin to 0 so zero activity is black
-        vmin = 0.
-        vmax = max(np.nanmax(a) for a in activities)
 
-        # sort units by peak position on the first treadmill (place-cell style ordering), applied to all
-        order = np.argsort(np.argmax(np.nan_to_num(activities[0]), axis=0))
+def plot_loss(network, title=None, save_path=None):
+    """
+    Plot per-episode training loss (``network.loss_history``) against episode. Works for either the Q
+    network or the QNext network; distinguish them via the ``title`` argument.
+    """
+    loss = network.loss_history
+    if torch.is_tensor(loss):
+        loss = loss.detach().cpu().numpy()
+    else:
+        loss = np.asarray([l.detach().cpu().item() if torch.is_tensor(l) else float(l) for l in loss])
+    loss = np.asarray(loss).reshape(-1)
 
-        fig, axes = plt.subplots(1, n_env, figsize=(3.2 * n_env, 3.4), squeeze=False, sharey=True)
-        axes = axes[0]
-
-        im = None
-        for env_idx, (activity, ax) in enumerate(zip(activities, axes)):
-            # transpose to [n_units, length] and apply the shared sequence ordering
-            im = ax.imshow(activity[:, order].T, cmap=cmap, vmin=vmin, vmax=vmax, aspect='auto',
-                           interpolation='nearest')
-            cue_span, reward_spans = _treadmill_zone_spans(environments[env_idx])
-            if cue_span is not None:
-                ax.axvline(cue_span[0] - 0.5, color='tab:blue', linestyle='--', linewidth=0.75)
-            for (low, high) in reward_spans:
-                ax.axvline(low - 0.5, color='tab:red', linestyle='--', linewidth=0.75)
-                ax.axvline(high - 0.5, color='tab:red', linestyle='--', linewidth=0.75)
-            ax.set_xlabel('Treadmill position')
-            ax.set_title('Treadmill %i' % (env_idx + 1))
-        axes[0].set_ylabel('Hidden unit (sorted by peak)')
-
-        if im is not None:
-            fig.colorbar(im, ax=axes, fraction=0.04, pad=0.04, label='Activity')
-
-        fig.suptitle(_prefix_title(title, 'Hidden unit activity (%s)' % population_name))
-        if save_path is not None:
-            base, ext = os.path.splitext(save_path)
-            _save_or_show(fig, '%s_%s%s' % (base, population_name, ext))
-        else:
-            _save_or_show(fig, None)
+    fig = plt.figure()
+    plt.plot(np.arange(len(loss)), loss, linewidth=1)
+    plt.xlabel('Episode')
+    plt.ylabel('Loss')
+    fig.suptitle(_prefix_title(title, 'Loss'))
+    fig.tight_layout()
+    _save_or_show(fig, save_path)
 
 
 def plot_equilibration_dynamics(network, environments, env_idx=0, position=None, store_num_steps=None, title=None,

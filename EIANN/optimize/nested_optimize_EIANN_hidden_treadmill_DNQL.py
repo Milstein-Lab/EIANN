@@ -17,38 +17,15 @@ from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epo
 from EIANN.plot_rl import plot_validation_rewards, plot_final_q_vals, plot_actions_over_training, \
     plot_hidden_state_cross_correlation, plot_equilibration_dynamics, plot_treadmill_hidden_activity, \
     plot_region_cross_correlation_over_training, plot_region_cross_correlation_by_population, \
-    plot_hidden_state_cross_correlation_over_training
+    plot_hidden_state_cross_correlation_over_training, plot_loss, plot_qnext_treadmill_hidden_activity
 from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
-from EIANN.optimize.network_rl_config_updates import *
+from EIANN.optimize.network_dnql_config_updates import *
+from EIANN.optimize.train.dnql import train, train_online
 import EIANN.utils as utils
 
 
 context = Context()
-
-# run 5 random seeds in parallel:
-# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --store_history=True --retrain=False --full_analysis=True --status_bar=True
-
-# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=bpDale \
-#   --export --export-file-path=multiseed_mnist_metrics.hdf5 --store_history=True --retrain=False --full_analysis=True --status_bar=True
-
-# python -m nested.analyze --framework=serial \
-# --config-file-path=optimize/optimize_config/treadmill_RL/20260428_nested_optimize_EIANN_2_hidden_treadmill_RL_van_bp_relu_SGD_config_G.yaml \
-# --param-file-path=optimize/optimize_params/treadmill_RL/20260610_treadmill_RL_params.yaml --model-key=van_bp_relu_SGD \
-# --output-dir=data --compute_receptive_fields=False --num_instances=1 --store_history=True \
-# --retrain=True --status_bar=True --plot --disp --debug
-
-# python -m nested.analyze --framework=serial \
-# --config-file-path=optimize/optimize_config/treadmill_RL/20231129_nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_relu_SGD_config_G.yaml \
-# --output-dir=data --compute_receptive_fields=False --num_instances=1 --store_history=True \
-# --retrain=True --status_bar=True --plot --disp --debug
-
-
 
 def config_controller():
     if 'debug' not in context():
@@ -126,6 +103,7 @@ def config_worker():
         context.constrain_equilibration_dynamics = True
     else:
         context.constrain_equilibration_dynamics = str_to_bool(context.constrain_equilibration_dynamics)
+
     # Name exported files and plots by the optimize config basename. nested does not forward
     # config_file_path to worker contexts, so recover it from the command-line args when absent.
     if 'config_file_path' in context() and context.config_file_path is not None:
@@ -138,6 +116,7 @@ def config_worker():
             elif arg in ('--config-file-path', '--config_file_path') and i + 1 < len(sys.argv):
                 config_file_path = sys.argv[i + 1]
     context.run_name = config_file_path.split('/')[-1].split('.')[0]
+    
     if 'export_network_config_file_path' not in context():
         if context.label is None:
             context.export_network_config_file_path = f"{context.output_dir}/{context.run_name}_optimized.yaml"
@@ -214,10 +193,16 @@ def config_worker():
     else:
         context.base_data_file_path = f"{context.output_dir}/{context.run_name}.pkl"
     
-    network_config = read_from_yaml(context.network_config_file_path)
-    context.layer_config = network_config['layer_config']
-    context.projection_config = network_config['projection_config']
-    context.training_kwargs = network_config['training_kwargs']
+    # Dual-network Q learning: load a separate config for each network
+    q_network_config = read_from_yaml(context.q_network_config_file_path)
+    context.q_layer_config = q_network_config['layer_config']
+    context.q_projection_config = q_network_config['projection_config']
+    context.q_training_kwargs = q_network_config['training_kwargs']
+
+    qnext_network_config = read_from_yaml(context.qnext_network_config_file_path)
+    context.qnext_layer_config = qnext_network_config['layer_config']
+    context.qnext_projection_config = qnext_network_config['projection_config']
+    context.qnext_training_kwargs = qnext_network_config['training_kwargs']
     
     # Set up treadmill environments
     context.treadmill_length = int(context.treadmill_length)
@@ -296,21 +281,32 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     param_dict = param_array_to_dict(x, context.param_names)
         
     
-    network = Q_Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
-    
+    # Dual-network Q learning: `network` is the Q network (owns val_reward_history and
+    # drives all downstream features/plots); qnext_network is the auxiliary next-Q predictor.
+    # Distinct seeds so the two networks do not initialize identically.
+    q_network = Q_Network(context.q_layer_config, context.q_projection_config, seed=seed,
+                        **context.q_training_kwargs)
+    qnext_network = Q_Network(context.qnext_layer_config, context.qnext_projection_config, seed=seed,
+                              **context.qnext_training_kwargs)
+
     if export:
-        config_dict = {'layer_config': context.layer_config,
-                       'projection_config': context.projection_config,
-                       'training_kwargs': context.training_kwargs}
-        write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
+        q_config_dict = {'layer_config': context.q_layer_config,
+                         'projection_config': context.q_projection_config,
+                         'training_kwargs': context.q_training_kwargs}
+        qnext_config_dict = {'layer_config': context.qnext_layer_config,
+                             'projection_config': context.qnext_projection_config,
+                             'training_kwargs': context.qnext_training_kwargs}
+        qnext_export_path = context.export_network_config_file_path.replace('.yaml', '_qnext.yaml')
+        write_to_yaml(context.export_network_config_file_path, q_config_dict, convert_scalars=True)
+        write_to_yaml(qnext_export_path, qnext_config_dict, convert_scalars=True)
         if context.disp:
-            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network config to %s' %
-                  (os.getpid(), context.export_network_config_file_path))
+            print('nested_optimize_EIANN_1_hidden_treadmill_DNQL: pid: %i exported network configs to %s, %s' %
+                  (os.getpid(), context.export_network_config_file_path, qnext_export_path))
     
     if plot:
         try:
-            network.Output.E.H1.E.initial_weight = network.Output.E.H1.E.weight.data.detach().clone()
-            network.H1.E.Output.E.initial_weight = network.H1.E.Output.E.weight.data.detach().clone()
+            q_network.Output.E.H1.E.initial_weight = q_network.Output.E.H1.E.weight.data.detach().clone()
+            q_network.H1.E.Output.E.initial_weight = q_network.H1.E.Output.E.weight.data.detach().clone()
         except:
             pass
         if context.plot_initial:
@@ -318,43 +314,45 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             # plot_batch_accuracy(network, test_dataloader, population='all', title=title) # IMPLEMENT MAYBE
     
     if not context.retrain:
-        network = utils.load_network(context.data_file_path)
+        # Load both networks. qnext was saved to the sibling '_qnext.pkl' path (see train.dnql).
+        q_network = utils.load_network(context.data_file_path)
+        qnext_network = utils.load_network(context.data_file_path.replace('.pkl', '_qnext.pkl'))
         if context.disp:
-            print('nested_optimize_EIANN_1_hidden_treadmill_RL: pid: %i loaded network history from %s' %
+            print('nested_optimize_EIANN_hidden_treadmill_DNQL: pid: %i loaded network histories from %s (+ _qnext)' %
                   (os.getpid(), context.data_file_path))
     else:
         if context.debug:
             import time
             current_time = time.time()
+        # Dual-network Q learning training. `train_dnql` is the training method you are
+        # implementing on Q_Network: it drives both networks (Q + next-Q predictor),
+        # applying each network's learning rules independently. train_online is passed
+        # through so the method can branch on the online/offline schedule internally.
+
         if context.train_online:
-            network.train_online(environments=context.environments, epsilon=param_dict['epsilon'], epsilon_decay=param_dict['epsilon_decay'],
-                        gamma=param_dict['gamma'], episodes=context.train_episodes,
-                        val_interval=context.val_interval,  # e.g. (-201, -1, 10),
-                        store_history=context.store_history,
-                        store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
-                        store_params=context.store_params, store_params_interval=context.store_params_interval,
-                        status_bar=context.status_bar, meta=context.meta)
+            pass
         else:
-            network.train(environments=context.environments, epsilon=param_dict['epsilon'], epsilon_decay=param_dict['epsilon_decay'],
+            train(q_network=q_network, qnext_network=qnext_network,
+                        environments=context.environments, epsilon=param_dict['epsilon'], epsilon_decay=param_dict['epsilon_decay'],
                         gamma=param_dict['gamma'], episodes=context.train_episodes,
                         val_interval=context.val_interval,  # e.g. (-201, -1, 10),
                         store_history=context.store_history,
                         store_dynamics=context.store_dynamics, store_history_interval=context.store_history_interval,
                         store_params=context.store_params, store_params_interval=context.store_params_interval,
-                        status_bar=context.status_bar, meta=context.meta)
+                        status_bar=context.status_bar, save_to_file=None, meta=context.meta)
 
     
     if plot:
         try:
             from EIANN.plot import plot_FB_weight_alignment
-            plot_FB_weight_alignment(network.Output.E.H1.E, network.H1.E.Output.E)
+            plot_FB_weight_alignment(q_network.Output.E.H1.E, q_network.H1.E.Output.E)
         except:
             pass
 
 
-    max_reward_idx = torch.argmax(network.val_reward_history)
+    max_reward_idx = torch.argmax(q_network.val_reward_history)
     sorted_output_idx = None
-    sorted_val_reward_history = network.val_reward_history
+    sorted_val_reward_history = q_network.val_reward_history
 
     
     # Select for stability by computing mean accuracy in a window after the best validation step
@@ -390,15 +388,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             dend_loss_window = int(context.num_training_steps_accuracy_window)
         else:
             dend_loss_window = num_val_steps_accuracy_window
-        mean_forward_dend_loss = get_mean_forward_dend_loss(network, dend_loss_window)
+        mean_forward_dend_loss = get_mean_forward_dend_loss(q_network, dend_loss_window)
         results['mean_forward_dend_loss'] = mean_forward_dend_loss
 
     # behavior proxy: we want the ratio of wrong location licks to be lower for the closer treadmill
     if context.include_behavior_loss_objective:
-        if not hasattr(network, 'val_action_history') or len(network.val_action_history) == 0:
+        if not hasattr(q_network, 'val_action_history') or len(q_network.val_action_history) == 0:
             print('network has no val_action_history; skipping')
         else:
-            action_history = np.asarray(network.val_action_history)  # [n_val_steps, n_environments, length]
+            action_history = np.asarray(q_network.val_action_history)  # [n_val_steps, n_environments, length]
             t0_position = context.environments[0].reward_position
             t1_position = context.environments[1].reward_position
 
@@ -409,15 +407,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             results['behavior_ratio'] = action_ratio
 
     if context.include_xcorr_loss_objective:
-        if not hasattr(network, 'val_cross_correlation_history') or len(network.val_action_history) == 0:
-            print('network has no val_cross_correlation_history; skipping')
+        if not hasattr(q_network, 'val_cross_correlation_history') or len(q_network.val_action_history) == 0:
+            print('q network has no val_cross_correlation_history; skipping')
 
-        if not hasattr(network, 'val_cross_correlation_matrix_history') or len(network.val_action_history) == 0:
-            print('network has no val_cross_correlation_matrix_history; skipping')
+        if not hasattr(q_network, 'val_cross_correlation_matrix_history') or len(q_network.val_action_history) == 0:
+            print('q network has no val_cross_correlation_matrix_history; skipping')
         
         population = 'H2E'
-        pre_r1_corrs = np.array([x[population][0]['pre_r1'] for x in network.val_cross_correlation_history])
-        pre_r2_corrs = np.array([x[population][0]['pre_r2'] for x in network.val_cross_correlation_history])
+        pre_r1_corrs = np.array([x[population][0]['pre_r1'] for x in q_network.val_cross_correlation_history])
+        pre_r2_corrs = np.array([x[population][0]['pre_r2'] for x in q_network.val_cross_correlation_history])
 
 
         pre_r1_decorr_indeces = np.where(pre_r1_corrs <= context.xcorr_threshold)[0]
@@ -435,7 +433,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
         time_to_decorr_ratio = pre_r2_decorr_time / (pre_r1_decorr_time + 1e-6) # we want r2_decorr_time to be < pre_r1_decorr_time
 
-        final_avg_xcorr = np.nanmean(network.val_cross_correlation_matrix_history[-1][population])
+        final_avg_xcorr = np.nanmean(q_network.val_cross_correlation_matrix_history[-1][population])
 
         results['final_avg_xcorr'] = final_avg_xcorr
         results['time_to_decorr_ratio'] = time_to_decorr_ratio
@@ -446,10 +444,13 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             title = str(context.model_key)
         else:
             title = 'Final (%i, %i)' % (seed, data_seed)
+        # distinguish which network each figure belongs to
+        q_title = 'Q — %s' % title
+        qnext_title = 'QNext — %s' % title
         plot_names = ['validation_rewards', 'final_q_vals', 'actions_over_training',
                       'cross_correlation_H1E', 'cross_correlation_H2E', 'hidden_activity',
                       'region_cross_correlation', 'region_cross_correlation_by_population',
-                      'cross_correlation_over_training']
+                      'cross_correlation_over_training', 'q_loss', 'qnext_loss', 'qnext_hidden_activity']
         if context.save_plots:
             plot_prefix = f"{context.save_plots_dir}/{context.run_name}_{seed}_{data_seed}"
             if context.label is not None:
@@ -457,25 +458,32 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             save_paths = {name: f"{plot_prefix}_{name}.png" for name in plot_names}
         else:
             save_paths = {name: None for name in plot_names}
-        plot_validation_rewards(network, title=title, save_path=save_paths['validation_rewards'])
-        plot_final_q_vals(network, context.environments, title=title, save_path=save_paths['final_q_vals'], meta=context.meta)
-        plot_actions_over_training(network, context.environments, title=title,
+        plot_validation_rewards(q_network, title=q_title, save_path=save_paths['validation_rewards'])
+        plot_final_q_vals(q_network, context.environments, title=q_title, save_path=save_paths['final_q_vals'], meta=context.meta)
+        plot_actions_over_training(q_network, context.environments, title=q_title,
                                    save_path=save_paths['actions_over_training'])
-        plot_treadmill_hidden_activity(network, context.environments, population_names=('H1E', 'H2E'),
-                                       title=title, save_path=save_paths['hidden_activity'], meta=context.meta)
-        plot_region_cross_correlation_over_training(network, populations=('H1E', 'H2E'), title=title,
+        plot_treadmill_hidden_activity(q_network, context.environments, population_names=('H1E', 'H2E'),
+                                       title=q_title, save_path=save_paths['hidden_activity'], meta=context.meta)
+        plot_region_cross_correlation_over_training(q_network, populations=('H1E', 'H2E'), title=q_title,
                                                     save_path=save_paths['region_cross_correlation'])
-        plot_region_cross_correlation_by_population(network, populations=('H1E', 'H2E'), title=title,
+        plot_region_cross_correlation_by_population(q_network, populations=('H1E', 'H2E'), title=q_title,
                                                     save_path=save_paths['region_cross_correlation_by_population'])
-        plot_hidden_state_cross_correlation_over_training(network, context.environments, populations=('H1E', 'H2E'),
-                                                          n_timepoints=4, title=title,
+        plot_hidden_state_cross_correlation_over_training(q_network, context.environments, populations=('H1E', 'H2E'),
+                                                          n_timepoints=4, title=q_title,
                                                           save_path=save_paths['cross_correlation_over_training'])
+        # QNext network figures
+        plot_loss(q_network, title=q_title, save_path=save_paths['q_loss'])
+        plot_loss(qnext_network, title=qnext_title, save_path=save_paths['qnext_loss'])
+        plot_qnext_treadmill_hidden_activity(q_network, qnext_network, context.environments,
+                                             shared_population='H1E', population_names=('H1E',),
+                                             title=qnext_title, save_path=save_paths['qnext_hidden_activity'],
+                                             meta=context.meta)
         if context.constrain_equilibration_dynamics or context.debug:
             # store_num_steps left as None to capture the full forward_steps settling trace
-            plot_equilibration_dynamics(network, context.environments, title=title, meta=context.meta)
+            plot_equilibration_dynamics(q_network, context.environments, title=q_title, meta=context.meta)
         
     if context.debug:
-        activities = network.get_treadmill_hidden_activity(context.environments, population_name='H2E', meta=context.meta)
+        activities = q_network.get_treadmill_hidden_activity(context.environments, population_name='H2E', meta=context.meta)
 
         for pos in range(len(activities[0])):
             print('Position {}'.format(pos))
@@ -489,13 +497,16 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         else:
             this_data_file_path = f"{base_data_file_path_prefix}_{seed}_{data_seed}_{context.label}.pkl"
         
-        utils.save_network(network, path=this_data_file_path, disp=False)
+        qnext_data_file_path = this_data_file_path.replace('.pkl', '_qnext.pkl')
+        utils.save_network(q_network, path=this_data_file_path, disp=False)
+        utils.save_network(qnext_network, path=qnext_data_file_path, disp=False)
         if context.disp:
-            print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network history to %s' %
-                  (os.getpid(), this_data_file_path))
+            print('nested_optimize_EIANN_1_hidden_treadmill_DNQL: pid: %i exported network histories to %s, %s' %
+                  (os.getpid(), this_data_file_path, qnext_data_file_path))
     
     if not context.interactive:
-        del network
+        del q_network
+        del qnext_network
         gc.collect()
     else:
         context.update(locals())

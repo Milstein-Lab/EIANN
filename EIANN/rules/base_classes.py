@@ -17,7 +17,7 @@ class LearningRule(object):
         pass
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False, loss=None):
         pass
     
     @classmethod
@@ -42,7 +42,7 @@ class BiasLearningRule(object):
         pass
 
     @classmethod
-    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False, loss=None):
         pass
     
     @classmethod

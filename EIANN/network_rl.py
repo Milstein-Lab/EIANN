@@ -455,6 +455,8 @@ class Q_Network(nn.Module):
 
         self.val_reward_history = []
         self.val_action_history = []
+        self.val_cross_correlation_history = []
+        self.val_cross_correlation_matrix_history = []
         self.val_history_train_steps = []
 
         # Store history of weights and biases
@@ -639,9 +641,15 @@ class Q_Network(nn.Module):
             
             # Compute validation performance over all environments
             if train_step in val_range:
-                val_rewards, val_actions = self.test(environments, return_actions=True, meta=meta)
+                val_rewards, val_actions, val_cc = self.test(
+                    environments, return_actions=True, return_cross_correlation=True, meta=meta)
                 self.val_reward_history.append(val_rewards)
                 self.val_action_history.append(val_actions)
+                # store full cross-correlation matrices, and their reduction to region summaries
+                self.val_cross_correlation_matrix_history.append(val_cc)
+                self.val_cross_correlation_history.append(
+                    {pop: [self.region_cross_correlation(mat, environments[0]) for mat in mats]
+                     for pop, mats in val_cc.items()})
                 self.val_history_train_steps.append(train_step)
 
                 if status_bar: # Display the current loss and accuracy on the progress bar
@@ -684,6 +692,8 @@ class Q_Network(nn.Module):
 
         self.val_reward_history = []
         self.val_action_history = []
+        self.val_cross_correlation_history = []
+        self.val_cross_correlation_matrix_history = []
         self.val_history_train_steps = []
 
         # Store history of weights and biases
@@ -913,9 +923,15 @@ class Q_Network(nn.Module):
             
             # Compute validation performance over all environments
             if train_step in val_range:
-                val_rewards, val_actions = self.test(environments, return_actions=True, meta=meta)
+                val_rewards, val_actions, val_cc = self.test(
+                    environments, return_actions=True, return_cross_correlation=True, meta=meta)
                 self.val_reward_history.append(val_rewards)
                 self.val_action_history.append(val_actions)
+                # store full cross-correlation matrices, and their reduction to region summaries
+                self.val_cross_correlation_matrix_history.append(val_cc)
+                self.val_cross_correlation_history.append(
+                    {pop: [self.region_cross_correlation(mat, environments[0]) for mat in mats]
+                     for pop, mats in val_cc.items()})
                 self.val_history_train_steps.append(train_step)
 
                 if status_bar: # Display the current loss and accuracy on the progress bar
@@ -936,7 +952,9 @@ class Q_Network(nn.Module):
         if save_to_file is not None:
             ut.save_network(self, path=save_to_file)
 
-    def test(self, environments, store_history=False, store_dynamics=False, return_q_vals=False, return_actions=False, meta=False):
+    def test(self, environments, store_history=False, store_dynamics=False, return_q_vals=False, return_actions=False,
+             return_cross_correlation=False, cross_correlation_populations=('H1E', 'H2E'),
+             cross_correlation_nonzero_only=True, meta=False):
         """
         Evaluate the network when epsilon=0
 
@@ -952,6 +970,14 @@ class Q_Network(nn.Module):
             Whether to also return the greedy Q values at every position of each environment.
         return_actions : bool, default False
             Whether to also return the greedy action taken at every position of each environment.
+        return_cross_correlation : bool, default False
+            Whether to also return the across-track cross-correlation of hidden activity for the
+            populations in cross_correlation_populations (e.g. H1E and H2E).
+        cross_correlation_populations : sequence of str, default ('H1E', 'H2E')
+            Fullnames of populations to compute across-track cross-correlation for. Names not present in
+            the network are skipped.
+        cross_correlation_nonzero_only : bool, default True
+            Passed to cross_correlation(): restrict the correlation to units with non-zero activity.
         meta : bool, default False
             Whether to input previous action and reward
 
@@ -959,12 +985,19 @@ class Q_Network(nn.Module):
         -------
         mean reward across environments. If return_q_vals and/or return_actions are set, additionally
         returns the per-environment Q values (shape [n_environments, length, n_actions]) and/or the
-        per-environment greedy actions (shape [n_environments, length]).
+        per-environment greedy actions (shape [n_environments, length]). If return_cross_correlation is
+        set, additionally returns a dict mapping each population fullname to its across-track
+        cross-correlation matrices (shape [n_track_pairs, length, length]); see cross_correlation().
         """
 
         rewards = [0 for _ in environments]
         q_vals = []
         actions = []
+
+        # Populations to collect activity from for across-track cross-correlation
+        cc_pops = [pop for pop in cross_correlation_populations if pop in self.populations] \
+            if return_cross_correlation else []
+        cc_activity = {pop: [] for pop in cc_pops}  # per pop: list over environments of [length, n_units]
 
         for i, environment in enumerate(environments):
 
@@ -978,6 +1011,7 @@ class Q_Network(nn.Module):
 
             environment_q_vals = []
             environment_actions = []
+            environment_cc_activity = {pop: [] for pop in cc_pops}
 
             ## COMPUTE FULL PASS OVER TREADMILL ##
             while not terminated:
@@ -997,6 +1031,8 @@ class Q_Network(nn.Module):
 
                 if return_q_vals:
                     environment_q_vals.append(output.detach().numpy())
+                for pop in cc_pops:
+                    environment_cc_activity[pop].append(np.squeeze(self.populations[pop].activity.detach().cpu().numpy()))
 
                 action = int(torch.argmax(output).item())
                 if return_actions:
@@ -1011,16 +1047,92 @@ class Q_Network(nn.Module):
                 q_vals.append(environment_q_vals)
             if return_actions:
                 actions.append(environment_actions)
+            for pop in cc_pops:
+                cc_activity[pop].append(np.array(environment_cc_activity[pop]))
 
         result = [np.mean(rewards)]
         if return_q_vals:
             result.append(np.array(q_vals))
         if return_actions:
             result.append(np.array(actions))
+        if return_cross_correlation:
+            result.append({pop: self.cross_correlation(cc_activity[pop], nonzero_only=cross_correlation_nonzero_only)
+                           for pop in cc_pops})
 
         if len(result) == 1:
             return result[0]
         return tuple(result)
+
+    @staticmethod
+    def cross_correlation(activities, nonzero_only=True):
+        """
+        Across-track cross-correlation of hidden activity. For each pair of tracks (i, j), entry [a, b] is
+        the Pearson correlation (across units) between the activity vector at position a of track i and
+        position b of track j.
+
+        Parameters
+        ----------
+        activities : list of np.ndarray
+            One array per track, each of shape [length, n_units].
+        nonzero_only : bool, default True
+            If True, restrict the correlation to units that have non-zero activity somewhere on either
+            track of the pair (i.e. drop units that are silent across all positions of both tracks),
+            so dead units do not bias the correlation.
+
+        Returns
+        -------
+        np.ndarray
+            Stacked cross-correlation matrices, shape [n_track_pairs, length_i, length_j]. Empty when
+            fewer than two tracks are provided. Positions with constant/zero activity yield NaN entries.
+        """
+        pairs = [(i, j) for i in range(len(activities)) for j in range(i + 1, len(activities))]
+        matrices = []
+        for i, j in pairs:
+            t1 = np.nan_to_num(activities[i])
+            t2 = np.nan_to_num(activities[j])
+            if nonzero_only:
+                active = (np.abs(t1).sum(axis=0) > 0) | (np.abs(t2).sum(axis=0) > 0)
+                t1 = t1[:, active]
+                t2 = t2[:, active]
+            length_i = t1.shape[0]
+            matrices.append(np.corrcoef(t1, t2)[:length_i, length_i:])
+        return np.array(matrices)
+
+    @staticmethod
+    def region_cross_correlation(matrix, treadmill):
+        """
+        Average across-track cross-correlation within geometry-defined regions of a cross-correlation
+        matrix (rows = track A positions, cols = track B positions).
+
+        Regions are read from the treadmill geometry (see Cue_Treadmill.get_regions and
+        get_off_diagonal_positions):
+            'pre_r1'        : the same-position across-track correlation at the cell before the first reward
+            'pre_r2'        : the same-position across-track correlation at the cell before the second reward
+            'off_diagonal'  : mean over off-diagonal entries restricted to no-cue/no-reward positions,
+                              excluding the regions before the first cue and after the last reward
+
+        Parameters
+        ----------
+        matrix : np.ndarray
+            A single cross-correlation matrix, shape [length, length] (e.g. one entry of cross_correlation()).
+        treadmill : Cue_Treadmill
+            Treadmill whose cue/reward geometry defines the regions.
+
+        Returns
+        -------
+        dict of float
+            Mean correlation (NaN-ignoring) for each region.
+        """
+        results = {}
+        for name, (start, stop) in treadmill.get_regions().items():
+            block = matrix[start:stop, start:stop]
+            results[name] = float(np.nanmean(block)) if block.size > 0 else float('nan')
+
+        # off-diagonal baseline: 2D mask over no-cue/no-reward positions between the first cue and last reward
+        off_diagonal_mask = treadmill.get_off_diagonal_mask()
+        results['off_diagonal'] = float(np.nanmean(matrix[off_diagonal_mask])) if off_diagonal_mask.any() \
+            else float('nan')
+        return results
 
     def get_treadmill_hidden_activity(self, environments, population_name=None, meta=False):
         """

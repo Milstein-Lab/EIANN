@@ -9,11 +9,12 @@ class Backprop(LearningRule):
         projection.weight.requires_grad = True
     
     @classmethod
-    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False, loss=None):
         if network.use_amp:
             # Use autocast for loss computation and scaled backward pass
-            with autocast():
-                loss = network.criterion(output, target)
+            if loss is None:
+                with autocast():
+                    loss = network.criterion(output, target)
             
             network.optimizer.zero_grad()
             network.scaler.scale(loss).backward()
@@ -21,7 +22,8 @@ class Backprop(LearningRule):
             network.scaler.update()
         else:
             # Standard backward pass
-            loss = network.criterion(output, target)
+            if loss is None:
+                loss = network.criterion(output, target)
             network.optimizer.zero_grad()
             loss.backward()
             network.optimizer.step()

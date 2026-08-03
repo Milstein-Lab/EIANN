@@ -150,14 +150,14 @@ kwargs:
     include_equilibration_dynamics_objective: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_treadmill_RL
-      function: update_EIANN_config_2_hidden_BTSP_3J  # works with 5L
+      function: update_EIANN_config_2_hidden_BTSP
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_treadmill_RL
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_treadmill_RL_BTSP_5L
+optimization_title: EIANN_2_hidden_treadmill_RL_BTSP
 x0:
     H_E_FF_E_max_weight_scale: 7.788609158406613
     H1_E_Input_E_init_weight_factor: 0.44148085242662294

@@ -112,14 +112,14 @@ kwargs:
     include_equilibration_dynamics_objective: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_treadmill_RL
-      function: update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_G
+      function: update_EIANN_config_2_hidden_backprop_Dale_relu_SGD
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_treadmill_RL
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_treadmill_meta_RL_bpDale_relu_SGD_G
+optimization_title: EIANN_2_hidden_treadmill_meta_RL_bpDale_relu_SGD
 x0:
     H_E_E_learning_rate: 0.5
     H_E_I_learning_rate: 0.5

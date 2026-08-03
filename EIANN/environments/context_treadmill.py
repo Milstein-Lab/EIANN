@@ -25,7 +25,10 @@ class Cue_Treadmill():
         self.current_state = 0
         self.length = length
         self.reward_position = reward_position
+        self.reward_positions = list(reward_positions)
+        self.reward_length = reward_length
         self.cue_position = cue_position
+        self.cue_length = cue_length
         self.cue_number = cue_number
         self.total_cues = total_cues
         self.reward_values = reward_values
@@ -52,6 +55,78 @@ class Cue_Treadmill():
             self.state_representations[pos-reward_length+1:pos+1, 1+total_cues+i] = 1
 
         self.state_representations[-1, 0] = 0
+
+    def get_regions(self):
+        '''
+            'initial_region': region before the first cue
+            'indicator': cue region
+            'pre_r1': the single location immediately before the first reward
+            'pre_r2': the single location immediately before the second reward
+            'end_region': region after the last reward
+        Reward locations are taken from self.reward_positions (sorted). Requires >= 2 rewards.
+        '''
+        sorted_rewards = sorted(self.reward_positions)
+        reward1 = sorted_rewards[0]
+        reward2 = sorted_rewards[1]
+        return {
+            'initial_region': (0, self.cue_position),
+            'indicator': (self.cue_position, self.cue_position + self.cue_length),
+            'pre_r1': (reward1 - self.reward_length, reward1 - self.reward_length + 1),
+            'pre_r2': (reward2 - self.reward_length, reward2 - self.reward_length + 1),
+            'end_region': (reward2, self.length),
+        }
+
+    def get_off_diagonal_mask(self):
+
+        mask = np.zeros((self.length, self.length), dtype=bool)
+        sorted_rewards = sorted(self.reward_positions)
+
+        cue_start = self.cue_position # inclusive
+        cue_end = self.cue_position+self.cue_length # exclusive
+
+        r1_start = sorted_rewards[0] - self.reward_length + 1 # inclusive
+        r1_end = sorted_rewards[0] + 1 # exclusive
+
+        r2_start = sorted_rewards[1] - self.reward_length + 1 # inclusive
+        r2_end = sorted_rewards[1] + 1 # exclusive
+
+        # cue-reward region on track 1 vs pre-cue on track 2
+        mask[cue_end:r1_start, :cue_start] = 1
+
+        # reward-reward region on track 1 vs pre-cue on track 2
+        mask[r1_end:r2_start, :cue_start] = 1
+
+        # reward-end region on track 1 vs pre-cue on track 2
+        mask[r2_end:, :cue_start] = 1
+
+        # pre-cue on track 1 vs cue-reward region on track 2
+        mask[:cue_start, cue_end:r1_start] = 1
+
+        # pre-cue on track 1 vs reward-reward region on track 2
+        mask[:cue_start, r1_end:r2_start] = 1
+
+        # pre-cue on track 1 vs reward-end region on track 2
+        mask[:cue_start, r2_end:] = 1
+
+        # cue-reward region on track 1 vs reward-reward on track 2
+        mask[cue_end:r1_start, r1_end:r2_start] = 1
+
+        # cue-reward region on track 1 vs reward-end on track 2
+        mask[cue_end:r1_start, r2_end:] = 1
+
+        # reward-reward region on track 1 vs cue-reward on track 2
+        mask[r1_end:r2_start, cue_end:r1_start] = 1
+
+        # reward-reward region on track 1 vs reward-end on track 2
+        mask[r1_end:r2_start, r2_end:] = 1
+
+        # reward-end region on track 1 vs cue-reward on track 2
+        mask[r2_end:, cue_end:r1_start] = 1
+
+        # reward-end region on track 1 vs reward-reward on track 2
+        mask[r2_end:, r1_end:r2_start] = 1
+
+        return mask
 
     def get_action_list(self):
         return [0, 1]
