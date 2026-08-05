@@ -38,7 +38,7 @@ export MKL_NUM_THREADS=1
 
 srun -n 512 --mpi=pmi2 python -m mpi4py.futures -m nested.optimize \
   --config-file-path=$CONFIG_FILE_PATH \
-  --output-dir=$SCRATCH/data/EIANN/scaling_4node \
+  --output-dir=$SCRATCH/data/EIANN \
   --pop_size=200 --num_instances=5 --max_iter=1 --path_length=3 \
   --train_episodes=200 \
   --disp --framework=mpi
