@@ -24,7 +24,7 @@ sbatch <<EOT
 #SBATCH --export=ALL
 #SBATCH --account=sua199
 #SBATCH --mail-user=rp933@rwjms.rutgers.edu
-#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-type=ALL
 #SBATCH --constraint="lustre"
 #SBATCH --no-requeue
 
@@ -39,7 +39,7 @@ export MKL_NUM_THREADS=1
 srun -n 128 --mpi=pmi2 python -m mpi4py.futures -m nested.optimize \
   --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=$SCRATCH/data/EIANN \
-  --pop_size=200 --num_instances=5 --max_iter=1 --path_length=3 \
+  --pop_size=200 --num_instances=5 --max_iter=5 --path_length=3 \
   --train_episodes=200 \
   --disp --framework=mpi
 EOT
