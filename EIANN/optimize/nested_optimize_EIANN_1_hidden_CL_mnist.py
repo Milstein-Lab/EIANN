@@ -23,22 +23,11 @@ import EIANN.utils as utils
 
 context = Context()
 
-# run 5 random seeds in parallel:
-# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --store_history=True --retrain=False --full_analysis=True --status_bar=True
-
-# mpirun -n 6 python -m mpi4py.futures -m nested.analyze --framework=mpi \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=bpDale \
-#   --export --export-file-path=multiseed_mnist_metrics.hdf5 --store_history=True --retrain=False --full_analysis=True --status_bar=True
-
 # run a single seed (must be run from the root directory of EIANN):
 # python -m nested.analyze --framework=serial \
-#   --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_BTSP_config_D1.yaml \
-#   --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=BTSP_D1 --output-dir=optimize/data --label=btsp \
-#   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis=True --status_bar=True
+#   --config-file-path=optimize/optimize_config/mnist_CL/20240923_nested_optimize_EIANN_2_hidden_CL_mnist_van_bp_relu_SGD_config_G.yaml \
+#   --param-file-path=optimize/optimize_params/mnist_CL/2026_v2dev_mnist_CL_params.yaml --model-key=van_bp --output-dir=data --label=van_bp \
+#   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis=False --status_bar=True
 
 # python -m nested.analyze --framework=serial --config-file-path=optimize/config/mnist/nested_optimize_EIANN_1_hidden_mnist_bpDale_softplus_SGD_1_inh_config_A.yaml --param-file-path=optimize/config/mnist/20230301_nested_optimize_mnist_1_hidden_1_inh_params.yaml --model-key=bpDale_softplus_1_inh_A --output-dir=optimize/data --label=btsp --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --status_bar=True --plot --full_analysis=True
 
