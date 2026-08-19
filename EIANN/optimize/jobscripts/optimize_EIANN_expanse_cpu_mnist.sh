@@ -11,7 +11,7 @@ sbatch <<EOT
 #SBATCH -p compute
 #SBATCH -N 8
 #SBATCH -n 1001
-#SBATCH -t 2:00:00
+#SBATCH -t 48:00:00
 #SBATCH --mem=249208M
 #SBATCH --account=sua199
 #SBATCH --export=ALL
