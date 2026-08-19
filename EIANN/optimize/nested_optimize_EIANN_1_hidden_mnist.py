@@ -173,6 +173,21 @@ def config_worker():
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
     
+    if 'pre_equilibrate' in context():
+        context.pre_equilibrate = str_to_bool(context.pre_equilibrate)
+        context.training_kwargs['pre_equilibrate'] = context.pre_equilibrate
+    elif 'pre_equilibrate' in context.training_kwargs:
+        context.pre_equilibrate = str_to_bool(context.training_kwargs['pre_equilibrate'])
+    else:
+        context.pre_equilibrate = False
+    if 'persistent_state' in context():
+        context.persistent_state = str_to_bool(context.persistent_state)
+        context.training_kwargs['persistent_state'] = context.persistent_state
+    elif 'persistent_state' in context.training_kwargs:
+        context.persistent_state = str_to_bool(context.training_kwargs['persistent_state'])
+    else:
+        context.persistent_state = False
+    
     # Load dataset
     if context.interactive:
         download = True
@@ -281,7 +296,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             pass
         if context.plot_initial:
             title = 'Initial (%i, %i)' % (seed, data_seed)
-            plot_batch_accuracy(network, test_dataloader, population='all', title=title)
+            plot_batch_accuracy(network, test_dataloader, population='all', title=title,
+                                pre_equilibrate=context.pre_equilibrate)
     
     if not context.retrain:
         network = utils.load_network(context.data_file_path)
@@ -374,7 +390,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if plot:
         title = 'Final (%i, %i)' % (seed, data_seed)
         plot_batch_accuracy(network, test_dataloader, population='all', sorted_output_idx=sorted_output_idx,
-                            title=title)
+                            title=title, pre_equilibrate=context.pre_equilibrate)
         plot_train_loss_history(network)
         plot_validate_loss_history(network)
     
@@ -395,11 +411,13 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     if context.full_analysis:
         test_loss_history, test_accuracy_history = \
             compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=sorted_output_idx,
-                                                   plot=plot, status_bar=context.status_bar)
+                                                   plot=plot, status_bar=context.status_bar,
+                                                   pre_equilibrate=context.pre_equilibrate)
     
     if context.constrain_equilibration_dynamics or context.debug:
         residuals = check_equilibration_dynamics(network, test_dataloader, context.equilibration_activity_tolerance,
-                                                 store_num_steps=context.store_num_steps, disp=context.disp, plot=plot)
+                                                 store_num_steps=context.store_num_steps,
+                                                 pre_equilibrate=context.pre_equilibrate,  disp=context.disp, plot=plot)
         if context.include_equilibration_dynamics_objective:
             results['dynamics_residuals'] = residuals
         elif residuals > 0. and not context.debug:

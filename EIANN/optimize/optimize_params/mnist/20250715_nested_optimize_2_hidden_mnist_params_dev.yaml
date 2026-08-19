@@ -87,3 +87,39 @@ BTSP_6L:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
+
+BP_like_EIRNN_5J_test:
+    # with pre_equilibration and persistent_state
+    H1_E_Input_E_init_weight_scale: 2.1944449483442714
+    H1_E_H1_E_init_weight_scale: 0.21944449483442714
+    H2_E_H1_E_init_weight_scale: 0.19699100861932295
+    H2_E_H2_E_init_weight_scale: 0.019699100861932295
+    H_E_E_learning_rate: 0.014965181204220036
+    H1_E_H2_E_weight_scale: 0.4982674648887008
+    H2_E_Output_E_weight_scale: 0.502089051257693
+    H1_E_H1_SomaI_init_weight_scale: 1.127575300929014
+    H1_SomaI_H1_E_init_weight_scale: 0.7922286649101926
+    H1_SomaI_Input_E_init_weight_scale: 2.9554092309918674
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.4659723687430724
+    H_E_DendI_learning_rate: 0.09987445881374112
+    H1_E_H1_DendI_init_weight_scale: 0.30874601934713247
+    H1_DendI_H1_E_weight_scale: 1.4197768374260917
+    H1_DendI_H1_DendI_weight_scale: 1.3979144717025254
+    H2_E_H2_SomaI_init_weight_scale: 0.0503457325183063
+    H2_SomaI_H2_E_init_weight_scale: 0.7245424339080535
+    H2_SomaI_H1_E_init_weight_scale: 0.1286862932555841
+    H2_SomaI_H2_SomaI_init_weight_scale: 0.15183277232938047
+    H2_E_H2_DendI_init_weight_scale: 1.6268802462850203
+    H2_DendI_H2_E_weight_scale: 1.0492802312906058
+    H2_DendI_H2_DendI_weight_scale: 1.2396575372740706
+    Output_E_H2_E_init_weight_scale: 5.574051454118832
+    DendI_E_learning_rate: 0.019254903668545556
+    DendI_DendI_learning_rate: 0.015159232301651981
+    Output_E_H2_E_learning_rate: 0.025823599084628956
+    Output_E_Output_I_init_weight_scale: 0.10783222041590698
+    Output_I_Output_E_init_weight_scale: 2.749075677576883
+    Output_I_H2_E_init_weight_scale: 0.43883100144555437
+    Output_I_Output_I_init_weight_scale: 2.539086723963597
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0

@@ -10,16 +10,15 @@ sbatch <<EOT
 #SBATCH -e /expanse/lustre/scratch/aaronmil/temp_project/logs/EIANN/$JOB_NAME.%j.e
 #SBATCH -p compute
 #SBATCH -N 8
-#SBATCH -n 1001
+#SBATCH --ntasks-per-node=128
 #SBATCH -t 2:00:00
-#SBATCH --mem=0
+#SBATCH --mem=249208M
 #SBATCH --account=sua199
 #SBATCH --export=ALL
 #SBATCH --mail-user=milstein@cabm.rutgers.edu
 #SBATCH --mail-type=ALL
 #SBATCH --constraint="lustre"
-
-set -x
+#SBATCH --no-requeue
 
 source $HOME/cpu_py311_intelmpi.sh
 

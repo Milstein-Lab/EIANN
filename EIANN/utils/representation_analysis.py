@@ -16,7 +16,7 @@ from EIANN.utils import data_utils, network_utils
 import EIANN.plot as pt
 
  
-def compute_raw_test_activity(network, test_dataloader):
+def compute_raw_test_activity(network, test_dataloader, pre_equilibrate=False):
     """
     Compute raw activity for all populations in the network on the test dataloader.
 
@@ -26,6 +26,8 @@ def compute_raw_test_activity(network, test_dataloader):
         The neural network model to evaluate.
     test_dataloader : torch.utils.data.DataLoader
         DataLoader providing test data. Must contain a single large batch.
+    pre_equilibrate : bool, optional
+        Whether to pre-equilibrate the states and activities of all units before inference
 
     Returns
     -------
@@ -38,7 +40,9 @@ def compute_raw_test_activity(network, test_dataloader):
         raise ValueError('Dataloader must have a single large batch')
 
     idx, data, target = next(iter(test_dataloader))
-    network.forward(data, no_grad=True)
+    _ =  network.test(test_dataloader, pre_equilibrate=pre_equilibrate)
+    # network.forward(data, no_grad=True)
+    
     pattern_labels = torch.argmax(target, dim=1)
 
     reversed_populations = list(reversed(network.populations.values()))  # start with the output population
@@ -430,18 +434,26 @@ def compute_test_loss_and_accuracy(network, test_dataloader, sorted_output_idx=N
     return test_loss, test_accuracy
 
 
-def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=None, store_history=False,
-                                           plot=False, status_bar=False, title=None):
+def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_output_idx=None,
+                                           store_history=False, plot=False, status_bar=False,
+                                           title=None, pre_equilibrate=False):
     """
-    Assumes network has been trained with store_params=True. Evaluates test_loss at each train step in the
-    param_history.
-    :param network:
-    :param test_dataloader:
-    :param sorted_output_idx: tensor of int
-    :param store_history: bool
-    :param plot: bool
-    :param status_bar: bool
-    :param title: str
+    
+    Parameters
+    ----------
+    network : nn.Module
+    test_dataloader : torch.utils.data.DataLoader
+    sorted_output_idx : tensor of int
+    store_history : bool, default False
+    plot : bool, default False
+    status_bar : bool, default False
+    title : str, default None
+    pre_equilibrate : bool, default False
+
+    Returns
+    -------
+    tuple (torch.tensor, torch.tensor)
+    
     """
     assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
     assert len(network.param_history) > 0, 'Network must contain a stored param_history'
@@ -452,7 +464,7 @@ def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_outp
     test_loss_history = []
     test_accuracy_history = []
     num_patterns = test_data.shape[0]
-
+    
     if store_history:
         network.reset_history()
 
@@ -462,7 +474,12 @@ def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_outp
         iter_param_history = network.param_history
     for state_dict in iter_param_history:
         network.load_state_dict(state_dict)
-        output = network.forward(test_data, store_history=store_history, no_grad=True)
+        
+        if pre_equilibrate:
+            _ = network.forward(test_data, no_grad=True)
+        
+        output = network.forward(test_data, store_history=store_history, no_grad=True, persistent_state=pre_equilibrate)
+        
         if sorted_output_idx is not None:
             output = output[:, sorted_output_idx]
         test_loss_history.append(network.criterion(output, test_target).item())
@@ -1623,19 +1640,35 @@ def compute_PSD(receptive_field, plot=False):
 
 
 def check_equilibration_dynamics(network, dataloader, equilibration_activity_tolerance, store_num_steps=None,
-                                 disp=False, plot=False):
+                                 pre_equilibrate=False, disp=False, plot=False):
     """
+    
+    Parameters
+    ----------
+    network : :class:'Network'
+        The network to check
+    dataloader : :class:'torch.DataLoader'
+        The data loader to use for checking
+    equilibration_activity_tolerance : float
+        The tolerance for the equilibration of activity
+    store_num_steps : int, optional
+        The number of steps to store, by default None
+    pre_equilibrate : bool, optional
+        Whether to pre-equilibrate the network, by default False
+    disp : bool, optional
+        Whether to display the results, by default False
+    plot : bool, optional
+        Whether to plot the results, by default False
 
-    :param network: :class:'Network'
-    :param dataloader: :class:'torch.DataLoader'
-    :param equilibration_activity_tolerance: float in [0, 1]
-    :param store_num_steps: int
-    :param disp: bool
-    :param: plot: bool
-    :return: float
+    Returns
+    -------
+    float
+        The value of residual equilibration error
+
     """
-    idx, data, targets = next(iter(dataloader))
-    network.forward(data, store_dynamics=True, no_grad=True, store_num_steps=store_num_steps)
+    # idx, data, targets = next(iter(dataloader))
+    _ = network.test(dataloader, store_dynamics=True, store_num_steps=store_num_steps, pre_equilibrate=pre_equilibrate)
+    # network.forward(data, store_dynamics=True, no_grad=True, store_num_steps=store_num_steps)
     
     residuals = 0
     
@@ -1652,7 +1685,7 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
                 axes = [axes]
         elif cols == 1:
             axes = [[axis] for axis in axes]
-
+    
     for i, layer in enumerate(network):
         if i > 0:
             col = i - 1

@@ -444,7 +444,7 @@ def plot_hidden_weights(weights, sort=False, max_units=None, axes=None):
         axes = gs.GridSpec(num_rows, num_cols)
         fig = plt.figure(figsize=(12, 12 * num_rows / num_cols))
     else:
-        fig = ax.get_figure()
+        fig = axes.get_figure()
 
     # Define receptive field dimensions
     rf_width = rf_height = len(weights[0])**0.5
@@ -889,7 +889,9 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
             raise ValueError('Cannot plot multiple populations on the same axis. Please specify a single population.')
 
 
-def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_output_idx=None, title=None, ax=None):
+def plot_batch_accuracy(network, test_dataloader, population='OutputE',
+                        sorted_output_idx=None, title=None, ax=None,
+                        pre_equilibrate=False):
     """
     Compute total accuracy (% correct) on given dataset and plot batch accuracy.
 
@@ -907,9 +909,12 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE', sorted_o
         Plot title, by default None.
     ax : matplotlib.axes.Axes, optional
         Matplotlib axes to plot on, by default None.
+    pre_equilibrate : bool, optional
+        Whether to pre-equilibrate the states and activites of all units before inference
     """
     # Compute raw activities
-    pop_activity_dict, pattern_labels = ut.compute_raw_test_activity(network, test_dataloader)
+    pop_activity_dict, pattern_labels = ut.compute_raw_test_activity(network, test_dataloader,
+                                                                     pre_equilibrate=pre_equilibrate)
     
     # Calculate accuracy using raw output activity
     output_activity = pop_activity_dict[network.output_pop.fullname].clone()

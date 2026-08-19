@@ -3,7 +3,6 @@ import torch.nn as nn
 import numpy as np
 from torch.nn import MSELoss, BCELoss, CrossEntropyLoss
 from torch.optim import Adam, SGD
-from torch.cuda.amp import autocast, GradScaler
 
 from copy import deepcopy
 from collections import defaultdict
@@ -23,9 +22,11 @@ class Network(nn.Module):
     each of which is a simple container for one or more "Populations" of neurons. The connections between populations are defined by "Projections", which are simply nn.Linear() weight matrices 
     with optional custom bio-plausible learning rules.
     """
-    def __init__(self, layer_config, projection_config, learning_rate=None, optimizer=SGD, optimizer_kwargs=None,
-                 criterion=MSELoss, criterion_kwargs=None, seed=None, device='cpu', tau=1, forward_steps=1,
-                 backward_steps=1, use_amp=False, verbose=False):  
+    def __init__(self, layer_config, projection_config, learning_rate=None,
+                 optimizer=SGD, optimizer_kwargs=None, criterion=MSELoss,
+                 criterion_kwargs=None, seed=None, device='cpu', tau=1,
+                 forward_steps=1, backward_steps=1, verbose=False, pre_equilibrate=False,
+                 persistent_state=False):
         """
         Initialize a neural network with configurable layers and projections.
 
@@ -55,30 +56,21 @@ class Network(nn.Module):
             Number of forward integration steps.
         backward_steps : int, default 1
             Number of backward integration steps.
-        use_amp : bool, default False
-            Whether to use Automatic Mixed Precision (AMP) for training.
         verbose : bool, default False
             Whether to print detailed information during initialization.
+        pre_equilibrate : bool, default False
+            Whether to double the number of forward steps before train, validate, and test.
+        persistent_state : bool, default False
+            Whether to persist the states and activities of all units across train steps.
         """
         super().__init__()
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device(device)
         self.layer_config = layer_config
         self.projection_config = projection_config
         self.training_kwargs = {'learning_rate': learning_rate, 'optimizer': optimizer,
                                 'optimizer_kwargs': optimizer_kwargs, 'criterion': criterion,
                                 'criterion_kwargs': criterion_kwargs, 'device': device, 'tau': tau,
                                 'forward_steps': forward_steps, 'backward_steps': backward_steps}
-
-        # AMP configuration (no speedup for biological networks)
-        self.use_amp = use_amp and device != 'cpu' and torch.cuda.is_available()
-        if self.use_amp:
-            self.scaler = GradScaler()
-            if verbose:
-                print("AMP enabled for training")
-        else:
-            self.scaler = None
-            if verbose and use_amp:
-                print("AMP requested but disabled (requires CUDA)")
 
         # Load loss criterion
         if isinstance(criterion, str):
@@ -98,6 +90,8 @@ class Network(nn.Module):
         self.tau = tau
         self.forward_steps = forward_steps
         self.backward_steps = backward_steps
+        self.pre_equilibrate = pre_equilibrate
+        self.persistent_state = persistent_state
 
         self.seed = seed
         if self.seed is not None:
@@ -268,7 +262,8 @@ class Network(nn.Module):
                 population.reinit(device=self.device)
                 population.reset_history()
 
-    def forward(self, sample, store_history=False, store_dynamics=False, store_num_steps=None, no_grad=False):
+    def forward(self, sample, store_history=False, store_dynamics=False,
+                store_num_steps=None, no_grad=False, persistent_state=False):
         """
         Perform forward pass through the network.
 
@@ -285,6 +280,8 @@ class Network(nn.Module):
             Defaults to forward_steps if None.
         no_grad : bool, default False
             Whether to disable gradient computation.
+        persistent_state : bool, default False
+            Whether to maintain the state of the network between samples.
 
         Returns
         -------
@@ -294,39 +291,32 @@ class Network(nn.Module):
         if store_num_steps is None:
             store_num_steps = self.forward_steps
         
-        for population in self.populations.values():
-            if sample.ndim == 1:
-                population.reinit(device=self.device, batch_size=1)
-            else:
-                population.reinit(device=self.device, batch_size=sample.shape[0])
-    
         if not hasattr(self, 'input_pop'):
             self.input_pop = next(iter(list(self)[0]))
         self.input_pop.activity = torch.squeeze(sample).to(self.device)
+        
+        for population in self.populations.values():
+            if sample.ndim == 1:
+                population.reinit(device=self.device, batch_size=1, persistent_state=persistent_state)
+            else:
+                population.reinit(device=self.device, batch_size=sample.shape[0], persistent_state=persistent_state)
+        
+        for t in range(self.forward_steps):
+            if (t >= self.forward_steps - self.backward_steps) and not no_grad:
+                track_grad = True
+            else:
+                track_grad = False
 
-        # Use autocast context for forward pass if AMP is enabled and not in no_grad mode
-        if hasattr(self, 'use_amp'):
-            autocast_context = autocast() if (self.use_amp and not no_grad) else torch.no_grad() if no_grad else torch.enable_grad()
-        else:
-            autocast_context = torch.no_grad() if no_grad else torch.enable_grad()
-
-        with autocast_context:
-            for t in range(self.forward_steps):
-                if (t >= self.forward_steps - self.backward_steps) and not no_grad:
-                    track_grad = True
-                else:
-                    track_grad = False
-
-                with torch.set_grad_enabled(track_grad):
-                    for population in self.populations.values():
-                        population.prev_activity = population.activity
-                    for i, post_layer in enumerate(self):
-                        for post_pop in post_layer:
-                            if i > 0:
-                                post_pop.forward()
-                            if store_dynamics and t >= (self.forward_steps - store_num_steps):
-                                post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
-
+            with torch.set_grad_enabled(track_grad):
+                for population in self.populations.values():
+                    population.prev_activity = population.activity
+                for i, post_layer in enumerate(self):
+                    for post_pop in post_layer:
+                        if i > 0:
+                            post_pop.forward()
+                        if store_dynamics and t >= (self.forward_steps - store_num_steps):
+                            post_pop.forward_steps_activity.append(post_pop.activity.detach().clone())
+        
         if store_history:
             for pop in self.populations.values():
                 if store_dynamics:
@@ -335,6 +325,27 @@ class Network(nn.Module):
                     pop.append_attribute_history('activity', pop.activity.detach().clone())
 
         return self.output_pop.activity
+    
+    def cache_states_and_activities(self, label):
+        
+        if not hasattr(self, 'cached_state'):
+            self.cached_state = dict()
+            self.cached_activity = dict()
+        self.cached_state[label] = dict()
+        self.cached_activity[label] = dict()
+        for pop_name, population in self.populations.items():
+            if population is not self.input_pop:
+                self.cached_state[label][pop_name] = population.state.clone()
+                self.cached_activity[label][pop_name] = population.activity.clone()
+    
+    def restore_states_and_activities_from_cache(self, label):
+        
+        if not hasattr(self, 'cached_state') or label not in self.cached_state:
+            raise Exception('EIANN: Network.restore_states_and_activities_from_cache: unrecognized label: %s' % label)
+        for pop_name, population in self.populations.items():
+            if population is not self.input_pop:
+                population.state = self.cached_state[label][pop_name].clone()
+                population.activity = self.cached_activity[label][pop_name].clone()
 
     def update_forward_state(self, store_history=False, store_dynamics=False, store_num_steps=None):
         """
@@ -388,9 +399,32 @@ class Network(nn.Module):
                 else:
                     post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state.detach().clone())
   
+    def validate(self, val_data, val_target, pre_equilibrate=False):
+        """
+        
+        Parameters
+        ----------
+        val_data : torch.Tensor
+        val_target : torch.Tensor
+        pre_equilibrate: bool, default False
+
+        Returns
+        -------
+        tuple (torch.Tensor, float, float)
+        
+        """
+        if pre_equilibrate:
+            _ = self.forward(val_data, no_grad=True)
+        output = self.forward(val_data, no_grad=True, persistent_state=pre_equilibrate)
+        val_loss = self.criterion(output, val_target)
+        accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
+                   output.shape[0]
+        return output, val_loss.item(), accuracy.item()
+    
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
               store_history=False, store_val_output_history=False, store_dynamics=False, store_params=False,
-              store_history_interval=None, store_params_interval=None, save_to_file=None, status_bar=False):
+              store_history_interval=None, store_params_interval=None, save_to_file=None, status_bar=False,
+              pre_equilibrate=None, persistent_state=None):
         """
         Train the network on training data with optional validation.
 
@@ -408,6 +442,8 @@ class Network(nn.Module):
             Number of samples per epoch. Defaults to length of train_dataloader.
         store_history : bool, default False
             Whether to store activity history during training.
+        store_val_output_history : bool, default False
+            Whether to store validation output history during training.
         store_dynamics : bool, default False
             Whether to store step-by-step dynamics during training.
         store_params : bool, default False
@@ -420,6 +456,10 @@ class Network(nn.Module):
             File path to save the trained network.
         status_bar : bool, default False
             Whether to display tqdm progress bars during training.
+        pre_equilibrate : bool, default False
+            Whether to double the number of forward steps before train and validation.
+        persistent_state : bool, default False
+            Whether to persist the states and activities of all units across train samples.
 
         Notes
         -----
@@ -427,6 +467,10 @@ class Network(nn.Module):
         steps until >= validate_stop. The validation dataloader must contain a 
         single batch with all validation data.
         """
+        if pre_equilibrate is None:
+            pre_equilibrate = self.pre_equilibrate
+        if persistent_state is None:
+            persistent_state = self.persistent_state
         self.reset_history()
         if samples_per_epoch is None:
             samples_per_epoch = len(train_dataloader)
@@ -454,7 +498,7 @@ class Network(nn.Module):
             self.val_loss_history = []
             self.val_accuracy_history = []
             self.val_history_train_steps = []
-            
+        
         # Store history of weights and biases
         if store_history:
             if store_history_interval is not None:
@@ -504,11 +548,12 @@ class Network(nn.Module):
                 for projection in post_pop:
                     projection.learning_rule.reinit()
         
-
         #######################################################
         #*************     Main training loop     *************
         #######################################################
+        
         train_step = 0
+        
         for epoch in epoch_iter:
             epoch_sample_order = []
             if status_bar and len(train_dataloader) > epochs:
@@ -534,19 +579,14 @@ class Network(nn.Module):
                         this_train_step_store_history = train_step in store_history_range
                 else:
                     this_train_step_store_history = False
-
-                # Use autocast for forward pass when AMP is enabled
-                if self.use_amp:
-                    with autocast():
-                        output = self.forward(sample_data, store_history=this_train_step_store_history,
-                                              store_dynamics=store_dynamics)
-                        loss = self.criterion(output, sample_target)
-                else:
-                    output = self.forward(sample_data, store_history=this_train_step_store_history,
-                                      store_dynamics=store_dynamics)
-                    with torch.no_grad():
-                        loss = self.criterion(output, sample_target)
-
+                
+                if pre_equilibrate and sample_count == 0:
+                    _ = self.forward(sample_data, no_grad=True)
+                
+                output = self.forward(sample_data, store_history=this_train_step_store_history,
+                                      store_dynamics=store_dynamics, persistent_state=persistent_state)
+                with torch.no_grad():
+                    loss = self.criterion(output, sample_target)
                 self.loss_history.append(loss.item())
                 del loss
                 self.target_history.append(sample_target.detach().clone())
@@ -555,13 +595,15 @@ class Network(nn.Module):
                     self.prev_param_history.append(deepcopy(self.state_dict()))  # Store parameters for dW comparison
                 
                 # Update state variables required for weight and bias updates
+                # TODO: make modular and discoverable which intermediates need to be updated and cached per forward
+                # step vs. per sample
                 self.update_forward_state(store_history=this_train_step_store_history, store_dynamics=store_dynamics)
                 
                 for backward in self.backward_methods:
                     backward(self, output, sample_target, store_history=this_train_step_store_history,
                              store_dynamics=store_dynamics)
                 
-                with torch.no_grad():
+                with ((torch.no_grad())):
                     # Step weights and biases
                     for i, post_layer in enumerate(self):
                         for post_pop in post_layer:
@@ -587,28 +629,27 @@ class Network(nn.Module):
                     
                     # Compute validation loss
                     if val_dataloader is not None and train_step in val_range:
-                        if self.use_amp:
-                            with autocast():
-                                output = self.forward(val_data, store_dynamics=False, no_grad=True)
-                                val_loss = self.criterion(output, val_target)
-                        else:
-                            output = self.forward(val_data, store_dynamics=False, no_grad=True)
-                            with torch.no_grad():
-                                val_loss = self.criterion(output, val_target)
+                        if persistent_state:
+                            self.cache_states_and_activities('train')
                         
+                        val_output, val_loss, val_accuracy = \
+                            self.validate(val_data, val_target, pre_equilibrate=pre_equilibrate)
                         if store_val_output_history:
-                            self.val_output_history.append(output.detach().clone())
-                        self.val_loss_history.append(val_loss.item())
-                        del val_loss
-                        accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
-                                   output.shape[0]
-                        del output
-                        self.val_accuracy_history.append(accuracy.item())
+                            self.val_output_history.append(val_output.detach().clone())
+                        del val_output
+                        
+                        self.val_loss_history.append(val_loss)
+                        self.val_accuracy_history.append(val_accuracy)
                         self.val_history_train_steps.append(train_step)
-                        if status_bar: # Display the current loss and accuracy on the progress bar
+                        
+                        if persistent_state:
+                            self.restore_states_and_activities_from_cache('train')
+                        
+                        if status_bar:  # Display the current loss and accuracy on the progress bar
                             epoch_iter.set_description(
-                                f"Validation Loss: {self.val_loss_history[-1]:.4f}, Accuracy: {self.val_accuracy_history[-1]:.2f}% - Epoch")
-                train_step += 1
+                                f"Validation Loss: {self.val_loss_history[-1]:.4f}, "
+                                f"Accuracy: {self.val_accuracy_history[-1]:.2f}% - Epoch")
+                    train_step += 1
             
             epoch_sample_order = torch.concat(epoch_sample_order)
             self.sample_order.extend(epoch_sample_order)
@@ -630,7 +671,8 @@ class Network(nn.Module):
         if save_to_file is not None:
             ut.save_network(self, path=save_to_file)
 
-    def test(self, dataloader, store_history=False, store_dynamics=False, status_bar=False):
+    def test(self, dataloader, store_history=False, store_dynamics=False, store_num_steps=None,
+             status_bar=False, pre_equilibrate=None):
         """
         Evaluate the network on test data without parameter updates.
 
@@ -642,41 +684,39 @@ class Network(nn.Module):
             Whether to store activity history during testing.
         store_dynamics : bool, default False
             Whether to store step-by-step dynamics during testing.
+        store_num_steps : int, default None
+            How many steps to record during dynamics equilibration
         status_bar : bool, default False
             Whether to display a progress bar during testing.
+        pre_equilibrate : bool, default False
+            Whether to double the number of forward steps during test.
 
         Returns
         -------
         float
             Final loss value on the test dataset.
         """
+        if pre_equilibrate is None:
+            pre_equilibrate = self.pre_equilibrate
+        
         if status_bar:
             from tqdm.autonotebook import tqdm
-
-        if status_bar:
-            dataloader_iter = tqdm(dataloader, desc='Samples')
-        else:
-            dataloader_iter = dataloader
-
-        on_device = False
-
-        for sample_idx, sample_data, sample_target in dataloader_iter:
-            sample_data = torch.squeeze(sample_data)
-            sample_target = torch.squeeze(sample_target)
-            if not on_device:
-                if sample_data.device == self.device:
-                    on_device = True
-                else:
-                    sample_data = sample_data.to(self.device)
-                    sample_target = sample_target.to(self.device)
-
-            if self.use_amp:
-                with autocast():
-                    output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
-                    loss = self.criterion(output, sample_target)
-            else:
-                output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics, no_grad=True)
-                loss = self.criterion(output, sample_target)
+        
+        sample_idx, sample_data, sample_target = next(iter(dataloader))
+        
+        sample_data = torch.squeeze(sample_data)
+        sample_target = torch.squeeze(sample_target)
+        if sample_data.device != self.device:
+            sample_data = sample_data.to(self.device)
+            sample_target = sample_target.to(self.device)
+        
+        if pre_equilibrate:
+            _ = self.forward(sample_data, no_grad=True)
+        
+        output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics,
+                              store_num_steps=store_num_steps, no_grad=True, persistent_state=pre_equilibrate)
+        with torch.no_grad():
+            loss = self.criterion(output, sample_target)
 
         return loss.item()
     
@@ -938,19 +978,33 @@ class Population(object):
         self.state = self.state + delta_state / self.tau
         self.activity = self.activation(self.state)
     
-    def reinit(self, batch_size=1, device=None):
+    def reinit(self, batch_size=1, device=None, persistent_state=False):
         """
         Method for resetting state variables of a population
+        
+        Parameters
+        ----------
+        batch_size : int, optional
+        device : str or torch.device, optional
+        persistent_state : bool, optional
+            Whether to maintain the state of the population between samples
+        
+        Returns
+        -------
+        None
         """
-        if batch_size > 1:
-            self.state = torch.zeros((batch_size, self.size), device=device)
-        else:
-            self.state = torch.zeros(self.size, device=device)
-        self.bias = self.bias.to(device)
-        self.state += self.bias
-        self.activity = self.activation(self.state).to(device)
         self.forward_steps_activity = []
-
+        if not persistent_state:
+            if batch_size > 1:
+                self.state = torch.zeros((batch_size, self.size), device=device)
+            else:
+                self.state = torch.zeros(self.size, device=device)
+            self.bias = self.bias.to(device)
+            self.state += self.bias
+            self.activity = self.activation(self.state).to(device)
+        elif self.state.ndim == 2 and batch_size == 1:
+            raise Exception('EIANN.Population.reinit: attempting to persist state from large batch to single sample')
+    
     def reset_history(self):
         self.attribute_history_dict = defaultdict(partial(deepcopy, {'buffer': [], 'history': None}))
     
@@ -1054,7 +1108,7 @@ class Conv2DPopulation(Population):
         for projection in self:
             pre_pop = projection.pre
             if projection.compartment not in ['dend', 'dendrite']:
-                if projection.update_phase in ['forward', 'all', 'F', 'A']:
+                if projection.update_phase in ['forward', 'F', 'all', 'A']:
                     if projection.direction in ['forward', 'F']:
                         delta_state = delta_state + projection(pre_pop.activity)
                     elif projection.direction in ['recurrent', 'R']:
@@ -1062,25 +1116,34 @@ class Conv2DPopulation(Population):
         self.state = self.state + delta_state / self.tau
         self.activity = self.activation(self.state)
     
-    def reinit(self, device, batch_size=1):
+    def reinit(self, device, batch_size=1, persistent_state=False):
         """
         Method for resetting state variables of a population
-        :param device:
+        Parameters
+        ----------
+        device : str or torch.device, optional
+        batch_size : int, optional
+        persistent_state : bool, optional
+            Whether to reinitialize unit states and activities
+        Returns
+        -------
+        None
         """
-        if self.image_dim is None:
-            if batch_size > 1:
-                self.state = torch.zeros((batch_size, self.size), device=device)
-            else:
-                self.state = torch.zeros(self.size, device=device)
-            self.state += self.bias
-        else:
-            if batch_size > 1:
-                self.state = torch.zeros((batch_size, self.size, self.image_dim, self.image_dim), device=device)
-            else:
-                self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=device)
-            self.state += self.bias.unsqueeze(-1).unsqueeze(-1)
-        self.activity = self.activation(self.state).to(device)
         self.forward_steps_activity = []
+        if not persistent_state:
+            if self.image_dim is None:
+                if batch_size > 1:
+                    self.state = torch.zeros((batch_size, self.size), device=device)
+                else:
+                    self.state = torch.zeros(self.size, device=device)
+                self.state += self.bias
+            else:
+                if batch_size > 1:
+                    self.state = torch.zeros((batch_size, self.size, self.image_dim, self.image_dim), device=device)
+                else:
+                    self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=device)
+                self.state += self.bias.unsqueeze(-1).unsqueeze(-1)
+            self.activity = self.activation(self.state).to(device)
 
 
 class MaxPool2DPopulation(Population):
@@ -1119,25 +1182,35 @@ class MaxPool2DPopulation(Population):
     def forward(self):
         self.activity = self.pool(self.source_pop.activity)
     
-    def reinit(self, device, batch_size=1):
+    def reinit(self, device, batch_size=1, persistent_state=False):
         """
         Method for resetting state variables of a population
-        :param device:
+        
+        Parameters
+        ----------
+        device : str or torch.device, optional
+        batch_size : int, optional
+        persistent_state : bool, optional
+            Whether to reinitialize unit states and activities
+        Returns
+        -------
+        None
         """
-        if self.image_dim is None:
-            if batch_size > 1:
-                self.state = torch.zeros((batch_size, self.size), device=device)
-            else:
-                self.state = torch.zeros(self.size, device=device)
-            self.state += self.bias
-        else:
-            if batch_size > 1:
-                self.state = torch.zeros((batch_size, self.size, self.image_dim, self.image_dim), device=device)
-            else:
-                self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=device)
-            self.state += self.bias.unsqueeze(-1).unsqueeze(-1)
-        self.activity = self.activation(self.state).to(device)
         self.forward_steps_activity = []
+        if not persistent_state:
+            if self.image_dim is None:
+                if batch_size > 1:
+                    self.state = torch.zeros((batch_size, self.size), device=device)
+                else:
+                    self.state = torch.zeros(self.size, device=device)
+                self.state += self.bias
+            else:
+                if batch_size > 1:
+                    self.state = torch.zeros((batch_size, self.size, self.image_dim, self.image_dim), device=device)
+                else:
+                    self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=device)
+                self.state += self.bias.unsqueeze(-1).unsqueeze(-1)
+            self.activity = self.activation(self.state).to(device)
 
 
 class FlattenPopulation(Population):
@@ -1197,17 +1270,26 @@ class Input(Population):
         self.reinit(device=network.device)
         self.reset_history()
     
-    def reinit(self, device, batch_size=1):
+    def reinit(self, device, batch_size=1, persistent_state=False,):
         """
         Method for resetting state variables of a population
-        :param device:
+        
+        Parameters
+        ----------
+        device : str or torch.device
+        batch_size : int, optional
+        persistent_state : bool, default False
+        Returns
+        -------
+        None
+
         """
         self.forward_steps_activity = []
 
 
 class Projection(nn.Linear):
     def __init__(self, pre_pop, post_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
-                 weight_constraint_kwargs={}, weight_bounds=None, direction='forward', update_phase='forward',
+                 weight_constraint_kwargs={}, weight_bounds=None, direction='forward', update_phase='all',
                  compartment=None, learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None):
         """
 
@@ -1219,7 +1301,7 @@ class Projection(nn.Linear):
         :param weight_constraint_kwargs: dict
         :param weight_bounds: tuple of float
         :param direction: str in ['forward', 'recurrent', 'F', 'R']
-        :param update_phase: str in ['forward', 'backward', 'F', B']
+        :param update_phase: str in ['forward', 'F', 'backward', 'B', 'all', 'A']
         :param compartment: None or str in ['soma', 'dend', 'dendrite']
         :param learning_rule: str
         :param learning_rule_kwargs: dict
@@ -1357,7 +1439,7 @@ class Projection(nn.Linear):
 
 class Conv2DProjection(nn.Conv2d):
     def __init__(self, pre_pop, post_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
-                 weight_constraint_kwargs=None, weight_bounds=None, direction='forward', update_phase='forward',
+                 weight_constraint_kwargs=None, weight_bounds=None, direction='forward', update_phase='all',
                  compartment=None, learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None,
                  kernel_size=None, stride=1, padding=0, dilation=1, groups=1, padding_mode='zeros', **kwargs):
         """
@@ -1370,7 +1452,7 @@ class Conv2DProjection(nn.Conv2d):
         :param weight_constraint_kwargs: dict
         :param weight_bounds: tuple of float
         :param direction: str in ['forward', 'recurrent', 'F', 'R']
-        :param update_phase: str in ['forward', 'backward', 'F', B']
+        :param update_phase: str in ['forward', 'F', 'backward', 'B', 'all', 'A']
         :param compartment: None or str in ['soma', 'dend', 'dendrite']
         :param learning_rule: str
         :param learning_rule_kwargs: dict
@@ -2115,7 +2197,7 @@ class ProjectionBuilder:
         return self
     
     def update_phase(self, phase: str) -> 'ProjectionBuilder':
-        """Set update phase (A or B)."""
+        """Set update phase (forward, backward, or all)."""
         self._projection_config['update_phase'] = phase
         return self
     
