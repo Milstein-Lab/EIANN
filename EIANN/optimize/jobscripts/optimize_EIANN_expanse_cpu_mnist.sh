@@ -12,20 +12,19 @@ sbatch <<EOT
 #SBATCH -N 8
 #SBATCH -n 1001
 #SBATCH -t 2:00:00
-#SBATCH --mem=0
+#SBATCH --mem=249208M
 #SBATCH --account=sua199
 #SBATCH --export=ALL
 #SBATCH --mail-user=milstein@cabm.rutgers.edu
 #SBATCH --mail-type=ALL
 #SBATCH --constraint="lustre"
+#SBATCH --no-requeue
 
-set -x
-
-source $HOME/cpu_py311.sh
+source $HOME/cpu_py311_intelmpi.sh
 
 cd $PROJECT/EIANN/EIANN
 
-srun -n 1001 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
-  --output-dir=$SCRATCH/data/EIANN --pop_size=200 --max_iter=1 --path_length=1 --disp \
+srun -n 1001 --mpi=pmi2 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
+  --output-dir=$SCRATCH/data/EIANN --pop_size=200 --max_iter=50 --path_length=3 --disp \
   --framework=mpi
 EOT
