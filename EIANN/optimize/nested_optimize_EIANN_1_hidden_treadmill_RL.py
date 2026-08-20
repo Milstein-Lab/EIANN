@@ -44,8 +44,9 @@ context = Context()
 # --retrain=True --status_bar=True --plot --disp --debug
 
 # python -m nested.analyze --framework=serial \
-# --config-file-path=optimize/optimize_config/treadmill_RL/20231129_nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_relu_SGD_config_G.yaml \
-# --output-dir=data --compute_receptive_fields=False --num_instances=1 --store_history=True \
+# --config-file-path=optimize/optimize_config/treadmill_RL/nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_relu_SGD_config.yaml \
+# --param-file-path=optimize/optimize_params/treadmill_RL/treadmill_RL_params.yaml --model-key=bpDale_relu_SGD \
+# --output-dir=data --compute_receptive_fields=False --num_instances=1 --store_history=False \
 # --retrain=True --status_bar=True --plot --disp --debug
 
 
