@@ -2,13 +2,7 @@ bounds:
     H1_E_Input_E_init_weight_scale:
         - 0.01
         - 10.
-    H1_E_H1_E_init_weight_scale:
-        - 0.01
-        - 10.
     H2_E_H1_E_init_weight_scale:
-        - 0.01
-        - 10.
-    H2_E_H2_E_init_weight_scale:
         - 0.01
         - 10.
     H_E_E_learning_rate:
@@ -111,9 +105,10 @@ kwargs:
     data_seed_start: 1
     supervised: True
     status_bar: False
-    train_steps: 20000
+    train_steps_per_class: 2000
+    num_splits: 5
     epochs: 1
-    network_config_file_path: optimize/network_config/MNIST/20260818_EIRNN_2_hidden_mnist_BP_like_config_5J_fast_equil.yaml
+    network_config_file_path: optimize/network_config/MNIST/20241009_EIANN_2_hidden_mnist_BP_like_config_5J.yaml
     val_interval:
         - -1000
         - -1
@@ -123,20 +118,18 @@ kwargs:
     include_dend_loss_objective: True
     include_equilibration_dynamics_objective: True
 update_context:
-    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
-      function: update_EIRNN_config_2_hidden_BP_like_5J
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
+      function: update_EIANN_config_2_hidden_BP_like_2I  # works with 5J
 stages:
-    - source: optimize.nested_optimize_EIANN_1_hidden_mnist
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIRNN_2_hidden_mnist_BP_like_5J_fast_equil
+optimization_title: EIANN_2_hidden_CL_mnist_5_tasks_BP_like_5J
 x0:
     H1_E_Input_E_init_weight_scale: 2.881149747735122
-    H1_E_H1_E_init_weight_scale: 0.2881149747735122
     H2_E_H1_E_init_weight_scale: 0.274426813251805
-    H2_E_H2_E_init_weight_scale: 0.0274426813251805
     H_E_E_learning_rate: 0.008191940181921905
     H1_E_H2_E_weight_scale: 0.7467185345024785
     H2_E_Output_E_weight_scale: 0.14814277909742227

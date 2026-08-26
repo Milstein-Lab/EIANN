@@ -113,7 +113,7 @@ kwargs:
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: optimize/network_config/MNIST/20260818_EIRNN_2_hidden_mnist_BP_like_config_5J_fast_equil.yaml
+    network_config_file_path: optimize/network_config/MNIST/20260818_EIRNN_2_hidden_mnist_BP_like_config_5J.yaml
     val_interval:
         - -1000
         - -1
@@ -131,7 +131,7 @@ stages:
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIRNN_2_hidden_mnist_BP_like_5J_fast_equil
+optimization_title: EIRNN_2_hidden_mnist_BP_like_5J
 x0:
     H1_E_Input_E_init_weight_scale: 2.881149747735122
     H1_E_H1_E_init_weight_scale: 0.2881149747735122

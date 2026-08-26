@@ -64,7 +64,6 @@ projection_config:
                     weight_bounds: !!python/tuple
                     - null
                     - 0
-                    update_phase: B
                     compartment: dend
                     direction: R
                     learning_rule: DendriticLoss_6
@@ -82,7 +81,6 @@ projection_config:
                         source: H2.E.H1.E
                         transpose: true
                         scale: 0.16914695597382515
-                    update_phase: B
                     compartment: dend
                     learning_rule: null
         SomaI:
@@ -180,7 +178,6 @@ projection_config:
                     weight_bounds: !!python/tuple
                     - null
                     - 0
-                    update_phase: B
                     compartment: dend
                     direction: R
                     learning_rule: DendriticLoss_6
@@ -198,7 +195,6 @@ projection_config:
                         source: Output.E.H2.E
                         transpose: true
                         scale: 6.7544703643822945
-                    update_phase: B
                     compartment: dend
                     learning_rule: null
         SomaI:

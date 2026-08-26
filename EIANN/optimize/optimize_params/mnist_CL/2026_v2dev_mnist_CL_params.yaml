@@ -502,6 +502,8 @@ BTSP_CL_6L:
     Output_I_size: 10.0
 
 BTSP_CL_ELR_A:
+    # this result was obtained with an earlier version of the optimize script that partitioned
+    # 20000 mnist images into 2 tasks of 5 classes each
     #    final_accuracy: 86.47999572753906
     #    final_loss: 0.054685620963573454
     #    phase1_accuracy: 98.44562530517578

@@ -8,12 +8,21 @@ bounds:
     H_E_E_learning_rate:
         - 0.0001
         - 0.25
+    H_E_E_ELR_threshold_scale:
+        - 0.001
+        - 1.
+    H_E_E_ELR_width_scale:
+        - 0.001
+        - 1.
+    H_E_E_ELR_delta:
+        - 0.001
+        - 1.
+    H_E_E_ELR_min:
+        - 0.001
+        - 1.
     H1_E_H2_E_weight_scale:
         - 0.01
         - 10.
-    neg_rate_th:
-        - 0.
-        - 0.5
     H1_E_H1_SomaI_init_weight_scale:
         - 0.01
         - 10.
@@ -80,6 +89,18 @@ bounds:
     Output_E_H2_E_learning_rate:
         - 0.0001
         - 0.25
+    Output_E_H2_E_ELR_threshold_scale:
+        - 0.001
+        - 1.
+    Output_E_H2_E_ELR_width_scale:
+        - 0.001
+        - 1.
+    Output_E_H2_E_ELR_delta:
+        - 0.001
+        - 1.
+    Output_E_H2_E_ELR_min:
+        - 0.001
+        - 1.
     Output_E_Output_I_init_weight_scale:
         - 0.01
         - 10.
@@ -92,9 +113,6 @@ bounds:
     Output_I_Output_I_init_weight_scale:
         - 0.01
         - 10.
-    max_pop_fraction:
-        - 0.01
-        - 1.
     H_I_size:
         - 1
         - 100
@@ -104,8 +122,6 @@ bounds:
 default_params:
     H_I_size: 50
     Output_I_size: 10
-    neg_rate_th: 0.
-    max_pop_fraction: 1.
 kwargs:
     network_id: 1
     task_id: 2
@@ -115,9 +131,9 @@ kwargs:
     supervised: True
     status_bar: False
     train_steps_per_class: 2000
-    num_splits: 5
+    num_splits: 2
     epochs: 1
-    network_config_file_path: optimize/network_config/MNIST/20251229_EIANN_2_hidden_mnist_BTSP_config_6L.yaml
+    network_config_file_path: optimize/network_config/MNIST_CL/20260203_EIANN_2_hidden_CL_mnist_BTSP_ELR_config_A.yaml
     val_interval:
         - -1000
         - -1
@@ -128,20 +144,23 @@ kwargs:
     include_equilibration_dynamics_objective: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
-      function: update_EIANN_config_2_hidden_BTSP_6L
+      function: update_EIANN_config_2_hidden_BTSP_ELR_A
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_2_hidden_CL_mnist_BTSP_6L
+optimization_title: EIANN_2_hidden_CL_mnist_2_tasks_BTSP_ELR_A
 x0:
     H_E_FF_E_max_weight_scale: 7.788609158406613
     H1_E_Input_E_init_weight_factor: 0.44148085242662294
     H_E_E_learning_rate: 0.00938294618946663
+    H_E_E_ELR_threshold_scale: 0.1
+    H_E_E_ELR_width_scale: 0.5
+    H_E_E_ELR_delta: 0.1
+    H_E_E_ELR_min: 0.1
     H1_E_H2_E_weight_scale: 0.16914695597382515
-    neg_rate_th: 0.0
     H1_E_H1_SomaI_init_weight_scale: 1.8465890474026487
     H1_SomaI_H1_E_init_weight_scale: 0.7559077315353061
     H1_SomaI_Input_E_init_weight_scale: 2.343115372006121
@@ -168,6 +187,9 @@ x0:
     Output_I_Output_E_init_weight_scale: 0.21986736823621184
     Output_I_H2_E_init_weight_scale: 0.8093417138412852
     Output_I_Output_I_init_weight_scale: 1.5466764661394883
-    max_pop_fraction: 1.0
+    Output_E_H2_E_ELR_threshold_scale: 0.1
+    Output_E_H2_E_ELR_width_scale: 0.5
+    Output_E_H2_E_ELR_delta: 0.1
+    Output_E_H2_E_ELR_min: 0.1
     H_I_size: 50.0
     Output_I_size: 10.0

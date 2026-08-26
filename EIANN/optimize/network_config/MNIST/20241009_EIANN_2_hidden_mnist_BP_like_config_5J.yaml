@@ -69,7 +69,6 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - null
                         - 0
-                    update_phase: B
                     compartment: dend
                     direction: R
                     learning_rule: DendriticLoss_6
@@ -87,7 +86,6 @@ projection_config:
                         source: H2.E.H1.E
                         transpose: True
                         scale: 0.4473952435945524
-                    update_phase: B
                     compartment: dend
                     learning_rule: null
         SomaI:
@@ -110,7 +108,6 @@ projection_config:
                         - 0
                         - null
                     direction: R
-                    update_phase: A
                     learning_rule: null
                 SomaI:
                     weight_init: half_kaiming
@@ -147,7 +144,6 @@ projection_config:
                         - null
                         - 0
                     direction: R
-                    update_phase: A
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         sign: -1
@@ -187,7 +183,6 @@ projection_config:
                     weight_bounds: !!python/tuple
                         - null
                         - 0
-                    update_phase: B
                     compartment: dend
                     direction: R
                     learning_rule: DendriticLoss_6
@@ -205,7 +200,6 @@ projection_config:
                         source: Output.E.H2.E
                         transpose: True
                         scale: 0.4473952435945524
-                    update_phase: B
                     compartment: dend
                     learning_rule: null
         SomaI:
@@ -228,7 +222,6 @@ projection_config:
                         - 0
                         - null
                     direction: R
-                    update_phase: A
                     learning_rule: null
                 SomaI:
                     weight_init: half_kaiming
@@ -251,7 +244,6 @@ projection_config:
                         - 0
                         - null
                     direction: R
-                    update_phase: A
                     learning_rule: Hebb_WeightNorm
                     learning_rule_kwargs:
                         sign: 1
@@ -318,7 +310,6 @@ projection_config:
                         - 0
                         - null
                     direction: R
-                    update_phase: A
                     learning_rule: null
                 SomaI:
                     weight_init: half_kaiming
