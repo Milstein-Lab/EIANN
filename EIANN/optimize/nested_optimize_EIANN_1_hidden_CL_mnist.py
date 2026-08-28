@@ -445,8 +445,7 @@ def filter_features(primitives, current_features, model_id=None, export=False, p
             features[key].append(val)
     for key, val in features.items():
         features[key] = np.mean(val)
-
-    print(features)
+    
     return features
 
 
