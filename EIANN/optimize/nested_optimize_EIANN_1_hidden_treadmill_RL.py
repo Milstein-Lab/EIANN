@@ -17,7 +17,7 @@ from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epo
 from EIANN.plot_rl import plot_validation_rewards, plot_final_q_vals, plot_actions_over_training, \
     plot_hidden_state_cross_correlation, plot_equilibration_dynamics, plot_treadmill_hidden_activity, \
     plot_region_cross_correlation_over_training, plot_region_cross_correlation_by_population, \
-    plot_hidden_state_cross_correlation_over_training
+    plot_hidden_state_cross_correlation_over_training, update_plot_font_sizes
 from nested.utils import Context, str_to_bool
 from nested.optimize_utils import update_source_contexts
 from EIANN.optimize.network_rl_config_updates import *
@@ -48,6 +48,13 @@ context = Context()
 # --param-file-path=optimize/optimize_params/treadmill_RL/treadmill_RL_params.yaml --model-key=bpDale_relu_SGD \
 # --output-dir=data --compute_receptive_fields=False --num_instances=1 --store_history=False \
 # --retrain=True --status_bar=True --plot --disp --debug
+
+# python -m nested.analyze --framework=serial \
+# --config-file-path=optimize/optimize_config/treadmill_RL/nested_optimize_EIANN_2_hidden_treadmill_RL_bpDale_relu_SGD_config.yaml \
+# --param-file-path=optimize/optimize_params/treadmill_RL/treadmill_RL_params.yaml --model-key=bpDale_relu_SGD \
+# --output-dir=data --compute_receptive_fields=False --num_instances=1 --store_history=False \
+# --retrain=True --status_bar=True --plot --disp --debug
+
 
 
 
@@ -158,6 +165,14 @@ def config_worker():
         context.save_plots = str_to_bool(context.save_plots)
     if 'save_plots_dir' not in context():
         context.save_plots_dir = f"{context.output_dir}/rl_plots"
+    if 'plot_format' not in context():
+        context.plot_format = 'svg'
+    else:
+        context.plot_format = str(context.plot_format).lower().lstrip('.')
+    if 'plot_font_size' not in context():
+        context.plot_font_size = 20
+    else:
+        context.plot_font_size = float(context.plot_font_size)
     if 'model_key' not in context():
         # nested consumes the recognized --model-key/-k option on the controller and does not forward it
         # to worker contexts, so recover it directly from the command-line args (default to empty).
@@ -281,6 +296,22 @@ def get_random_seeds():
     return [network_seeds, data_seeds]
 
 
+def get_instance_data_file_path(seed, data_seed):
+    """
+    Path of the network pickle for a single (seed, data_seed) instance. Used both when export writes
+    the trained network and when retrain=False loads it back, so the two always agree.
+
+    :param seed: int
+    :param data_seed: int
+    :return: str
+    """
+    base_data_file_path_prefix = os.path.splitext(context.base_data_file_path)[0]
+    if context.label is None:
+        return f"{base_data_file_path_prefix}_{seed}_{data_seed}.pkl"
+    else:
+        return f"{base_data_file_path_prefix}_{seed}_{data_seed}_{context.label}.pkl"
+
+
 def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False):
     """
 
@@ -319,10 +350,20 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             # plot_batch_accuracy(network, test_dataloader, population='all', title=title) # IMPLEMENT MAYBE
     
     if not context.retrain:
-        network = utils.load_network(context.data_file_path)
+        # an explicit --data_file_path naming an existing file wins; otherwise look for the file that a
+        # previous --retrain=True --export run of this config would have written for this instance
+        if 'data_file_path' in context() and os.path.isfile(context.data_file_path):
+            this_data_file_path = context.data_file_path
+        else:
+            this_data_file_path = get_instance_data_file_path(seed, data_seed)
+        if not os.path.isfile(this_data_file_path):
+            raise FileNotFoundError(
+                'nested_optimize_EIANN_1_hidden_treadmill_RL: retrain=False requires a network exported by '
+                'a previous --retrain=True --export run; not found: %s' % this_data_file_path)
+        network = utils.load_network(this_data_file_path)
         if context.disp:
             print('nested_optimize_EIANN_1_hidden_treadmill_RL: pid: %i loaded network history from %s' %
-                  (os.getpid(), context.data_file_path))
+                  (os.getpid(), this_data_file_path))
     else:
         if context.debug:
             import time
@@ -443,6 +484,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
     
     if plot or context.save_plots:
+        # must precede figure creation; text captures its size from rcParams when it is created
+        update_plot_font_sizes(context.plot_font_size)
         if context.model_key:
             title = str(context.model_key)
         else:
@@ -455,7 +498,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             plot_prefix = f"{context.save_plots_dir}/{context.run_name}_{seed}_{data_seed}"
             if context.label is not None:
                 plot_prefix += f"_{context.label}"
-            save_paths = {name: f"{plot_prefix}_{name}.png" for name in plot_names}
+            save_paths = {name: f"{plot_prefix}_{name}.{context.plot_format}" for name in plot_names}
         else:
             save_paths = {name: None for name in plot_names}
         plot_validation_rewards(network, title=title, save_path=save_paths['validation_rewards'])
@@ -484,12 +527,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             print(np.round(activities[1][pos], 2))
     
     if export:
-        base_data_file_path_prefix = context.base_data_file_path.split('.')[0]
-        if context.label is None:
-            this_data_file_path = f"{base_data_file_path_prefix}_{seed}_{data_seed}.pkl"
-        else:
-            this_data_file_path = f"{base_data_file_path_prefix}_{seed}_{data_seed}_{context.label}.pkl"
-        
+        this_data_file_path = get_instance_data_file_path(seed, data_seed)
         utils.save_network(network, path=this_data_file_path, disp=False)
         if context.disp:
             print('nested_optimize_EIANN_1_hidden_mnist: pid: %i exported network history to %s' %

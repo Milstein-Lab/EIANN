@@ -64,6 +64,25 @@ def update_plot_defaults():
                     "ps.fonttype": 42})
 
 
+def update_plot_font_sizes(font_size=20):
+    """
+    Scale every text element of subsequently created figures to font_size. Text objects capture their
+    size from rcParams when they are created, so this must be called before the figures are built.
+    Sizes are large by default so panels stay legible when the figures are shrunk into a multi-panel
+    figure or a slide.
+
+    :param font_size: int or float; base point size for axis labels, titles and legends
+    """
+    plt.rcParams.update({"font.size": font_size,
+                         "figure.titlesize": font_size + 2,
+                         "axes.titlesize": font_size,
+                         "axes.labelsize": font_size,
+                         "xtick.labelsize": font_size - 2,
+                         "ytick.labelsize": font_size - 2,
+                         "legend.fontsize": font_size - 2,
+                         "legend.title_fontsize": font_size - 2})
+
+
 def clean_axes(axes, left=True, right=False):
     """
     Remove top and right axes from pyplot axes object.
@@ -94,12 +113,14 @@ def _save_or_show(fig, save_path, dpi=600):
 
     :param fig: matplotlib Figure
     :param save_path: str or None
-    :param dpi: int; resolution for the saved raster figure (publication-quality by default)
+    :param dpi: int; resolution for the saved raster figure (publication-quality by default; for vector
+        formats it only applies to embedded raster elements such as imshow)
     """
     if save_path is not None:
-        import os
         os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
-        fig.savefig(save_path, dpi=dpi, bbox_inches='tight')
+        # keep text as editable <text> elements rather than outlined paths in vector output
+        with matplotlib.rc_context({'svg.fonttype': 'none', 'pdf.fonttype': 42, 'ps.fonttype': 42}):
+            fig.savefig(save_path, dpi=dpi, bbox_inches='tight')
         plt.close(fig)
     else:
         plt.show(block=False)
@@ -161,7 +182,7 @@ def plot_final_q_vals(network, environments, title=None, save_path=None, meta=Fa
         axes[i].set_title('Treadmill {}'.format(i+1))
 
     cbar = plt.colorbar(im, cax=axes[-1])
-    fig.suptitle(_prefix_title(title, 'Final Q Values'), fontsize=16)
+    fig.suptitle(_prefix_title(title, 'Final Q Values'))
     _save_or_show(fig, save_path)
 
 
@@ -240,11 +261,16 @@ def _treadmill_zone_spans(environment):
     return cue_span, reward_spans
 
 
-def _draw_cross_correlation_heatmap(ax, corr, zones, boundary_lines, normalize=False):
+def _draw_cross_correlation_heatmap(ax, corr, zones, boundary_lines, normalize=False, xlabel=None,
+                                    ylabel=None):
     """
     Draw a single across-track cross-correlation matrix onto ax in the Spruston-lab OSM style: icefire
     colormap on [-1, 1], thick black border frame, white dashed lines at zone boundaries, and white box
     outlines around the cue/reward zones. Returns the heatmap image (for a shared colorbar).
+
+    :param xlabel: optional str; axis label for the matrix columns. When either label is given the axes
+        are kept on (ticks and spines stripped) so the labels render; otherwise the axes are turned off.
+    :param ylabel: optional str; axis label for the matrix rows
     """
     icefire = sns.color_palette('icefire', as_cmap=True)
     if normalize:
@@ -272,8 +298,17 @@ def _draw_cross_correlation_heatmap(ax, corr, zones, boundary_lines, normalize=F
         ax.plot([low, high, high, low, low], [low, low, high, high, low], color='white', linewidth=3)
 
     ax.set_aspect('equal')
-    ax.axis('off')
     ax.grid(False)
+    if xlabel is None and ylabel is None:
+        ax.axis('off')
+    else:
+        # keep the axes on so the labels render, but strip ticks and spines to preserve the OSM look
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.set_xlabel('' if xlabel is None else xlabel, labelpad=8)
+        ax.set_ylabel('' if ylabel is None else ylabel, labelpad=8)
     return im
 
 
@@ -375,16 +410,26 @@ def plot_hidden_state_cross_correlation_over_training(network, environments, pop
     zones = ([cue_span] if cue_span is not None else []) + reward_spans
     boundary_lines = sorted({bound for span in zones for bound in span} | {environments[0].length})
 
+    # rows of each matrix are positions on track_i, columns are positions on track_j (see
+    # Q_Network.cross_correlation), which sets the y- and x-axis labels respectively
+    track_pairs = [(i, j) for i in range(len(environments)) for j in range(i + 1, len(environments))]
+    track_i, track_j = track_pairs[pair_index] if pair_index < len(track_pairs) else (0, 1)
+
     pops = [pop for pop in populations if pop in history[0]]
     for population_name in pops:
         fig, axes = plt.subplots(1, len(timepoints), figsize=(4.0 * len(timepoints), 4.0), squeeze=False)
         axes = axes[0]
 
         im = None
-        for ax, t in zip(axes, timepoints):
+        for k, (ax, t) in enumerate(zip(axes, timepoints)):
             corr = np.asarray(history[t][population_name])[pair_index]  # [length, length]
-            im = _draw_cross_correlation_heatmap(ax, corr, zones, boundary_lines)
-            ax.set_title('Epoch {}'.format(int(train_steps[t])))
+            # only the leftmost panel is labelled; the rest share its axes
+            xlabel = 'Treadmill %i position' % (track_j + 1) if k == 0 else None
+            ylabel = 'Treadmill %i position' % (track_i + 1) if k == 0 else None
+            im = _draw_cross_correlation_heatmap(ax, corr, zones, boundary_lines, xlabel=xlabel,
+                                                 ylabel=ylabel)
+            # train steps are 0-indexed internally; display epochs 1-indexed
+            ax.set_title('Epoch {}'.format(int(train_steps[t]) + 1))
 
         if im is not None:
             fig.colorbar(im, ax=axes, orientation='vertical', fraction=0.02, pad=0.04)
