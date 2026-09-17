@@ -26,3 +26,5 @@ EIANN/data/*.yaml
 manuscript/
 
 EIANN/data/mnist
+
+~$runs.xlsx

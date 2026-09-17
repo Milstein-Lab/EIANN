@@ -1,7 +1,7 @@
 import torch
 import torchvision
 import torchvision.transforms as T
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, ConcatDataset, Subset
 import os, sys, math
 from copy import deepcopy
 import numpy as np
@@ -33,6 +33,7 @@ context = Context()
 
 # added param: num_splits (int) determines how many different tasks to split mnist into
 # added param: train_steps_per_class (int) indicates how many steps to train a specific task (if not provided, will split train_steps equally across tasks)
+# added param: cumulative_val_set decides whether or not to have val set be cumulative to all seen tasks (default to true)
 
 def config_controller():
     if 'debug' not in context():
@@ -129,7 +130,10 @@ def config_worker():
         context.include_equilibration_dynamics_objective = False
     else:
         context.include_equilibration_dynamics_objective = str_to_bool(context.include_equilibration_dynamics_objective)
-    
+    if 'cumulative_val_set' not in context():
+        context.cumulative_val_set = True
+    else:
+        context.cumulative_val_set = str_to_bool(context.cumulative_val_set)
     if 'store_history_interval' not in context():
         context.store_history_interval = None
     
@@ -211,6 +215,10 @@ def config_worker():
 
     # put data into dataloaders
     context.data_generator = torch.Generator()
+
+    if context.cumulative_val_set:
+        for i in range(1, len(val_datasets)):
+            val_datasets[i] = ConcatDataset([val_datasets[i-1], val_datasets[i]])
 
     for task_train, task_val, task_test in zip(train_datasets, val_datasets, test_datasets):
         context.train_dataloaders.append(torch.utils.data.DataLoader(task_train, shuffle=True, generator=context.data_generator))
