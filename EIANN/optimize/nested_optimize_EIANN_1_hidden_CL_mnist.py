@@ -217,8 +217,8 @@ def config_worker():
     context.data_generator = torch.Generator()
 
     if context.cumulative_val_set:
-        for i in range(1, len(val_datasets)):
-            val_datasets[i] = ConcatDataset([val_datasets[i-1], val_datasets[i]])
+        original_datasets = list(val_datasets)
+        val_datasets = [ConcatDataset(original_datasets[:i + 1]) for i in range(len(original_datasets))]
 
     for task_train, task_val, task_test in zip(train_datasets, val_datasets, test_datasets):
         context.train_dataloaders.append(torch.utils.data.DataLoader(task_train, shuffle=True, generator=context.data_generator))
