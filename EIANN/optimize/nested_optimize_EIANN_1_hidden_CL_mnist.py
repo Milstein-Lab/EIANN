@@ -25,7 +25,7 @@ context = Context()
 
 # run a single seed (must be run from the root directory of EIANN):
 # python -m nested.analyze --framework=serial \
-#   --config-file-path=optimize/optimize_config/mnist_CL/20240923_nested_optimize_EIANN_2_hidden_CL_mnist_van_bp_relu_SGD_config_G.yaml \
+#   --config-file-path=optimize/optimize_config/mnist_CL/20240923_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_relu_SGD_config_G.yaml \
 #   --param-file-path=optimize/optimize_params/mnist_CL/2026_v2dev_mnist_CL_params.yaml --model-key=van_bp --output-dir=data --label=van_bp \
 #   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis=False --status_bar=True
 
@@ -226,6 +226,11 @@ def config_worker():
         context.test_dataloaders.append(torch.utils.data.DataLoader(task_test, batch_size=len(task_test), shuffle=False))
 
     context.full_test_dataloader = torch.utils.data.DataLoader(full_test_dataset, batch_size=len(full_test_dataset), shuffle=False)
+    
+    if not context.cumulative_val_set:
+        full_val_dataset = ConcatDataset(val_datasets)
+        context.full_val_dataloader = torch.utils.data.DataLoader(full_val_dataset, batch_size=len(full_val_dataset),
+                                                                  shuffle=False)
 
 
 def get_mean_forward_dend_loss(network, num_steps, abs=True):
@@ -426,11 +431,24 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         network.reset_history()
         network.update_CL_states()
     
-    final_total_loss, final_total_accuracy = (
-        utils.compute_test_loss_and_accuracy(network, full_test_dataloader, sorted_output_idx=sorted_output_idx))
+    if context.constrain_equilibration_dynamics or context.debug:
+        residuals = check_equilibration_dynamics(network, full_test_dataloader,
+                                                 context.equilibration_activity_tolerance,
+                                                 store_num_steps=context.store_num_steps, disp=context.disp,
+                                                 plot=plot)
+        if context.include_equilibration_dynamics_objective:
+            results['final_dynamics_residuals'] = residuals
+        elif residuals > 0. and not context.debug:
+            if context.interactive:
+                context.update(locals())
+            return dict()
     
-    results['final_loss'] = final_total_loss
-    results['final_accuracy'] = final_total_accuracy
+    if not context.cumulative_val_set:
+        final_total_loss, final_total_accuracy = (
+            utils.compute_test_loss_and_accuracy(network, context.full_val_dataloader,
+                                                 sorted_output_idx=sorted_output_idx))
+        results['final_loss'] = final_total_loss
+        results['final_accuracy'] = final_total_accuracy
         
     if not context.interactive:
         del network

@@ -129,3 +129,44 @@ BP_like_EIRNN_5J_fast_equil:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
+
+BP_like_EIRNN_5J:
+    # just lateral E-E recurrence does not seem to be the cause of
+    # degraded performance for the fast_equil version
+    #    accuracy: 91.63719177246094
+    #    dynamics_residuals: 0.0
+    #    loss: 0.017931099981069565
+    #    mean_forward_dend_loss: 0.008992726542055606
+    H1_E_Input_E_init_weight_scale: 0.8187121823650209
+    H1_E_H1_E_init_weight_scale: 0.011697690594097603
+    H2_E_H1_E_init_weight_scale: 0.6377365927691354
+    H2_E_H2_E_init_weight_scale: 0.07839007713522607
+    H_E_E_learning_rate: 0.005709644987769681
+    H1_E_H2_E_weight_scale: 0.03238932731710828
+    H2_E_Output_E_weight_scale: 0.633281080972015
+    H1_E_H1_SomaI_init_weight_scale: 0.7687185876276349
+    H1_SomaI_H1_E_init_weight_scale: 0.3269896990754885
+    H1_SomaI_Input_E_init_weight_scale: 0.9303105257677107
+    H1_SomaI_H1_SomaI_init_weight_scale: 0.8477272666009182
+    H_E_DendI_learning_rate: 0.1298918914340765
+    H1_E_H1_DendI_init_weight_scale: 0.9095697157035323
+    H1_DendI_H1_E_weight_scale: 1.3086103546887011
+    H1_DendI_H1_DendI_weight_scale: 0.16614725369648772
+    H2_E_H2_SomaI_init_weight_scale: 0.5545547643861843
+    H2_SomaI_H2_E_init_weight_scale: 0.45923224727559553
+    H2_SomaI_H1_E_init_weight_scale: 1.0098095389629174
+    H2_SomaI_H2_SomaI_init_weight_scale: 0.8419129416938449
+    H2_E_H2_DendI_init_weight_scale: 0.36203197531796955
+    H2_DendI_H2_E_weight_scale: 2.670186095490474
+    H2_DendI_H2_DendI_weight_scale: 1.1427292161153715
+    Output_E_H2_E_init_weight_scale: 2.3011969759969024
+    DendI_E_learning_rate: 0.06103431501865686
+    DendI_DendI_learning_rate: 0.06906194062616267
+    Output_E_H2_E_learning_rate: 0.03064163669273186
+    Output_E_Output_I_init_weight_scale: 1.4543193792164244
+    Output_I_Output_E_init_weight_scale: 0.6151538329682047
+    Output_I_H2_E_init_weight_scale: 0.2771895609369798
+    Output_I_Output_I_init_weight_scale: 1.5845504122052994
+    max_pop_fraction: 1.0
+    H_I_size: 50.0
+    Output_I_size: 10.0
