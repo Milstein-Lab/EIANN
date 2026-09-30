@@ -1,0 +1,115 @@
+bounds:
+    H_E_E_learning_rate:
+        - 0.0001
+        - 1.
+    Output_E_E_learning_rate:
+        - 0.0001
+        - 1.
+    ewc_lambda:
+        - 0.1
+        - 10000.
+    H1_E_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_E_H1_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_I_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_I_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_I_H1_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H2_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_I_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_I_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_I_H2_I_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_Output_I_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H_I_size:
+        - 1.
+        - 100.
+    Output_I_size:
+        - 1.
+        - 10.
+default_params:
+    H_I_size: 50
+    Output_I_size: 10
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps_per_class: 2000
+    num_splits: 2
+    task_incremental: True
+    epochs: 1
+    network_config_file_path: optimize/network_config/MNIST_CL/20260928_EIANN_2_hidden_CL_mnist_bpDale_relu_SGD_EWC_config_A.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: True
+    include_equilibration_dynamics_objective: True
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
+      function: update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_EWC_A
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_CL_mnist_2_tasks_bpDale_relu_SGD_EWC_A_TI
+x0:
+    H_E_E_learning_rate: 0.2383659419350977
+    Output_E_E_learning_rate: 0.039761796392714994
+    ewc_lambda: 100.
+    H_I_size: 50
+    Output_I_size: 10
+    H1_E_Input_E_init_weight_scale: 3.058271813418684
+    H1_E_H1_I_init_weight_scale: 1.5775254468935929
+    H1_I_Input_E_init_weight_scale: 2.359102163775572
+    H1_I_H1_E_init_weight_scale: 0.29496036365489275
+    H1_I_H1_I_init_weight_scale: 0.9922032718035152
+    H2_E_H1_E_init_weight_scale: 0.4798828831992022
+    H2_E_H2_I_init_weight_scale: 1.0227116957130296
+    H2_I_H1_E_init_weight_scale: 0.8271861311575388
+    H2_I_H2_E_init_weight_scale: 1.216427375166084
+    H2_I_H2_I_init_weight_scale: 3.6974737230780614
+    Output_E_H2_E_init_weight_scale: 1.9043549993944524
+    Output_E_Output_I_init_weight_scale: 1.5449698989489304
+    Output_I_H2_E_init_weight_scale: 1.457941604984259
+    Output_I_Output_E_init_weight_scale: 0.3713434686924387
+    Output_I_Output_I_init_weight_scale: 1.520123019000842

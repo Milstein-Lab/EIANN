@@ -7,16 +7,16 @@ export HISTORY_FILE_PATH="$3"
 sbatch <<EOT
 #!/bin/bash -l
 #SBATCH -J $JOB_NAME
-#SBATCH -o /expanse/lustre/scratch/aaronmil/temp_project/logs/EIANN/$JOB_NAME.%j.o
-#SBATCH -e /expanse/lustre/scratch/aaronmil/temp_project/logs/EIANN/$JOB_NAME.%j.e
+#SBATCH -o $SCRATCH/logs/EIANN/$JOB_NAME.%j.o
+#SBATCH -e $SCRATCH/logs/EIANN/$JOB_NAME.%j.e
 #SBATCH -p compute
 #SBATCH -N 8
 #SBATCH -n 1001
 #SBATCH -t 48:00:00
 #SBATCH --mem=249208M
-#SBATCH --account=sua199
+#SBATCH --account=$ACCOUNT_NUMBER
 #SBATCH --export=ALL
-#SBATCH --mail-user=milstein@cabm.rutgers.edu
+#SBATCH --mail-user=$MAIL_USER
 #SBATCH --mail-type=ALL
 #SBATCH --constraint="lustre"
 #SBATCH --no-requeue

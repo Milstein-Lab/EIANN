@@ -51,7 +51,14 @@ def get_split_mnist_dataset(data_dir, num_splits):
 
     full_test_dataloader = torch.utils.data.DataLoader(full_test_dataset, batch_size=len(full_test_dataset), shuffle=False)
 
-    return test_dataloaders, full_test_dataloader
+    return test_dataloaders, full_test_dataloader, labels_in_tasks
+
+
+def compute_task_incremental_test_loss_and_accuracy(network, test_dataloader, labels_in_tasks):
+    idx, test_data, test_target = next(iter(test_dataloader))
+    output = network.forward(test_data.to(network.device), no_grad=True)
+    return utils.compute_task_incremental_loss_and_accuracy(output, test_target.to(network.device), labels_in_tasks,
+                                                            network.criterion)
 
 
 @click.command()
@@ -60,7 +67,9 @@ def get_split_mnist_dataset(data_dir, num_splits):
 @click.option("--data-dir", help="directory containing train/test data")
 @click.option("--task", default='split_mnist', help="continual learning task")
 @click.option("--num-splits", help="how many splits (or subtasks) the task was split into")
-def main(model_folder_path, config_file_path, data_dir, task, num_splits):
+@click.option("--task-incremental", is_flag=True, default=False,
+              help="evaluate each sample only within its own task's output units")
+def main(model_folder_path, config_file_path, data_dir, task, num_splits, task_incremental):
 
     num_splits = int(num_splits)
 
@@ -71,7 +80,7 @@ def main(model_folder_path, config_file_path, data_dir, task, num_splits):
     task_test_loaders = full_test_loader = None
 
     if task == 'split_mnist':
-        task_test_loaders, full_test_loader =  get_split_mnist_dataset(data_dir, num_splits)
+        task_test_loaders, full_test_loader, labels_in_tasks = get_split_mnist_dataset(data_dir, num_splits)
 
     
     for seed in seeds:
@@ -84,12 +93,20 @@ def main(model_folder_path, config_file_path, data_dir, task, num_splits):
             network = utils.load_network(weight_path)
             phase_accuracies = []
             for i, test_loader in enumerate(task_test_loaders):
-                test_loss, test_accuracy = compute_test_loss_and_accuracy(network, test_loader)
+                if task_incremental:
+                    test_loss, test_accuracy = \
+                        compute_task_incremental_test_loss_and_accuracy(network, test_loader, labels_in_tasks)
+                else:
+                    test_loss, test_accuracy = compute_test_loss_and_accuracy(network, test_loader)
                 phase_accuracies.append(float(test_accuracy))
 
             seed_accuracies.append(phase_accuracies)
 
-        full_test_loss, full_test_accuracy = compute_test_loss_and_accuracy(network, full_test_loader)
+        if task_incremental:
+            full_test_loss, full_test_accuracy = \
+                compute_task_incremental_test_loss_and_accuracy(network, full_test_loader, labels_in_tasks)
+        else:
+            full_test_loss, full_test_accuracy = compute_test_loss_and_accuracy(network, full_test_loader)
         
         subtask_accuracy_per_seed.append(seed_accuracies)
         overall_accuracy_per_seed.append(float(full_test_accuracy))

@@ -878,3 +878,26 @@ def recompute_train_loss_and_accuracy(network, sorted_output_idx=None, bin_size=
     
     return binned_train_loss_steps, sorted_loss_history, sorted_accuracy_history
 
+
+
+def compute_task_incremental_loss_and_accuracy(output, target, labels_in_tasks, criterion):
+    """
+    Task-incremental evaluation: each sample is scored only on the output units of its own task's classes.
+    :param output: tensor (num_samples, num_classes)
+    :param target: tensor (num_samples, num_classes); one-hot
+    :param labels_in_tasks: list of lists of int; the classes in each task
+    :param criterion: callable loss function (e.g. network.criterion)
+    :return: tuple of float (loss, accuracy)
+    """
+    num_classes = output.shape[-1]
+    task_mask = torch.zeros(num_classes, num_classes, dtype=torch.bool, device=output.device)
+    for labels in labels_in_tasks:
+        for label in labels:
+            task_mask[label, labels] = True
+    labels = torch.argmax(target, dim=1)
+    mask = task_mask[labels]
+    classes_per_task = len(labels_in_tasks[0])
+    masked_output = output.masked_fill(~mask, float('-inf'))
+    accuracy = 100 * torch.sum(torch.argmax(masked_output, dim=1) == labels) / output.shape[0]
+    loss = criterion(output[mask].view(-1, classes_per_task), target[mask].view(-1, classes_per_task))
+    return loss.item(), accuracy.item()

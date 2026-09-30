@@ -34,6 +34,8 @@ context = Context()
 # added param: num_splits (int) determines how many different tasks to split mnist into
 # added param: train_steps_per_class (int) indicates how many steps to train a specific task (if not provided, will split train_steps equally across tasks)
 # added param: cumulative_val_set decides whether or not to have val set be cumulative to all seen tasks (default to true)
+# added param: task_incremental (bool) trains each task only on its own classes' output units and evaluates each sample
+#   only within its own task's output units (default to false). Requires Backprop_CL, Backprop_EWC or Backprop_SI.
 
 def config_controller():
     if 'debug' not in context():
@@ -134,6 +136,13 @@ def config_worker():
         context.cumulative_val_set = True
     else:
         context.cumulative_val_set = str_to_bool(context.cumulative_val_set)
+    if 'task_incremental' not in context():
+        context.task_incremental = False
+    else:
+        context.task_incremental = str_to_bool(context.task_incremental)
+    if context.task_incremental and not context.supervised:
+        raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: task_incremental is not supported with '
+                        'supervised=False')
     if 'store_history_interval' not in context():
         context.store_history_interval = None
     
@@ -185,6 +194,7 @@ def config_worker():
     classes_per_task = num_classes // context.num_splits
 
     labels_in_tasks = [list(range(t, min(num_classes, t+classes_per_task))) for t in range(0, num_classes, classes_per_task)]
+    context.labels_in_tasks = labels_in_tasks
     context.train_steps_per_task = [len(x) * context.train_steps_per_class for x in labels_in_tasks]
 
     train_datasets = [[] for _ in range(len(labels_in_tasks))]
@@ -233,6 +243,30 @@ def config_worker():
                                                                   shuffle=False)
 
 
+def set_task_incremental_kwargs(context):
+    """
+    Passes the task split to every learned projection, so that the learning rules compute the loss only on the output
+    units of the current task's classes.
+    """
+    task_incremental_rules = ['Backprop_CL', 'Backprop_EWC', 'Backprop_SI']
+    for post_layer, post_pops in context.projection_config.items():
+        for post_pop, pre_layers in post_pops.items():
+            for pre_layer, pre_pops in pre_layers.items():
+                for pre_pop, projection_kwargs in pre_pops.items():
+                    learning_rule = projection_kwargs.get('learning_rule', 'Backprop')
+                    if learning_rule is None:
+                        continue
+                    if learning_rule not in task_incremental_rules:
+                        raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: task_incremental requires one of %s, '
+                                        'but projection %s.%s <- %s.%s uses %s' %
+                                        (task_incremental_rules, post_layer, post_pop, pre_layer, pre_pop,
+                                         learning_rule))
+                    if projection_kwargs.get('learning_rule_kwargs') is None:
+                        projection_kwargs['learning_rule_kwargs'] = {}
+                    projection_kwargs['learning_rule_kwargs']['task_incremental'] = True
+                    projection_kwargs['learning_rule_kwargs']['task_classes'] = context.labels_in_tasks
+
+
 def get_mean_forward_dend_loss(network, num_steps, abs=True):
     """
 
@@ -279,6 +313,8 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     :return: dict
     """
     update_source_contexts(x, context)
+    if context.task_incremental:
+        set_task_incremental_kwargs(context)
 
     data_generator = context.data_generator
     full_test_dataloader = context.full_test_dataloader
@@ -333,7 +369,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                         store_history=context.store_history, store_dynamics=context.store_dynamics,
                         store_history_interval=context.store_history_interval,
                         store_params=context.store_params, store_params_interval=context.store_params_interval,
-                        status_bar=context.status_bar)
+                        store_val_output_history=context.task_incremental, status_bar=context.status_bar)
         
         # reorder output units if using unsupervised/Hebbian rule
         if not context.supervised:
@@ -348,6 +384,18 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             sorted_val_loss_history, sorted_val_accuracy_history = \
                 recompute_validation_loss_and_accuracy(network, val_loader, sorted_output_idx=sorted_output_idx,
                                                     store=True)
+        elif context.task_incremental:
+            # score each val sample only within its own task's output units
+            sorted_output_idx = None
+            _, _, val_target = next(iter(val_loader))
+            val_target = val_target.to(network.device)
+            task_incremental_val_history = \
+                [utils.compute_task_incremental_loss_and_accuracy(val_output, val_target, context.labels_in_tasks,
+                                                                  network.criterion)
+                 for val_output in network.val_output_history]
+            sorted_val_loss_history = torch.tensor([loss for loss, _ in task_incremental_val_history])
+            sorted_val_accuracy_history = torch.tensor([accuracy for _, accuracy in task_incremental_val_history])
+            min_loss_idx = torch.argmin(sorted_val_loss_history)
         else:
             min_loss_idx = torch.argmin(network.val_loss_history)
             sorted_output_idx = None
@@ -444,9 +492,16 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             return dict()
     
     if not context.cumulative_val_set:
-        final_total_loss, final_total_accuracy = (
-            utils.compute_test_loss_and_accuracy(network, context.full_val_dataloader,
-                                                 sorted_output_idx=sorted_output_idx))
+        if context.task_incremental:
+            _, full_val_data, full_val_target = next(iter(context.full_val_dataloader))
+            full_val_output = network.forward(full_val_data.to(network.device), no_grad=True)
+            final_total_loss, final_total_accuracy = (
+                utils.compute_task_incremental_loss_and_accuracy(full_val_output, full_val_target.to(network.device),
+                                                                 context.labels_in_tasks, network.criterion))
+        else:
+            final_total_loss, final_total_accuracy = (
+                utils.compute_test_loss_and_accuracy(network, context.full_val_dataloader,
+                                                     sorted_output_idx=sorted_output_idx))
         results['final_loss'] = final_total_loss
         results['final_accuracy'] = final_total_accuracy
         
