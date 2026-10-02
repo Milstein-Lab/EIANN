@@ -901,3 +901,84 @@ def compute_task_incremental_loss_and_accuracy(output, target, labels_in_tasks, 
     accuracy = 100 * torch.sum(torch.argmax(masked_output, dim=1) == labels) / output.shape[0]
     loss = criterion(output[mask].view(-1, classes_per_task), target[mask].view(-1, classes_per_task))
     return loss.item(), accuracy.item()
+
+
+def report_phase_debug(network, phase, val_loader, labels_in_tasks, output_weights_before=None, fig_path=None):
+    """
+    Debug report at the end of a continual-learning phase. Prints and plots:
+      - the size and class composition of the val set used for this phase,
+      - the mean output activity for each true class (rows: true class, columns: output unit),
+      - per-task accuracy, scored within each sample's task and with an argmax over all output units,
+      - the summed absolute change of each output unit's incoming weights during this phase.
+    :param network: :class:'Network'
+    :param phase: int
+    :param val_loader: :class:'DataLoader' with a single batch
+    :param labels_in_tasks: list of lists of int; the classes in each task
+    :param output_weights_before: dict {projection name: weight tensor at the start of the phase}, optional
+    :param fig_path: str; if provided, the figure is saved to this path
+    """
+    _, val_data, val_target = next(iter(val_loader))
+    val_data = val_data.to(network.device)
+    val_target = val_target.to(network.device)
+    labels = torch.argmax(val_target, dim=1)
+    num_classes = val_target.shape[1]
+    output = network.forward(val_data, no_grad=True)
+    
+    print(f'phase {phase} (task classes: {labels_in_tasks[phase]})')
+    class_counts = torch.bincount(labels, minlength=num_classes)
+    print(f'val set size: {len(labels)}; samples per class: ' +
+          ', '.join(f'{c}: {int(n)}' for c, n in enumerate(class_counts) if n > 0))
+    
+    present_classes = [c for c in range(num_classes) if class_counts[c] > 0]
+    mean_activity = torch.zeros(num_classes, num_classes)
+    for c in present_classes:
+        mean_activity[c] = output[labels == c].mean(dim=0).detach().cpu()
+    print('mean output activity per true class (rows: true class, columns: output unit):')
+    print('        ' + ' '.join(f'{u:6d}' for u in range(num_classes)))
+    for c in present_classes:
+        print(f'  {c:4d}  ' + ' '.join(f'{a:6.3f}' for a in mean_activity[c]))
+    
+    print('per-task val accuracy (within-task argmax | argmax over all outputs):')
+    tasks_seen = [task for task in labels_in_tasks if any(c in present_classes for c in task)]
+    for t, task in enumerate(tasks_seen):
+        in_task = torch.isin(labels, torch.tensor(task, device=labels.device))
+        _, within_task_acc = compute_task_incremental_loss_and_accuracy(
+            output[in_task], val_target[in_task], labels_in_tasks, network.criterion)
+        all_outputs_acc = 100 * (torch.argmax(output[in_task], dim=1) == labels[in_task]).float().mean().item()
+        print(f'  task {t} {task}: {within_task_acc:5.1f}% | {all_outputs_acc:5.1f}%')
+    
+    weight_change = None
+    if output_weights_before is not None:
+        weight_change = torch.zeros(network.output_pop.size)
+        for projection in network.output_pop:
+            if projection.name in output_weights_before:
+                weight_change += (projection.weight.detach().cpu() -
+                                  output_weights_before[projection.name]).abs().sum(dim=1)
+        print('summed |change| of incoming weights per output unit during this phase:')
+        print('        ' + ' '.join(f'{u:8d}' for u in range(network.output_pop.size)))
+        print('        ' + ' '.join(f'{d:8.2e}' for d in weight_change))
+    
+    fig, axes = plt.subplots(1, 2 if weight_change is not None else 1, figsize=(11, 4.5), squeeze=False)
+    im = axes[0, 0].imshow(mean_activity.numpy(), cmap='viridis', aspect='auto')
+    axes[0, 0].set_xlabel('Output unit')
+    axes[0, 0].set_ylabel('True class')
+    axes[0, 0].set_xticks(range(num_classes))
+    axes[0, 0].set_yticks(range(num_classes))
+    axes[0, 0].set_title(f'Mean output activity (val set: {len(labels)} samples)')
+    for task in labels_in_tasks[:-1]:
+        axes[0, 0].axhline(task[-1] + 0.5, color='w', linewidth=0.5)
+        axes[0, 0].axvline(task[-1] + 0.5, color='w', linewidth=0.5)
+    fig.colorbar(im, ax=axes[0, 0])
+    if weight_change is not None:
+        axes[0, 1].bar(range(network.output_pop.size), weight_change.numpy(), color='k')
+        axes[0, 1].set_xticks(range(network.output_pop.size))
+        axes[0, 1].set_xlabel('Output unit')
+        axes[0, 1].set_ylabel('Summed |weight change|')
+        axes[0, 1].set_title('Change in incoming output weights this phase')
+    fig.suptitle(f'Phase {phase} (task classes {labels_in_tasks[phase]})')
+    fig.tight_layout()
+    if fig_path is not None:
+        os.makedirs(os.path.dirname(fig_path) or '.', exist_ok=True)
+        fig.savefig(fig_path, dpi=100)
+        print(f'saved debug figure to {fig_path}')
+    fig.show()

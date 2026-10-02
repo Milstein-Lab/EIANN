@@ -35,7 +35,11 @@ context = Context()
 # added param: train_steps_per_class (int) indicates how many steps to train a specific task (if not provided, will split train_steps equally across tasks)
 # added param: cumulative_val_set decides whether or not to have val set be cumulative to all seen tasks (default to true)
 # added param: task_incremental (bool) trains each task only on its own classes' output units and evaluates each sample
-#   only within its own task's output units (default to false). Requires Backprop_CL, Backprop_EWC or Backprop_SI.
+#   only within its own task's output units (default to false). Requires continual-learning rules (subclasses of
+#   ContinualLearningMixin: Backprop_CL, Backprop_EWC, Backprop_SI, DTP_CL, BTSP_CL, BTSP_ELR_CL).
+# added param: multihead (bool) with task_incremental, makes the output layer one independent head per task: connections
+#   between output-layer populations are kept only within a task (task_block_mask), and top-down projections from the
+#   output layer only carry the current task's head while training (task_column_mask) (default to true)
 
 def config_controller():
     if 'debug' not in context():
@@ -140,6 +144,10 @@ def config_worker():
         context.task_incremental = False
     else:
         context.task_incremental = str_to_bool(context.task_incremental)
+    if 'multihead' not in context():
+        context.multihead = True
+    else:
+        context.multihead = str_to_bool(context.multihead)
     if context.task_incremental and not context.supervised:
         raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: task_incremental is not supported with '
                         'supervised=False')
@@ -243,28 +251,77 @@ def config_worker():
                                                                   shuffle=False)
 
 
-def set_task_incremental_kwargs(context):
+# Learning rules that never use the target, so there is nothing to mask in the task-incremental setting
+TARGET_FREE_RULES = ['DendriticLoss_6', 'Hebb_WeightNorm']
+
+
+def get_task_incremental_projection_config(projection_config, labels_in_tasks, multihead=True):
     """
-    Passes the task split to every learned projection, so that the learning rules compute the loss only on the output
-    units of the current task's classes.
+    Returns a copy of projection_config set up for task-incremental learning:
+      - every learned projection whose learning rule is a continual-learning rule (a subclass of ContinualLearningMixin,
+        e.g. Backprop_CL, Backprop_EWC, Backprop_SI, DTP_CL, BTSP_CL, BTSP_ELR_CL) gets task_incremental and
+        task_classes, so learning only sees the output units of the current task's classes. Rules in TARGET_FREE_RULES
+        are left unchanged; any other learned rule raises an error.
+      - if multihead, the output layer becomes one independent head per task: projections between output-layer
+        populations get the task_block_mask constraint (connections only within a task's head), and top-down
+        projections from the output layer to dendritic compartments get a mask so that only the current task's head
+        sends top-down signals (labels_in_tasks passed to clone_weight, or the task_column_mask constraint). The
+        projection's original constraint is kept and applied first.
+    :param projection_config: nested dict (post_layer -> post_pop -> pre_layer -> pre_pop -> kwargs)
+    :param labels_in_tasks: list of lists of int; the classes in each task
+    :param multihead: bool
+    :return: nested dict
     """
-    task_incremental_rules = ['Backprop_CL', 'Backprop_EWC', 'Backprop_SI']
-    for post_layer, post_pops in context.projection_config.items():
+    import EIANN.rules as rules
+    import EIANN.external as external
+    projection_config = deepcopy(projection_config)
+    output_layer = list(projection_config)[-1]
+    for post_layer, post_pops in projection_config.items():
         for post_pop, pre_layers in post_pops.items():
             for pre_layer, pre_pops in pre_layers.items():
                 for pre_pop, projection_kwargs in pre_pops.items():
+                    projection_name = '%s.%s <- %s.%s' % (post_layer, post_pop, pre_layer, pre_pop)
                     learning_rule = projection_kwargs.get('learning_rule', 'Backprop')
-                    if learning_rule is None:
+                    if learning_rule is not None and learning_rule not in TARGET_FREE_RULES:
+                        rule_class = getattr(rules, learning_rule, None) or getattr(external, learning_rule, None)
+                        if not (isinstance(rule_class, type) and issubclass(rule_class, rules.ContinualLearningMixin)):
+                            raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: task_incremental requires '
+                                            'learned projections to use a continual-learning rule (subclass of '
+                                            'ContinualLearningMixin) or one of %s, but projection %s uses %s' %
+                                            (TARGET_FREE_RULES, projection_name, learning_rule))
+                        if projection_kwargs.get('learning_rule_kwargs') is None:
+                            projection_kwargs['learning_rule_kwargs'] = {}
+                        projection_kwargs['learning_rule_kwargs']['task_incremental'] = True
+                        projection_kwargs['learning_rule_kwargs']['task_classes'] = labels_in_tasks
+                    
+                    if not multihead or pre_layer != output_layer:
                         continue
-                    if learning_rule not in task_incremental_rules:
-                        raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: task_incremental requires one of %s, '
-                                        'but projection %s.%s <- %s.%s uses %s' %
-                                        (task_incremental_rules, post_layer, post_pop, pre_layer, pre_pop,
-                                         learning_rule))
-                    if projection_kwargs.get('learning_rule_kwargs') is None:
-                        projection_kwargs['learning_rule_kwargs'] = {}
-                    projection_kwargs['learning_rule_kwargs']['task_incremental'] = True
-                    projection_kwargs['learning_rule_kwargs']['task_classes'] = context.labels_in_tasks
+                    base_constraint = projection_kwargs.get('weight_constraint')
+                    base_constraint_kwargs = projection_kwargs.get('weight_constraint_kwargs')
+                    if post_layer == output_layer:
+                        # connections between output-layer populations: only within each task's head
+                        if base_constraint == 'clone_weight':
+                            raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: multihead does not support '
+                                            'clone_weight on output-layer projection %s' % projection_name)
+                        projection_kwargs['weight_constraint'] = 'task_block_mask'
+                        projection_kwargs['weight_constraint_kwargs'] = {
+                            'labels_in_tasks': labels_in_tasks, 'base_constraint': base_constraint,
+                            'base_constraint_kwargs': base_constraint_kwargs}
+                    else:
+                        # top-down projections from the output layer: only the current task's head while training
+                        if projection_kwargs.get('compartment') not in ['dend', 'dendrite']:
+                            raise Exception('nested_optimize_EIANN_1_hidden_CL_mnist: multihead requires top-down '
+                                            'projections from the output layer to target dendrites, but projection '
+                                            '%s targets the soma' % projection_name)
+                        if base_constraint == 'clone_weight':
+                            projection_kwargs['weight_constraint_kwargs'] = dict(base_constraint_kwargs or {})
+                            projection_kwargs['weight_constraint_kwargs']['labels_in_tasks'] = labels_in_tasks
+                        else:
+                            projection_kwargs['weight_constraint'] = 'task_column_mask'
+                            projection_kwargs['weight_constraint_kwargs'] = {
+                                'labels_in_tasks': labels_in_tasks, 'base_constraint': base_constraint,
+                                'base_constraint_kwargs': base_constraint_kwargs}
+    return projection_config
 
 
 def get_mean_forward_dend_loss(network, num_steps, abs=True):
@@ -314,18 +371,21 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     """
     update_source_contexts(x, context)
     if context.task_incremental:
-        set_task_incremental_kwargs(context)
+        projection_config = get_task_incremental_projection_config(context.projection_config, context.labels_in_tasks,
+                                                                   multihead=context.multihead)
+    else:
+        projection_config = context.projection_config
 
     data_generator = context.data_generator
     full_test_dataloader = context.full_test_dataloader
 
     epochs = context.epochs
 
-    network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
+    network = Network(context.layer_config, projection_config, seed=seed, **context.training_kwargs)
     
     if export:
         config_dict = {'layer_config': context.layer_config,
-                       'projection_config': context.projection_config,
+                       'projection_config': projection_config,
                        'training_kwargs': context.training_kwargs}
         write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
         if context.disp:
@@ -353,6 +413,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             else:
                 context.data_file_paths.append(f"{context.output_dir}/{network_name}/{seed}/{network_name}_phase{i}_{seed}_{data_seed}_{context.label}.pkl")
         
+        if context.debug:
+            output_weights_before = {projection.name: projection.weight.detach().cpu().clone()
+                                     for projection in network.output_pop}
+
         if os.path.exists(context.data_file_paths[-1]) and not context.retrain:
             network = utils.load_network(context.data_file_paths[-1])
             if context.disp:
@@ -401,6 +465,14 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             sorted_output_idx = None
             sorted_val_loss_history = network.val_loss_history
             sorted_val_accuracy_history = network.val_accuracy_history
+
+        if context.debug:
+            print(f'\n===== debug: end of phase {i} (task_incremental={context.task_incremental}, '
+                  f'cumulative_val_set={context.cumulative_val_set}) =====')
+            label_str = '' if context.label is None else f'_{context.label}'
+            utils.report_phase_debug(network, i, val_loader, context.labels_in_tasks,
+                                     output_weights_before=output_weights_before,
+                                     fig_path=f'{context.output_dir}/debug_plots/phase{i}_{seed}{label_str}.png')
 
         if context.store_history and (context.store_history_interval is None):
             binned_train_loss_steps, sorted_train_loss_history, sorted_train_accuracy_history = \
@@ -478,6 +550,9 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                 
         network.reset_history()
         network.update_CL_states()
+        if context.task_incremental and context.multihead:
+            # re-apply weight constraints so the task masks switch to the next task's head before its first train step
+            network.constrain_weights_and_biases()
     
     if context.constrain_equilibration_dynamics or context.debug:
         residuals = check_equilibration_dynamics(network, full_test_dataloader,

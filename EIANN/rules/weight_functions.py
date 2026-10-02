@@ -1,9 +1,11 @@
 import torch
 
 
-def clone_weight(projection, source=None, sign=1, scale=1, source2=None, transpose=False):
+def clone_weight(projection, source=None, sign=1, scale=1, source2=None, transpose=False, labels_in_tasks=None):
     """
     Force a projection to exactly copy the weights of another projection (or product of two projections).
+    If labels_in_tasks is provided (task-incremental multi-head training), columns from presynaptic units outside the
+    current task are then zeroed (see task_column_mask).
     """
     if source is None:
         raise Exception('clone_weight: missing required weight_constraint_kwarg: source')
@@ -30,6 +32,8 @@ def clone_weight(projection, source=None, sign=1, scale=1, source2=None, transpo
                         (projection.name, str(projection.weight.data.shape), source_projection.name,
                          str(source_weight_data.shape)))
     projection.weight.data = source_weight_data
+    if labels_in_tasks is not None:
+        apply_task_column_mask(projection, labels_in_tasks)
 
 
 def normalize_weight(projection, scale, autapses=False, axis=1):
@@ -108,3 +112,89 @@ def _create_receptive_field_mask(n_hidden=500, input_size=784, image_dimensions=
                    rf_start_col:rf_start_col + rf_size] = 1
     
     return mask
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Task-incremental multi-head structure. Output-layer populations are split into one "head" per task: output E units by
+# the classes in each task, and other output-layer populations (e.g. inhibitory interneurons) into contiguous blocks.
+# ---------------------------------------------------------------------------------------------------------------------
+def get_unit_tasks(population, labels_in_tasks):
+    """
+    Task index of each unit of an output-layer population.
+    :param population: :class:'Population'
+    :param labels_in_tasks: list of lists of int; the classes in each task
+    :return: tensor of int (population.size,)
+    """
+    if population is population.network.output_pop:
+        unit_tasks = torch.empty(population.size, dtype=torch.long)
+        for task, labels in enumerate(labels_in_tasks):
+            unit_tasks[list(labels)] = task
+        return unit_tasks
+    return torch.arange(population.size) * len(labels_in_tasks) // population.size
+
+
+def get_current_task(network, num_tasks):
+    """
+    Current task index, read from the task counter of the network's continual-learning rules (which
+    network.update_CL_states() advances between tasks).
+    """
+    from .base_classes import ContinualLearningMixin
+    for projection in network.projections.values():
+        if isinstance(projection.learning_rule, ContinualLearningMixin):
+            return min(projection.learning_rule.task_num, num_tasks - 1)
+    return 0
+
+
+def apply_base_constraint(projection, base_constraint, base_constraint_kwargs):
+    if base_constraint is None:
+        return
+    if isinstance(base_constraint, str):
+        import EIANN.external as external
+        base_constraint = globals().get(base_constraint) or getattr(external, base_constraint)
+    base_constraint(projection, **(base_constraint_kwargs or {}))
+
+
+def get_inactive_task_columns(projection, labels_in_tasks):
+    """
+    Boolean mask of the weight columns whose presynaptic (output-layer) unit is outside the current task.
+    """
+    pre_tasks = get_unit_tasks(projection.pre, labels_in_tasks).to(projection.weight.device)
+    current_task = get_current_task(projection.post.network, len(labels_in_tasks))
+    return pre_tasks != current_task
+
+
+def apply_task_column_mask(projection, labels_in_tasks):
+    projection.weight.data[:, get_inactive_task_columns(projection, labels_in_tasks)] = 0.
+
+
+def task_block_mask(projection, labels_in_tasks, base_constraint=None, base_constraint_kwargs=None):
+    """
+    Weight constraint for projections between output-layer populations in task-incremental multi-head networks: only
+    connections within the same task's head are kept, so each head is an independent E/I subnetwork on the shared hidden
+    layers. Any original constraint of the projection (base_constraint) is applied first.
+    """
+    apply_base_constraint(projection, base_constraint, base_constraint_kwargs)
+    post_tasks = get_unit_tasks(projection.post, labels_in_tasks)
+    pre_tasks = get_unit_tasks(projection.pre, labels_in_tasks)
+    mask = (post_tasks.unsqueeze(1) == pre_tasks.unsqueeze(0)).to(projection.weight.device)
+    projection.weight.data *= mask
+
+
+def task_column_mask(projection, labels_in_tasks, base_constraint=None, base_constraint_kwargs=None):
+    """
+    Weight constraint for top-down projections from the output layer in task-incremental multi-head networks: columns
+    from output-layer units outside the current task are zeroed, so only the active head sends top-down signals to the
+    hidden layers while training. Any original constraint of the projection (base_constraint) is applied first.
+    Projections that use clone_weight get the same mask through clone_weight(labels_in_tasks=...).
+    The values of the masked columns are stashed on the projection (task_column_mask_stash) and restored at the next
+    call, so a head's top-down weights are kept while it is inactive and come back when its task starts (zeroing them in
+    place would lose them for good on projections that are fixed or not re-cloned). Masked columns are frozen at their
+    stashed values: learning-rule updates to them are discarded. The base constraint sees the full (restored) weights.
+    """
+    stash = getattr(projection, 'task_column_mask_stash', None)
+    if stash is not None:
+        inactive_columns, inactive_weight = stash
+        projection.weight.data[:, inactive_columns] = inactive_weight
+    apply_base_constraint(projection, base_constraint, base_constraint_kwargs)
+    inactive_columns = get_inactive_task_columns(projection, labels_in_tasks)
+    projection.task_column_mask_stash = (inactive_columns, projection.weight.data[:, inactive_columns].clone())
+    projection.weight.data[:, inactive_columns] = 0.

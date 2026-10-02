@@ -23,6 +23,7 @@ EIANN/data/mnist/*
 EIANN/data/rl_plots
 EIANN/data/cl_plots
 EIANN/data/*.yaml
+EIANN/data/debug_plots
 manuscript/
 
 EIANN/data/mnist
@@ -31,4 +32,3 @@ EIANN/data/mnist
 
 CLAUDE.md
 /.claude
-/.claude/*

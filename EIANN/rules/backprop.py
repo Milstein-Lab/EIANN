@@ -1,5 +1,5 @@
 import torch
-from .base_classes import LearningRule, BiasLearningRule
+from .base_classes import LearningRule, BiasLearningRule, ContinualLearningMixin
 from EIANN.utils import pwlin
 
 
@@ -235,7 +235,7 @@ class Backprop_SILR_D(LearningRule):
         network.optimizer.step()
 
 
-class Backprop_CL(LearningRule):
+class Backprop_CL(ContinualLearningMixin, LearningRule):
     """
     Backprop for continual learning. Counts tasks (update_CL_states is called by the network between tasks) and, when
     task_incremental is True, computes the loss only on the output units of the current task's classes
@@ -243,33 +243,23 @@ class Backprop_CL(LearningRule):
     below. All learned projections in the network should use the same rule, since any other backward method would also
     step the shared optimizer.
     """
-    
+
     def __init__(self, projection, task_incremental=False, task_classes=None, learning_rate=None):
         super().__init__(projection, learning_rate)
         projection.weight.requires_grad = True
-        self.task_incremental = bool(task_incremental)
-        if self.task_incremental and task_classes is None:
-            raise ValueError('%s: task_classes must be provided when task_incremental is True' %
-                             self.__class__.__name__)
-        self.task_classes = task_classes
-        self.task_num = 0
-    
+        self.init_continual_learning(task_incremental, task_classes)
+
     @classmethod
     def get_projections(cls, network):
         return [projection for projection in network.projections.values()
                 if projection.learning_rule.__class__ == cls]
-    
+
     def task_loss(self, network, output, target, task_num=None):
         if not self.task_incremental:
             return network.criterion(output, target)
-        if task_num is None:
-            task_num = self.task_num
-        task_idx = list(self.task_classes[task_num])
+        task_idx = self.get_task_classes(task_num)
         return network.criterion(output[..., task_idx], target[..., task_idx])
-    
-    def update_CL_states(self):
-        self.task_num += 1
-    
+
     @classmethod
     def backward(cls, network, output, target, store_history=False, store_dynamics=False):
         projections = cls.get_projections(network)
