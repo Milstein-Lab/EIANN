@@ -1,5 +1,26 @@
-# these results were obtained after a refactoring to parameterize the number of tasks
+# all results in this file were obtained after a refactoring to parameterize the number of tasks
+
+van_bp_CL_5_tasks_G:
+    # optimized with cumulative_val_set=True
+    #    phase0_accuracy: 99.480286
+    #    phase0_loss: 0.0098312
+    #    phase1_accuracy: 75.12637
+    #    phase1_loss: 0.043000884
+    #    phase2_accuracy: 46.454712
+    #    phase2_loss: 0.070967466
+    #    phase3_accuracy: 39.913074
+    #    phase3_loss: 0.07419638
+    #    phase4_accuracy: 32.605003
+    #    phase4_loss: 0.08262323
+    H_learning_rate: 0.0001443543206565407
+    Output_learning_rate: 0.00017230612377774196
+    H1_init_weight_scale: 0.5817984369055461
+    H2_init_weight_scale: 3.1129764839678913
+    Output_init_weight_scale: 2.8011728276195864
+
 BP_like_CL_2_tasks_5J:
+    # phase accuracy was not cumulative
+    # final accuracy was evaluated on test set
     #    final_accuracy: 61.80400466918945
     #    final_loss: 0.05929282978177071
     #    phase0_accuracy: 96.74417114257812
@@ -43,6 +64,8 @@ BP_like_CL_2_tasks_5J:
     Output_I_size: 10.0
 
 BP_like_CL_5_tasks_5J:
+    # phase accuracy was not cumulative
+    # final accuracy was evaluated on test set
     #    final_accuracy: 19.833999633789062
     #    final_loss: 0.1356375515460968
     #    phase0_accuracy: 99.88418579101562
@@ -98,6 +121,8 @@ BP_like_CL_5_tasks_5J:
     Output_I_size: 10.0
 
 BTSP_CL_2_tasks_6L:
+    # phase accuracy was not cumulative
+    # final accuracy was evaluated on test set
     #    final_accuracy: 74.1780014038086
     #    final_loss: 0.04186187833547592
     #    phase0_accuracy: 97.36614990234375
@@ -144,6 +169,8 @@ BTSP_CL_2_tasks_6L:
     Output_I_size: 10.0
 
 BTSP_CL_5_tasks_6L:
+    # phase accuracy was not cumulative
+    # final accuracy was evaluated on test set
     #    final_accuracy: 24.855998992919922
     #    final_loss: 0.10759812891483307
     #    phase0_accuracy: 99.8919677734375
@@ -202,6 +229,8 @@ BTSP_CL_5_tasks_6L:
     Output_I_size: 10.0
 
 BTSP_CL_2_tasks_ELR_A:
+    # phase accuracy was not cumulative
+    # final accuracy was evaluated on test set
     #    final_accuracy: 88.20201110839844
     #    final_loss: 0.0405073419213295
     #    phase0_accuracy: 98.26453399658203
@@ -254,6 +283,8 @@ BTSP_CL_2_tasks_ELR_A:
     Output_I_size: 10.0
 
 BTSP_CL_5_tasks_ELR_A:
+    # phase accuracy was not cumulative
+    # final accuracy was evaluated on test set
     # prioritizing instantaneous task performance over cumulative performance seems to be bad for final accuracy
     #    final_accuracy: 22.97800064086914
     #    final_loss: 0.11541147381067277
