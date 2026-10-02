@@ -28,3 +28,7 @@ manuscript/
 EIANN/data/mnist
 
 ~$runs.xlsx
+
+CLAUDE.md
+/.claude
+/.claude/*

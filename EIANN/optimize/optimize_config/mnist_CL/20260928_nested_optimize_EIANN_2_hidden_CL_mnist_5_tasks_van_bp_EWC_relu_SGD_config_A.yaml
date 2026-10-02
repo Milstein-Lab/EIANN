@@ -1,0 +1,55 @@
+bounds:
+    H_learning_rate:
+        - 0.0001
+        - 1.
+    Output_learning_rate:
+        - 0.0001
+        - 1.
+    ewc_lambda:
+        - 0.1
+        - 10000.
+    H1_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_init_weight_scale:
+        - 0.01
+        - 10.
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps_per_class: 2000
+    num_splits: 5
+    epochs: 1
+    network_config_file_path: optimize/network_config/MNIST_CL/20260928_EIANN_2_hidden_CL_mnist_van_bp_EWC_relu_SGD_config_A.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: False
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
+      function: update_EIANN_config_2_hidden_van_bp_relu_SGD_CL_EWC_A
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_CL_mnist_5_tasks_van_bp_EWC_relu_SGD_A
+x0:
+    H_learning_rate: 0.06467530684633124
+    Output_learning_rate: 0.018721773180876915
+    ewc_lambda: 100.
+    H1_init_weight_scale: 0.8488586553625852
+    H2_init_weight_scale: 2.5080556895118544
+    Output_init_weight_scale: 3.1872520298276377
