@@ -794,6 +794,95 @@ def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_EWC_A(x, context):
     context.training_kwargs['optimizer'] = 'SGD'
 
 
+def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_EWC_LR_A(x, context):
+    """
+    E-I network with Dale's law, 2 hidden layers. The E <- E feedforward projections (H1.E <- Input.E, H2.E <- H1.E,
+    Output.E <- H2.E) are learned by Backprop_EWC_LR. Each layer has its own
+    silr_threshold and silr_width, since the Fisher information differs in scale between layers; silr_min is shared by
+    all three. All other projections are
+    fixed. All weights are initialized with half_kaiming scaled by the *_init_weight_scale params.
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    H_I_size = int(param_dict['H_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+    
+    context.layer_config['H1']['SomaI']['size'] = H_I_size
+    context.layer_config['H2']['SomaI']['size'] = H_I_size
+    context.layer_config['Output']['SomaI']['size'] = Output_I_size
+    
+    silr_min = param_dict['silr_min']
+    H1_silr_threshold = param_dict['H1_silr_threshold']
+    H1_silr_width = param_dict['H1_silr_width']
+    H2_silr_threshold = param_dict['H2_silr_threshold']
+    H2_silr_width = param_dict['H2_silr_width']
+    Output_silr_threshold = param_dict['Output_silr_threshold']
+    Output_silr_width = param_dict['Output_silr_width']
+    
+    H_E_E_learning_rate = param_dict['H_E_E_learning_rate']
+    H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
+    H1_E_H1_I_init_weight_scale = param_dict['H1_E_H1_I_init_weight_scale']
+    
+    H1_I_Input_E_init_weight_scale = param_dict['H1_I_Input_E_init_weight_scale']
+    H1_I_H1_E_init_weight_scale = param_dict['H1_I_H1_E_init_weight_scale']
+    H1_I_H1_I_init_weight_scale = param_dict['H1_I_H1_I_init_weight_scale']
+    
+    H2_E_H1_E_init_weight_scale = param_dict['H2_E_H1_E_init_weight_scale']
+    H2_E_H2_I_init_weight_scale = param_dict['H2_E_H2_I_init_weight_scale']
+    
+    H2_I_H1_E_init_weight_scale = param_dict['H2_I_H1_E_init_weight_scale']
+    H2_I_H2_E_init_weight_scale = param_dict['H2_I_H2_E_init_weight_scale']
+    H2_I_H2_I_init_weight_scale = param_dict['H2_I_H2_I_init_weight_scale']
+    
+    Output_E_E_learning_rate = param_dict['Output_E_E_learning_rate']
+    Output_E_H2_E_init_weight_scale = param_dict['Output_E_H2_E_init_weight_scale']
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+    
+    Output_I_H2_E_init_weight_scale = param_dict['Output_I_H2_E_init_weight_scale']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+    
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_threshold'] = H1_silr_threshold
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_width'] = H1_silr_width
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_min'] = silr_min
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_I_init_weight_scale,)
+    
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_I_Input_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_init_args'] = (H1_I_H1_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_I_H1_I_init_weight_scale,)
+    
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_threshold'] = H2_silr_threshold
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_width'] = H2_silr_width
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_min'] = silr_min
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_E_H1_E_init_weight_scale,)
+    context.projection_config['H2']['E']['H2']['SomaI']['weight_init_args'] = (H2_E_H2_I_init_weight_scale,)
+    
+    context.projection_config['H2']['SomaI']['H1']['E']['weight_init_args'] = (H2_I_H1_E_init_weight_scale,)
+    context.projection_config['H2']['SomaI']['H2']['E']['weight_init_args'] = (H2_I_H2_E_init_weight_scale,)
+    context.projection_config['H2']['SomaI']['H2']['SomaI']['weight_init_args'] = (H2_I_H2_I_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
+        Output_E_E_learning_rate)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_threshold'] = (
+        Output_silr_threshold)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_width'] = Output_silr_width
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_min'] = silr_min
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
+        (Output_E_Output_I_init_weight_scale,)
+    
+    context.projection_config['Output']['SomaI']['H2']['E']['weight_init_args'] = (Output_I_H2_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_init_args'] = \
+        (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = \
+        (Output_I_Output_I_init_weight_scale,)
+    
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
 def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_SI_A(x, context):
     """
     E-I network with Dale's law, 2 hidden layers. The E <- E feedforward projections (H1.E <- Input.E, H2.E <- H1.E,
@@ -855,6 +944,94 @@ def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_SI_A(x, context):
     context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
         Output_E_E_learning_rate)
     context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['si_lambda'] = si_lambda
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
+        (Output_E_Output_I_init_weight_scale,)
+    
+    context.projection_config['Output']['SomaI']['H2']['E']['weight_init_args'] = (Output_I_H2_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_init_args'] = \
+        (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = \
+        (Output_I_Output_I_init_weight_scale,)
+    
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
+def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_SI_LR_A(x, context):
+    """
+    E-I network with Dale's law, 2 hidden layers. The E <- E feedforward projections (H1.E <- Input.E, H2.E <- H1.E,
+    Output.E <- H2.E) are learned by Backprop_SI_LR. Each layer has its own silr_threshold and silr_width, since
+    omega differs in scale between layers; silr_min is shared by all three. All other projections are fixed. All
+    weights are initialized with half_kaiming scaled by the *_init_weight_scale params.
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    H_I_size = int(param_dict['H_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+    
+    context.layer_config['H1']['SomaI']['size'] = H_I_size
+    context.layer_config['H2']['SomaI']['size'] = H_I_size
+    context.layer_config['Output']['SomaI']['size'] = Output_I_size
+    
+    silr_min = param_dict['silr_min']
+    H1_silr_threshold = param_dict['H1_silr_threshold']
+    H1_silr_width = param_dict['H1_silr_width']
+    H2_silr_threshold = param_dict['H2_silr_threshold']
+    H2_silr_width = param_dict['H2_silr_width']
+    Output_silr_threshold = param_dict['Output_silr_threshold']
+    Output_silr_width = param_dict['Output_silr_width']
+    
+    H_E_E_learning_rate = param_dict['H_E_E_learning_rate']
+    H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
+    H1_E_H1_I_init_weight_scale = param_dict['H1_E_H1_I_init_weight_scale']
+    
+    H1_I_Input_E_init_weight_scale = param_dict['H1_I_Input_E_init_weight_scale']
+    H1_I_H1_E_init_weight_scale = param_dict['H1_I_H1_E_init_weight_scale']
+    H1_I_H1_I_init_weight_scale = param_dict['H1_I_H1_I_init_weight_scale']
+    
+    H2_E_H1_E_init_weight_scale = param_dict['H2_E_H1_E_init_weight_scale']
+    H2_E_H2_I_init_weight_scale = param_dict['H2_E_H2_I_init_weight_scale']
+    
+    H2_I_H1_E_init_weight_scale = param_dict['H2_I_H1_E_init_weight_scale']
+    H2_I_H2_E_init_weight_scale = param_dict['H2_I_H2_E_init_weight_scale']
+    H2_I_H2_I_init_weight_scale = param_dict['H2_I_H2_I_init_weight_scale']
+    
+    Output_E_E_learning_rate = param_dict['Output_E_E_learning_rate']
+    Output_E_H2_E_init_weight_scale = param_dict['Output_E_H2_E_init_weight_scale']
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+    
+    Output_I_H2_E_init_weight_scale = param_dict['Output_I_H2_E_init_weight_scale']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+    
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_threshold'] = H1_silr_threshold
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_width'] = H1_silr_width
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_min'] = silr_min
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_I_init_weight_scale,)
+    
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_I_Input_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_init_args'] = (H1_I_H1_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_I_H1_I_init_weight_scale,)
+    
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_threshold'] = H2_silr_threshold
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_width'] = H2_silr_width
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_min'] = silr_min
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_E_H1_E_init_weight_scale,)
+    context.projection_config['H2']['E']['H2']['SomaI']['weight_init_args'] = (H2_E_H2_I_init_weight_scale,)
+    
+    context.projection_config['H2']['SomaI']['H1']['E']['weight_init_args'] = (H2_I_H1_E_init_weight_scale,)
+    context.projection_config['H2']['SomaI']['H2']['E']['weight_init_args'] = (H2_I_H2_E_init_weight_scale,)
+    context.projection_config['H2']['SomaI']['H2']['SomaI']['weight_init_args'] = (H2_I_H2_I_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
+        Output_E_E_learning_rate)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_threshold'] = (
+        Output_silr_threshold)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_width'] = Output_silr_width
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_min'] = silr_min
     context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
     context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
         (Output_E_Output_I_init_weight_scale,)
@@ -1179,6 +1356,54 @@ def update_EIANN_config_2_hidden_van_bp_relu_SGD_CL_EWC_A(x, context):
     context.training_kwargs['optimizer'] = 'SGD'
 
 
+def update_EIANN_config_2_hidden_van_bp_relu_SGD_CL_EWC_LR_A(x, context):
+    """
+    Vanilla backprop network, 2 hidden layers. The feedforward projections (H1.E <- Input.E, H2.E <- H1.E,
+    Output.E <- H2.E) are learned by Backprop_EWC_LR. Each layer has its own
+    silr_threshold and silr_width, since the Fisher information differs in scale between layers; silr_min is shared by
+    all three. Weights are initialized with
+    scaled_kaiming scaled by the *_init_weight_scale params.
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    silr_min = param_dict['silr_min']
+    H1_silr_threshold = param_dict['H1_silr_threshold']
+    H1_silr_width = param_dict['H1_silr_width']
+    H2_silr_threshold = param_dict['H2_silr_threshold']
+    H2_silr_width = param_dict['H2_silr_width']
+    Output_silr_threshold = param_dict['Output_silr_threshold']
+    Output_silr_width = param_dict['Output_silr_width']
+    
+    H_learning_rate = param_dict['H_learning_rate']
+    H1_init_weight_scale = param_dict['H1_init_weight_scale']
+    H2_init_weight_scale = param_dict['H2_init_weight_scale']
+    
+    Output_learning_rate = param_dict['Output_learning_rate']
+    Output_init_weight_scale = param_dict['Output_init_weight_scale']
+    
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_threshold'] = H1_silr_threshold
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_width'] = H1_silr_width
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_min'] = silr_min
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_init_weight_scale,)
+    
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H_learning_rate
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_threshold'] = H2_silr_threshold
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_width'] = H2_silr_width
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_min'] = silr_min
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
+        Output_learning_rate)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_threshold'] = (
+        Output_silr_threshold)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_width'] = Output_silr_width
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_min'] = silr_min
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_init_weight_scale,)
+    
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
 def update_EIANN_config_2_hidden_van_bp_relu_SGD_CL_SI_A(x, context):
     """
     Vanilla backprop network, 2 hidden layers. The feedforward projections (H1.E <- Input.E, H2.E <- H1.E,
@@ -1207,6 +1432,53 @@ def update_EIANN_config_2_hidden_van_bp_relu_SGD_CL_SI_A(x, context):
     context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
         Output_learning_rate)
     context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['si_lambda'] = si_lambda
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_init_weight_scale,)
+    
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
+def update_EIANN_config_2_hidden_van_bp_relu_SGD_CL_SI_LR_A(x, context):
+    """
+    Vanilla backprop network, 2 hidden layers. The feedforward projections (H1.E <- Input.E, H2.E <- H1.E,
+    Output.E <- H2.E) are learned by Backprop_SI_LR. Each layer has its own silr_threshold and silr_width, since
+    omega differs in scale between layers; silr_min is shared by all three. Weights are initialized with
+    scaled_kaiming scaled by the *_init_weight_scale params.
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    silr_min = param_dict['silr_min']
+    H1_silr_threshold = param_dict['H1_silr_threshold']
+    H1_silr_width = param_dict['H1_silr_width']
+    H2_silr_threshold = param_dict['H2_silr_threshold']
+    H2_silr_width = param_dict['H2_silr_width']
+    Output_silr_threshold = param_dict['Output_silr_threshold']
+    Output_silr_width = param_dict['Output_silr_width']
+    
+    H_learning_rate = param_dict['H_learning_rate']
+    H1_init_weight_scale = param_dict['H1_init_weight_scale']
+    H2_init_weight_scale = param_dict['H2_init_weight_scale']
+    
+    Output_learning_rate = param_dict['Output_learning_rate']
+    Output_init_weight_scale = param_dict['Output_init_weight_scale']
+    
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_threshold'] = H1_silr_threshold
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_width'] = H1_silr_width
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['silr_min'] = silr_min
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_init_weight_scale,)
+    
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H_learning_rate
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_threshold'] = H2_silr_threshold
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_width'] = H2_silr_width
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['silr_min'] = silr_min
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
+        Output_learning_rate)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_threshold'] = (
+        Output_silr_threshold)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_width'] = Output_silr_width
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['silr_min'] = silr_min
     context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_init_weight_scale,)
     
     context.training_kwargs['optimizer'] = 'SGD'
@@ -7479,6 +7751,143 @@ def update_EIANN_config_2_hidden_BP_like_2I(x, context):
     context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
     context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = \
         Output_E_H2_E_learning_rate
+    
+    context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
+        (Output_E_Output_I_init_weight_scale,)
+    
+    context.projection_config['Output']['SomaI']['H2']['E']['weight_init_args'] = (Output_I_H2_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['E']['weight_init_args'] = \
+        (Output_I_Output_E_init_weight_scale,)
+    context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = \
+        (Output_I_Output_I_init_weight_scale,)
+
+
+def update_EIANN_config_2_hidden_DTP_SI_CL_5J(x, context):
+    """
+    Continual-learning version of update_EIANN_config_2_hidden_BP_like_2I for DTP_SI (BP_like_2E + Synaptic Intelligence).
+    H1.SomaI, H2.SomaI, and Output.SomaI are not learned.
+    H1.DendI.H1.E, H1.DendI.H1.DendI, H2.DendI.H2.E, and H2.DendI.H2.DendI are learned with Hebb_WeightNorm.
+    E<-E weights (H1.E.Input.E, H2.E.H1.E, Output.E.H2.E) are learned with the DTP_SI rule, with a shared si_lambda.
+    Inits are half-kaiming with parameterized scale.
+    H1.E.H2.E and H2.E.Output.E weights are cloned W.T with parameterized scale.
+    H1.E.H1.DendI and H2.E.H2.DendI are learned with DendriticLoss_6 rule.
+    :param x:
+    :param context:
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+    max_pop_fraction = param_dict['max_pop_fraction']
+    H_I_size = int(param_dict['H_I_size'])
+    Output_I_size = int(param_dict['Output_I_size'])
+    
+    context.layer_config['H1']['SomaI']['size'] = H_I_size
+    context.layer_config['H2']['SomaI']['size'] = H_I_size
+    context.layer_config['H1']['DendI']['size'] = H_I_size
+    context.layer_config['H2']['DendI']['size'] = H_I_size
+    context.layer_config['Output']['SomaI']['size'] = Output_I_size
+    
+    H_E_E_learning_rate = param_dict['H_E_E_learning_rate']
+    H_E_DendI_learning_rate = param_dict['H_E_DendI_learning_rate']
+    DendI_E_learning_rate = param_dict['DendI_E_learning_rate']
+    DendI_DendI_learning_rate = param_dict['DendI_DendI_learning_rate']
+    
+    si_lambda = param_dict['si_lambda']
+    
+    H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
+    H1_E_H2_E_weight_scale = (param_dict['H1_E_H2_E_weight_scale'] *
+                              (math.sqrt(context.layer_config['H1']['E']['size']) /
+                               math.sqrt(context.layer_config['H2']['E']['size'])))
+    H1_E_H1_SomaI_init_weight_scale = param_dict['H1_E_H1_SomaI_init_weight_scale']
+    H1_SomaI_H1_E_init_weight_scale = param_dict['H1_SomaI_H1_E_init_weight_scale']
+    H1_SomaI_Input_E_init_weight_scale = param_dict['H1_SomaI_Input_E_init_weight_scale']
+    H1_SomaI_H1_SomaI_init_weight_scale = param_dict['H1_SomaI_H1_SomaI_init_weight_scale']
+    
+    H1_DendI_H1_E_weight_scale = (param_dict['H1_DendI_H1_E_weight_scale'] *
+                                       math.sqrt(context.layer_config['H1']['E']['size']) / 2)
+    H1_DendI_H1_DendI_weight_scale = (param_dict['H1_DendI_H1_DendI_weight_scale'] *
+                                           math.sqrt(context.layer_config['H1']['DendI']['size']) / 2)
+    H1_E_H1_DendI_init_weight_scale = param_dict['H1_E_H1_DendI_init_weight_scale']
+    
+    H2_E_H1_E_init_weight_scale = param_dict['H2_E_H1_E_init_weight_scale']
+    H2_E_Output_E_weight_scale = (param_dict['H2_E_Output_E_weight_scale'] *
+                                  (math.sqrt(context.layer_config['H2']['E']['size']) /
+                                   math.sqrt(context.layer_config['Output']['E']['size'])))
+    H2_E_H2_SomaI_init_weight_scale = param_dict['H2_E_H2_SomaI_init_weight_scale']
+    H2_SomaI_H2_E_init_weight_scale = param_dict['H2_SomaI_H2_E_init_weight_scale']
+    H2_SomaI_H1_E_init_weight_scale = param_dict['H2_SomaI_H1_E_init_weight_scale']
+    H2_SomaI_H2_SomaI_init_weight_scale = param_dict['H2_SomaI_H2_SomaI_init_weight_scale']
+    
+    H2_DendI_H2_E_weight_scale = (param_dict['H2_DendI_H2_E_weight_scale'] *
+                                  math.sqrt(context.layer_config['H2']['E']['size']) / 2)
+    H2_DendI_H2_DendI_weight_scale = (param_dict['H2_DendI_H2_DendI_weight_scale'] *
+                                      math.sqrt(context.layer_config['H2']['DendI']['size']) / 2)
+    H2_E_H2_DendI_init_weight_scale = param_dict['H2_E_H2_DendI_init_weight_scale']
+    
+    Output_E_H2_E_init_weight_scale = param_dict['Output_E_H2_E_init_weight_scale']
+    Output_E_H2_E_learning_rate = param_dict['Output_E_H2_E_learning_rate']
+    
+    Output_E_Output_I_init_weight_scale = param_dict['Output_E_Output_I_init_weight_scale']
+    Output_I_Output_E_init_weight_scale = param_dict['Output_I_Output_E_init_weight_scale']
+    Output_I_H2_E_init_weight_scale = param_dict['Output_I_H2_E_init_weight_scale']
+    Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
+    
+    context.projection_config['H1']['E']['Input']['E']['weight_init_args'] = (H1_E_Input_E_init_weight_scale,)
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_E_learning_rate
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['max_pop_fraction'] = max_pop_fraction
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['si_lambda'] = si_lambda
+    
+    context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['E']['H1']['DendI']['weight_init_args'] = (H1_E_H1_DendI_init_weight_scale,)
+    context.projection_config['H1']['E']['H1']['DendI']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_DendI_learning_rate
+    
+    context.projection_config['H1']['E']['H2']['E']['weight_constraint_kwargs']['scale'] = (
+        H1_E_H2_E_weight_scale)
+    
+    context.projection_config['H1']['SomaI']['Input']['E']['weight_init_args'] = (H1_SomaI_Input_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['E']['weight_init_args'] = (H1_SomaI_H1_E_init_weight_scale,)
+    context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_SomaI_H1_SomaI_init_weight_scale,)
+    
+    context.projection_config['H1']['DendI']['H1']['E']['weight_constraint_kwargs']['scale'] = (
+        H1_DendI_H1_E_weight_scale)
+    context.projection_config['H1']['DendI']['H1']['E']['learning_rule_kwargs']['learning_rate'] = DendI_E_learning_rate
+    context.projection_config['H1']['DendI']['H1']['DendI']['weight_constraint_kwargs']['scale'] = (
+        H1_DendI_H1_DendI_weight_scale)
+    context.projection_config['H1']['DendI']['H1']['DendI']['learning_rule_kwargs']['learning_rate'] = (
+        DendI_DendI_learning_rate)
+    
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_E_H1_E_init_weight_scale,)
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_E_learning_rate
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['max_pop_fraction'] = max_pop_fraction
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['si_lambda'] = si_lambda
+    
+    context.projection_config['H2']['E']['H2']['SomaI']['weight_init_args'] = (H2_E_H2_SomaI_init_weight_scale,)
+    
+    context.projection_config['H2']['E']['H2']['DendI']['weight_init_args'] = (H2_E_H2_DendI_init_weight_scale,)
+    context.projection_config['H2']['E']['H2']['DendI']['learning_rule_kwargs']['learning_rate'] = \
+        H_E_DendI_learning_rate
+    
+    context.projection_config['H2']['E']['Output']['E']['weight_constraint_kwargs']['scale'] = (
+        H2_E_Output_E_weight_scale)
+    
+    context.projection_config['H2']['SomaI']['H1']['E']['weight_init_args'] = (H2_SomaI_H1_E_init_weight_scale,)
+    context.projection_config['H2']['SomaI']['H2']['E']['weight_init_args'] = (H2_SomaI_H2_E_init_weight_scale,)
+    context.projection_config['H2']['SomaI']['H2']['SomaI']['weight_init_args'] = (H2_SomaI_H2_SomaI_init_weight_scale,)
+    
+    context.projection_config['H2']['DendI']['H2']['E']['weight_constraint_kwargs']['scale'] = (
+        H2_DendI_H2_E_weight_scale)
+    context.projection_config['H2']['DendI']['H2']['E']['learning_rule_kwargs']['learning_rate'] = DendI_E_learning_rate
+    context.projection_config['H2']['DendI']['H2']['DendI']['weight_constraint_kwargs']['scale'] = (
+        H2_DendI_H2_DendI_weight_scale)
+    context.projection_config['H2']['DendI']['H2']['DendI']['learning_rule_kwargs']['learning_rate'] = (
+        DendI_DendI_learning_rate)
+    
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_E_H2_E_init_weight_scale,)
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = \
+        Output_E_H2_E_learning_rate
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['si_lambda'] = si_lambda
     
     context.projection_config['Output']['E']['Output']['SomaI']['weight_init_args'] = \
         (Output_E_Output_I_init_weight_scale,)

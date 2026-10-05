@@ -25,7 +25,7 @@ context = Context()
 
 # run a single seed (must be run from the root directory of EIANN):
 # python -m nested.analyze --framework=serial \
-#   --config-file-path=optimize/optimize_config/mnist_CL/20240923_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_relu_SGD_config_G.yaml \
+#   --config-file-path=optimize/optimize_config/mnist_CL/5_tasks/20240923_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_relu_SGD_config_G.yaml \
 #   --param-file-path=optimize/optimize_params/mnist_CL/2026_v2dev_mnist_CL_params.yaml --model-key=van_bp --output-dir=data --label=van_bp \
 #   --export --compute_receptive_fields=False --num_instances=1 --store_history=True --retrain=False --full_analysis=False --status_bar=True
 

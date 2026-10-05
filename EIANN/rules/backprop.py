@@ -371,6 +371,113 @@ class Backprop_EWC(Backprop_CL):
         network.optimizer.step()
 
 
+class Backprop_EWC_LR(Backprop_CL):
+    """
+    Elastic weight consolidation (Kirkpatrick et al., 2017, arXiv:1612.00796) implemented as a learning rate
+    modulation instead of a loss penalty. During each task, a uniform random subset (reservoir sample) of the training
+    samples is cached. At the end of each task (update_CL_states), the diagonal of the empirical Fisher information
+    (squared per-sample gradient of the task loss, averaged over the cached samples) is computed at the current weights
+    and added to the Fisher summed over all previous tasks. The summed (raw) Fisher is passed through a piecewise
+    linear function that decreases from 1 (Fisher <= silr_threshold) to silr_min (Fisher >= silr_threshold +
+    silr_width), and during subsequent tasks the gradient of the task loss for each weight is scaled by that value:
+        grad_p = lr_mod_func(sum_t F_pt) * d task_loss(output, target) / d W_p
+    No penalty is added to the loss. Scaling the gradient is equivalent to scaling the per-weight learning rate only
+    for plain SGD (no momentum or weight decay). See Backprop_CL for task_incremental and task_classes.
+    """
+    
+    def __init__(self, projection, fisher_num_samples=1000, silr_threshold=1e-4, silr_width=1e-4, silr_min=0.,
+                 task_incremental=False, task_classes=None, learning_rate=None):
+        super().__init__(projection, task_incremental=task_incremental, task_classes=task_classes,
+                         learning_rate=learning_rate)
+        self.fisher_num_samples = int(fisher_num_samples)
+        self.fisher_sum = None
+        self.num_fisher_tasks = 0
+        self.lr_mod = torch.ones_like(projection.weight.data)
+        self.lr_mod_func = pwlin(1., silr_min, silr_threshold, silr_threshold + silr_width)
+    
+    @classmethod
+    def get_buffer(cls, network):
+        """
+        Samples cached from the current task, shared by all projections using this rule.
+        """
+        if not hasattr(network, 'ewc_buffer'):
+            generator = torch.Generator()
+            generator.manual_seed(network.seed if network.seed is not None else 0)
+            # Store the generator state rather than the generator, since torch.Generator cannot be pickled
+            network.ewc_buffer = {'data': [], 'target': [], 'num_seen': 0, 'rng_state': generator.get_state()}
+        return network.ewc_buffer
+    
+    @classmethod
+    def cache_sample(cls, network, data, target, max_samples):
+        """
+        Reservoir sampling: after n samples, each has been kept with equal probability max_samples / n.
+        """
+        buffer = cls.get_buffer(network)
+        data = data.detach().clone()
+        target = target.detach().clone()
+        if buffer['num_seen'] < max_samples:
+            buffer['data'].append(data)
+            buffer['target'].append(target)
+        else:
+            generator = torch.Generator()
+            generator.set_state(buffer['rng_state'])
+            idx = torch.randint(0, buffer['num_seen'] + 1, (1,), generator=generator).item()
+            buffer['rng_state'] = generator.get_state()
+            if idx < max_samples:
+                buffer['data'][idx] = data
+                buffer['target'][idx] = target
+        buffer['num_seen'] += 1
+    
+    def update_CL_states(self):
+        # The first projection called at the end of a task computes the Fisher for all projections using this rule
+        if self.num_fisher_tasks == self.task_num:
+            network = self.projection.post.network
+            ewc_projections = self.get_projections(network)
+            buffer = self.get_buffer(network)
+            weights = [projection.weight for projection in ewc_projections]
+            fishers = [torch.zeros_like(weight) for weight in weights]
+            num_samples = len(buffer['data'])
+            for data, target in zip(buffer['data'], buffer['target']):
+                output = network.forward(data)
+                loss = self.task_loss(network, output, target, task_num=self.task_num)
+                grads = torch.autograd.grad(loss, weights, allow_unused=True)
+                for fisher, grad in zip(fishers, grads):
+                    if grad is not None:
+                        fisher += grad.detach() ** 2
+            for projection, fisher in zip(ewc_projections, fishers):
+                if num_samples > 0:
+                    fisher /= num_samples
+                learning_rule = projection.learning_rule
+                if learning_rule.fisher_sum is None:
+                    learning_rule.fisher_sum = fisher
+                else:
+                    learning_rule.fisher_sum = learning_rule.fisher_sum + fisher
+                learning_rule.lr_mod = learning_rule.lr_mod_func(learning_rule.fisher_sum)
+                learning_rule.num_fisher_tasks += 1
+            buffer['data'] = []
+            buffer['target'] = []
+            buffer['num_seen'] = 0
+        super().update_CL_states()
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        
+        ewc_projections = cls.get_projections(network)
+        first_rule = ewc_projections[0].learning_rule
+        cls.cache_sample(network, network.input_pop.activity, target, first_rule.fisher_num_samples)
+        
+        loss = first_rule.task_loss(network, output, target)
+        network.optimizer.zero_grad()
+        loss.backward()
+        
+        with torch.no_grad():
+            for projection in ewc_projections:
+                if projection.learning_rule.task_num > 0 and projection.weight.grad is not None:
+                    projection.weight.grad *= projection.learning_rule.lr_mod
+        
+        network.optimizer.step()
+
+
 class Backprop_SI(Backprop_CL):
     """
     Synaptic Intelligence (Zenke et al., 2017, arXiv:1703.04200). During each task, the per-weight importance is
@@ -447,6 +554,81 @@ class Backprop_SI(Backprop_CL):
         
         if torch.is_tensor(penalty):
             penalty.backward()
+        network.optimizer.step()
+
+
+class Backprop_SI_LR(Backprop_CL):
+    """
+    Synaptic Intelligence (Zenke et al., 2017, arXiv:1703.04200) implemented as a learning rate modulation instead of a
+    loss penalty. The per-weight importance omega is computed as in Backprop_SI: during each task the path integral
+    small_omega += -g * delta_weight is accumulated, where g is the gradient of the task loss (before modulation) and
+    delta_weight is the actual weight change of each train step (after the optimizer step and weight clamping), and at
+    the end of each task (update_CL_states) omega = relu(omega + small_omega / (total task weight change ** 2 + si_xi)).
+    omega is passed through a piecewise linear function that decreases from 1 (omega <= silr_threshold) to silr_min
+    (omega >= silr_threshold + silr_width), and during subsequent tasks the gradient of the task loss for each weight is
+    scaled by that value:
+        grad_p = lr_mod_func(omega_p) * d task_loss(output, target) / d W_p
+    No penalty is added to the loss. Weights frozen by lr_mod = 0 gain no further importance, since their delta_weight
+    is 0. Scaling the gradient is equivalent to scaling the per-weight learning rate only for plain SGD (no momentum or
+    weight decay). See Backprop_CL for task_incremental and task_classes.
+    """
+    
+    def __init__(self, projection, si_xi=1e-3, silr_threshold=1., silr_width=1., silr_min=0., task_incremental=False,
+                 task_classes=None, learning_rate=None):
+        super().__init__(projection, task_incremental=task_incremental, task_classes=task_classes,
+                         learning_rate=learning_rate)
+        self.si_xi = si_xi
+        self.omega = None
+        self.small_omega = torch.zeros_like(projection.weight.data)
+        # Weights are initialized by the network after the projection is built, so this is set on the first backward
+        self.task_start_weight = None
+        self.unreg_grad = None
+        self.prev_weight = None
+        self.lr_mod = torch.ones_like(projection.weight.data)
+        self.lr_mod_func = pwlin(1., silr_min, silr_threshold, silr_threshold + silr_width)
+    
+    def update(self):
+        # Called after optimizer.step() and constrain_weights_and_biases(), so delta_weight includes weight clamping
+        if self.prev_weight is not None:
+            delta_weight = self.projection.weight.detach() - self.prev_weight
+            self.small_omega -= self.unreg_grad * delta_weight
+            self.prev_weight = None
+    
+    def update_CL_states(self):
+        weight = self.projection.weight.detach().clone()
+        if self.task_start_weight is not None:
+            omega = self.small_omega / ((weight - self.task_start_weight) ** 2 + self.si_xi)
+            if self.omega is not None:
+                omega = self.omega + omega
+            # Clamp at zero, as in the reference implementation (ganguli-lab/pathint)
+            self.omega = torch.relu(omega)
+            self.lr_mod = self.lr_mod_func(self.omega)
+        self.task_start_weight = weight
+        self.small_omega = torch.zeros_like(weight)
+        super().update_CL_states()
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+
+        si_projections = cls.get_projections(network)
+
+        network.optimizer.zero_grad()
+        loss = si_projections[0].learning_rule.task_loss(network, output, target)
+        loss.backward()
+
+        with torch.no_grad():
+            for projection in si_projections:
+                learning_rule = projection.learning_rule
+                if learning_rule.task_start_weight is None:
+                    learning_rule.task_start_weight = projection.weight.detach().clone()
+                if projection.weight.grad is None:
+                    learning_rule.unreg_grad = torch.zeros_like(projection.weight.data)
+                else:
+                    learning_rule.unreg_grad = projection.weight.grad.detach().clone()
+                    if learning_rule.task_num > 0:
+                        projection.weight.grad *= learning_rule.lr_mod
+                learning_rule.prev_weight = projection.weight.detach().clone()
+
         network.optimizer.step()
 
 
