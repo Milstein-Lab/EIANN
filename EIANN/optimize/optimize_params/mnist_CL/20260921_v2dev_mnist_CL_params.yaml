@@ -269,6 +269,30 @@ van_bp_CL_5_tasks_EWC:
     H2_init_weight_scale: 5.443287193467773
     Output_init_weight_scale: 0.19715145320894956
 
+van_bp_CL_5_tasks_SI_LR:
+    # phase0_accuracy: 99.876396
+    # phase0_loss: 0.0030046378
+    # phase1_accuracy: 87.74478
+    # phase1_loss: 0.027383825
+    # phase2_accuracy: 72.75506
+    # phase2_loss: 0.047349762
+    # phase3_accuracy: 63.927025
+    # phase3_loss: 0.057983983
+    # phase4_accuracy: 53.4204
+    # phase4_loss: 0.06747458
+    H_learning_rate: 0.0005205583788974833
+    Output_learning_rate: 0.0009597775657139655
+    H1_silr_threshold: 4.980519007020125e-07
+    H1_silr_width: 8.922101213093122e-07
+    H2_silr_threshold: 2.5093220871022003e-07
+    H2_silr_width: 2.0305109210602624e-07
+    Output_silr_threshold: 4.525442437646986e-07
+    Output_silr_width: 7.874090953029097e-07
+    silr_min: 0.014120766358838296
+    H1_init_weight_scale: 0.3331535369294887
+    H2_init_weight_scale: 1.5793561395675295
+    Output_init_weight_scale: 9.997616458420692
+
 
 #------------------------
 # TASK INCREMENTAL MODELS 
