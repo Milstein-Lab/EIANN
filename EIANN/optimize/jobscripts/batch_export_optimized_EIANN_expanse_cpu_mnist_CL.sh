@@ -32,6 +32,8 @@ declare -a models=(
 # one controller rank + NUM_INSTANCES workers per model
 export TASKS_PER_MODEL=$((NUM_INSTANCES + 1))
 export NUM_TASKS=$((${#models[@]} * TASKS_PER_MODEL))
+# split the node memory evenly so every step can start at once
+export MEM_PER_STEP=$((249208 / ${#models[@]}))M
 if [ $NUM_TASKS -gt 128 ]; then
   echo "$NUM_TASKS tasks do not fit on one 128-core node; reduce num_instances or split the model list"
   exit 1
@@ -63,7 +65,7 @@ set -x
 for model in ${models[*]}; do
   config=\${model%%:*}
   key=\${model##*:}
-  srun -n $TASKS_PER_MODEL --exact --mpi=pmi2 python -m mpi4py.futures -m nested.analyze \
+  srun -n $TASKS_PER_MODEL -c 1 --mem=$MEM_PER_STEP --exact --mpi=pmi2 python -m mpi4py.futures -m nested.analyze \
     --config-file-path=$CONFIG_DIR/\$config --param-file-path=$PARAM_FILE_PATH --model-key=\$key \
     --output-dir=$SCRATCH/data/EIANN --label=\$key --export --framework=mpi --num_instances=$NUM_INSTANCES \
     --store_history=True --retrain=True --full_analysis=False --status_bar=False \
