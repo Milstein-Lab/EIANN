@@ -7,6 +7,11 @@ For each seed folder in --model-folder-path, loads the network exported after ea
     tasks 0..phase) or 'all' (full 10-class test set). CSVs of different models can be concatenated and plotted together.
   - <output_dir>/<model_key>_activity.h5: class-averaged test activity of every population after each phase, nested as
     <seed>/phase<i>/average_pop_activity_dict/<pop> (num_classes, num_units) and <seed>/phase<i>/unit_labels_dict/<pop>.
+  - <output_dir>/<model_key>_fisher.h5 (unless --fisher-num-samples=0): diagonal of the empirical Fisher information of
+    every projection weight after each phase, computed as in Backprop_EWC on training samples of the task just learned,
+    plus the weights themselves, nested as <seed>/phase<i>/fisher/<projection> and <seed>/phase<i>/weight/<projection>
+    (post, pre). <seed>/learning_rule/<projection> holds the name of each projection's learning rule. Compare the Fisher
+    after phase i with the weight change during phase i+1 (weight in phase<i+1> - weight in phase<i>).
 
 Example (from the EIANN/ package directory):
 python scripts/get_cl_metrics.py --model-folder-path=data/<network_name> --data-dir=data/datasets/MNIST_data/ \
@@ -55,6 +60,69 @@ def get_split_mnist_dataset(data_dir, num_splits):
     full_test_dataloader = torch.utils.data.DataLoader(full_test_dataset, batch_size=len(full_test_dataset), shuffle=False)
 
     return test_dataloaders, full_test_dataloader, labels_in_tasks
+
+
+def get_split_mnist_fisher_samples(data_dir, labels_in_tasks, num_samples, seed=0):
+    """
+    Random subset of the training samples (0-49,999, as in nested_optimize_EIANN_1_hidden_CL_mnist) of each task, used
+    to compute the Fisher information. The same samples are drawn for every model.
+    :param data_dir: str
+    :param labels_in_tasks: list of lists of int
+    :param num_samples: int; samples per task
+    :param seed: int
+    :return: list of (data tensor (num_samples, 784), one-hot target tensor (num_samples, num_classes)) per task
+    """
+    MNIST_train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=False)
+    data = MNIST_train_dataset.data[:50000].flatten(start_dim=1).float() / 255.  # same values as T.ToTensor()
+    labels = MNIST_train_dataset.targets[:50000]
+    num_classes = len(MNIST_train_dataset.classes)
+    generator = torch.Generator().manual_seed(seed)
+    task_samples = []
+    for task_labels in labels_in_tasks:
+        task_idx = torch.where(torch.isin(labels, torch.tensor(task_labels)))[0]
+        task_idx = task_idx[torch.randperm(len(task_idx), generator=generator)[:num_samples]]
+        task_samples.append((data[task_idx], torch.eye(num_classes)[labels[task_idx]]))
+    return task_samples
+
+
+def compute_fisher_diagonal(network, data, target, task_classes=None, backward_steps=None):
+    """
+    Diagonal of the empirical Fisher information of every projection weight, as in Backprop_EWC.update_CL_states: the
+    squared per-sample gradient of network.criterion, averaged over samples. Gradients are tracked for every projection
+    (including those with local or no learning rules) through the last backward_steps forward steps, regardless of the
+    network's own backward_steps.
+    :param network: :class:'Network'
+    :param data: tensor (num_samples, num_inputs)
+    :param target: tensor (num_samples, num_classes); one-hot
+    :param task_classes: list of int; if provided (task-incremental), the loss only includes these output units
+    :param backward_steps: int; default: all forward steps
+    :return: dict {projection name: array with the shape of its weight}
+    """
+    projection_names = list(network.projections.keys())
+    weights = [network.projections[name].weight for name in projection_names]
+    prev_requires_grad = [weight.requires_grad for weight in weights]
+    prev_backward_steps = network.backward_steps
+    network.backward_steps = network.forward_steps if backward_steps is None else backward_steps
+    for weight in weights:
+        weight.requires_grad = True
+    fishers = [torch.zeros_like(weight) for weight in weights]
+    try:
+        for sample_data, sample_target in zip(data, target):
+            output = network.forward(sample_data.to(network.device))
+            sample_target = sample_target.to(network.device).reshape(output.shape)
+            if task_classes is not None:
+                loss = network.criterion(output[..., task_classes], sample_target[..., task_classes])
+            else:
+                loss = network.criterion(output, sample_target)
+            grads = torch.autograd.grad(loss, weights, allow_unused=True)
+            for fisher, grad in zip(fishers, grads):
+                if grad is not None:
+                    fisher += grad.detach() ** 2
+    finally:
+        network.backward_steps = prev_backward_steps
+        for weight, requires_grad in zip(weights, prev_requires_grad):
+            weight.requires_grad = requires_grad
+    return {name: (fisher / len(data)).cpu().numpy() for name, fisher in zip(projection_names, fishers)}
 
 
 def compute_task_incremental_test_loss_and_accuracy(network, test_dataloader, labels_in_tasks):
@@ -108,8 +176,13 @@ def get_phase_file_paths(seed_dir, label=None):
 @click.option("--label", default=None, help="only use pickles whose names end in _<label>.pkl")
 @click.option("--model-key", default=None, help="name for output files and the model column; "
                                                 "default: <model folder name>[_<label>]")
-@click.option("--output-dir", default='data/cl_metrics', help="directory to save the accuracy csv and activity h5 file")
-def main(model_folder_path, data_dir, num_splits, task_incremental, label, model_key, output_dir):
+@click.option("--output-dir", default='data/cl_metrics', help="directory to save the accuracy csv and h5 files")
+@click.option("--fisher-num-samples", default=1000, type=int,
+              help="training samples per task used to compute the Fisher information; 0 skips it")
+@click.option("--fisher-backward-steps", default=None, type=int,
+              help="forward steps to backpropagate through for the Fisher information; default: all")
+def main(model_folder_path, data_dir, num_splits, task_incremental, label, model_key, output_dir, fisher_num_samples,
+         fisher_backward_steps):
 
     if model_key is None:
         model_key = os.path.basename(os.path.normpath(model_folder_path))
@@ -117,11 +190,14 @@ def main(model_folder_path, data_dir, num_splits, task_incremental, label, model
             model_key += f'_{label}'
 
     task_test_loaders, full_test_loader, labels_in_tasks = get_split_mnist_dataset(data_dir, num_splits)
+    if fisher_num_samples > 0:
+        fisher_samples = get_split_mnist_fisher_samples(data_dir, labels_in_tasks, fisher_num_samples)
 
     seed_dirs = sorted(seed for seed in os.listdir(model_folder_path)
                        if os.path.isdir(os.path.join(model_folder_path, seed)))
     accuracy_rows = []
     activity_dict = {}
+    fisher_dict = {}
 
     for seed_dir in seed_dirs:
         phase_file_paths, seed = get_phase_file_paths(os.path.join(model_folder_path, seed_dir), label)
@@ -132,6 +208,7 @@ def main(model_folder_path, data_dir, num_splits, task_incremental, label, model
             raise ValueError(f'get_cl_metrics: expected {num_splits} phases in {seed_dir}, found {len(phase_file_paths)}')
         print(f'Computing metrics for seed {seed}')
         activity_dict[seed] = {}
+        fisher_dict[seed] = {}
 
         for phase, file_path in enumerate(phase_file_paths):
             network = utils.load_network(file_path, disp=False)
@@ -165,6 +242,20 @@ def main(model_folder_path, data_dir, num_splits, task_incremental, label, model
                                               for pop, activity in average_pop_activity_dict.items()},
                 'unit_labels_dict': {pop: unit_labels.cpu().numpy() for pop, unit_labels in unit_labels_dict.items()}}
 
+            if fisher_num_samples > 0:
+                if phase == 0:
+                    fisher_dict[seed]['learning_rule'] = {
+                        name: type(projection.learning_rule).__name__
+                        for name, projection in network.projections.items()}
+                fisher_data, fisher_target = fisher_samples[phase]
+                fisher_dict[seed][f'phase{phase}'] = {
+                    'fisher': compute_fisher_diagonal(
+                        network, fisher_data, fisher_target,
+                        task_classes=labels_in_tasks[phase] if task_incremental else None,
+                        backward_steps=fisher_backward_steps),
+                    'weight': {name: projection.weight.detach().cpu().numpy()
+                               for name, projection in network.projections.items()}}
+
             del network
             gc.collect()
 
@@ -179,6 +270,10 @@ def main(model_folder_path, data_dir, num_splits, task_incremental, label, model
     utils.dict_to_hdf5(activity_dict, activity_file_path)
     print(f'Saved accuracies to {accuracy_file_path}')
     print(f'Saved class-averaged activity to {activity_file_path}')
+    if fisher_num_samples > 0:
+        fisher_file_path = os.path.join(output_dir, f'{model_key}_fisher.h5')
+        utils.dict_to_hdf5(fisher_dict, fisher_file_path, compression='gzip')
+        print(f'Saved Fisher information and weights to {fisher_file_path}')
 
     task_df = accuracy_df[accuracy_df.test_set.str.startswith('task')]
     accuracy_matrix = task_df.pivot_table(index='phase', columns='test_set', values='accuracy', aggfunc='mean')

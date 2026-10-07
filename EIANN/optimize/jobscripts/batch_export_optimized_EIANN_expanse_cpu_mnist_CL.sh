@@ -2,53 +2,55 @@
 # Retrains a batch of optimized CL models (nested.analyze with the best params under each model key) and exports the
 # network pickle after each phase to
 #   $SCRATCH/data/EIANN/<network_name>/<seed>/<network_name>_phase<i>_<seed>_<data_seed>_<model_key>.pkl
-# Each model runs as its own srun step with NUM_INSTANCES seeds in parallel; all steps share one node.
-# Per-model logs go to $SCRATCH/logs/EIANN/<job name>_<model_key>.log
+# Submits one job per model, each running 5 seeds in parallel (1 controller + 5 worker ranks).
+# Per-model logs go to $SCRATCH/logs/EIANN/export_EIANN_mnist_CL_<model_key>_<date>.<jobid>.{o,e}
 #
 # usage (from the EIANN/ package directory, after pushing/pulling the current params file):
-#   bash optimize/jobscripts/batch_export_optimized_EIANN_expanse_cpu_mnist_CL.sh [num_instances (default 5)]
+#   bash optimize/jobscripts/batch_export_optimized_EIANN_expanse_cpu_mnist_CL.sh
 # pull the pickles down afterwards (from the EIANN/ package directory):
 #   rsync -av --include='*/' --include='*_phase*.pkl' --exclude='*' --prune-empty-dirs \
 #     <user>@login.expanse.sdsc.edu:<SCRATCH>/data/EIANN/ data/
 export DATE=$(date +%Y%m%d_%H%M%S)
-export JOB_NAME=analyze_EIANN_mnist_CL_batch_"$DATE"
-export NUM_INSTANCES=${1:-5}
-export PARAM_FILE_PATH=optimize/optimize_params/mnist_CL/20260921_v2dev_mnist_CL_params.yaml
 export CONFIG_DIR=optimize/optimize_config/mnist_CL/5_tasks
+export PARAM_FILE_PATH=optimize/optimize_params/mnist_CL/20260921_v2dev_mnist_CL_params.yaml
 
-# <optimize config file in CONFIG_DIR>:<model key in PARAM_FILE_PATH>
-declare -a models=(
-  20240923_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_relu_SGD_config_G.yaml:van_bp_CL_5_tasks_G
-  20231129_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_bpDale_relu_SGD_config_G.yaml:bpDale_CL_5_tasks_G
-  20260325_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_BP_like_config_5J.yaml:BP_like_CL_5_tasks_5J
-  20251229_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_BTSP_config_6L.yaml:BTSP_CL_5_tasks_6L
-  20260203_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_BTSP_ELR_config_A.yaml:BTSP_CL_5_tasks_ELR_A
-  20260930_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_SI_relu_SGD_config_A.yaml:van_bp_CL_5_tasks_SI
-  20260928_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_EWC_relu_SGD_config_A.yaml:van_bp_CL_5_tasks_EWC
-  20261005_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_SI_LR_relu_SGD_config_A.yaml:van_bp_CL_5_tasks_SI_LR
-  20261005_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_EWC_LR_relu_SGD_config_A.yaml:van_bp_CL_5_tasks_EWC_LR
+declare -a config_files=(
+  20240923_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_relu_SGD_config_G.yaml
+  20231129_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_bpDale_relu_SGD_config_G.yaml
+  20260325_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_BP_like_config_5J.yaml
+  20251229_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_BTSP_config_6L.yaml
+  20260203_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_BTSP_ELR_config_A.yaml
+  20260930_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_SI_relu_SGD_config_A.yaml
+  20260928_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_EWC_relu_SGD_config_A.yaml
+  20261005_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_SI_LR_relu_SGD_config_A.yaml
+  20261005_nested_optimize_EIANN_2_hidden_CL_mnist_5_tasks_van_bp_EWC_LR_relu_SGD_config_A.yaml
 )
 
-# one controller rank + NUM_INSTANCES workers per model
-export TASKS_PER_MODEL=$((NUM_INSTANCES + 1))
-export NUM_TASKS=$((${#models[@]} * TASKS_PER_MODEL))
-# split the node memory evenly so every step can start at once
-export MEM_PER_STEP=$((249208 / ${#models[@]}))M
-if [ $NUM_TASKS -gt 128 ]; then
-  echo "$NUM_TASKS tasks do not fit on one 128-core node; reduce num_instances or split the model list"
-  exit 1
-fi
+declare -a model_keys=(
+  van_bp_CL_5_tasks_G
+  bpDale_CL_5_tasks_G
+  BP_like_CL_5_tasks_5J
+  BTSP_CL_5_tasks_6L
+  BTSP_CL_5_tasks_ELR_A
+  van_bp_CL_5_tasks_SI
+  van_bp_CL_5_tasks_EWC
+  van_bp_CL_5_tasks_SI_LR
+  van_bp_CL_5_tasks_EWC_LR
+)
 
-sbatch <<EOT
+for ((i=0; i<${#config_files[@]}; i++))
+do
+  export JOB_NAME=export_EIANN_mnist_CL_${model_keys[$i]}_"$DATE"
+  sbatch <<EOT
 #!/bin/bash -l
 #SBATCH -J $JOB_NAME
 #SBATCH -o $SCRATCH/logs/EIANN/$JOB_NAME.%j.o
 #SBATCH -e $SCRATCH/logs/EIANN/$JOB_NAME.%j.e
-#SBATCH -p compute
+#SBATCH -p shared
 #SBATCH -N 1
-#SBATCH -n $NUM_TASKS
+#SBATCH -n 6
 #SBATCH -t 24:00:00
-#SBATCH --mem=249208M
+#SBATCH --mem=32G
 #SBATCH --account=$ACCOUNT_NUMBER
 #SBATCH --export=ALL
 #SBATCH --mail-user=$MAIL_USER
@@ -62,14 +64,12 @@ cd $PROJECT/EIANN/EIANN
 
 set -x
 
-for model in ${models[*]}; do
-  config=\${model%%:*}
-  key=\${model##*:}
-  srun -n $TASKS_PER_MODEL -c 1 --mem=$MEM_PER_STEP --exact --mpi=pmi2 python -m mpi4py.futures -m nested.analyze \
-    --config-file-path=$CONFIG_DIR/\$config --param-file-path=$PARAM_FILE_PATH --model-key=\$key \
-    --output-dir=$SCRATCH/data/EIANN --label=\$key --export --framework=mpi --num_instances=$NUM_INSTANCES \
-    --store_history=True --retrain=True --full_analysis=False --status_bar=False \
-    > $SCRATCH/logs/EIANN/${JOB_NAME}_\$key.log 2>&1 &
-done
-wait
+srun -n 6 --mpi=pmi2 python -m mpi4py.futures -m nested.analyze \
+  --config-file-path=$CONFIG_DIR/${config_files[$i]} \
+  --param-file-path=$PARAM_FILE_PATH \
+  --model-key=${model_keys[$i]} \
+  --output-dir=$SCRATCH/data/EIANN --disp --label=${model_keys[$i]} --export \
+  --num_instances=5 --store_history=True --retrain=True --full_analysis=False --status_bar=False \
+  --framework=mpi
 EOT
+done
