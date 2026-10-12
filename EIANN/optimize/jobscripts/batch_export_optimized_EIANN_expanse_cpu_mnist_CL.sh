@@ -60,6 +60,11 @@ do
 
 source $HOME/cpu_py311_intelmpi.sh
 
+# one torch thread per MPI rank, and cap glibc malloc arenas: EWC's per-step penalty tensors otherwise appear to
+# fragment memory on Linux until the job is OOM killed
+export OMP_NUM_THREADS=1
+export MALLOC_ARENA_MAX=2
+
 cd $PROJECT/EIANN/EIANN
 
 set -x

@@ -127,6 +127,20 @@ def save_network(network, path=None, dir='saved_networks', file_name_base=None, 
         print(f"Saved network to '{path}'")
 
 
+def _alias_numpy_core():
+    """
+    Networks pickled with numpy >= 2 (e.g. on the cluster) reference numpy._core, which numpy 1.x (the local
+    requirement) calls numpy.core. Register the old module under the new name so those pickles load.
+    """
+    if hasattr(np, '_core'):
+        return
+    import sys
+    import numpy.core.multiarray, numpy.core.numeric
+    sys.modules.setdefault('numpy._core', np.core)
+    for name in ('multiarray', 'numeric', '_multiarray_umath'):
+        sys.modules.setdefault(f'numpy._core.{name}', getattr(np.core, name))
+
+
 def load_network(path, disp=True):
     """
     Load a neural network from a file using dill serialization.
@@ -145,6 +159,7 @@ def load_network(path, disp=True):
     """
     if disp:
         print(f"Loading network from '{path}'")
+    _alias_numpy_core()
     with open(path, 'rb') as f:
         network = dill.load(f)
     for layer in network:

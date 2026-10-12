@@ -968,3 +968,82 @@ class BTSP_ELR_CL(BTSP_CL):
         # elastic learning rate modulation
         self.lr_mod += delta_lr_mod
         self.lr_mod.clamp_(min=self.elr_min, max=1.)
+
+
+class BTSP_BP_Mixin(object):
+    """
+    Shared backward method for BTSP rules whose plateaus come from backprop instead of dendritic top-down inputs
+    (BTSP_BP_CL, BTSP_ELR_BP_CL). The plateau of each post population is the negative gradient of the loss with
+    respect to its final forward step activity (-dL/da), scaled by the error_scale of the rule of the projections onto
+    that population, clamped to [-1, 1] and (with relu_gate) zeroed for inactive units. No somatic nudging is applied
+    and the optimizer is not stepped; weights are updated by the BTSP step() of the parent rule. Requires
+    backward_steps >= 1. Do not combine with BTSP_CL-family or Backprop rules in the same network.
+    """
+    
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+        """
+        Compute plateaus from the gradient of the loss with respect to post population activities.
+        :param network:
+        :param output:
+        :param target:
+        :param store_history: bool
+        :param store_dynamics: bool
+        """
+        post_pop_rules = {}
+        for projection in network.projections.values():
+            if isinstance(projection.learning_rule, BTSP_BP_Mixin) and projection.post not in post_pop_rules:
+                post_pop_rules[projection.post] = projection.learning_rule
+        if not post_pop_rules:
+            return
+        first_rule = next(iter(post_pop_rules.values()))
+        
+        # restrict the output error to the current task (unchanged unless task_incremental)
+        target = first_rule.task_target(network, target)
+        loss = network.criterion(output, target)
+        post_pops = list(post_pop_rules.keys())
+        grads = torch.autograd.grad(loss, [pop.activity for pop in post_pops], allow_unused=True)
+        
+        for pop, grad in zip(post_pops, grads):
+            if grad is None:
+                grad = torch.zeros_like(pop.activity)
+            local_loss = torch.clamp(-grad.detach() * post_pop_rules[pop].error_scale, min=-1, max=1)
+            pop.dendritic_state = local_loss.clone()
+            if post_pop_rules[pop].relu_gate:
+                local_loss[pop.forward_activity == 0.] = 0
+            pop.plateau = local_loss
+            
+            if store_history:
+                pop.append_attribute_history('plateau', pop.plateau.detach().clone())
+                pop.append_attribute_history('backward_dendritic_state', pop.dendritic_state.detach().clone())
+                pop.append_attribute_history('backward_activity', pop.forward_activity.detach().clone())
+
+
+class BTSP_BP_CL(BTSP_BP_Mixin, BTSP_CL):
+    def __init__(self, projection, error_scale=1., **kwargs):
+        """
+        BTSP_CL weight update with plateaus computed by backprop (see BTSP_BP_Mixin) instead of dendritic top-down
+        inputs. max_pop_fraction, stochastic and neg_rate_th are ignored.
+        :param projection: :class:'nn.Linear'
+        :param error_scale: float; scales -dL/da before clamping to [-1, 1]
+        :param kwargs: passed to BTSP_CL (e.g. dep_ratio, dep_th, dep_width, learning_rate, relu_gate,
+            task_incremental, task_classes)
+        """
+        super().__init__(projection, **kwargs)
+        self.error_scale = error_scale
+        projection.weight.requires_grad = True
+
+
+class BTSP_ELR_BP_CL(BTSP_BP_Mixin, BTSP_ELR_CL):
+    def __init__(self, projection, error_scale=1., **kwargs):
+        """
+        BTSP_ELR_CL weight update (with elastic learning rate) with plateaus computed by backprop (see BTSP_BP_Mixin)
+        instead of dendritic top-down inputs. max_pop_fraction, stochastic and neg_rate_th are ignored.
+        :param projection: :class:'nn.Linear'
+        :param error_scale: float; scales -dL/da before clamping to [-1, 1]
+        :param kwargs: passed to BTSP_ELR_CL (e.g. elr_threshold, elr_width, elr_scale, elr_min, dep_ratio, dep_th,
+            dep_width, learning_rate, relu_gate, task_incremental, task_classes)
+        """
+        super().__init__(projection, **kwargs)
+        self.error_scale = error_scale
+        projection.weight.requires_grad = True

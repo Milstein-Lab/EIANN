@@ -7,15 +7,55 @@ For each seed folder in --model-folder-path, loads the network exported after ea
     tasks 0..phase) or 'all' (full 10-class test set). CSVs of different models can be concatenated and plotted together.
   - <output_dir>/<model_key>_activity.h5: class-averaged test activity of every population after each phase, nested as
     <seed>/phase<i>/average_pop_activity_dict/<pop> (num_classes, num_units) and <seed>/phase<i>/unit_labels_dict/<pop>.
+    Unless --utility-num-samples=0, it also holds the contribution utility of Dohare et al. 2024 (Nature,
+    doi:10.1038/s41586-024-07711-7) of every unit with somatic outgoing projections, evaluated post hoc on training
+    samples of the task just learned: <seed>/phase<i>/contribution_utility/<pop> = mean |activity| * sum of |outgoing
+    weights| (num_units,), with its factors <seed>/phase<i>/mean_abs_activity/<pop> (num_units,) and
+    <seed>/phase<i>/outgoing_weight/<projection> (sum over post units of |weight|, (num_pre_units,)).
   - <output_dir>/<model_key>_fisher.h5 (unless --fisher-num-samples=0): diagonal of the empirical Fisher information of
     every projection weight after each phase, computed as in Backprop_EWC on training samples of the task just learned,
     plus the weights themselves, nested as <seed>/phase<i>/fisher/<projection> and <seed>/phase<i>/weight/<projection>
-    (post, pre). <seed>/learning_rule/<projection> holds the name of each projection's learning rule. Compare the Fisher
+    (post, pre). Unless --no-cumulative-fisher, <seed>/phase<i>/cumulative_fisher/<projection> is the Fisher at the same
+    weights over all tasks seen so far (0..i, weighted equally); for phase 0 it equals fisher.
+    <seed>/learning_rule/<projection> holds the name of each projection's learning rule. Compare the Fisher
     after phase i with the weight change during phase i+1 (weight in phase<i+1> - weight in phase<i>).
+    For CL rules that protect weights by their own importance (EWC: summed Fisher, EWC_LR: fisher_sum, SI and SI_LR:
+    omega), <seed>/phase<i>/rule_importance/<projection> holds the importance in effect while learning task i+1. Rules
+    compute it at the task switch, after the pickle is exported, so it is read from the phase<i+1> pickle and is absent
+    for the last phase. For rules with a per-weight learning rate modulation, <seed>/phase<i>/lr_mod/<projection>
+    (post, pre) holds the lr_mod in effect while learning task i+1: the elastic learning rate of BTSP_ELR_1 and
+    BTSP_ELR_CL as it is at the end of task i, or that of Backprop_SILR_A, EWC_LR and SI_LR, which is set at the task
+    switch and so read from the phase<i+1> pickle (absent for the last phase).
 
 Example (from the EIANN/ package directory):
 python scripts/get_cl_metrics.py --model-folder-path=data/<network_name> --data-dir=data/datasets/MNIST_data/ \
     --num-splits=5 --label=<label>
+
+Models trained so far (5-task class-incremental, labelled by model key):
+python scripts/get_cl_metrics.py --model-folder-path=data/20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_G --model-key=van_bp_CL_5_tasks_G
+python scripts/get_cl_metrics.py --model-folder-path=data/20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=bpDale_CL_5_tasks_G --model-key=bpDale_CL_5_tasks_G
+python scripts/get_cl_metrics.py --model-folder-path=data/20260928_EIANN_2_hidden_CL_mnist_van_bp_EWC_relu_SGD_config_A \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_EWC --model-key=van_bp_CL_5_tasks_EWC
+python scripts/get_cl_metrics.py --model-folder-path=data/20260930_EIANN_2_hidden_CL_mnist_van_bp_SI_relu_SGD_config_A \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_SI --model-key=van_bp_CL_5_tasks_SI
+python scripts/get_cl_metrics.py --model-folder-path=data/20261005_EIANN_2_hidden_CL_mnist_van_bp_EWC_LR_relu_SGD_config_A \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_EWC_LR --model-key=van_bp_CL_5_tasks_EWC_LR
+python scripts/get_cl_metrics.py --model-folder-path=data/20261005_EIANN_2_hidden_CL_mnist_van_bp_SI_LR_relu_SGD_config_A \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_SI_LR --model-key=van_bp_CL_5_tasks_SI_LR
+python scripts/get_cl_metrics.py --model-folder-path=data/20241009_EIANN_2_hidden_mnist_BP_like_config_5J \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=BP_like_CL_5_tasks_5J --model-key=BP_like_CL_5_tasks_5J
+python scripts/get_cl_metrics.py --model-folder-path=data/20251229_EIANN_2_hidden_mnist_BTSP_config_6L \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=BTSP_CL_5_tasks_6L --model-key=BTSP_CL_5_tasks_6L
+python scripts/get_cl_metrics.py --model-folder-path=data/20260203_EIANN_2_hidden_CL_mnist_BTSP_ELR_config_A \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=BTSP_CL_5_tasks_ELR_A --model-key=BTSP_CL_5_tasks_ELR_A
+python scripts/get_cl_metrics.py --model-folder-path=data/20260930_EIANN_2_hidden_CL_mnist_bpDale_relu_SGD_SI_config_A \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=bpDale_CL_5_tasks_SI --model-key=bpDale_CL_5_tasks_SI
+python scripts/get_cl_metrics.py --model-folder-path=data/20261002_EIANN_2_hidden_CL_mnist_DTP_SI_config_5J \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=dtp_CL_5_tasks_SI --model-key=dtp_CL_5_tasks_SI
+python scripts/get_cl_metrics.py --model-folder-path=data/20260928_EIANN_2_hidden_CL_mnist_bpDale_relu_SGD_EWC_config_A \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=bpDale_CL_5_tasks_EWC --model-key=bpDale_CL_5_tasks_EWC
 """
 import torch
 import torchvision
@@ -65,7 +105,8 @@ def get_split_mnist_dataset(data_dir, num_splits):
 def get_split_mnist_fisher_samples(data_dir, labels_in_tasks, num_samples, seed=0):
     """
     Random subset of the training samples (0-49,999, as in nested_optimize_EIANN_1_hidden_CL_mnist) of each task, used
-    to compute the Fisher information. The same samples are drawn for every model.
+    to compute the Fisher information and the contribution utility. The same samples are drawn for every model, and the
+    first n samples of a task do not depend on num_samples.
     :param data_dir: str
     :param labels_in_tasks: list of lists of int
     :param num_samples: int; samples per task
@@ -89,20 +130,22 @@ def compute_fisher_diagonal(network, data, target, task_classes=None, backward_s
     """
     Diagonal of the empirical Fisher information of every projection weight, as in Backprop_EWC.update_CL_states: the
     squared per-sample gradient of network.criterion, averaged over samples. Gradients are tracked for every projection
-    (including those with local or no learning rules) through the last backward_steps forward steps, regardless of the
-    network's own backward_steps.
+    (including those with local or no learning rules) through the last backward_steps forward steps.
     :param network: :class:'Network'
     :param data: tensor (num_samples, num_inputs)
     :param target: tensor (num_samples, num_classes); one-hot
     :param task_classes: list of int; if provided (task-incremental), the loss only includes these output units
-    :param backward_steps: int; default: all forward steps
+    :param backward_steps: int; default: the network's own backward_steps, or 3 (at most all forward steps) if that is
+        0 (local rules such as BTSP)
     :return: dict {projection name: array with the shape of its weight}
     """
     projection_names = list(network.projections.keys())
     weights = [network.projections[name].weight for name in projection_names]
     prev_requires_grad = [weight.requires_grad for weight in weights]
     prev_backward_steps = network.backward_steps
-    network.backward_steps = network.forward_steps if backward_steps is None else backward_steps
+    if backward_steps is None:
+        backward_steps = network.backward_steps if network.backward_steps > 0 else min(3, network.forward_steps)
+    network.backward_steps = backward_steps
     for weight in weights:
         weight.requires_grad = True
     fishers = [torch.zeros_like(weight) for weight in weights]
@@ -123,6 +166,68 @@ def compute_fisher_diagonal(network, data, target, task_classes=None, backward_s
         for weight, requires_grad in zip(weights, prev_requires_grad):
             weight.requires_grad = requires_grad
     return {name: (fisher / len(data)).cpu().numpy() for name, fisher in zip(projection_names, fishers)}
+
+
+def compute_contribution_utility(network, data):
+    """
+    Contribution utility of every unit (Dohare et al. 2024, Nature, doi:10.1038/s41586-024-07711-7), the EMA of
+    |h_i| * sum_k |w_ki| over outgoing weights w_ki. Evaluated post hoc on the frozen network: with fixed weights and
+    i.i.d. samples, the EMA's expected value is mean(|h_i|) * sum_k |w_ki|. Only somatic outgoing projections (forward
+    and recurrent, as in Population.forward) count; dendritic projections (top-down, dendritic inhibition) do not.
+    :param network: :class:'Network'
+    :param data: tensor (num_samples, num_inputs)
+    :return: tuple of dicts ({pop: utility (units,)}, {pop: mean |activity| (units,)},
+        {projection: sum_post |weight| (pre units,)}); populations without somatic outgoing projections are omitted
+    """
+    network.forward(data.to(network.device), no_grad=True)
+    contribution_utility, mean_abs_activity, outgoing_weight = {}, {}, {}
+    for population in network.populations.values():
+        projections = [projection for projection in population.outgoing_projections.values()
+                       if projection.compartment not in ['dend', 'dendrite'] and
+                       projection.update_phase in ['forward', 'all', 'F', 'A']]
+        if not projections:
+            continue
+        pop_mean_abs_activity = population.activity.detach().abs().mean(0)
+        pop_outgoing_weight = {projection.name: projection.weight.detach().abs().sum(0) for projection in projections}
+        mean_abs_activity[population.fullname] = pop_mean_abs_activity.cpu().numpy()
+        contribution_utility[population.fullname] = \
+            (pop_mean_abs_activity * sum(pop_outgoing_weight.values())).cpu().numpy()
+        for name, weight_sum in pop_outgoing_weight.items():
+            outgoing_weight[name] = weight_sum.cpu().numpy()
+    return contribution_utility, mean_abs_activity, outgoing_weight
+
+
+def get_rule_importance(learning_rule):
+    """
+    Per-weight importance that a CL learning rule uses to protect previous tasks: the summed Fisher (Backprop_EWC,
+    Backprop_EWC_LR) or omega (Backprop_SI, Backprop_SI_LR).
+    :param learning_rule: :class:'LearningRule'
+    :return: array with the shape of the weight, or None for other rules or before the first task switch
+    """
+    if getattr(learning_rule, 'omega', None) is not None:
+        importance = learning_rule.omega
+    elif getattr(learning_rule, 'fisher_sum', None) is not None:
+        importance = learning_rule.fisher_sum
+    elif getattr(learning_rule, 'fisher_list', None):
+        importance = sum(learning_rule.fisher_list)
+    else:
+        return None
+    return importance.detach().cpu().numpy()
+
+
+def get_lr_mod(learning_rule):
+    """
+    Per-weight learning rate modulation of rules with an lr_mod tensor: the elastic learning rate of BTSP_ELR_1 and
+    BTSP_ELR_CL, updated during training, or that of Backprop_SILR_A/C (from accum_delta_weight), Backprop_EWC_LR (from
+    fisher_sum) and Backprop_SI_LR (from omega), set at the task switch in update_CL_states.
+    :param learning_rule: :class:'LearningRule'
+    :return: tuple (array with the shape of the weight; bool, True if set at the task switch), or None for other rules
+    """
+    lr_mod = getattr(learning_rule, 'lr_mod', None)
+    if not isinstance(lr_mod, torch.Tensor):
+        return None
+    set_at_task_switch = any(hasattr(learning_rule, name) for name in ('accum_delta_weight', 'fisher_sum', 'omega'))
+    return lr_mod.detach().cpu().numpy(), set_at_task_switch
 
 
 def compute_task_incremental_test_loss_and_accuracy(network, test_dataloader, labels_in_tasks):
@@ -180,9 +285,15 @@ def get_phase_file_paths(seed_dir, label=None):
 @click.option("--fisher-num-samples", default=1000, type=int,
               help="training samples per task used to compute the Fisher information; 0 skips it")
 @click.option("--fisher-backward-steps", default=None, type=int,
-              help="forward steps to backpropagate through for the Fisher information; default: all")
+              help="forward steps to backpropagate through for the Fisher information; default: the network's "
+                   "backward_steps, or 3 if that is 0")
+@click.option("--cumulative-fisher/--no-cumulative-fisher", default=True,
+              help="also compute the Fisher information over all tasks seen so far (15 instead of 5 Fisher "
+                   "computations for 5 tasks)")
+@click.option("--utility-num-samples", default=1000, type=int,
+              help="training samples of the task just learned used to compute the contribution utility; 0 skips it")
 def main(model_folder_path, data_dir, num_splits, task_incremental, label, model_key, output_dir, fisher_num_samples,
-         fisher_backward_steps):
+         fisher_backward_steps, cumulative_fisher, utility_num_samples):
 
     if model_key is None:
         model_key = os.path.basename(os.path.normpath(model_folder_path))
@@ -190,8 +301,10 @@ def main(model_folder_path, data_dir, num_splits, task_incremental, label, model
             model_key += f'_{label}'
 
     task_test_loaders, full_test_loader, labels_in_tasks = get_split_mnist_dataset(data_dir, num_splits)
-    if fisher_num_samples > 0:
-        fisher_samples = get_split_mnist_fisher_samples(data_dir, labels_in_tasks, fisher_num_samples)
+    if fisher_num_samples > 0 or utility_num_samples > 0:
+        train_samples = get_split_mnist_fisher_samples(data_dir, labels_in_tasks,
+                                                       max(fisher_num_samples, utility_num_samples))
+        fisher_samples = [(data[:fisher_num_samples], target[:fisher_num_samples]) for data, target in train_samples]
 
     seed_dirs = sorted(seed for seed in os.listdir(model_folder_path)
                        if os.path.isdir(os.path.join(model_folder_path, seed)))
@@ -242,19 +355,54 @@ def main(model_folder_path, data_dir, num_splits, task_incremental, label, model
                                               for pop, activity in average_pop_activity_dict.items()},
                 'unit_labels_dict': {pop: unit_labels.cpu().numpy() for pop, unit_labels in unit_labels_dict.items()}}
 
+            if utility_num_samples > 0:
+                contribution_utility, mean_abs_activity, outgoing_weight = \
+                    compute_contribution_utility(network, train_samples[phase][0][:utility_num_samples])
+                activity_dict[seed][f'phase{phase}'].update({
+                    'contribution_utility': contribution_utility, 'mean_abs_activity': mean_abs_activity,
+                    'outgoing_weight': outgoing_weight})
+
             if fisher_num_samples > 0:
                 if phase == 0:
                     fisher_dict[seed]['learning_rule'] = {
                         name: type(projection.learning_rule).__name__
                         for name, projection in network.projections.items()}
-                fisher_data, fisher_target = fisher_samples[phase]
-                fisher_dict[seed][f'phase{phase}'] = {
-                    'fisher': compute_fisher_diagonal(
+                task_fishers = []
+                for task in range(phase + 1) if cumulative_fisher else [phase]:
+                    fisher_data, fisher_target = fisher_samples[task]
+                    task_fishers.append(compute_fisher_diagonal(
                         network, fisher_data, fisher_target,
-                        task_classes=labels_in_tasks[phase] if task_incremental else None,
-                        backward_steps=fisher_backward_steps),
+                        task_classes=labels_in_tasks[task] if task_incremental else None,
+                        backward_steps=fisher_backward_steps))
+                fisher_dict[seed][f'phase{phase}'] = {
+                    'fisher': task_fishers[-1],
                     'weight': {name: projection.weight.detach().cpu().numpy()
                                for name, projection in network.projections.items()}}
+                if cumulative_fisher:
+                    # each task seen so far weighted equally, at the weights after this phase
+                    fisher_dict[seed][f'phase{phase}']['cumulative_fisher'] = {
+                        name: np.mean([task_fisher[name] for task_fisher in task_fishers], axis=0)
+                        for name in task_fishers[-1]}
+                # lr_mod in effect while learning task phase+1: an elastic learning rate as it is at the end of this
+                # task; one set at the task switch is in the next pickle (below)
+                lr_mods = {name: get_lr_mod(projection.learning_rule) for name, projection in network.projections.items()}
+                lr_mods = {name: lr_mod for name, lr_mod in lr_mods.items() if lr_mod is not None}
+                lr_mod = {name: values for name, (values, set_at_task_switch) in lr_mods.items()
+                          if not set_at_task_switch}
+                if lr_mod:
+                    fisher_dict[seed][f'phase{phase}']['lr_mod'] = lr_mod
+                if phase > 0:
+                    # importance computed at the end of the previous task, which protected it during this one
+                    rule_importance = {name: get_rule_importance(projection.learning_rule)
+                                       for name, projection in network.projections.items()}
+                    rule_importance = {name: importance for name, importance in rule_importance.items()
+                                       if importance is not None}
+                    if rule_importance:
+                        fisher_dict[seed][f'phase{phase - 1}']['rule_importance'] = rule_importance
+                    lr_mod = {name: values for name, (values, set_at_task_switch) in lr_mods.items()
+                              if set_at_task_switch}
+                    if lr_mod:
+                        fisher_dict[seed][f'phase{phase - 1}'].setdefault('lr_mod', {}).update(lr_mod)
 
             del network
             gc.collect()
