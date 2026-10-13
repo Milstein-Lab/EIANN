@@ -293,7 +293,7 @@ def convert_hdf5_group_to_dict(group):
     return data_dict
 
 
-def dict_to_hdf5(data_dict, file_path):
+def dict_to_hdf5(data_dict, file_path, compression=None):
     """
     Save a nested dictionary to an HDF5 file.
 
@@ -303,13 +303,15 @@ def dict_to_hdf5(data_dict, file_path):
         Dictionary to save to the file.
     file_path : str
         Destination path for the HDF5 file.
+    compression : str, optional
+        h5py compression filter (e.g. 'gzip') applied to array datasets.
     """
     with h5py.File(file_path, 'w') as f:
         # Initial call to save the top-level dictionary to the HDF5 file
-        convert_dict_to_hdf5_group(data_dict, f)
+        convert_dict_to_hdf5_group(data_dict, f, compression=compression)
 
 
-def convert_dict_to_hdf5_group(data_dict, group):
+def convert_dict_to_hdf5_group(data_dict, group, compression=None):
     """
     Recursively write a nested dictionary to an HDF5 group.
 
@@ -319,12 +321,17 @@ def convert_dict_to_hdf5_group(data_dict, group):
         Dictionary to write to the HDF5 group.
     group : h5py.Group
         Target HDF5 group for storing the dictionary data.
+    compression : str, optional
+        h5py compression filter (e.g. 'gzip') applied to array datasets.
     """
     for key, value in data_dict.items():
         if isinstance(value, dict):
             # Recursively save nested dictionaries as groups
             subgroup = group.create_group(key, track_order=True)
-            convert_dict_to_hdf5_group(value, subgroup)
+            convert_dict_to_hdf5_group(value, subgroup, compression=compression)
+        elif compression is not None and np.ndim(value) > 0:
+            # Scalar datasets do not support compression filters
+            group.create_dataset(key, data=value, track_order=True, compression=compression)
         else:
             # Save datasets to the HDF5 group
             group.create_dataset(key, data=value, track_order=True)

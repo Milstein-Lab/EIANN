@@ -10,7 +10,7 @@ sbatch <<EOT
 #SBATCH -o $SCRATCH/logs/EIANN/$JOB_NAME.%j.o
 #SBATCH -e $SCRATCH/logs/EIANN/$JOB_NAME.%j.e
 #SBATCH -p compute
-#SBATCH -N 8
+#SBATCH -N 16
 #SBATCH -n 1001
 #SBATCH -t 48:00:00
 #SBATCH --mem=249208M

@@ -24,6 +24,8 @@ source $HOME/cpu_py311_intelmpi.sh
 
 cd $PROJECT/EIANN/EIANN
 
+set -x
+
 srun -n 1001 --mpi=pmi2 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=$SCRATCH/data/EIANN --pop_size=200 --max_iter=50 --path_length=3 --disp \
   --framework=mpi
