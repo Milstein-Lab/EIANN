@@ -728,32 +728,39 @@ class BTSP_CL(ContinualLearningMixin, LearningRule):
         projection.post.register_attribute_history('backward_activity')
         projection.post.register_attribute_history('backward_dendritic_state')
         self.init_continual_learning(task_incremental, task_classes)
-    
-    def step(self):
+
+    def compute_delta_weight(self):
+        """
+        Unscaled weight update of the rule: a BTSP update for positive plateaus, plus a weight update proportional to
+        negative plateaus and presynaptic activity.
+        :return: tensor
+        """
         # pos error - BTSP weight update
         plateau_prob = self.projection.post.plateau.detach().clone()
         neg_indexes = (self.projection.post.plateau < 0.).nonzero(as_tuple=True)
         plateau_prob[neg_indexes] = 0.
         plateau_prob = plateau_prob.unsqueeze(1)
-        
+
         if self.projection.direction in ['forward', 'F']:
             ET = torch.clamp(self.projection.pre.activity, 0., 1.)
         elif self.projection.direction in ['recurrent', 'R']:
             ET = torch.clamp(self.projection.pre.prev_activity, 0., 1.)
-        
+
         # pre activity and post plateau for current sample
         delta_weight = (plateau_prob *
                         ((self.w_max - self.projection.weight) * ET.unsqueeze(0) -
                          self.projection.weight * self.dep_ratio *
                          self.q_dep(ET).unsqueeze(0))).detach().clone()
-        
+
         # neg error - weight update proportional to loss and presynaptic activity
         neg_error = self.projection.post.plateau.detach().clone()
         neg_error[self.projection.post.plateau > 0.] = 0.
         delta_weight += ET.unsqueeze(0) * neg_error.unsqueeze(1)
-        
-        self.projection.weight.data += self.learning_rate * delta_weight
-    
+        return delta_weight
+
+    def step(self):
+        self.projection.weight.data += self.learning_rate * self.compute_delta_weight()
+
     @classmethod
     def backward_update_layer_activity(cls, layer, store_dynamics=False):
         """
@@ -906,6 +913,81 @@ class BTSP_CL(ContinualLearningMixin, LearningRule):
                             pop.append_attribute_history('backward_activity', pop.backward_steps_activity)
                         else:
                             pop.append_attribute_history('backward_activity', pop.activity.detach().clone())
+
+
+class BTSP_SI(BTSP_CL):
+    def __init__(self, projection, si_lambda=1., si_xi=1e-3, **kwargs):
+        """
+        BTSP_CL with a Synaptic Intelligence regularizer (Zenke et al., 2017, arXiv:1703.04200), adapted to a rule
+        without a loss gradient, as in DTP_SI. The rule's own unscaled update, delta_weight (see
+        BTSP_CL.compute_delta_weight), takes the place of the negative gradient of the unregularized task loss. Unlike
+        DTP_SI, delta_weight depends on the current weight for positive plateaus (potentiation toward w_max and
+        depression via q_dep), so it is the rule's own drive rather than the gradient of any loss.
+        During each task, the per-weight importance is accumulated online as the path integral
+            small_omega += delta_weight * actual_delta_weight,
+        where actual_delta_weight is the actual weight change of each train step (after the penalty and weight
+        clamping). At the end of each task (update_CL_states), the cumulative importance
+        omega = relu(omega + small_omega / (total task weight change ** 2 + si_xi)), the anchor weight is set to the
+        current weight, and small_omega is reset. During subsequent tasks, each projection is updated with
+            learning_rate * (delta_weight - 2 * si_lambda * omega * (weight - anchor_weight)),
+        i.e. the negative gradient of the penalty si_lambda * (omega * (weight - anchor_weight) ** 2).sum() is added
+        to the rule's update. Do not combine with BTSP_CL or BTSP_ELR_CL projections in the same network, since they
+        share BTSP_CL.backward.
+        :param projection: :class:'nn.Linear'
+        :param si_lambda: float; strength of the penalty
+        :param si_xi: float; damping term of the importance normalization
+        :param kwargs: passed to BTSP_CL (e.g. dep_ratio, dep_th, dep_width, max_pop_fraction, learning_rate,
+            task_incremental, task_classes)
+        """
+        super().__init__(projection, **kwargs)
+        self.si_lambda = si_lambda
+        self.si_xi = si_xi
+        self.omega = None
+        self.anchor_weight = None
+        self.small_omega = torch.zeros_like(projection.weight.data)
+        # Weights are initialized by the network after the projection is built, so this is set on the first step
+        self.task_start_weight = None
+        self.unreg_delta_weight = None
+        self.prev_weight = None
+
+    def si_penalty_update(self):
+        """
+        Negative gradient of the penalty si_lambda * (omega * (weight - anchor_weight) ** 2).sum().
+        :return: tensor or float
+        """
+        if self.omega is None:
+            return 0.
+        return -2. * self.si_lambda * self.omega * (self.projection.weight.data - self.anchor_weight)
+
+    def step(self):
+        if self.task_start_weight is None:
+            self.task_start_weight = self.projection.weight.detach().clone()
+        delta_weight = self.compute_delta_weight()
+        self.unreg_delta_weight = delta_weight.detach().clone()
+        self.prev_weight = self.projection.weight.detach().clone()
+        self.projection.weight.data += self.learning_rate * (delta_weight + self.si_penalty_update())
+
+    def update(self):
+        # Called after step() and constrain_weights_and_biases(), so the weight change includes weight clamping.
+        # unreg_delta_weight is the negative of the gradient, so the path integral -grad * delta_weight is a sum here
+        if self.prev_weight is not None:
+            actual_delta_weight = self.projection.weight.detach() - self.prev_weight
+            self.small_omega += self.unreg_delta_weight * actual_delta_weight
+            self.prev_weight = None
+
+    def update_CL_states(self):
+        weight = self.projection.weight.detach().clone()
+        if self.task_start_weight is not None:
+            omega = self.small_omega / ((weight - self.task_start_weight) ** 2 + self.si_xi)
+            if self.omega is not None:
+                omega = self.omega + omega
+            # Clamp at zero, as in the reference implementation (ganguli-lab/pathint), so the penalty never pushes
+            # weights away from their anchor
+            self.omega = torch.relu(omega)
+        self.anchor_weight = weight
+        self.task_start_weight = weight.clone()
+        self.small_omega = torch.zeros_like(weight)
+        super().update_CL_states()
 
 
 class BTSP_ELR_CL(BTSP_CL):
