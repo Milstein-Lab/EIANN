@@ -632,6 +632,97 @@ class Backprop_SI_LR(Backprop_CL):
         network.optimizer.step()
 
 
+class Backprop_SI_ELR(Backprop_CL):
+    """
+    Synaptic Intelligence (Zenke et al., 2017, arXiv:1703.04200) with an elastic learning rate (as in BTSP_ELR_CL)
+    instead of a loss penalty. The per-weight importance omega and the anchor weight (the weight at the end of the
+    previous task) are computed as in Backprop_SI_LR. During subsequent tasks the gradient of the task loss for each
+    weight is scaled by lr_mod:
+        grad_p = lr_mod_p * d task_loss(output, target) / d W_p
+    and after every train step (after the optimizer step and weight clamping), lr_mod is updated continuously:
+        lr_mod_p += (d task_loss / d W_p != 0) * omega_p * lr_mod_func(|W_p - W_anchor_p|)
+        lr_mod_p = clamp(lr_mod_p, elr_min, 1)
+    where lr_mod_func is a piecewise linear function that increases from -elr_scale (distance <= elr_threshold) to
+    elr_scale (distance >= elr_threshold + elr_width). Important weights near their anchor lose learning rate, and
+    important weights far from it recover learning rate. lr_mod starts at 1, stays at 1 during the first task (omega is
+    not defined before the first task switch), and is not reset at task boundaries. No penalty is added to the loss.
+    Scaling the gradient is equivalent to scaling the per-weight learning rate only for plain SGD (no momentum or
+    weight decay). See Backprop_CL for task_incremental and task_classes.
+    """
+    # lr_mod is updated during training, not set at the task switch (used by scripts/get_cl_metrics.py)
+    continuous_lr_mod = True
+
+    def __init__(self, projection, si_xi=1e-3, elr_threshold=0., elr_width=0.5, elr_scale=0.1, elr_min=0.01,
+                 task_incremental=False, task_classes=None, learning_rate=None):
+        super().__init__(projection, task_incremental=task_incremental, task_classes=task_classes,
+                         learning_rate=learning_rate)
+        self.si_xi = si_xi
+        self.omega = None
+        self.small_omega = torch.zeros_like(projection.weight.data)
+        # Weights are initialized by the network after the projection is built, so this is set on the first backward
+        self.task_start_weight = None
+        self.unreg_grad = None
+        self.prev_weight = None
+        self.elr_threshold = elr_threshold
+        self.elr_width = elr_width
+        self.elr_scale = elr_scale
+        self.elr_min = elr_min
+        self.lr_mod = torch.ones_like(projection.weight.data)
+        self.lr_mod_func = pwlin(-self.elr_scale, self.elr_scale, self.elr_threshold,
+                                 self.elr_threshold + self.elr_width)
+
+    def update(self):
+        # Called after optimizer.step() and constrain_weights_and_biases(), so delta_weight includes weight clamping
+        if self.prev_weight is not None:
+            weight = self.projection.weight.detach()
+            delta_weight = weight - self.prev_weight
+            self.small_omega -= self.unreg_grad * delta_weight
+            self.prev_weight = None
+
+            # elastic learning rate modulation
+            if self.omega is not None:
+                distance_to_anchor = torch.abs(weight - self.task_start_weight)
+                gate = (self.unreg_grad != 0.).float()
+                self.lr_mod += gate * self.omega * self.lr_mod_func(distance_to_anchor)
+                self.lr_mod.clamp_(min=self.elr_min, max=1.)
+
+    def update_CL_states(self):
+        weight = self.projection.weight.detach().clone()
+        if self.task_start_weight is not None:
+            omega = self.small_omega / ((weight - self.task_start_weight) ** 2 + self.si_xi)
+            if self.omega is not None:
+                omega = self.omega + omega
+            # Clamp at zero, as in the reference implementation (ganguli-lab/pathint)
+            self.omega = torch.relu(omega)
+        self.task_start_weight = weight
+        self.small_omega = torch.zeros_like(weight)
+        super().update_CL_states()
+
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+
+        si_projections = cls.get_projections(network)
+
+        network.optimizer.zero_grad()
+        loss = si_projections[0].learning_rule.task_loss(network, output, target)
+        loss.backward()
+
+        with torch.no_grad():
+            for projection in si_projections:
+                learning_rule = projection.learning_rule
+                if learning_rule.task_start_weight is None:
+                    learning_rule.task_start_weight = projection.weight.detach().clone()
+                if projection.weight.grad is None:
+                    learning_rule.unreg_grad = torch.zeros_like(projection.weight.data)
+                else:
+                    learning_rule.unreg_grad = projection.weight.grad.detach().clone()
+                    if learning_rule.task_num > 0:
+                        projection.weight.grad *= learning_rule.lr_mod
+                learning_rule.prev_weight = projection.weight.detach().clone()
+
+        network.optimizer.step()
+
+
 class BackpropBias(BiasLearningRule):
     def __init__(self, population, learning_rate=None):
         super().__init__(population, learning_rate)
