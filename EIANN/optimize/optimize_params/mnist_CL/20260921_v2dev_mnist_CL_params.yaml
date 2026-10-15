@@ -448,6 +448,48 @@ bpDale_CL_5_tasks_EWC:
     H_I_size: 50.0
     Output_I_size: 10.0
 
+BTSP_BP_CL_5_tasks:
+    # final_dynamics_residuals: 0.0
+    # phase0_accuracy: 99.87640380859375
+    # phase0_dynamics_residuals: 0.0
+    # phase0_loss: 0.003639537375420332
+    # phase1_accuracy: 48.45840835571289
+    # phase1_dynamics_residuals: 0.0
+    # phase1_loss: 0.0615704171359539
+    # phase2_accuracy: 31.561695098876953
+    # phase2_dynamics_residuals: 0.041021719574928284
+    # phase2_loss: 0.10128100216388702
+    # phase3_accuracy: 46.407470703125
+    # phase3_dynamics_residuals: 0.0
+    # phase3_loss: 0.09480631351470947
+    # phase4_accuracy: 42.3380012512207
+    # phase4_dynamics_residuals: 0.0
+    # phase4_loss: 0.09743939340114594
+    H_E_FF_E_max_weight_scale: 20.87426713167698
+    H1_E_Input_E_init_weight_scale: 0.8576124585396818
+    H_E_E_learning_rate: 0.00396999826408752
+    H1_E_error_scale: 91.43259031766686
+    H1_E_H1_I_init_weight_scale: 0.8412254461890115
+    H1_I_Input_E_init_weight_scale: 1.1248604592880913
+    H1_I_H1_E_init_weight_scale: 2.88945750173778
+    H1_I_H1_I_init_weight_scale: 1.2013344570431306
+    H2_E_H1_E_init_weight_scale: 0.11245964744132197
+    H2_E_error_scale: 104.38826512793769
+    H2_E_H2_I_init_weight_scale: 0.02531194251110399
+    H2_I_H1_E_init_weight_scale: 0.3262501015042773
+    H2_I_H2_E_init_weight_scale: 0.4383420137757038
+    H2_I_H2_I_init_weight_scale: 1.2578350919502748
+    Output_E_H2_E_max_weight_scale: 30.175065968294764
+    Output_E_H2_E_init_weight_scale: 1.7440476494013275
+    Output_E_H2_E_learning_rate: 0.0019400883711771792
+    Output_E_error_scale: 140.31195995759836
+    Output_E_Output_I_init_weight_scale: 0.17164992543115837
+    Output_I_H2_E_init_weight_scale: 3.406595872844543
+    Output_I_Output_E_init_weight_scale: 0.5713366683832017
+    Output_I_Output_I_init_weight_scale: 1.77254915720643
+    H_I_size: 50.0
+    Output_I_size: 10.0
+
 #------------------------
 # TASK INCREMENTAL MODELS 
 #------------------------

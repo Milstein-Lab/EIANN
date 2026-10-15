@@ -24,9 +24,10 @@ For each seed folder in --model-folder-path, loads the network exported after ea
     compute it at the task switch, after the pickle is exported, so it is read from the phase<i+1> pickle and is absent
     for the last phase. For rules with a per-weight learning rate modulation, <seed>/phase<i>/lr_mod/<projection>
     (post, pre) holds the lr_mod in effect while learning task i+1: the elastic learning rate of BTSP_ELR_1 and
-    BTSP_ELR_CL (and the omega-weighted elastic learning rate of Backprop_SI_ELR) as it is at the end of task i, or that
-    of Backprop_SILR_A, EWC_LR and SI_LR, which is set at the task switch and so read from the phase<i+1> pickle (absent
-    for the last phase).
+    BTSP_ELR_CL (and the omega-weighted elastic learning rate of Backprop_SI_ELR, and the hypergradient learning rate of
+    Backprop_SI_HD, as a multiple of its base learning rate) as it is at the end of task i, or that of Backprop_SILR_A,
+    EWC_LR and SI_LR, which is set at the task switch and so read from the phase<i+1> pickle (absent for the last
+    phase).
 
 Example (from the EIANN/ package directory):
 python scripts/get_cl_metrics.py --model-folder-path=data/<network_name> --data-dir=data/datasets/MNIST_data/ \
@@ -201,7 +202,7 @@ def compute_contribution_utility(network, data):
 def get_rule_importance(learning_rule):
     """
     Per-weight importance that a CL learning rule uses to protect previous tasks: the summed Fisher (Backprop_EWC,
-    Backprop_EWC_LR) or omega (Backprop_SI, Backprop_SI_LR).
+    Backprop_EWC_LR) or omega (Backprop_SI, Backprop_SI_LR, Backprop_SI_ELR, Backprop_SI_HD).
     :param learning_rule: :class:'LearningRule'
     :return: array with the shape of the weight, or None for other rules or before the first task switch
     """
@@ -219,7 +220,8 @@ def get_rule_importance(learning_rule):
 def get_lr_mod(learning_rule):
     """
     Per-weight learning rate modulation of rules with an lr_mod tensor: the elastic learning rate of BTSP_ELR_1,
-    BTSP_ELR_CL and Backprop_SI_ELR (rules with continuous_lr_mod), updated during training, or that of
+    BTSP_ELR_CL and Backprop_SI_ELR, or the hypergradient learning rate of Backprop_SI_HD (rules with
+    continuous_lr_mod), updated during training, or that of
     Backprop_SILR_A/C (from accum_delta_weight), Backprop_EWC_LR (from fisher_sum) and Backprop_SI_LR (from omega), set
     at the task switch in update_CL_states.
     :param learning_rule: :class:'LearningRule'
