@@ -58,6 +58,8 @@ python scripts/get_cl_metrics.py --model-folder-path=data/20261002_EIANN_2_hidde
     --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=dtp_CL_5_tasks_SI --model-key=dtp_CL_5_tasks_SI
 python scripts/get_cl_metrics.py --model-folder-path=data/20260928_EIANN_2_hidden_CL_mnist_bpDale_relu_SGD_EWC_config_A \
     --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=bpDale_CL_5_tasks_EWC --model-key=bpDale_CL_5_tasks_EWC
+python scripts/get_cl_metrics.py --model-folder-path=data/20261012_EIANN_2_hidden_CL_mnist_bpDale_BTSP_BP_config_A \
+    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=BTSP_BP_CL_5_tasks --model-key=BTSP_BP_CL_5_tasks
 """
 import torch
 import torchvision
