@@ -22,6 +22,11 @@ sbatch <<EOT
 
 source $HOME/cpu_py311_intelmpi.sh
 
+# one torch thread per MPI rank, and cap glibc malloc arenas: per-step tensor allocations in the CL rules (EWC, SI_HD)
+# otherwise appear to bloat and fragment worker memory on Linux
+export OMP_NUM_THREADS=1
+export MALLOC_ARENA_MAX=2
+
 cd $PROJECT/EIANN/EIANN
 
 srun -n 1001 --mpi=pmi2 python -m mpi4py.futures -m nested.optimize --config-file-path=$CONFIG_FILE_PATH \
