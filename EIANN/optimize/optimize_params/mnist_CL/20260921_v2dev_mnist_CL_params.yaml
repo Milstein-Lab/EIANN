@@ -598,6 +598,101 @@ BTSP_SI_CL_5_tasks:
     H_I_size: 50.0
     Output_I_size: 10.0
 
+van_bp_CL_5_tasks_SI_ELR:
+    # phase0_accuracy: 99.91436
+    # phase0_loss: 0.0022309013
+    # phase1_accuracy: 81.184784
+    # phase1_loss: 0.032085907
+    # phase2_accuracy: 69.80445
+    # phase2_loss: 0.050499696
+    # phase3_accuracy: 65.403244
+    # phase3_loss: 0.057231594
+    # phase4_accuracy: 54.822197
+    # phase4_loss: 0.066813484
+    H_learning_rate: 0.0005982268818210023
+    Output_learning_rate: 0.02325853174810922
+    H1_elr_threshold: 0.01383522154140797
+    H1_elr_width: 0.0014878986092532827
+    H1_elr_scale: 0.7089098660074024
+    H2_elr_threshold: 0.0050094321728052895
+    H2_elr_width: 0.0638328619719661
+    H2_elr_scale: 135.9139004607102
+    Output_elr_threshold: 0.004294116494471296
+    Output_elr_width: 0.010678015106309861
+    Output_elr_scale: 87.11996396250572
+    elr_min: 0.0038409416766972556
+    H1_init_weight_scale: 0.1521596021719625
+    H2_init_weight_scale: 2.89549606703245
+    Output_init_weight_scale: 6.6909699172713015
+
+bpDale_CL_5_tasks_SI_ELR:
+    # final_dynamics_residuals: 0.0
+    # phase0_accuracy: 99.86958312988281
+    # phase0_dynamics_residuals: 0.08785663843154908
+    # phase0_loss: 0.0029796469025313854
+    # phase1_accuracy: 94.92613220214844
+    # phase1_dynamics_residuals: 0.1464010715484619
+    # phase1_loss: 0.046810708940029144
+    # phase2_accuracy: 77.53490447998047
+    # phase2_dynamics_residuals: 0.13947701454162598
+    # phase2_loss: 0.0686325803399086
+    # phase3_accuracy: 71.65428924560547
+    # phase3_dynamics_residuals: 0.061506378650665286
+    # phase3_loss: 0.07512397319078445
+    # phase4_accuracy: 60.44060134887695
+    # phase4_dynamics_residuals: 0.0
+    # phase4_loss: 0.07504460960626602
+    H_E_E_learning_rate: 0.3874152416876602
+    Output_E_E_learning_rate: 0.013502409957435894
+    H1_elr_threshold: 0.01719531201188498
+    H1_elr_width: 0.001839127889793935
+    H1_elr_scale: 0.7016499954008213
+    H2_elr_threshold: 0.024906665028352495
+    H2_elr_width: 0.004316676961719315
+    H2_elr_scale: 51.33235614580954
+    Output_elr_threshold: 0.02605247709910195
+    Output_elr_width: 0.01672687824846789
+    Output_elr_scale: 1742.1643748107128
+    elr_min: 0.002711949610793274
+    H1_E_Input_E_init_weight_scale: 3.038350052179198
+    H1_E_H1_I_init_weight_scale: 2.25450293181768
+    H1_I_Input_E_init_weight_scale: 2.1410075245043343
+    H1_I_H1_E_init_weight_scale: 0.6490101495280202
+    H1_I_H1_I_init_weight_scale: 1.2962629355671997
+    H2_E_H1_E_init_weight_scale: 0.05168583698580416
+    H2_E_H2_I_init_weight_scale: 0.09678839741677747
+    H2_I_H1_E_init_weight_scale: 0.06501967925715102
+    H2_I_H2_E_init_weight_scale: 1.1213157243529004
+    H2_I_H2_I_init_weight_scale: 3.4868016840567737
+    Output_E_H2_E_init_weight_scale: 1.9960686056751074
+    Output_E_Output_I_init_weight_scale: 0.18384355124033977
+    Output_I_H2_E_init_weight_scale: 2.9830389759852434
+    Output_I_Output_E_init_weight_scale: 0.3657614762223139
+    Output_I_Output_I_init_weight_scale: 2.1201058348867408
+    H_I_size: 50.0
+    Output_I_size: 10.0
+
+van_bp_CL_5_tasks_SI_HG:
+    # phase0_accuracy: 99.80342
+    # phase0_loss: 0.0029082443
+    # phase1_accuracy: 81.109695
+    # phase1_loss: 0.039853096
+    # phase2_accuracy: 50.136616
+    # phase2_loss: 0.08405944
+    # phase3_accuracy: 45.29539
+    # phase3_loss: 0.089489445
+    # phase4_accuracy: 27.3036
+    # phase4_loss: 0.10346107
+    H_learning_rate: 0.000123897124304116
+    Output_learning_rate: 0.004049841779349228
+    hd_beta: 9.521883738895255
+    H1_hd_gamma: 0.011058315145585291
+    H2_hd_gamma: 0.0016280227096463402
+    Output_hd_gamma: 0.10007086397811601
+    H1_init_weight_scale: 2.785394092740559
+    H2_init_weight_scale: 2.0725737199358605
+    Output_init_weight_scale: 0.09408041567687402
+
 #------------------------
 # TASK INCREMENTAL MODELS 
 #------------------------

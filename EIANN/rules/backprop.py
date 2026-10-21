@@ -823,6 +823,102 @@ class Backprop_SI_HD(Backprop_CL):
 
         network.optimizer.step()
 
+class Backprop_SI_HD_v1(Backprop_CL):
+    """
+    Synaptic Intelligence (Zenke et al., 2017, arXiv:1703.04200) with a per-weight learning rate adapted by
+    hypergradient descent (Baydin et al., 2017, arXiv:1703.04782; Franceschi et al., 2017, arXiv:1703.01785) on the
+    SI regularizer alone, instead of a loss penalty. Unlike Backprop_SI_HD, the task loss term g_p[t] is left out of the
+    hypergradient, so lr only changes to keep important weights near their anchor. omega and the anchor are computed
+    as in Backprop_SI_HD, and weights are updated with the gradient g of the unregularized task loss:
+        W_p[t+1] = W_p[t] - lr_p[t] * g_p[t]
+    so dW_p[t] / dlr_p[t-1] = -g_p[t-1], and before every train step lr descends the hypergradient of
+    hd_beta / 2 * sum_p (omega_p * (W_p - W_anchor_p) ** 2).sum():
+        lr_p[t] = lr_p[t-1] + hd_gamma * g_p[t-1] * hd_beta * omega_p * (W_p[t] - W_anchor_p)
+        lr_p[t] = clamp(lr_p[t], lr_min, lr_max)
+    hd_gamma and hd_beta only enter as their product, so only one of them needs to be optimized. lr starts at
+    learning_rate. During the first task omega is not defined, so lr stays at learning_rate. lr is not reset at task
+    boundaries. No penalty is added to the loss. The hypergradient ignores weight clamping (it uses -g_p[t-1] even when
+    the weight was clamped). Scaling the gradient is equivalent to scaling the per-weight learning rate only for plain
+    SGD (no momentum or weight decay). See Backprop_CL for task_incremental and task_classes.
+    """
+    # lr_mod is updated during training, not set at the task switch (used by scripts/get_cl_metrics.py)
+    continuous_lr_mod = True
+
+    def __init__(self, projection, hd_gamma=1e-3, hd_beta=1., si_xi=1e-3, lr_min=0., lr_max=None,
+                 task_incremental=False, task_classes=None, learning_rate=None):
+        super().__init__(projection, task_incremental=task_incremental, task_classes=task_classes,
+                         learning_rate=learning_rate)
+        self.hd_gamma = hd_gamma
+        self.hd_beta = hd_beta
+        self.si_xi = si_xi
+        self.lr_min = lr_min
+        self.lr_max = lr_max
+        self.omega = None
+        self.small_omega = torch.zeros_like(projection.weight.data)
+        # Weights are initialized by the network after the projection is built, so this is set on the first backward
+        self.task_start_weight = None
+        self.unreg_grad = None
+        self.prev_grad = None
+        self.prev_weight = None
+        self.lr_mod = torch.ones_like(projection.weight.data)
+
+    def update_lr(self):
+        """
+        Hypergradient step on the per-weight learning rate, using the task loss gradient of the previous train step and
+        the gradient of the SI regularizer at the current weights.
+        """
+        if self.prev_grad is None or self.omega is None:
+            return
+        hypergrad = self.hd_beta * self.omega * (self.projection.weight.detach() - self.task_start_weight)
+        lr = self.learning_rate * self.lr_mod + self.hd_gamma * self.prev_grad * hypergrad
+        lr.clamp_(min=self.lr_min, max=self.lr_max)
+        self.lr_mod = lr / self.learning_rate
+
+    def update(self):
+        # Called after optimizer.step() and constrain_weights_and_biases(), so delta_weight includes weight clamping
+        if self.prev_weight is not None:
+            delta_weight = self.projection.weight.detach() - self.prev_weight
+            self.small_omega -= self.unreg_grad * delta_weight
+            self.prev_weight = None
+
+    def update_CL_states(self):
+        weight = self.projection.weight.detach().clone()
+        if self.task_start_weight is not None:
+            omega = self.small_omega / ((weight - self.task_start_weight) ** 2 + self.si_xi)
+            if self.omega is not None:
+                omega = self.omega + omega
+            # Clamp at zero, as in the reference implementation (ganguli-lab/pathint)
+            self.omega = torch.relu(omega)
+        self.task_start_weight = weight
+        self.small_omega = torch.zeros_like(weight)
+        super().update_CL_states()
+
+    @classmethod
+    def backward(cls, network, output, target, store_history=False, store_dynamics=False):
+
+        si_projections = cls.get_projections(network)
+
+        network.optimizer.zero_grad()
+        loss = si_projections[0].learning_rule.task_loss(network, output, target)
+        loss.backward()
+
+        with torch.no_grad():
+            for projection in si_projections:
+                learning_rule = projection.learning_rule
+                if learning_rule.task_start_weight is None:
+                    learning_rule.task_start_weight = projection.weight.detach().clone()
+                if projection.weight.grad is None:
+                    learning_rule.unreg_grad = torch.zeros_like(projection.weight.data)
+                else:
+                    learning_rule.unreg_grad = projection.weight.grad.detach().clone()
+                learning_rule.update_lr()
+                if projection.weight.grad is not None:
+                    projection.weight.grad *= learning_rule.lr_mod
+                learning_rule.prev_grad = learning_rule.unreg_grad
+                learning_rule.prev_weight = projection.weight.detach().clone()
+
+        network.optimizer.step()
+
 
 class BackpropBias(BiasLearningRule):
     def __init__(self, population, learning_rate=None):
