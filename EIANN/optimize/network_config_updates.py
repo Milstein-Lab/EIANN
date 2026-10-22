@@ -2079,7 +2079,6 @@ def update_EIANN_config_convnet_A_van_bp_relu_SGD_G_zero_bias(x, context):
     H_learning_rate = param_dict['H_learning_rate']
     H1_init_weight_scale = param_dict['H1_init_weight_scale']
     H2_init_weight_scale = param_dict['H2_init_weight_scale']
-    H3_init_weight_scale = param_dict['H3_init_weight_scale']
     
     Output_learning_rate = param_dict['Output_learning_rate']
     Output_init_weight_scale = param_dict['Output_init_weight_scale']
@@ -2109,13 +2108,9 @@ def update_EIANN_config_convnet_A_van_bp_relu_SGD_G_zero_bias(x, context):
         H_learning_rate)
     context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2_init_weight_scale,)
     
-    context.projection_config['H3']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
-        H_learning_rate)
-    context.projection_config['H3']['E']['H2']['E']['weight_init_args'] = (H3_init_weight_scale,)
-    
-    context.projection_config['Output']['E']['H3']['E']['learning_rule_kwargs']['learning_rate'] = (
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
         Output_learning_rate)
-    context.projection_config['Output']['E']['H3']['E']['weight_init_args'] = (Output_init_weight_scale,)
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (Output_init_weight_scale,)
     
     context.training_kwargs['optimizer'] = 'SGD'
 

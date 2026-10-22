@@ -549,6 +549,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                     (os.getpid(), context.data_file_paths[-1]))
                 
         network.reset_history()
+        
         network.update_CL_states()
         if context.task_incremental and context.multihead:
             # re-apply weight constraints so the task masks switch to the next task's head before its first train step
