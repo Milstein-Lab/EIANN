@@ -1,7 +1,7 @@
 #!/bin/bash -l
 export DATE=$(date +%Y%m%d_%H%M%S)
 export LABEL="$2"
-export JOB_NAME=optimize_EIANN_mnist_"$LABEL"_"$DATE"
+export JOB_NAME=optimize_EIANN_convnet_cifar10_"$LABEL"_"$DATE"
 export CONFIG_FILE_PATH="$1"
 sbatch <<EOT
 #!/bin/bash -l
