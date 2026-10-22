@@ -10,7 +10,7 @@ sbatch <<EOT
 #SBATCH -e $SCRATCH/logs/EIANN/$JOB_NAME.%j.e
 #SBATCH -p compute
 #SBATCH -N 32
-#SBATCH -n 501
+#SBATCH -n 251
 #SBATCH --ntasks-per-node=8
 #SBATCH --cpus-per-task=16
 #SBATCH -t 2:00:00
