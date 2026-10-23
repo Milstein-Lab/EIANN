@@ -30,7 +30,7 @@ set -x
 # otherwise appear to bloat and fragment worker memory on Linux
 export OMP_NUM_THREADS=1
 export MALLOC_ARENA_MAX=2
-export MEM_PER_CPU="1946M"
+MEM_PER_CPU="1946M"
 
 cd $PROJECT/EIANN/EIANN
 
