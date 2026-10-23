@@ -30,11 +30,10 @@ set -x
 # otherwise appear to bloat and fragment worker memory on Linux
 export OMP_NUM_THREADS=1
 export MALLOC_ARENA_MAX=2
-MEM_PER_CPU="1946M"
 
 cd $PROJECT/EIANN/EIANN
 
-srun -n 4 --mpi=pmi2 -c 16 --mem-per-cpu=$MEM_PER_CPU python -m mpi4py.futures -m nested.optimize \
+srun -n 4 --mpi=pmi2 -c 16 --mem-per-cpu=1946M python -m mpi4py.futures -m nested.optimize \
   --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=$SCRATCH/data/EIANN --pop_size=1 --max_iter=1 --path_length=1 --disp \
   --framework=mpi --num_instances=3
