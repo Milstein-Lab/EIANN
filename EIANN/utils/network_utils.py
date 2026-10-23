@@ -614,7 +614,7 @@ def sort_by_val_history(network, val_dataloader, plot=False):
     optimal_accuracy_history = []
     sorted_idx_history = []
     
-    _, _, val_target = next(iter(val_dataloader))
+    val_target = ut.get_dataloader_targets(val_dataloader)
     targets = torch.argmax(val_target, dim=1)  # convert from 1-hot vector to int label
     
     for output in network.val_output_history:
@@ -664,7 +664,7 @@ def sort_by_class_averaged_val_output(network, val_dataloader, index=-1):
     
     # Get average output for each label class
     avg_output = torch.zeros(num_labels, num_units)
-    _, _, val_targets = next(iter(val_dataloader))
+    val_targets = ut.get_dataloader_targets(val_dataloader)
     targets = torch.argmax(val_targets, dim=1)  # convert from 1-hot vector to int label
     for label in range(num_labels):
         label_idx = torch.where(targets == label)  # find all instances of given label
@@ -774,7 +774,7 @@ def recompute_validation_loss_and_accuracy(network, val_dataloader, sorted_outpu
     sorted_val_loss_history = []
     sorted_val_accuracy_history = []
     num_patterns = val_output_history.shape[1]
-    _, _, val_target = next(iter(val_dataloader))
+    val_target = ut.get_dataloader_targets(val_dataloader)
     targets = torch.argmax(val_target, dim=1)
     for batch_output in val_output_history:
         loss = network.criterion(batch_output, val_target).item()

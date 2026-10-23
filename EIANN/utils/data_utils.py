@@ -557,6 +557,23 @@ def print_hdf5_dataset_sizes(file_path):
         f.visititems(print_dataset_sizes)
 
 
+def get_dataloader_targets(dataloader):
+    """
+    Concatenate targets across all batches of a dataloader.
+
+    Parameters
+    ----------
+    dataloader : torch.utils.data.DataLoader
+        DataLoader returning (index, data, target) tuples. Must not shuffle, so that the order of targets matches
+        the order of outputs computed batch-by-batch.
+
+    Returns
+    -------
+    torch.Tensor
+    """
+    return torch.cat([target for _, _, target in dataloader])
+
+
 def get_MNIST_dataloaders(sub_dataloader_size=None, batch_size=1, data_dir=None):
     """
     Load MNIST dataset and return custom dataloaders that include sample indices.

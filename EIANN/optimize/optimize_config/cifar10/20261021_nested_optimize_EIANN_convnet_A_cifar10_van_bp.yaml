@@ -45,6 +45,7 @@ kwargs:
     num_training_steps_accuracy_window: 200
     constrain_equilibration_dynamics: False
     flatten_data: False
+    val_batch_size: 10000
 update_context:
     - source: optimize.nested_optimize_EIANN_cifar10
       function: update_EIANN_config_convnet_A_van_bp_relu_SGD_G_zero_bias

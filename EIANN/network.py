@@ -399,13 +399,15 @@ class Network(nn.Module):
                 else:
                     post_pop.append_attribute_history('forward_dendritic_state', post_pop.forward_dendritic_state.detach().clone())
   
-    def validate(self, val_data, val_target, pre_equilibrate=False):
+    def validate(self, val_batches, pre_equilibrate=False):
         """
+        Compute validation output, loss and accuracy. Outputs are computed batch-by-batch and concatenated before
+        computing loss and accuracy over the full validation set.
         
         Parameters
         ----------
-        val_data : torch.Tensor
-        val_target : torch.Tensor
+        val_batches : list of tuple (torch.Tensor, torch.Tensor)
+            List of (val_data, val_target) batches.
         pre_equilibrate: bool, default False
 
         Returns
@@ -413,9 +415,13 @@ class Network(nn.Module):
         tuple (torch.Tensor, float, float)
         
         """
-        if pre_equilibrate:
-            _ = self.forward(val_data, no_grad=True)
-        output = self.forward(val_data, no_grad=True, persistent_state=pre_equilibrate)
+        output = []
+        for val_data, _ in val_batches:
+            if pre_equilibrate:
+                _ = self.forward(val_data, no_grad=True)
+            output.append(self.forward(val_data, no_grad=True, persistent_state=pre_equilibrate).detach())
+        output = torch.cat(output)
+        val_target = torch.cat([val_target for _, val_target in val_batches])
         val_loss = self.criterion(output, val_target)
         accuracy = 100 * torch.sum(torch.argmax(output, dim=1) == torch.argmax(val_target, dim=1)) / \
                    output.shape[0]
@@ -433,7 +439,7 @@ class Network(nn.Module):
         train_dataloader : torch.utils.data.DataLoader
             DataLoader for training data returning (index, sample_data, sample_target).
         val_dataloader : torch.utils.data.DataLoader, optional
-            DataLoader for validation data (must contain single large batch).
+            DataLoader for validation data (must not shuffle). May contain one or more batches.
         epochs : int, default 1
             Number of training epochs.
         val_interval : tuple of int, default (0, -1, 50)
@@ -464,8 +470,8 @@ class Network(nn.Module):
         Notes
         -----
         Starting at validate_start, validation is performed every validate_interval
-        steps until >= validate_stop. The validation dataloader must contain a 
-        single batch with all validation data.
+        steps until >= validate_stop. Validation outputs are computed batch-by-batch and concatenated, so loss and
+        accuracy are always computed over the full validation set.
         """
         if pre_equilibrate is None:
             pre_equilibrate = self.pre_equilibrate
@@ -489,11 +495,8 @@ class Network(nn.Module):
         
         # Load validation data and initialize intermediate variables
         if val_dataloader is not None:
-            assert len(val_dataloader) == 1, 'Validation Dataloader must have a single large batch'
-            idx, val_data, val_target = next(iter(val_dataloader))
-            if not val_data.device == self.device:
-                val_data = val_data.to(self.device)
-                val_target = val_target.to(self.device)
+            val_batches = [(val_data.to(self.device), val_target.to(self.device))
+                           for _, val_data, val_target in val_dataloader]
             self.val_output_history = []
             self.val_loss_history = []
             self.val_accuracy_history = []
@@ -633,7 +636,7 @@ class Network(nn.Module):
                             self.cache_states_and_activities('train')
                         
                         val_output, val_loss, val_accuracy = \
-                            self.validate(val_data, val_target, pre_equilibrate=pre_equilibrate)
+                            self.validate(val_batches, pre_equilibrate=pre_equilibrate)
                         if store_val_output_history:
                             self.val_output_history.append(val_output.detach().clone())
                         del val_output
@@ -695,28 +698,37 @@ class Network(nn.Module):
         -------
         float
             Final loss value on the test dataset.
+
+        Notes
+        -----
+        If the dataloader contains multiple batches, the loss is computed over the concatenated output of all batches,
+        but population activities (and stored dynamics) afterwards reflect only the last batch.
         """
         if pre_equilibrate is None:
             pre_equilibrate = self.pre_equilibrate
-        
+
         if status_bar:
             from tqdm.autonotebook import tqdm
         
-        sample_idx, sample_data, sample_target = next(iter(dataloader))
+        output = []
+        target = []
+        for sample_idx, sample_data, sample_target in dataloader:
+            sample_data = torch.squeeze(sample_data)
+            sample_target = torch.squeeze(sample_target)
+            if sample_data.device != self.device:
+                sample_data = sample_data.to(self.device)
+                sample_target = sample_target.to(self.device)
+            
+            if pre_equilibrate:
+                _ = self.forward(sample_data, no_grad=True)
+            
+            output.append(self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics,
+                                       store_num_steps=store_num_steps, no_grad=True,
+                                       persistent_state=pre_equilibrate).detach())
+            target.append(sample_target)
         
-        sample_data = torch.squeeze(sample_data)
-        sample_target = torch.squeeze(sample_target)
-        if sample_data.device != self.device:
-            sample_data = sample_data.to(self.device)
-            sample_target = sample_target.to(self.device)
-        
-        if pre_equilibrate:
-            _ = self.forward(sample_data, no_grad=True)
-        
-        output = self.forward(sample_data, store_history=store_history, store_dynamics=store_dynamics,
-                              store_num_steps=store_num_steps, no_grad=True, persistent_state=pre_equilibrate)
         with torch.no_grad():
-            loss = self.criterion(output, sample_target)
+            loss = self.criterion(torch.cat(output), torch.cat(target))
 
         return loss.item()
     

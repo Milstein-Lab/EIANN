@@ -128,6 +128,11 @@ def config_worker():
     
     if 'store_history_interval' not in context():
         context.store_history_interval = None
+    # Evaluate validation and test sets in batches of this size to limit memory (default: full dataset)
+    if 'val_batch_size' not in context() or context.val_batch_size is None:
+        context.val_batch_size = None
+    else:
+        context.val_batch_size = int(context.val_batch_size)
     
     context.train_steps = int(context.train_steps)
     
@@ -191,8 +196,16 @@ def config_worker():
     context.data_generator = torch.Generator()
     context.train_sub_dataloader = \
         torch.utils.data.DataLoader(CIFAR10_train, shuffle=True, generator=context.data_generator)
-    context.val_dataloader = torch.utils.data.DataLoader(CIFAR10_val, batch_size=10000, shuffle=False)
-    context.test_dataloader = torch.utils.data.DataLoader(CIFAR10_test, batch_size=10000, shuffle=False)
+    if context.val_batch_size is None:
+        val_batch_size = len(CIFAR10_val)
+        test_batch_size = len(CIFAR10_test)
+    else:
+        val_batch_size = test_batch_size = context.val_batch_size
+        # a trailing batch of size 1 would be squeezed to an unbatched sample
+        if len(CIFAR10_val) % val_batch_size == 1 or len(CIFAR10_test) % test_batch_size == 1:
+            raise Exception('simulate_EIANN_cifar10: val_batch_size: %i leaves a final batch of size 1' % val_batch_size)
+    context.val_dataloader = torch.utils.data.DataLoader(CIFAR10_val, batch_size=val_batch_size, shuffle=False)
+    context.test_dataloader = torch.utils.data.DataLoader(CIFAR10_test, batch_size=test_batch_size, shuffle=False)
     
 
 def simulate(seed, data_seed, data_file_path=None, export=False, plot=False):

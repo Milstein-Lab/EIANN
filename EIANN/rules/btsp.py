@@ -990,6 +990,94 @@ class BTSP_SI(BTSP_CL):
         super().update_CL_states()
 
 
+class BTSP_SI_HD_v1(BTSP_CL):
+    # lr_mod is updated during training, not set at the task switch (used by scripts/get_cl_metrics.py)
+    continuous_lr_mod = True
+
+    def __init__(self, projection, hd_gamma=1e-3, hd_beta=1., si_xi=1e-3, lr_min=0., lr_max=None, **kwargs):
+        """
+        BTSP_CL with Synaptic Intelligence (Zenke et al., 2017, arXiv:1703.04200) implemented as a per-weight learning
+        rate adapted by hypergradient descent on the SI regularizer alone, as in Backprop_SI_HD_v1, instead of a loss
+        penalty. As in BTSP_SI, the rule's own unscaled update, delta_weight (see BTSP_CL.compute_delta_weight), takes
+        the place of the negative gradient of the unregularized task loss, and the per-weight importance omega and the
+        anchor weight (the weight at the end of the previous task) are computed as in BTSP_SI. Weights are updated with
+        a per-weight learning rate lr = learning_rate * lr_mod:
+            W_p[t+1] = W_p[t] + lr_p[t] * delta_weight_p[t]
+        so dW_p[t] / dlr_p[t-1] = delta_weight_p[t-1], and before every train step lr descends the hypergradient of
+        hd_beta / 2 * sum_p (omega_p * (W_p - W_anchor_p) ** 2).sum():
+            lr_p[t] = lr_p[t-1] - hd_gamma * delta_weight_p[t-1] * hd_beta * omega_p * (W_p[t] - W_anchor_p)
+            lr_p[t] = clamp(lr_p[t], lr_min, lr_max)
+        hd_gamma and hd_beta only enter as their product, so only one of them needs to be optimized. lr starts at
+        learning_rate. During the first task omega is not defined, so lr stays at learning_rate. lr is not reset at task
+        boundaries. The hypergradient ignores weight clamping (it uses delta_weight_p[t-1] even when the weight was
+        clamped). Do not combine with other BTSP_CL projections in the same network, since they share
+        BTSP_CL.backward.
+        :param projection: :class:'nn.Linear'
+        :param hd_gamma: float; hypergradient step size
+        :param hd_beta: float; strength of the SI regularizer
+        :param si_xi: float; damping term of the importance normalization
+        :param lr_min: float; lower bound of the per-weight learning rate
+        :param lr_max: float or None; upper bound of the per-weight learning rate
+        :param kwargs: passed to BTSP_CL (e.g. dep_ratio, dep_th, dep_width, max_pop_fraction, learning_rate,
+            task_incremental, task_classes)
+        """
+        super().__init__(projection, **kwargs)
+        self.hd_gamma = hd_gamma
+        self.hd_beta = hd_beta
+        self.si_xi = si_xi
+        self.lr_min = lr_min
+        self.lr_max = lr_max
+        self.omega = None
+        self.small_omega = torch.zeros_like(projection.weight.data)
+        # Weights are initialized by the network after the projection is built, so this is set on the first step
+        self.task_start_weight = None
+        self.unreg_delta_weight = None
+        self.prev_weight = None
+        self.lr_mod = torch.ones_like(projection.weight.data)
+
+    def update_lr(self):
+        """
+        Hypergradient step on the per-weight learning rate, using the rule's update of the previous train step and the
+        gradient of the SI regularizer at the current weights.
+        """
+        if self.unreg_delta_weight is None or self.omega is None:
+            return
+        hypergrad = self.hd_beta * self.omega * (self.projection.weight.detach() - self.task_start_weight)
+        lr = self.learning_rate * self.lr_mod - self.hd_gamma * self.unreg_delta_weight * hypergrad
+        lr.clamp_(min=self.lr_min, max=self.lr_max)
+        self.lr_mod = lr / self.learning_rate
+
+    def step(self):
+        if self.task_start_weight is None:
+            self.task_start_weight = self.projection.weight.detach().clone()
+        delta_weight = self.compute_delta_weight()
+        # unreg_delta_weight still holds the update of the previous train step
+        self.update_lr()
+        self.unreg_delta_weight = delta_weight.detach().clone()
+        self.prev_weight = self.projection.weight.detach().clone()
+        self.projection.weight.data += self.learning_rate * self.lr_mod * delta_weight
+
+    def update(self):
+        # Called after step() and constrain_weights_and_biases(), so the weight change includes weight clamping.
+        # unreg_delta_weight is the negative of the gradient, so the path integral -grad * delta_weight is a sum here
+        if self.prev_weight is not None:
+            actual_delta_weight = self.projection.weight.detach() - self.prev_weight
+            self.small_omega += self.unreg_delta_weight * actual_delta_weight
+            self.prev_weight = None
+
+    def update_CL_states(self):
+        weight = self.projection.weight.detach().clone()
+        if self.task_start_weight is not None:
+            omega = self.small_omega / ((weight - self.task_start_weight) ** 2 + self.si_xi)
+            if self.omega is not None:
+                omega = self.omega + omega
+            # Clamp at zero, as in the reference implementation (ganguli-lab/pathint)
+            self.omega = torch.relu(omega)
+        self.task_start_weight = weight
+        self.small_omega = torch.zeros_like(weight)
+        super().update_CL_states()
+
+
 class BTSP_ELR_CL(BTSP_CL):
     def __init__(self, projection, elr_threshold=0., elr_width=0.5, elr_scale=0.1, elr_min=0.01, **kwargs):
         """

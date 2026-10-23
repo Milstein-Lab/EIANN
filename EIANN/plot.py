@@ -900,7 +900,7 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE',
     network : EIANN.network.Network
         The neural network model to evaluate.
     test_dataloader : torch.utils.data.DataLoader
-        DataLoader providing test data. Must contain a single large batch.
+        DataLoader providing test data. May contain one or more batches (must not shuffle).
     population : str, optional
         Population name to plot, by default 'OutputE'. Can also be 'all'.
     sorted_output_idx : torch.Tensor, optional
@@ -937,7 +937,7 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE',
         pop_activity_dict = {population.fullname: pop_activity_dict[population.fullname]}
 
     # Get class-averaged and sorted activities for plotting
-    _, _, target = next(iter(test_dataloader))    
+    target = ut.get_dataloader_targets(test_dataloader)
     averaged_pop_activity_dict, averaged_pattern_labels = ut.apply_class_averaging(pop_activity_dict, pattern_labels, target)    
     sorted_pop_activity_dict, sorted_pattern_labels, unit_labels_dict = ut.apply_sorting(network, averaged_pop_activity_dict, averaged_pattern_labels, sorted_output_idx)
 

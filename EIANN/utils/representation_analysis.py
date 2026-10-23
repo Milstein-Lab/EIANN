@@ -25,7 +25,7 @@ def compute_raw_test_activity(network, test_dataloader, pre_equilibrate=False):
     network : EIANN.network.Network
         The neural network model to evaluate.
     test_dataloader : torch.utils.data.DataLoader
-        DataLoader providing test data. Must contain a single large batch.
+        DataLoader providing test data. May contain one or more batches (must not shuffle).
     pre_equilibrate : bool, optional
         Whether to pre-equilibrate the states and activities of all units before inference
 
@@ -36,21 +36,22 @@ def compute_raw_test_activity(network, test_dataloader, pre_equilibrate=False):
     pattern_labels : torch.Tensor
         Tensor of pattern labels.
     """
-    if len(test_dataloader) != 1:
-        raise ValueError('Dataloader must have a single large batch')
-
-    idx, data, target = next(iter(test_dataloader))
-    _ =  network.test(test_dataloader, pre_equilibrate=pre_equilibrate)
-    # network.forward(data, no_grad=True)
-    
-    pattern_labels = torch.argmax(target, dim=1)
-
     reversed_populations = list(reversed(network.populations.values()))  # start with the output population
-    pop_activity_dict = {}
+    pop_activity_lists = {population.fullname: [] for population in reversed_populations}
+    target = []
 
-    for population in reversed_populations:
-        pop_activity_dict[population.fullname] = population.activity.clone()
-    
+    for idx, data, batch_target in test_dataloader:
+        data = data.to(network.device)
+        if pre_equilibrate:
+            _ = network.forward(data, no_grad=True)
+        _ = network.forward(data, no_grad=True, persistent_state=pre_equilibrate)
+        for population in reversed_populations:
+            pop_activity_lists[population.fullname].append(population.activity.detach().cpu().clone())
+        target.append(batch_target)
+
+    pattern_labels = torch.argmax(torch.cat(target), dim=1)
+    pop_activity_dict = {pop_name: torch.cat(activity_list) for pop_name, activity_list in pop_activity_lists.items()}
+
     return pop_activity_dict, pattern_labels
 
 
@@ -455,15 +456,13 @@ def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_outp
     tuple (torch.tensor, torch.tensor)
     
     """
-    assert len(test_dataloader)==1, 'Dataloader must have a single large batch'
     assert len(network.param_history) > 0, 'Network must contain a stored param_history'
 
-    idx, test_data, test_target = next(iter(test_dataloader))
-    test_data = test_data.to(network.device)
-    test_target = test_target.to(network.device)
+    test_batches = [test_data.to(network.device) for _, test_data, _ in test_dataloader]
+    test_target = data_utils.get_dataloader_targets(test_dataloader).to(network.device)
     test_loss_history = []
     test_accuracy_history = []
-    num_patterns = test_data.shape[0]
+    num_patterns = test_target.shape[0]
     
     if store_history:
         network.reset_history()
@@ -475,10 +474,13 @@ def compute_test_loss_and_accuracy_history(network, test_dataloader, sorted_outp
     for state_dict in iter_param_history:
         network.load_state_dict(state_dict)
         
-        if pre_equilibrate:
-            _ = network.forward(test_data, no_grad=True)
-        
-        output = network.forward(test_data, store_history=store_history, no_grad=True, persistent_state=pre_equilibrate)
+        output = []
+        for test_data in test_batches:
+            if pre_equilibrate:
+                _ = network.forward(test_data, no_grad=True)
+            output.append(network.forward(test_data, store_history=store_history, no_grad=True,
+                                          persistent_state=pre_equilibrate).detach())
+        output = torch.cat(output)
         
         if sorted_output_idx is not None:
             output = output[:, sorted_output_idx]
@@ -1666,9 +1668,29 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
         The value of residual equilibration error
 
     """
-    # idx, data, targets = next(iter(dataloader))
-    _ = network.test(dataloader, store_dynamics=True, store_num_steps=store_num_steps, pre_equilibrate=pre_equilibrate)
-    # network.forward(data, store_dynamics=True, no_grad=True, store_num_steps=store_num_steps)
+    # Compute the per-step mean activity of each population for each batch
+    batch_average_activity = defaultdict(list)
+    batch_sizes = []
+    for _, data, _ in dataloader:
+        data = data.to(network.device)
+        if pre_equilibrate:
+            _ = network.forward(data, no_grad=True)
+        _ = network.forward(data, store_dynamics=True, store_num_steps=store_num_steps, no_grad=True,
+                            persistent_state=pre_equilibrate)
+        for i, layer in enumerate(network):
+            if i > 0:
+                for population in layer:
+                    if len(population.forward_steps_activity) == 1:
+                        population.forward_steps_activity = []
+                        return 0
+                    # for memory efficiency
+                    batch_average_activity[population.fullname].append(
+                        torch.tensor([torch.mean(step) for step in population.forward_steps_activity]))
+                    population.forward_steps_activity = []
+        batch_sizes.append(data.shape[0])
+    
+    # Weight batches by size so the result equals the per-step mean over the full dataset
+    batch_weights = torch.tensor(batch_sizes) / sum(batch_sizes)
     
     residuals = 0
     
@@ -1690,11 +1712,8 @@ def check_equilibration_dynamics(network, dataloader, equilibration_activity_tol
         if i > 0:
             col = i - 1
             for row, population in enumerate(layer):
-                if len(population.forward_steps_activity) == 1:
-                    return 0
-                # for memory efficiency
-                average_activity = torch.tensor([torch.mean(step) for step in population.forward_steps_activity])
-                population.forward_steps_activity = []
+                average_activity = torch.sum(
+                    batch_weights.unsqueeze(1) * torch.stack(batch_average_activity[population.fullname]), dim=0)
                 if plot:
                     this_axis = axes[row][col]
                     this_axis.plot(average_activity)
