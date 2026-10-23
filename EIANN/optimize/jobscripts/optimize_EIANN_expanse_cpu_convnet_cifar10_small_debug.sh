@@ -11,7 +11,7 @@ sbatch <<'EOT'
 #SBATCH -p debug
 #SBATCH -N 1
 #SBATCH -n 6
-#SBATCH --ntasks-per-node=64
+#SBATCH --ntasks-per-node=6
 #SBATCH --cpus-per-task=2
 #SBATCH -t 0:30:00
 #SBATCH --mem=249208M
@@ -37,5 +37,5 @@ cd $PROJECT/EIANN/EIANN
 srun -n 6 --mpi=pmi2 -c 2 --mem-per-cpu=$MEM_PER_CPU python -m mpi4py.futures -m nested.optimize \
   --config-file-path=$CONFIG_FILE_PATH \
   --output-dir=$SCRATCH/data/EIANN --pop_size=1 --max_iter=1 --path_length=1 --disp \
-  --framework=mpi --num_instances=5 --
+  --framework=mpi --num_instances=5
 EOT
