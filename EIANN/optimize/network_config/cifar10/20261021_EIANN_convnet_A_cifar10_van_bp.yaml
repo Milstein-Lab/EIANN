@@ -48,10 +48,6 @@ layer_config:
         E:
             size: 512
             activation: relu
-    H3:
-        E:
-            size: 512
-            activation: relu
     Output:
         E:
             size: 10
@@ -78,16 +74,6 @@ projection_config:
                     learning_rule: Backprop
                     learning_rule_kwargs:
                         learning_rate: 0.1652392249674756
-        MaxPoolE:
-            ConvBlock1:
-                ConvE2:
-                    weight_init: scaled_kaiming
-                    weight_init_args: !!python/tuple
-                        - 2.957309048541877
-                    direction: F
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1652392249674756
     ConvBlock2:
         ConvE1:
             ConvBlock1:
@@ -102,26 +88,6 @@ projection_config:
         ConvE2:
             ConvBlock2:
                 ConvE1:
-                    weight_init: scaled_kaiming
-                    weight_init_args: !!python/tuple
-                        - 0.30688143784094596
-                    direction: F
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1652392249674756
-        MaxPoolE:
-            ConvBlock2:
-                ConvE2:
-                    weight_init: scaled_kaiming
-                    weight_init_args: !!python/tuple
-                        - 0.30688143784094596
-                    direction: F
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1652392249674756
-        FlatE:
-            ConvBlock2:
-                MaxPoolE:
                     weight_init: scaled_kaiming
                     weight_init_args: !!python/tuple
                         - 0.30688143784094596
@@ -151,20 +117,9 @@ projection_config:
                     learning_rule: Backprop
                     learning_rule_kwargs:
                         learning_rate: 0.1652392249674756
-    H3:
-        E:
-            H2:
-                E:
-                    weight_init: scaled_kaiming
-                    weight_init_args: !!python/tuple
-                        - 0.30688143784094596
-                    direction: F
-                    learning_rule: Backprop
-                    learning_rule_kwargs:
-                        learning_rate: 0.1652392249674756
     Output:
         E:
-            H3:
+            H2:
                 E:
                     weight_init: scaled_kaiming
                     weight_init_args: !!python/tuple

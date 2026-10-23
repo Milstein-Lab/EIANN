@@ -6,5 +6,4 @@ van_bp_convnet_A_test:
     Conv2_init_weight_scale: 0.13797916342436384
     H1_init_weight_scale: 1.5106954534660328
     H2_init_weight_scale: 1.109821313043916
-    H3_init_weight_scale: 1.109821313043916
     Output_init_weight_scale: 2.474238202969777

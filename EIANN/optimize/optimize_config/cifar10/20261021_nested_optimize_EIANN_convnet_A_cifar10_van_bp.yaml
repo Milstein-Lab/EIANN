@@ -20,9 +20,6 @@ bounds:
     H2_init_weight_scale:
         - 0.01
         - 10.
-    H3_init_weight_scale:
-        - 0.01
-        - 10.
     Output_init_weight_scale:
         - 0.01
         - 10.
@@ -64,5 +61,4 @@ x0:
     Conv2_init_weight_scale: 1.
     H1_init_weight_scale: 1.
     H2_init_weight_scale: 1.
-    H3_init_weight_scale: 1.
     Output_init_weight_scale: 1.2
