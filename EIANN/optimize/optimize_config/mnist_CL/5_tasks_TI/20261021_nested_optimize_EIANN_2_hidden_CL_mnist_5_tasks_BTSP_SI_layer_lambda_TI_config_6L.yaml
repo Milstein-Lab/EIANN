@@ -95,10 +95,7 @@ bounds:
     max_pop_fraction:
         - 0.01
         - 1.
-    H1_si_lambda:
-        - 1.0e-04
-        - 0.2
-    H2_si_lambda:
+    H_si_lambda:
         - 1.0e-04
         - 0.2
     Output_si_lambda:
@@ -181,6 +178,5 @@ x0:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
-    H1_si_lambda: 0.01
-    H2_si_lambda: 0.01
+    H_si_lambda: 0.01
     Output_si_lambda: 0.01

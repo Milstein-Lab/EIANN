@@ -1356,8 +1356,8 @@ def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_SI_HD_A(x, context):
 def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_SI_HD_v1_A(x, context):
     """
     E-I network with Dale's law, 2 hidden layers. The E <- E feedforward projections (H1.E <- Input.E, H2.E <- H1.E,
-    Output.E <- H2.E) are learned by Backprop_SI_HD_v1. Each layer has its own hd_gamma, since gradient magnitudes
-    differ between layers. lr_min and lr_max are set to *_lr_mod_min * learning_rate and *_lr_mod_max * learning_rate,
+    Output.E <- H2.E) are learned by Backprop_SI_HD_v1. The hidden layers share H_hd_gamma and the output layer has its
+    own Output_hd_gamma, as in update_EIANN_config_2_hidden_BTSP_ELR_A. lr_min and lr_max are set to *_lr_mod_min * learning_rate and *_lr_mod_max * learning_rate,
     so they bound lr_mod, as ELR_min does in BTSP_ELR. hd_beta is fixed in the network config (only hd_gamma * hd_beta
     enters the update). All other projections are fixed. All weights are initialized with half_kaiming scaled by the
     *_init_weight_scale params.
@@ -1371,14 +1371,13 @@ def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_SI_HD_v1_A(x, context
     context.layer_config['H2']['SomaI']['size'] = H_I_size
     context.layer_config['Output']['SomaI']['size'] = Output_I_size
     
-    H1_hd_gamma = param_dict['H1_hd_gamma']
-    H2_hd_gamma = param_dict['H2_hd_gamma']
+    H_hd_gamma = param_dict['H_hd_gamma']
     Output_hd_gamma = param_dict['Output_hd_gamma']
     H_lr_mod_min = param_dict['H_lr_mod_min']
     Output_lr_mod_min = param_dict['Output_lr_mod_min']
     H_lr_mod_max = param_dict['H_lr_mod_max']
     Output_lr_mod_max = param_dict['Output_lr_mod_max']
-    
+
     H_E_E_learning_rate = param_dict['H_E_E_learning_rate']
     H1_E_Input_E_init_weight_scale = param_dict['H1_E_Input_E_init_weight_scale']
     H1_E_H1_I_init_weight_scale = param_dict['H1_E_H1_I_init_weight_scale']
@@ -1403,7 +1402,7 @@ def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_SI_HD_v1_A(x, context
     Output_I_Output_I_init_weight_scale = param_dict['Output_I_Output_I_init_weight_scale']
     
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
-    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['hd_gamma'] = H1_hd_gamma
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['hd_gamma'] = H_hd_gamma
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['lr_min'] = (
         H_lr_mod_min * H_E_E_learning_rate)
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['lr_max'] = (
@@ -1416,7 +1415,7 @@ def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_SI_HD_v1_A(x, context
     context.projection_config['H1']['SomaI']['H1']['SomaI']['weight_init_args'] = (H1_I_H1_I_init_weight_scale,)
     
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = H_E_E_learning_rate
-    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['hd_gamma'] = H2_hd_gamma
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['hd_gamma'] = H_hd_gamma
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['lr_min'] = (
         H_lr_mod_min * H_E_E_learning_rate)
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['lr_max'] = (
@@ -12737,7 +12736,8 @@ def update_EIANN_config_2_hidden_BTSP_SI_CL_layer_lambda_6L(x, context):
     H.DendI.H.E and H.DendI.H.DendI are learned with the Hebb_WeightNorm rule.
     H.E.H.DendI weights are learned with the DendriticLoss_6 rule.
     E<-E weights (H1.E.Input.E, H2.E.H1.E, Output.E.H2.E) are learned with the BTSP_SI rule. Unlike
-    update_EIANN_config_2_hidden_BTSP_SI_CL_6L, each layer has its own si_lambda.
+    update_EIANN_config_2_hidden_BTSP_SI_CL_6L, the hidden layers share H_si_lambda and the output layer has its own
+    Output_si_lambda, as in update_EIANN_config_2_hidden_BTSP_ELR_A.
     H1.E.Output.E weights are cloned and re-scaled from Output.E.H1.E.
     Inits are half-kaiming with parameterized scale.
     :param x:
@@ -12768,8 +12768,7 @@ def update_EIANN_config_2_hidden_BTSP_SI_CL_layer_lambda_6L(x, context):
                               (math.sqrt(context.layer_config['H1']['E']['size']) /
                                math.sqrt(context.layer_config['H2']['E']['size'])))
     neg_rate_th = param_dict['neg_rate_th']
-    H1_si_lambda = param_dict['H1_si_lambda']
-    H2_si_lambda = param_dict['H2_si_lambda']
+    H_si_lambda = param_dict['H_si_lambda']
     Output_si_lambda = param_dict['Output_si_lambda']
     
     H1_E_H1_SomaI_init_weight_scale = param_dict['H1_E_H1_SomaI_init_weight_scale']
@@ -12819,7 +12818,7 @@ def update_EIANN_config_2_hidden_BTSP_SI_CL_layer_lambda_6L(x, context):
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
         H_E_E_learning_rate
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['max_pop_fraction'] = max_pop_fraction
-    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['si_lambda'] = H1_si_lambda
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['si_lambda'] = H_si_lambda
     
     context.projection_config['H1']['E']['H1']['SomaI']['weight_init_args'] = (H1_E_H1_SomaI_init_weight_scale,)
     
@@ -12848,7 +12847,7 @@ def update_EIANN_config_2_hidden_BTSP_SI_CL_layer_lambda_6L(x, context):
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
         H_E_E_learning_rate
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['max_pop_fraction'] = max_pop_fraction
-    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['si_lambda'] = H2_si_lambda
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['si_lambda'] = H_si_lambda
     
     context.projection_config['H2']['E']['H2']['SomaI']['weight_init_args'] = (H2_E_H2_SomaI_init_weight_scale,)
     
@@ -12894,8 +12893,9 @@ def update_EIANN_config_2_hidden_BTSP_SI_HD_v1_CL_6L(x, context):
     H.SomaI, and Output.SomaI are not learned.
     H.DendI.H.E and H.DendI.H.DendI are learned with the Hebb_WeightNorm rule.
     H.E.H.DendI weights are learned with the DendriticLoss_6 rule.
-    E<-E weights (H1.E.Input.E, H2.E.H1.E, Output.E.H2.E) are learned with the BTSP_SI_HD_v1 rule. Each layer has its
-    own hd_gamma. lr_min and lr_max are set to *_lr_mod_min * learning_rate and *_lr_mod_max * learning_rate, so they
+    E<-E weights (H1.E.Input.E, H2.E.H1.E, Output.E.H2.E) are learned with the BTSP_SI_HD_v1 rule. The hidden layers
+    share H_hd_gamma and the output layer has its own Output_hd_gamma, as in update_EIANN_config_2_hidden_BTSP_ELR_A.
+    lr_min and lr_max are set to *_lr_mod_min * learning_rate and *_lr_mod_max * learning_rate, so they
     bound lr_mod, as in update_EIANN_config_2_hidden_van_bp_relu_SGD_CL_SI_HD_v1_A. hd_beta is fixed in the network
     config (only hd_gamma * hd_beta enters the update).
     H1.E.Output.E weights are cloned and re-scaled from Output.E.H1.E.
@@ -12928,8 +12928,7 @@ def update_EIANN_config_2_hidden_BTSP_SI_HD_v1_CL_6L(x, context):
                               (math.sqrt(context.layer_config['H1']['E']['size']) /
                                math.sqrt(context.layer_config['H2']['E']['size'])))
     neg_rate_th = param_dict['neg_rate_th']
-    H1_hd_gamma = param_dict['H1_hd_gamma']
-    H2_hd_gamma = param_dict['H2_hd_gamma']
+    H_hd_gamma = param_dict['H_hd_gamma']
     Output_hd_gamma = param_dict['Output_hd_gamma']
     H_lr_mod_min = param_dict['H_lr_mod_min']
     Output_lr_mod_min = param_dict['Output_lr_mod_min']
@@ -12983,7 +12982,7 @@ def update_EIANN_config_2_hidden_BTSP_SI_HD_v1_CL_6L(x, context):
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['learning_rate'] = \
         H_E_E_learning_rate
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['max_pop_fraction'] = max_pop_fraction
-    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['hd_gamma'] = H1_hd_gamma
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['hd_gamma'] = H_hd_gamma
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['lr_min'] = (
         H_lr_mod_min * H_E_E_learning_rate)
     context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['lr_max'] = (
@@ -13016,7 +13015,7 @@ def update_EIANN_config_2_hidden_BTSP_SI_HD_v1_CL_6L(x, context):
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = \
         H_E_E_learning_rate
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['max_pop_fraction'] = max_pop_fraction
-    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['hd_gamma'] = H2_hd_gamma
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['hd_gamma'] = H_hd_gamma
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['lr_min'] = (
         H_lr_mod_min * H_E_E_learning_rate)
     context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['lr_max'] = (

@@ -257,6 +257,8 @@ class Network(nn.Module):
         self.param_history_steps = []
         self.prev_param_history = []
         self.target_history = []
+        self.lr_mod_history = {}
+        self.lr_mod_history_steps = []
         for layer in self:
             for population in layer:
                 population.reinit(device=self.device)
@@ -429,8 +431,8 @@ class Network(nn.Module):
     
     def train(self, train_dataloader, val_dataloader=None, epochs=1, val_interval=(0, -1, 50), samples_per_epoch=None,
               store_history=False, store_val_output_history=False, store_dynamics=False, store_params=False,
-              store_history_interval=None, store_params_interval=None, save_to_file=None, status_bar=False,
-              pre_equilibrate=None, persistent_state=None):
+              store_history_interval=None, store_params_interval=None, store_lr_mod_interval=None, save_to_file=None,
+              status_bar=False, pre_equilibrate=None, persistent_state=None):
         """
         Train the network on training data with optional validation.
 
@@ -458,6 +460,10 @@ class Network(nn.Module):
             Interval for storing history as (start_index, stop_index, interval).
         store_params_interval : tuple of int, optional
             Interval for storing parameters as (start_index, stop_index, interval).
+        store_lr_mod_interval : int, optional
+            Every this many train steps (and at the last step), store summary statistics of the per-weight learning
+            rate modulation (lr_mod) of every learning rule that has one, in lr_mod_history (see
+            store_lr_mod_history). None: not stored.
         save_to_file : str, optional
             File path to save the trained network.
         status_bar : bool, default False
@@ -625,6 +631,10 @@ class Network(nn.Module):
                             for projection in post_pop:
                                 projection.learning_rule.update()
     
+                    if store_lr_mod_interval is not None and (train_step % store_lr_mod_interval == 0 or
+                                                              train_step == len(train_step_range) - 1):
+                        self.store_lr_mod_history(train_step)
+
                     # Store history of weights and biases
                     if store_params and train_step in store_params_range:
                         self.param_history.append(deepcopy(self.state_dict()))
@@ -670,9 +680,34 @@ class Network(nn.Module):
             self.val_history_train_steps = torch.tensor(self.val_history_train_steps)
         if store_params:
             self.param_history_steps = torch.tensor(self.param_history_steps)
+        if store_lr_mod_interval is not None:
+            self.lr_mod_history = {name: torch.stack(history) for name, history in self.lr_mod_history.items()}
+            self.lr_mod_history_steps = torch.tensor(self.lr_mod_history_steps)
         
         if save_to_file is not None:
             ut.save_network(self, path=save_to_file)
+
+    lr_mod_history_stats = ('mean', 'q05', 'q25', 'q50', 'q75', 'q95')
+
+    def store_lr_mod_history(self, train_step):
+        """
+        Append summary statistics (lr_mod_history_stats: the mean and the 5th, 25th, 50th, 75th and 95th percentiles over
+        weights) of the lr_mod tensor of every projection's learning rule to lr_mod_history[projection name], and
+        train_step to lr_mod_history_steps. Projections whose rule has no lr_mod tensor are skipped.
+
+        Parameters
+        ----------
+        train_step : int
+        """
+        for name, projection in self.projections.items():
+            lr_mod = getattr(projection.learning_rule, 'lr_mod', None)
+            if not isinstance(lr_mod, torch.Tensor):
+                continue
+            # np.quantile (partial sort) is ~4x faster than torch.quantile on large weight matrices
+            lr_mod = lr_mod.detach().flatten().float().cpu().numpy()
+            stats = np.concatenate(([lr_mod.mean()], np.quantile(lr_mod, [0.05, 0.25, 0.5, 0.75, 0.95])))
+            self.lr_mod_history.setdefault(name, []).append(torch.from_numpy(stats.astype(np.float32)))
+        self.lr_mod_history_steps.append(train_step)
 
     def test(self, dataloader, store_history=False, store_dynamics=False, store_num_steps=None,
              status_bar=False, pre_equilibrate=None):

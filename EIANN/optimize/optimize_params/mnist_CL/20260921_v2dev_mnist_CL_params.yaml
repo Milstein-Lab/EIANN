@@ -717,65 +717,11 @@ van_bp_CL_5_tasks_SI_HG_v1:
     H2_init_weight_scale: 0.7551998258375229
     Output_init_weight_scale: 0.30496592156310603
 
-BTSP_SI_per_layer_params_CL_5_tasks:
-    # final_dynamics_residuals: 0.0
-    # phase0_accuracy: 99.83649444580078
-    # phase0_dynamics_residuals: 0.20482005178928375
-    # phase0_loss: 0.007258101366460323
-    # phase0_mean_forward_dend_loss: 0.040841780602931976
-    # phase1_accuracy: 91.82674407958984
-    # phase1_dynamics_residuals: 0.4497839570045471
-    # phase1_loss: 0.035351209342479706
-    # phase1_mean_forward_dend_loss: 0.09866886287927627
-    # phase2_accuracy: 77.88548278808594
-    # phase2_dynamics_residuals: 0.0
-    # phase2_loss: 0.056651003658771515
-    # phase2_mean_forward_dend_loss: 0.1356993317604065
-    # phase3_accuracy: 74.6231689453125
-    # phase3_dynamics_residuals: 0.0
-    # phase3_loss: 0.06300993263721466
-    # phase3_mean_forward_dend_loss: 0.07417350932955742
-    # phase4_accuracy: 58.53279495239258
-    # phase4_dynamics_residuals: 0.08713753819465637
-    # phase4_loss: 0.07767149060964584
-    # phase4_mean_forward_dend_loss: 0.06923850253224373
-    H_E_FF_E_max_weight_scale: 6.296322621743481
-    H1_E_Input_E_init_weight_factor: 0.4222976031279043
-    H_E_E_learning_rate: 0.011947353428836504
-    H1_E_H2_E_weight_scale: 0.08472934108836917
-    neg_rate_th: 0.0
-    H1_E_H1_SomaI_init_weight_scale: 1.070165262446245
-    H1_SomaI_H1_E_init_weight_scale: 0.5409959796189578
-    H1_SomaI_Input_E_init_weight_scale: 1.9202952562131108
-    H1_SomaI_H1_SomaI_init_weight_scale: 0.7650911628258987
-    H1_E_H1_DendI_init_weight_scale: 5.075708981435975
-    H_E_DendI_learning_rate: 0.020620753312397332
-    H1_DendI_H1_E_weight_scale: 0.6994871788236133
-    H1_DendI_H1_DendI_weight_scale: 1.0023971465777701
-    DendI_E_learning_rate: 0.1039727074288978
-    DendI_DendI_learning_rate: 0.062256632358421424
-    H2_E_H1_E_init_weight_factor: 0.3447056554636122
-    H2_E_Output_E_weight_scale: 1.334776817768002
-    H2_E_H2_SomaI_init_weight_scale: 0.1528443835482676
-    H2_SomaI_H2_E_init_weight_scale: 1.440344370083964
-    H2_SomaI_H1_E_init_weight_scale: 1.5277549403136328
-    H2_SomaI_H2_SomaI_init_weight_scale: 2.6806837407069324
-    H2_E_H2_DendI_init_weight_scale: 4.194437608549146
-    H2_DendI_H2_E_weight_scale: 0.32582173785940793
-    H2_DendI_H2_DendI_weight_scale: 0.560151858785008
-    Output_E_H2_E_max_weight_scale: 19.968009421956257
-    Output_E_H2_E_init_weight_factor: 0.2117856518752193
-    Output_E_H2_E_learning_rate: 0.011362985447283348
-    Output_E_Output_I_init_weight_scale: 1.5968821007430447
-    Output_I_Output_E_init_weight_scale: 0.08411976404976437
-    Output_I_H2_E_init_weight_scale: 0.21883344184120457
-    Output_I_Output_I_init_weight_scale: 5.863823260200636
-    max_pop_fraction: 1.0
-    H1_si_lambda: 0.0347971324314578
-    H2_si_lambda: 0.03679476101188171
-    Output_si_lambda: 0.017482596609707104
-    H_I_size: 50.0
-    Output_I_size: 10.0
+# BTSP_SI_per_layer_params_CL_5_tasks:
+
+# bpDale_CL_5_tasks_SI_HG_v1:
+
+# BTSP_CL_5_tasks_HG_SI_v1:
 
 #------------------------
 # TASK INCREMENTAL MODELS 
