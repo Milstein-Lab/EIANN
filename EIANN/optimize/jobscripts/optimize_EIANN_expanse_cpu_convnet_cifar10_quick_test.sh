@@ -9,10 +9,10 @@ sbatch <<EOT
 #SBATCH -o $SCRATCH/logs/EIANN/$JOB_NAME.%j.o
 #SBATCH -e $SCRATCH/logs/EIANN/$JOB_NAME.%j.e
 #SBATCH -p compute
-#SBATCH -N 29
-#SBATCH -n 226
-#SBATCH --ntasks-per-node=8
-#SBATCH --cpus-per-task=16
+#SBATCH -N 16
+#SBATCH -n 1001
+#SBATCH --ntasks-per-node=64
+#SBATCH --cpus-per-task=2
 #SBATCH -t 2:00:00
 #SBATCH --mem=249208M
 #SBATCH --account=$ACCOUNT_NUMBER
@@ -30,12 +30,11 @@ set -x
 # otherwise appear to bloat and fragment worker memory on Linux
 export OMP_NUM_THREADS=1
 export MALLOC_ARENA_MAX=2
-MEM_PER_CPU="1946M"
 
 cd $PROJECT/EIANN/EIANN
 
-srun -n 226 --mpi=pmi2 -c 16 --mem-per-cpu=$MEM_PER_CPU python -m mpi4py.futures -m nested.optimize \
+srun -n 1001 --mpi=pmi2 -c 2 --mem-per-cpu=1946M python -m mpi4py.futures -m nested.optimize \
   --config-file-path=$CONFIG_FILE_PATH \
-  --output-dir=$SCRATCH/data/EIANN --pop_size=150 --max_iter=1 --path_length=1 --disp \
-  --framework=mpi --num_instances=3
+  --output-dir=$SCRATCH/data/EIANN --pop_size=200 --max_iter=1 --path_length=1 --disp \
+  --framework=mpi --num_instances=5
 EOT
