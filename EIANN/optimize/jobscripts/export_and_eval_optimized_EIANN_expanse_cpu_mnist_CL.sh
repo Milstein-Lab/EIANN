@@ -4,7 +4,7 @@
 # parallel (1 controller + num_instances worker ranks).
 #   pickles: $SCRATCH/data/EIANN/<network_name>/<seed>/<network_name>_phase<i>_<seed>_<data_seed>_<model_key>.pkl
 #   metrics: $SCRATCH/data/EIANN/cl_metrics/<model_key>_{accuracy.csv,activity.h5,fisher.h5,training.h5}
-#   logs:    $SCRATCH/logs/EIANN/export_eval_EIANN_mnist_CL_<model_key>_<date>.<jobid>.{o,e}
+#   logs:    $SCRATCH/logs/EIANN/export_and_eval_mnist_CL/<export_eval | eval>_EIANN_mnist_CL_<model_key>_<date>.<jobid>.{o,e}
 # Existing pickles with this model key are moved to $SCRATCH/data/EIANN/replaced_pickles/<date>/ first, since
 # nested.analyze does not overwrite them (and get_cl_metrics.py would then score the old ones).
 #
@@ -17,6 +17,8 @@
 #     BTSP_CL_5_tasks_ELR_A
 # Set PARAM_FILE_PATH to use another params file. The number of splits, task-incremental mode and network name (the
 # pickle folder) are read from the optimize config.
+# Set METRICS_ONLY=1 to skip the export and only run get_cl_metrics.py on the pickles already on $SCRATCH, e.g.
+#   METRICS_ONLY=1 bash optimize/jobscripts/export_and_eval_optimized_EIANN_expanse_cpu_mnist_CL.sh <config> <key>
 # pull the pickles and metrics down afterwards (from the EIANN/ package directory):
 #   rsync -av --include='*/' --include='*_phase*.pkl' --exclude='cl_metrics/' --exclude='replaced_pickles/' \
 #     --exclude='*' --prune-empty-dirs <user>@login.expanse.sdsc.edu:<SCRATCH>/data/EIANN/ data/
@@ -48,15 +50,23 @@ if grep -qE '^ *task_incremental: *[Tt]rue' "$CONFIG_FILE_PATH"; then
 else
   export TASK_INCREMENTAL_FLAG=
 fi
+export METRICS_ONLY="${METRICS_ONLY:-0}"
+if [ "$METRICS_ONLY" = 1 ]; then
+  export JOB_NAME=eval_EIANN_mnist_CL_"$MODEL_KEY"_"$DATE"
+else
+  export JOB_NAME=export_eval_EIANN_mnist_CL_"$MODEL_KEY"_"$DATE"
+fi
 export NUM_RANKS=$((NUM_INSTANCES + 1))
-export JOB_NAME=export_eval_EIANN_mnist_CL_"$MODEL_KEY"_"$DATE"
-echo "$MODEL_KEY: $NETWORK_NAME, num_splits=$NUM_SPLITS${TASK_INCREMENTAL_FLAG:+ $TASK_INCREMENTAL_FLAG}, $NUM_INSTANCES seeds"
+echo "$MODEL_KEY: $NETWORK_NAME, num_splits=$NUM_SPLITS${TASK_INCREMENTAL_FLAG:+ $TASK_INCREMENTAL_FLAG}, $NUM_INSTANCES seeds$([ "$METRICS_ONLY" = 1 ] && echo ', metrics only')"
+
+# must exist: sbatch does not create it
+export LOG_DIR=$SCRATCH/logs/EIANN/export_and_eval_mnist_CL
 
 sbatch <<EOT
 #!/bin/bash -l
 #SBATCH -J $JOB_NAME
-#SBATCH -o $SCRATCH/logs/EIANN/$JOB_NAME.%j.o
-#SBATCH -e $SCRATCH/logs/EIANN/$JOB_NAME.%j.e
+#SBATCH -o $LOG_DIR/$JOB_NAME.%j.o
+#SBATCH -e $LOG_DIR/$JOB_NAME.%j.e
 #SBATCH -p shared
 #SBATCH -N 1
 #SBATCH -n $NUM_RANKS
@@ -80,6 +90,7 @@ cd $PROJECT/EIANN/EIANN
 
 set -x
 
+if [ "$METRICS_ONLY" != 1 ]; then
 # move aside earlier pickles of this model, which nested.analyze would not overwrite
 if [ -d $OUTPUT_DIR/$NETWORK_NAME ]; then
   find $OUTPUT_DIR/$NETWORK_NAME -mindepth 2 -maxdepth 2 -regextype posix-extended \
@@ -96,8 +107,12 @@ srun -n $NUM_RANKS --mpi=pmi2 python -m mpi4py.futures -m nested.analyze \
   --output-dir=$OUTPUT_DIR --disp --label=$MODEL_KEY --export \
   --num_instances=$NUM_INSTANCES --store_history=True --retrain=True --full_analysis=False --status_bar=False \
   --framework=mpi || exit 1
+fi
 
-# post-hoc CL metrics, serial, using all of the job's cores
+# post-hoc CL metrics, serial, using all of the job's cores. The conda env's lib/ goes first on LD_LIBRARY_PATH: the
+# module environment puts gcc 10.2's older libstdc++ there, which lacks the GLIBCXX_3.4.29 that Pillow (imported by
+# torchvision) needs; nested.analyze only avoids it because nested loads the conda libstdc++ first
+LD_LIBRARY_PATH=\$(python -c 'import sys; print(sys.prefix)')/lib:\$LD_LIBRARY_PATH \
 OMP_NUM_THREADS=$NUM_RANKS python scripts/get_cl_metrics.py --model-folder-path=$OUTPUT_DIR/$NETWORK_NAME \
   --data-dir=$OUTPUT_DIR/datasets/MNIST_data/ --num-splits=$NUM_SPLITS --label=$MODEL_KEY --model-key=$MODEL_KEY \
   --output-dir=$OUTPUT_DIR/cl_metrics $TASK_INCREMENTAL_FLAG

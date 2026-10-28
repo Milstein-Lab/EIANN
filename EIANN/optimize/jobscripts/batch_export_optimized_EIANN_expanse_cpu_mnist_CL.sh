@@ -5,6 +5,8 @@
 #
 # usage (from the EIANN/ package directory, after pushing/pulling the current params file):
 #   bash optimize/jobscripts/batch_export_optimized_EIANN_expanse_cpu_mnist_CL.sh [num_instances, default 5]
+# to only (re)run get_cl_metrics.py on pickles already exported to $SCRATCH, without retraining:
+#   METRICS_ONLY=1 bash optimize/jobscripts/batch_export_optimized_EIANN_expanse_cpu_mnist_CL.sh
 # pull the pickles and metrics down afterwards (from the EIANN/ package directory):
 #   rsync -av --include='*/' --include='*_phase*.pkl' --exclude='cl_metrics/' --exclude='replaced_pickles/' \
 #     --exclude='*' --prune-empty-dirs <user>@login.expanse.sdsc.edu:<SCRATCH>/data/EIANN/ data/
