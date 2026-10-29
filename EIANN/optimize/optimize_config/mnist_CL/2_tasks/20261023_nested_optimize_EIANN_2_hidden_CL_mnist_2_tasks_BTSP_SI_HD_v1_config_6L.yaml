@@ -95,10 +95,7 @@ bounds:
     max_pop_fraction:
         - 0.01
         - 1.
-    H1_hd_gamma:
-        - 1.0e-02
-        - 1.0e+05
-    H2_hd_gamma:
+    H_hd_gamma:
         - 1.0e-02
         - 1.0e+05
     Output_hd_gamma:
@@ -192,8 +189,7 @@ x0:
     max_pop_fraction: 1.0
     H_I_size: 50.0
     Output_I_size: 10.0
-    H1_hd_gamma: 10.
-    H2_hd_gamma: 10.
+    H_hd_gamma: 10.
     Output_hd_gamma: 10.
     H_lr_mod_min: 0.1
     Output_lr_mod_min: 0.1

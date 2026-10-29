@@ -3,11 +3,13 @@ export DATE=$(date +%Y%m%d_%H%M%S)
 export LABEL="$2"
 export JOB_NAME=optimize_EIANN_mnist_"$LABEL"_"$DATE"
 export CONFIG_FILE_PATH="$1"
+export LOG_DIR=$SCRATCH/logs/EIANN/optimize_mnist_CL
+
 sbatch <<EOT
 #!/bin/bash -l
 #SBATCH -J $JOB_NAME
-#SBATCH -o $SCRATCH/logs/EIANN/$JOB_NAME.%j.o
-#SBATCH -e $SCRATCH/logs/EIANN/$JOB_NAME.%j.e
+#SBATCH -o $LOG_DIR/$JOB_NAME.%j.o
+#SBATCH -e $LOG_DIR/$JOB_NAME.%j.e
 #SBATCH -p compute
 #SBATCH -N 16
 #SBATCH -n 1001

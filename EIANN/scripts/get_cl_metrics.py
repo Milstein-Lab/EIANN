@@ -28,10 +28,20 @@ For each seed folder in --model-folder-path, loads the network exported after ea
     Backprop_SI_HD, Backprop_SI_HD_v1 and BTSP_SI_HD_v1, as a multiple of its base learning rate) as it is at the end of
     task i, or that of Backprop_SILR_A, EWC_LR and SI_LR, which is set at the task switch and so read from the
     phase<i+1> pickle (absent for the last phase).
+  - <output_dir>/<model_key>_training.h5: <seed>/phase<i>/loss (train_steps,), the training loss of every train step
+    of the phase, plus <seed>/learning_rule/<projection> and the rule's base <seed>/learning_rate/<projection>. For
+    rules with an lr_mod, <seed>/phase<i>/lr_mod_stats/<projection> (n, 6) holds the mean and the 5th, 25th, 50th,
+    75th and 95th percentiles over weights (<seed>/lr_mod_stat_names) at the train steps <seed>/phase<i>/lr_mod_steps
+    (n,). They are read from network.lr_mod_history, which the nested CL scripts record every store_lr_mod_interval
+    train steps when exporting. An lr_mod set at the task switch is constant during the phase, so it is stored at the
+    phase's first and last train step from any export. A continuously updated lr_mod (ELR, SI_ELR, SI_HD) in pickles
+    exported without the recording can't be recovered; those projections are listed in <seed>/phase<i>/lr_mod_missing.
+    --training-history-only writes only this file, leaving the others as they are.
 
 Example (from the EIANN/ package directory):
 python scripts/get_cl_metrics.py --model-folder-path=data/<network_name> --data-dir=data/datasets/MNIST_data/ \
     --num-splits=5 --label=<label>
+Append --training-history-only to any command below to (re)write only <model_key>_training.h5.
 
 Models trained so far (5-task class-incremental, labelled by model key):
 python scripts/get_cl_metrics.py --model-folder-path=data/20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G \
@@ -76,6 +86,7 @@ import glob
 import gc
 
 import EIANN.utils as utils
+from EIANN.network import Network
 
 
 def get_split_mnist_dataset(data_dir, num_splits):
@@ -242,6 +253,47 @@ def get_lr_mod(learning_rule):
     return lr_mod.detach().cpu().numpy(), set_at_task_switch
 
 
+def get_training_history(network):
+    """
+    Training loss of every train step of the phase a network was exported after, and summary statistics over weights
+    (Network.lr_mod_history_stats: mean, 5th, 25th, 50th, 75th and 95th percentiles) of the lr_mod of every projection
+    whose rule has one. They are read from network.lr_mod_history when the network was trained with
+    store_lr_mod_interval. Otherwise, an lr_mod set at the task switch is constant during the phase, so the stats of
+    the exported lr_mod are stored at the first and last train step; a continuously updated lr_mod has no history.
+    :param network: :class:'Network'
+    :return: tuple (dict {'loss': (train_steps,), 'lr_mod_steps': (n,), 'lr_mod_stats': {projection: (n, 6)},
+        'lr_mod_missing': array of projection names (bytes) with a continuously updated lr_mod but no stored history,
+        only if there are any}; list of those projection names)
+    """
+    loss = torch.as_tensor(network.loss_history).cpu().numpy()
+    history = {'loss': loss}
+    lr_mod_history = getattr(network, 'lr_mod_history', None)
+    if lr_mod_history:
+        history['lr_mod_steps'] = torch.as_tensor(network.lr_mod_history_steps).cpu().numpy()
+        history['lr_mod_stats'] = {name: torch.as_tensor(stats).cpu().numpy() for name, stats in lr_mod_history.items()}
+        return history, []
+
+    lr_mod_stats = {}
+    missing = []
+    for name, projection in network.projections.items():
+        lr_mod = get_lr_mod(projection.learning_rule)
+        if lr_mod is None:
+            continue
+        values, set_at_task_switch = lr_mod
+        if set_at_task_switch:
+            values = values.ravel().astype(np.float32)
+            stats = np.concatenate(([values.mean()], np.quantile(values, [0.05, 0.25, 0.5, 0.75, 0.95])))
+            lr_mod_stats[name] = np.stack([stats, stats])
+        else:
+            missing.append(name)
+    if lr_mod_stats:
+        history['lr_mod_steps'] = np.array([0, len(loss) - 1])
+        history['lr_mod_stats'] = lr_mod_stats
+    if missing:
+        history['lr_mod_missing'] = np.array(missing, dtype='S')
+    return history, missing
+
+
 def compute_task_incremental_test_loss_and_accuracy(network, test_dataloader, labels_in_tasks):
     idx, test_data, test_target = next(iter(test_dataloader))
     output = network.forward(test_data.to(network.device), no_grad=True)
@@ -304,15 +356,21 @@ def get_phase_file_paths(seed_dir, label=None):
                    "computations for 5 tasks)")
 @click.option("--utility-num-samples", default=1000, type=int,
               help="training samples of the task just learned used to compute the contribution utility; 0 skips it")
+@click.option("--training-history-only", is_flag=True, default=False,
+              help="only write <model_key>_training.h5 (training loss and lr_mod history), leaving the other output "
+                   "files as they are")
 def main(model_folder_path, data_dir, num_splits, task_incremental, label, model_key, output_dir, fisher_num_samples,
-         fisher_backward_steps, cumulative_fisher, utility_num_samples):
+         fisher_backward_steps, cumulative_fisher, utility_num_samples, training_history_only):
 
     if model_key is None:
         model_key = os.path.basename(os.path.normpath(model_folder_path))
         if label is not None:
             model_key += f'_{label}'
 
-    task_test_loaders, full_test_loader, labels_in_tasks = get_split_mnist_dataset(data_dir, num_splits)
+    if training_history_only:
+        fisher_num_samples = utility_num_samples = 0
+    else:
+        task_test_loaders, full_test_loader, labels_in_tasks = get_split_mnist_dataset(data_dir, num_splits)
     if fisher_num_samples > 0 or utility_num_samples > 0:
         train_samples = get_split_mnist_fisher_samples(data_dir, labels_in_tasks,
                                                        max(fisher_num_samples, utility_num_samples))
@@ -323,6 +381,7 @@ def main(model_folder_path, data_dir, num_splits, task_incremental, label, model
     accuracy_rows = []
     activity_dict = {}
     fisher_dict = {}
+    training_dict = {}
 
     for seed_dir in seed_dirs:
         phase_file_paths, seed = get_phase_file_paths(os.path.join(model_folder_path, seed_dir), label)
@@ -334,9 +393,27 @@ def main(model_folder_path, data_dir, num_splits, task_incremental, label, model
         print(f'Computing metrics for seed {seed}')
         activity_dict[seed] = {}
         fisher_dict[seed] = {}
+        training_dict[seed] = {}
 
         for phase, file_path in enumerate(phase_file_paths):
             network = utils.load_network(file_path, disp=False)
+
+            if phase == 0:
+                training_dict[seed]['learning_rule'] = {
+                    name: type(projection.learning_rule).__name__ for name, projection in network.projections.items()}
+                training_dict[seed]['learning_rate'] = {
+                    name: float(projection.learning_rule.learning_rate)
+                    for name, projection in network.projections.items()
+                    if getattr(projection.learning_rule, 'learning_rate', None) is not None}
+                training_dict[seed]['lr_mod_stat_names'] = np.array(Network.lr_mod_history_stats, dtype='S')
+            training_dict[seed][f'phase{phase}'], missing = get_training_history(network)
+            if missing and phase == 0:
+                print(f'seed {seed}: no lr_mod history for {missing} (continuously updated lr_mod); re-export the '
+                      f'model to record it')
+            if training_history_only:
+                del network
+                gc.collect()
+                continue
 
             task_accuracies = []
             for task_test_loader in task_test_loaders:
@@ -419,10 +496,16 @@ def main(model_folder_path, data_dir, num_splits, task_incremental, label, model
             del network
             gc.collect()
 
-    if not accuracy_rows:
+    if not training_dict:
         raise ValueError(f'get_cl_metrics: no phase pickles found in {model_folder_path}')
 
     os.makedirs(output_dir, exist_ok=True)
+    training_file_path = os.path.join(output_dir, f'{model_key}_training.h5')
+    utils.dict_to_hdf5(training_dict, training_file_path, compression='gzip')
+    print(f'Saved training loss and lr_mod history to {training_file_path}')
+    if training_history_only:
+        return
+
     accuracy_df = pd.DataFrame(accuracy_rows)
     accuracy_file_path = os.path.join(output_dir, f'{model_key}_accuracy.csv')
     accuracy_df.to_csv(accuracy_file_path, index=False)

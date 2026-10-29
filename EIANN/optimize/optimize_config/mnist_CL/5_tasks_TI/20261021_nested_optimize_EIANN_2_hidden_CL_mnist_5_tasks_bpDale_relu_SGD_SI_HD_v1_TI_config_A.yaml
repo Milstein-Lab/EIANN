@@ -5,10 +5,7 @@ bounds:
     Output_E_E_learning_rate:
         - 0.0001
         - 1.
-    H1_hd_gamma:
-        - 1.0e+00
-        - 1.0e+07
-    H2_hd_gamma:
+    H_hd_gamma:
         - 1.0e+00
         - 1.0e+07
     Output_hd_gamma:
@@ -113,8 +110,7 @@ optimization_title: EIANN_2_hidden_CL_mnist_5_tasks_bpDale_relu_SGD_SI_HD_v1_A_T
 x0:
     H_E_E_learning_rate: 0.09534637677403908
     Output_E_E_learning_rate: 0.015904718557085997
-    H1_hd_gamma: 1000.
-    H2_hd_gamma: 1000.
+    H_hd_gamma: 1000.
     Output_hd_gamma: 10.
     H_lr_mod_min: 0.1
     Output_lr_mod_min: 0.1

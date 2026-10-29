@@ -89,6 +89,12 @@ def config_worker():
         context.store_params = False
     else:
         context.store_params = str_to_bool(context.store_params)
+    # train steps between stored summaries of the learning rules' lr_mod, stored only when exporting the phase
+    # pickles; 0: not stored
+    if 'store_lr_mod_interval' not in context():
+        context.store_lr_mod_interval = 20
+    else:
+        context.store_lr_mod_interval = int(context.store_lr_mod_interval)
     if context.debug:
         context.store_num_steps = None
     elif 'store_num_steps' not in context():
@@ -433,6 +439,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                         store_history=context.store_history, store_dynamics=context.store_dynamics,
                         store_history_interval=context.store_history_interval,
                         store_params=context.store_params, store_params_interval=context.store_params_interval,
+                        store_lr_mod_interval=(context.store_lr_mod_interval or None) if export else None,
                         store_val_output_history=context.task_incremental, status_bar=context.status_bar)
         
         # reorder output units if using unsupervised/Hebbian rule
