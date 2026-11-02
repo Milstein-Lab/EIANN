@@ -2114,6 +2114,128 @@ def update_EIANN_config_convnet_A_van_bp_relu_SGD_G_zero_bias(x, context):
     context.training_kwargs['optimizer'] = 'SGD'
 
 
+def update_EIANN_config_convnet_A_FF_bpDale_relu_SGD_F_zero_bias(x, context):
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    ConvEE_learning_rate = param_dict['ConvEE_learning_rate']
+    ConvEI_learning_rate = param_dict['ConvEI_learning_rate']
+    ConvIE_learning_rate = param_dict['ConvIE_learning_rate']
+    Conv1EE_init_weight_scale = param_dict['Conv1EE_init_weight_scale']
+    Conv1EI_init_weight_scale = param_dict['Conv1EI_init_weight_scale']
+    Conv1IE_init_weight_scale = param_dict['Conv1IE_init_weight_scale']
+    Conv2EE_init_weight_scale = param_dict['Conv2EE_init_weight_scale']
+    Conv2EI_init_weight_scale = param_dict['Conv2EI_init_weight_scale']
+    Conv2IE_init_weight_scale = param_dict['Conv2IE_init_weight_scale']
+    
+    HEE_learning_rate = param_dict['HEE_learning_rate']
+    HEI_learning_rate = param_dict['HEI_learning_rate']
+    HIE_learning_rate = param_dict['HIE_learning_rate']
+    H1EE_init_weight_scale = param_dict['H1EE_init_weight_scale']
+    H1EI_init_weight_scale = param_dict['H1EI_init_weight_scale']
+    H1IE_init_weight_scale = param_dict['H1IE_init_weight_scale']
+    H2EE_init_weight_scale = param_dict['H2EE_init_weight_scale']
+    H2EI_init_weight_scale = param_dict['H2EI_init_weight_scale']
+    H2IE_init_weight_scale = param_dict['H2IE_init_weight_scale']
+    
+    OutputEE_learning_rate = param_dict['OutputEE_learning_rate']
+    OutputEI_learning_rate = param_dict['OutputEI_learning_rate']
+    OutputIE_learning_rate = param_dict['OutputIE_learning_rate']
+    OutputEE_init_weight_scale = param_dict['OutputEE_init_weight_scale']
+    OutputEI_init_weight_scale = param_dict['OutputEI_init_weight_scale']
+    OutputIE_init_weight_scale = param_dict['OutputIE_init_weight_scale']
+    
+    context.projection_config['ConvBlock1']['ConvI1']['Input']['E']['learning_rule_kwargs'][
+        'learning_rate'] = ConvIE_learning_rate
+    context.projection_config['ConvBlock1']['ConvI1']['Input']['E']['weight_init_args'] = (Conv1IE_init_weight_scale,)
+    
+    context.projection_config['ConvBlock1']['ConvE1']['Input']['E']['learning_rule_kwargs'][
+        'learning_rate'] = ConvEE_learning_rate
+    context.projection_config['ConvBlock1']['ConvE1']['Input']['E']['weight_init_args'] = (Conv1EE_init_weight_scale,)
+    
+    context.projection_config['ConvBlock1']['ConvE1']['ConvBlock1']['ConvI1']['learning_rule_kwargs'][
+        'learning_rate'] = ConvEI_learning_rate
+    context.projection_config['ConvBlock1']['ConvE1']['ConvBlock1']['ConvI1']['weight_init_args'] = (Conv1EI_init_weight_scale,)
+    
+    context.projection_config['ConvBlock1']['ConvI2']['ConvBlock1']['ConvE1']['learning_rule_kwargs'][
+        'learning_rate'] = ConvIE_learning_rate
+    context.projection_config['ConvBlock1']['ConvI2']['ConvBlock1']['ConvE1']['weight_init_args'] = (Conv1IE_init_weight_scale,)
+    
+    context.projection_config['ConvBlock1']['ConvE2']['ConvBlock1']['ConvE1']['learning_rule_kwargs'][
+        'learning_rate'] = ConvEE_learning_rate
+    context.projection_config['ConvBlock1']['ConvE2']['ConvBlock1']['ConvE1']['weight_init_args'] = (Conv1EE_init_weight_scale,)
+    
+    context.projection_config['ConvBlock1']['ConvE2']['ConvBlock1']['ConvI2']['learning_rule_kwargs'][
+        'learning_rate'] = ConvEI_learning_rate
+    context.projection_config['ConvBlock1']['ConvE2']['ConvBlock1']['ConvI2']['weight_init_args'] = (
+        Conv1EI_init_weight_scale,)
+    
+    context.projection_config['ConvBlock2']['ConvI1']['ConvBlock1']['MaxPoolE']['learning_rule_kwargs'][
+        'learning_rate'] = ConvIE_learning_rate
+    context.projection_config['ConvBlock2']['ConvI1']['ConvBlock1']['MaxPoolE']['weight_init_args'] = (Conv2IE_init_weight_scale,)
+    
+    context.projection_config['ConvBlock2']['ConvE1']['ConvBlock1']['MaxPoolE']['learning_rule_kwargs'][
+        'learning_rate'] = ConvEE_learning_rate
+    context.projection_config['ConvBlock2']['ConvE1']['ConvBlock1']['MaxPoolE']['weight_init_args'] = (Conv2EE_init_weight_scale,)
+    
+    context.projection_config['ConvBlock2']['ConvE1']['ConvBlock2']['ConvI1']['learning_rule_kwargs'][
+        'learning_rate'] = ConvEI_learning_rate
+    context.projection_config['ConvBlock2']['ConvE1']['ConvBlock2']['ConvI1']['weight_init_args'] = (
+        Conv2EI_init_weight_scale,)
+    
+    context.projection_config['ConvBlock2']['ConvI2']['ConvBlock2']['ConvE1']['learning_rule_kwargs'][
+        'learning_rate'] = ConvIE_learning_rate
+    context.projection_config['ConvBlock2']['ConvI2']['ConvBlock2']['ConvE1']['weight_init_args'] = (
+        Conv2IE_init_weight_scale,)
+    
+    context.projection_config['ConvBlock2']['ConvE2']['ConvBlock2']['ConvE1']['learning_rule_kwargs'][
+        'learning_rate'] = ConvEE_learning_rate
+    context.projection_config['ConvBlock2']['ConvE2']['ConvBlock2']['ConvE1']['weight_init_args'] = (
+        Conv2EE_init_weight_scale,)
+    
+    context.projection_config['ConvBlock2']['ConvE2']['ConvBlock2']['ConvI2']['learning_rule_kwargs'][
+        'learning_rate'] = ConvEI_learning_rate
+    context.projection_config['ConvBlock2']['ConvE2']['ConvBlock2']['ConvI2']['weight_init_args'] = (
+        Conv2EI_init_weight_scale,)
+    
+    context.projection_config['H1']['I']['ConvBlock2']['FlatE']['learning_rule_kwargs']['learning_rate'] = (
+        HIE_learning_rate)
+    context.projection_config['H1']['I']['ConvBlock2']['FlatE']['weight_init_args'] = (H1IE_init_weight_scale,)
+    
+    context.projection_config['H1']['E']['ConvBlock2']['FlatE']['learning_rule_kwargs']['learning_rate'] = (
+        HEE_learning_rate)
+    context.projection_config['H1']['E']['ConvBlock2']['FlatE']['weight_init_args'] = (H1EE_init_weight_scale,)
+    
+    context.projection_config['H1']['E']['H1']['I']['learning_rule_kwargs']['learning_rate'] = (
+        HEI_learning_rate)
+    context.projection_config['H1']['E']['H1']['I']['weight_init_args'] = (H1EI_init_weight_scale,)
+    
+    context.projection_config['H2']['I']['H1']['E']['learning_rule_kwargs']['learning_rate'] = (
+        HIE_learning_rate)
+    context.projection_config['H2']['I']['H1']['E']['weight_init_args'] = (H2IE_init_weight_scale,)
+    
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['learning_rate'] = (
+        HEE_learning_rate)
+    context.projection_config['H2']['E']['H1']['E']['weight_init_args'] = (H2EE_init_weight_scale,)
+    
+    context.projection_config['H2']['E']['H2']['I']['learning_rule_kwargs']['learning_rate'] = (
+        HEI_learning_rate)
+    context.projection_config['H2']['E']['H2']['I']['weight_init_args'] = (H2EI_init_weight_scale,)
+    
+    context.projection_config['Output']['I']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
+        OutputIE_learning_rate)
+    context.projection_config['Output']['I']['H2']['E']['weight_init_args'] = (OutputIE_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['learning_rate'] = (
+        OutputEE_learning_rate)
+    context.projection_config['Output']['E']['H2']['E']['weight_init_args'] = (OutputEE_init_weight_scale,)
+    
+    context.projection_config['Output']['E']['Output']['I']['learning_rule_kwargs']['learning_rate'] = (
+        OutputEI_learning_rate)
+    context.projection_config['Output']['E']['Output']['I']['weight_init_args'] = (OutputEI_init_weight_scale,)
+    
+    context.training_kwargs['optimizer'] = 'SGD'
+
+
 def update_EIANN_config_2_hidden_2_fixed_conv_convnet_van_bp_relu_SGD_G_zero_bias(x, context):
     param_dict = param_array_to_dict(x, context.param_names)
     
