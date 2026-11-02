@@ -1,0 +1,471 @@
+import os
+
+import numpy as np
+import pytest
+import torch
+
+import EIANN
+import EIANN.network as nt
+from gymnasium.utils.env_checker import check_env
+from EIANN.recurrent_network import RecurrentNetwork
+from EIANN.utils import read_from_yaml
+from EIANN.reinforcement_learning import RLAlgorithm, QLearning, OnlineQLearning
+from EIANN.reinforcement_learning.algorithms.rl_algorithm import get_val_episodes
+from EIANN.reinforcement_learning.algorithms.q_learning import masked_target
+from EIANN.reinforcement_learning.network_updates import (apply_learning_rules, compute_learning_rule_updates,
+                                                          step_learning_rules)
+from EIANN.reinforcement_learning.environments import (make_env, TaskSchedule, SequentialSchedule,
+                                                       AlternatingSchedule, RandomSchedule, ScheduledEnv,
+                                                       CueTreadmillEnv, make_2ACDC_tracks)
+from EIANN.reinforcement_learning.treadmill_metrics import (stack_laps, cross_correlation, region_cross_correlation,
+                                                            licks_by_zone)
+
+
+@pytest.fixture
+def q_network():
+    layer_config = {
+        'Input': {'E': {'size': 147}},
+        'H1': {'E': {'size': 32, 'activation': 'relu'}},
+        'Output': {'E': {'size': 7, 'activation': 'linear'}}}
+    projection_config = {
+        'H1': {'E': {'Input': {'E': {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': 'F',
+                                     'learning_rule': 'Backprop'}}}},
+        'Output': {'E': {'H1': {'E': {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': 'F',
+                                      'learning_rule': 'Backprop'}}}}}
+    return nt.Network(layer_config, projection_config, learning_rate=0.001, optimizer='SGD', seed=66049)
+
+
+def test_make_env():
+    env = make_env('MiniGrid-Empty-5x5-v0', seed=0)
+    obs, info = env.reset()
+    assert obs.shape == (147,)
+    assert env.action_space.n == 7
+
+
+def test_masked_target_updates_only_chosen_action(q_network):
+    env = make_env('MiniGrid-Empty-5x5-v0', seed=0)
+    obs, info = env.reset()
+    obs = torch.as_tensor(obs, dtype=torch.float32)
+    action = 2
+    output_weight_before = q_network.projections['OutputE_H1E'].weight.detach().clone()
+
+    # one QLearning update: the target equals the output except at the action taken
+    q = q_network.forward(obs)
+    target = q.detach().clone()
+    target[action] += 1.
+    apply_learning_rules(q_network, q, target)
+
+    changed_rows = torch.any(q_network.projections['OutputE_H1E'].weight.detach() != output_weight_before, dim=1)
+    assert changed_rows[action]
+    assert not torch.any(changed_rows[np.arange(7) != action])
+
+
+def test_masked_target_batch():
+    q = torch.arange(6.).view(2, 3)
+    target = masked_target(q, torch.tensor([2, 0]), torch.tensor([10., 20.]))
+    assert torch.equal(target, torch.tensor([[0., 1., 10.], [20., 4., 5.]]))
+    assert torch.equal(masked_target(q[0], torch.tensor(1), torch.tensor(7.)), torch.tensor([0., 7., 2.]))
+
+
+@pytest.mark.parametrize('algo_class, losses_per_step', [(QLearning, False), (OnlineQLearning, True)])
+def test_q_learning_learn_and_evaluate(q_network, algo_class, losses_per_step):
+    env = make_env('MiniGrid-Empty-5x5-v0', seed=0)
+    algo = algo_class(q_network, seed=0)
+    algo.learn(env, episodes=3)
+    assert len(algo.episode_returns) == 3
+    assert len(algo.episode_lengths) == 3
+    # QLearning updates once per episode, OnlineQLearning once per step
+    assert len(algo.loss_history) == (sum(algo.episode_lengths) if losses_per_step else 3)
+    assert isinstance(algo.evaluate(env, episodes=1), float)
+
+
+def test_output_size_must_match_actions(q_network):
+    env = make_env('CartPole-v1', seed=0)
+    with pytest.raises(AssertionError):
+        QLearning(q_network).learn(env, episodes=1)
+
+
+def test_schedules():
+    envs = ['A', 'B', 'C']
+    assert list(SequentialSchedule(envs)) == [0, 1, 2]
+    assert list(AlternatingSchedule(envs, num_cycles=2)) == [0, 1, 2, 0, 1, 2]
+    assert list(AlternatingSchedule(envs[:2], num_cycles=2, episodes_per_task=2)) == [0, 0, 1, 1, 0, 0, 1, 1]
+    assert list(TaskSchedule(envs, order=[0, 2, 0])) == [0, 2, 0]
+
+
+def test_alternating_schedule_blocks_in_scheduled_env():
+    envs = [CueTreadmillEnv(cue=0, rewarded_zone=0), CueTreadmillEnv(cue=1, rewarded_zone=1)]
+    scheduled_env = ScheduledEnv(AlternatingSchedule(envs, num_cycles=1, episodes_per_task=3))
+    # a finite schedule restarts when it runs out, so the blocks keep alternating past num_cycles
+    assert [scheduled_env.reset()[1]['task'] for _ in range(9)] == [0, 0, 0, 1, 1, 1, 0, 0, 0]
+
+
+def run_lap(env, actions):
+    """Run one lap with actions[position] at each cell; return the observations seen and the total reward."""
+    obs, info = env.reset()
+    observations, total_reward, terminated = [obs], 0., False
+    while not terminated:
+        obs, reward, terminated, truncated, info = env.step(actions[env.position])
+        observations.append(obs)
+        total_reward += reward
+    return np.array(observations), total_reward
+
+
+def test_treadmill_env():
+    check_env(CueTreadmillEnv())
+    assert make_env('EIANN/CueTreadmill-v0', cue=1, rewarded_zone=1).reset()[0].shape == (5,)
+
+
+def test_treadmill_observations():
+    env = CueTreadmillEnv(cue=1)
+    observations, _ = run_lap(env, np.zeros(env.length, dtype=int))
+    assert len(observations) == env.length + 1  # one per cell, then the terminal observation
+    cell_index = np.argmax(observations[:-1], axis=1)
+    assert np.all(cell_index[8:11] == 1 + 1)  # cue 1
+    assert np.all(cell_index[14:16] == 1 + 2 + 0) and np.all(cell_index[18:20] == 1 + 2 + 1)  # zones 0 and 1
+    assert cell_index[0] == 0 and cell_index[16] == 0 and cell_index[-1] == 0
+    assert np.all(observations[-1] == 0)
+
+
+def test_treadmill_rewards():
+    env = CueTreadmillEnv()
+    lick_at = lambda *positions: np.isin(np.arange(env.length), positions).astype(int)
+    assert run_lap(env, lick_at(15))[1] == pytest.approx(1.)
+    assert run_lap(env, np.ones(env.length, dtype=int))[1] == pytest.approx(1. - 0.1 * (env.length - 1))
+    assert run_lap(env, lick_at())[1] == 0.  # ignoring at the rewarded cell is not penalized
+    assert run_lap(env, lick_at(19))[1] == pytest.approx(-0.1)
+    assert run_lap(CueTreadmillEnv(cue=1, rewarded_zone=1), lick_at(19))[1] == pytest.approx(1.)
+
+
+def test_random_schedule_and_scheduled_env():
+    envs = [CueTreadmillEnv(cue=0, rewarded_zone=0), CueTreadmillEnv(cue=1, rewarded_zone=1)]
+    order = list(RandomSchedule(envs, num_phases=20, seed=0))
+    assert order == list(RandomSchedule(envs, num_phases=20, seed=0))
+    assert set(order) == {0, 1}
+
+    scheduled_env = ScheduledEnv(RandomSchedule(envs, seed=0))
+    for task in order:
+        obs, info = scheduled_env.reset()
+        assert info['task'] == task and scheduled_env.env is envs[task]
+
+    # a finite schedule restarts when it runs out
+    scheduled_env = ScheduledEnv(SequentialSchedule(envs))
+    assert [scheduled_env.reset()[1]['task'] for _ in range(4)] == [0, 1, 0, 1]
+
+
+def test_evaluate_scheduled_env():
+    envs = [CueTreadmillEnv(cue=0, rewarded_zone=0), CueTreadmillEnv(cue=1, rewarded_zone=1)]
+    network = nt.Network({'Input': {'E': {'size': 5}}, 'Output': {'E': {'size': 2}}},
+                         {'Output': {'E': {'Input': {'E': {'direction': 'F', 'learning_rule': 'Backprop'}}}}},
+                         learning_rate=0.01, seed=0)
+    algo = QLearning(network)
+    scheduled_env = ScheduledEnv(RandomSchedule(envs, seed=0))
+    assert algo.evaluate(scheduled_env) == pytest.approx(np.mean([algo.evaluate(env) for env in envs]))
+    assert scheduled_env.task is None  # evaluation does not advance the schedule
+
+
+def test_online_q_learning_treadmill():
+    # with one cue and one-cell reward zones, the rewarded cell is identifiable from its own observation
+    env = CueTreadmillEnv(num_cues=1, reward_positions=(15,), reward_length=1)
+    proj = {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': 'F', 'learning_rule': 'Backprop'}
+    network = nt.Network({'Input': {'E': {'size': 3}}, 'H1': {'E': {'size': 16, 'activation': 'relu'}},
+                          'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                         {'H1': {'E': {'Input': {'E': dict(proj)}}}, 'Output': {'E': {'H1': {'E': dict(proj)}}}},
+                         learning_rate=0.05, optimizer='SGD', seed=0)
+    algo = OnlineQLearning(network, gamma=0.9, epsilon_decay=0.97, seed=0).learn(env, episodes=150)
+    assert algo.evaluate(env) == pytest.approx(1.)
+
+
+@pytest.fixture
+def recurrent_network():
+    proj = lambda direction: {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': direction,
+                              'learning_rule': 'Backprop'}
+    return nt.Network({'Input': {'E': {'size': 5}}, 'H1': {'E': {'size': 16, 'activation': 'relu'}},
+                       'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                      {'H1': {'E': {'Input': {'E': proj('F')}, 'H1': {'E': proj('R')}}},
+                       'Output': {'E': {'H1': {'E': proj('F')}}}},
+                      learning_rate=0.1, optimizer='SGD', seed=0)
+
+
+def lap_observations(env):
+    return [torch.as_tensor(obs) for obs in env.cell_observations]
+
+
+@pytest.mark.parametrize('persistent_state', [False, True])
+def test_recurrent_network_carries_cue(recurrent_network, persistent_state):
+    model = RecurrentNetwork(recurrent_network, persistent_state=persistent_state)
+    outputs = []
+    for cue in (0, 1):
+        model.reset()
+        outputs.append(model.run(lap_observations(CueTreadmillEnv(cue=cue)), no_grad=True))
+    assert outputs[0].shape == (23, 2)
+    # cell 15 shows the same observation on both tracks; only a network with persistent state remembers the cue
+    assert torch.equal(outputs[0][15], outputs[1][15]) != persistent_state
+
+
+def test_recurrent_network_peek(recurrent_network):
+    model = RecurrentNetwork(recurrent_network, persistent_state=True)
+    observations = lap_observations(CueTreadmillEnv())
+    model.reset()
+    for obs in observations[:5]:
+        model.step(obs)
+    saved = {name: (pop.activity, pop.prev_activity, getattr(pop, 'state', None))
+             for name, pop in recurrent_network.populations.items()}
+    peeked = model.peek(observations[5])
+    for name, pop in recurrent_network.populations.items():
+        assert (pop.activity, pop.prev_activity, getattr(pop, 'state', None)) == saved[name]
+    assert torch.allclose(peeked, model.step(observations[5], no_grad=True))
+
+
+def test_recurrent_network_gradient_through_steps(recurrent_network):
+    model = RecurrentNetwork(recurrent_network, persistent_state=True)
+    observations = lap_observations(CueTreadmillEnv())
+    model.reset()
+    model.step(observations[0])
+    hidden = recurrent_network.populations['H1E'].activity
+    q = model.step(observations[1])
+    assert torch.autograd.grad(q.sum(), hidden, retain_graph=True)[0].abs().sum() > 0
+    # detach cuts the graph: the next step's output no longer depends on earlier steps
+    model.detach()
+    q = model.step(observations[2])
+    assert torch.autograd.grad(q.sum(), hidden, allow_unused=True)[0] is None
+
+
+@pytest.mark.parametrize('algo_class', [QLearning, OnlineQLearning])
+def test_q_learning_persistent_state(recurrent_network, algo_class):
+    tracks = [CueTreadmillEnv(cue=0, rewarded_zone=0), CueTreadmillEnv(cue=1, rewarded_zone=1)]
+    algo = algo_class(recurrent_network, persistent_state=True, seed=0)
+    algo.learn(ScheduledEnv(RandomSchedule(tracks, seed=0)), episodes=3)
+    assert algo.episode_lengths == [23, 23, 23]
+    assert isinstance(algo.evaluate(ScheduledEnv(RandomSchedule(tracks, seed=0))), float)
+
+
+@pytest.mark.parametrize('algo_class', [QLearning, OnlineQLearning])
+def test_q_learning_numpy_gamma(recurrent_network, algo_class):
+    # nested passes parameters as numpy scalars, which must not change the dtype of the TD targets
+    algo = algo_class(recurrent_network, gamma=np.float64(0.9), persistent_state=True, seed=0)
+    algo.learn(CueTreadmillEnv(), episodes=1)
+    assert algo.episode_lengths == [23]
+
+
+@pytest.mark.parametrize('val_interval, val_episodes', [((0, -1, 4), {0, 1, 5, 9}), ((-5, -1, 2), {5, 7, 9}),
+                                                        ((-20, -1, 4), {0, 1, 5, 9})])
+def test_get_val_episodes(val_interval, val_episodes):
+    assert get_val_episodes(10, val_interval) == val_episodes
+
+
+def test_q_learning_val_interval():
+    tracks = [CueTreadmillEnv(cue=0, rewarded_zone=0), CueTreadmillEnv(cue=1, rewarded_zone=1)]
+    algo = QLearning(build_recurrent_network('Backprop'), persistent_state=True, seed=0)
+    env = ScheduledEnv(RandomSchedule(tracks, seed=0))
+    algo.learn(env, episodes=4, val_interval=(0, -1, 2))
+    assert algo.val_episodes == [0, 1, 3]
+    assert len(algo.val_rewards) == 3
+    # further calls to learn continue the episode count
+    algo.learn(env, episodes=2, val_interval=(-1, -1, 1))
+    assert algo.val_episodes == [0, 1, 3, 5]
+    assert algo.val_rewards[-1] == algo.evaluate(env)
+
+
+def test_run_greedy_episode(recurrent_network):
+    tracks = make_2ACDC_tracks()
+    algo = QLearning(recurrent_network, persistent_state=True, seed=0)
+    lap = algo.run_greedy_episode(tracks[0])
+    assert lap['q_values'].shape == (23, 2)
+    assert lap['actions'].shape == (23,)
+    assert set(lap['activity']) == {'H1E'}  # hidden populations only
+    assert lap['activity']['H1E'].shape == (23, 16)
+    assert np.array_equal(lap['actions'], lap['q_values'].argmax(axis=1))
+    assert lap['episode_return'] == algo.evaluate(tracks[0])
+
+
+@pytest.fixture
+def laps_and_tracks(recurrent_network):
+    tracks = make_2ACDC_tracks()
+    algo = QLearning(recurrent_network, persistent_state=True, seed=0)
+    algo.learn(ScheduledEnv(RandomSchedule(tracks, seed=0)), episodes=5, val_interval=(0, -1, 2))
+    return algo, tracks
+
+
+def test_stack_laps(laps_and_tracks):
+    algo, tracks = laps_and_tracks
+    assert algo.val_episodes == [0, 2, 4]
+    laps = stack_laps(algo.val_laps, algo.val_episodes)
+    assert laps['episodes'].tolist() == [0, 2, 4]
+    assert laps['rewards'].shape == (3, 2)
+    assert laps['q_values'].shape == (3, 2, 23, 2)
+    assert laps['actions'].shape == (3, 2, 23)
+    assert laps['activity']['H1E'].shape == (3, 2, 23, 16)
+    assert np.allclose(laps['rewards'].mean(axis=1), algo.val_rewards)
+
+
+def test_cross_correlation():
+    rng = np.random.default_rng(0)
+    track = rng.random((23, 10))
+    matrix = cross_correlation(np.stack([track, track]))
+    assert matrix.shape == (1, 23, 23)
+    assert np.allclose(np.diagonal(matrix[0]), 1.)
+    # a unit silent on both tracks is dropped, so it does not change the correlation
+    with_silent_unit = np.concatenate([track, np.zeros((23, 1))], axis=1)
+    assert np.allclose(cross_correlation(np.stack([with_silent_unit, with_silent_unit])), matrix)
+    assert cross_correlation(np.stack([track, track, track])).shape == (3, 23, 23)
+
+
+def test_region_cross_correlation():
+    track = CueTreadmillEnv()
+    matrix = np.arange(23. * 23.).reshape(23, 23)
+    means = region_cross_correlation(matrix, track)
+    assert means['pre_r2'] == matrix[17, 17]
+    assert means['indicator'] == pytest.approx(matrix[8:11, 8:11].mean())
+    assert means['off_diagonal'] == pytest.approx(matrix[track.get_off_diagonal_mask()].mean())
+
+
+def test_treadmill_regions_match_old_branch():
+    track = CueTreadmillEnv()
+    assert track.get_regions() == {'initial_region': (0, 8), 'indicator': (8, 11), 'pre_r1': (13, 14),
+                                   'pre_r2': (17, 18), 'end_region': (19, 23)}
+    expected = np.zeros((23, 23), dtype=bool)
+    stretches = [(0, 8), (11, 14), (16, 18), (20, 23)]
+    for first, second in [(1, 0), (2, 0), (3, 0), (0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 1), (2, 3), (3, 1), (3, 2)]:
+        expected[stretches[first][0]:stretches[first][1], stretches[second][0]:stretches[second][1]] = True
+    assert np.array_equal(track.get_off_diagonal_mask(), expected)
+
+
+def test_licks_by_zone():
+    actions = np.zeros((1, 2, 23), dtype=int)
+    actions[0, 0, [14, 15]] = 1  # both cells of zone 0 on track 0
+    actions[0, 1, 19] = 1  # one cell of zone 1 on track 1
+    assert licks_by_zone({'actions': actions}, CueTreadmillEnv()).tolist() == [[[2, 0], [0, 1]]]
+
+
+def test_plot_2ACDC_summary(laps_and_tracks, tmp_path):
+    matplotlib = pytest.importorskip('matplotlib')
+    matplotlib.use('Agg')
+    from EIANN.reinforcement_learning.treadmill_plots import plot_2ACDC_summary
+
+    algo, tracks = laps_and_tracks
+    rl_history = {'val_laps': algo.val_laps, 'val_episodes': algo.val_episodes, 'treadmill_kwargs': {}}
+    plot_2ACDC_summary(rl_history, title='test', save_prefix=str(tmp_path / 'model'), plot_format='png')
+    assert {path.name for path in tmp_path.iterdir()} == {
+        f'model_{name}.png' for name in ('val_rewards', 'final_q_values', 'actions_over_training',
+                                         'hidden_activity_H1E', 'cross_correlation_H1E', 'region_cross_correlation',
+                                         'region_cross_correlation_by_population')}
+
+
+def test_new_algorithm_only_needs_run_episode():
+    class NeverLick(RLAlgorithm):
+        def run_episode(self, env):
+            env.reset()
+            episode_length, terminated = 0, False
+            while not terminated:
+                obs, reward, terminated, truncated, info = env.step(0)
+                episode_length += 1
+            return 0., episode_length
+
+    algo = NeverLick(build_recurrent_network('Backprop'))
+    assert algo.learn(CueTreadmillEnv(), episodes=4, val_interval=(0, -1, 3)) is algo
+    assert algo.episode_lengths == [23, 23, 23, 23]
+    assert algo.val_episodes == [0, 3]
+    assert len(algo.val_rewards) == 2
+
+
+def test_q_learning_epsilon_decays_every_episode():
+    algo = QLearning(build_recurrent_network('Backprop'), epsilon=1., epsilon_decay=0.5, epsilon_min=0.2, seed=0)
+    algo.learn(CueTreadmillEnv(), episodes=1)
+    assert algo.epsilon == pytest.approx(0.5)
+    algo.learn(CueTreadmillEnv(), episodes=2)
+    assert algo.epsilon == pytest.approx(0.2)
+
+
+@pytest.mark.parametrize('rule, algo_class', [('van_bp', QLearning), ('eprop', OnlineQLearning)])
+def test_2ACDC_network_config(rule, algo_class):
+    config = read_from_yaml(os.path.join(os.path.dirname(EIANN.__file__), 'optimize', 'network_config', '2ACDC',
+                                         f'20261102_EIANN_2_hidden_2ACDC_{rule}_relu_SGD_config.yaml'))
+    network = nt.Network(config['layer_config'], config['projection_config'], seed=0, **config['training_kwargs'])
+    assert network.persistent_state
+    assert network.projections['H1E_H1E'].direction == 'R'
+    assert not any(projection.post is network.H2.E and projection.pre is network.H2.E
+                   for projection in network.projections.values())
+
+    tracks = [CueTreadmillEnv(cue=0, rewarded_zone=0), CueTreadmillEnv(cue=1, rewarded_zone=1)]
+    algo = algo_class(network, persistent_state=network.persistent_state, seed=0)
+    algo.learn(ScheduledEnv(RandomSchedule(tracks, seed=0)), episodes=3)
+    assert algo.episode_lengths == [23, 23, 23]
+
+
+def test_eprop_matches_bptt_for_leaky_single_layer():
+    # with one leaky layer, the only path from a weight to the current state is through the layer's own leak, so the
+    # e-prop gradient is exact
+    network = nt.Network({'Input': {'E': {'size': 3}}, 'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                         {'Output': {'E': {'Input': {'E': {'direction': 'F', 'learning_rule': 'Eprop'}}}}},
+                         learning_rate=0.1, optimizer='SGD', tau=2, seed=0)
+    weight = network.projections['OutputE_InputE'].weight
+    samples = torch.rand(5, 3, generator=torch.Generator().manual_seed(0))
+    target = torch.tensor([1., -1.])
+    model = RecurrentNetwork(network, persistent_state=True)
+
+    model.reset()
+    output = model.run(samples)[-1]
+    bptt_grad = torch.autograd.grad(network.criterion(output, target), weight)[0]
+
+    weight_before = weight.detach().clone()
+    model.reset()
+    for i, sample in enumerate(samples):
+        output = model.step(sample)
+        # zero error (no weight change) until the last step, so only the eligibility trace accumulates
+        apply_learning_rules(network, output, target if i == len(samples) - 1 else output.detach())
+        model.detach()
+    assert torch.allclose(weight_before - weight.detach(), 0.1 * bptt_grad)
+
+
+def build_recurrent_network(learning_rule, tau=1, optimizer='SGD', learning_rate=0.1):
+    proj = lambda direction: {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': direction,
+                              'learning_rule': learning_rule}
+    return nt.Network({'Input': {'E': {'size': 5}}, 'H1': {'E': {'size': 16, 'activation': 'relu'}},
+                       'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                      {'H1': {'E': {'Input': {'E': proj('F')}, 'H1': {'E': proj('R')}}},
+                       'Output': {'E': {'H1': {'E': proj('F')}}}},
+                      learning_rate=learning_rate, optimizer=optimizer, tau=tau, seed=0)
+
+
+@pytest.mark.parametrize('optimizer, learning_rate', [('SGD', 0.1), ('Adam', 0.001)])
+def test_eprop_equals_truncated_backprop_when_tau_is_1(optimizer, learning_rate):
+    tracks = [CueTreadmillEnv(cue=0, rewarded_zone=0), CueTreadmillEnv(cue=1, rewarded_zone=1)]
+    networks = {}
+    for learning_rule in ('Eprop', 'Backprop'):
+        networks[learning_rule] = build_recurrent_network(learning_rule, optimizer=optimizer, learning_rate=learning_rate)
+        OnlineQLearning(networks[learning_rule], persistent_state=True, seed=0).learn(
+            ScheduledEnv(RandomSchedule(tracks, seed=0)), episodes=3)
+    for name, projection in networks['Eprop'].projections.items():
+        assert not torch.isnan(projection.weight).any()
+        assert torch.allclose(projection.weight, networks['Backprop'].projections[name].weight, atol=1e-6)
+
+
+def test_eprop_requires_one_update_per_step():
+    with pytest.raises(AssertionError):
+        QLearning(build_recurrent_network('Eprop'), persistent_state=True).learn(CueTreadmillEnv(), episodes=1)
+
+
+def test_eprop_accumulated_update_matches_bptt_for_leaky_single_layer():
+    network = nt.Network({'Input': {'E': {'size': 3}}, 'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                         {'Output': {'E': {'Input': {'E': {'direction': 'F', 'learning_rule': 'Eprop'}}}}},
+                         learning_rate=0.1, optimizer='SGD', tau=2, seed=0)
+    weight = network.projections['OutputE_InputE'].weight
+    samples = torch.rand(5, 3, generator=torch.Generator().manual_seed(0))
+    targets = torch.rand(5, 2, generator=torch.Generator().manual_seed(1))
+    model = RecurrentNetwork(network, persistent_state=True)
+
+    # exact gradient of the loss summed over every step of the sequence
+    model.reset()
+    outputs = model.run(samples)
+    bptt_grad = torch.autograd.grad(sum(network.criterion(outputs[i], targets[i]) for i in range(5)), weight)[0]
+
+    weight_before = weight.detach().clone()
+    model.reset()
+    for i, sample in enumerate(samples):
+        output = model.step(sample)
+        compute_learning_rule_updates(network, output, targets[i])
+        assert torch.equal(weight.detach(), weight_before)  # nothing is applied until step_learning_rules
+        model.detach()
+    step_learning_rules(network)
+    assert torch.allclose(weight_before - weight.detach(), 0.1 * bptt_grad)
