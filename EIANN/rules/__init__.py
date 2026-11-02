@@ -9,4 +9,5 @@ from .dtp import *
 from .hebbian import *
 from .btsp import *
 from .dendritic_loss import *
+from .eprop import *
 from .weight_functions import *

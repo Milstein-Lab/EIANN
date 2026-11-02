@@ -41,40 +41,9 @@ For each seed folder in --model-folder-path, loads the network exported after ea
 Example (from the EIANN/ package directory):
 python scripts/get_cl_metrics.py --model-folder-path=data/<network_name> --data-dir=data/datasets/MNIST_data/ \
     --num-splits=5 --label=<label>
-Append --training-history-only to any command below to (re)write only <model_key>_training.h5.
-
-Models trained so far (5-task class-incremental, labelled by model key):
-python scripts/get_cl_metrics.py --model-folder-path=data/20231129_EIANN_2_hidden_mnist_van_bp_relu_SGD_config_G \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_G --model-key=van_bp_CL_5_tasks_G
-python scripts/get_cl_metrics.py --model-folder-path=data/20231129_EIANN_2_hidden_mnist_bpDale_relu_SGD_config_G \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=bpDale_CL_5_tasks_G --model-key=bpDale_CL_5_tasks_G
-python scripts/get_cl_metrics.py --model-folder-path=data/20260928_EIANN_2_hidden_CL_mnist_van_bp_EWC_relu_SGD_config_A \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_EWC --model-key=van_bp_CL_5_tasks_EWC
-python scripts/get_cl_metrics.py --model-folder-path=data/20260930_EIANN_2_hidden_CL_mnist_van_bp_SI_relu_SGD_config_A \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_SI --model-key=van_bp_CL_5_tasks_SI
-python scripts/get_cl_metrics.py --model-folder-path=data/20261005_EIANN_2_hidden_CL_mnist_van_bp_EWC_LR_relu_SGD_config_A \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_EWC_LR --model-key=van_bp_CL_5_tasks_EWC_LR
-python scripts/get_cl_metrics.py --model-folder-path=data/20261005_EIANN_2_hidden_CL_mnist_van_bp_SI_LR_relu_SGD_config_A \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_SI_LR --model-key=van_bp_CL_5_tasks_SI_LR
-python scripts/get_cl_metrics.py --model-folder-path=data/20241009_EIANN_2_hidden_mnist_BP_like_config_5J \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=BP_like_CL_5_tasks_5J --model-key=BP_like_CL_5_tasks_5J
-python scripts/get_cl_metrics.py --model-folder-path=data/20251229_EIANN_2_hidden_mnist_BTSP_config_6L \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=BTSP_CL_5_tasks_6L --model-key=BTSP_CL_5_tasks_6L
-python scripts/get_cl_metrics.py --model-folder-path=data/20260203_EIANN_2_hidden_CL_mnist_BTSP_ELR_config_A \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=BTSP_CL_5_tasks_ELR_A --model-key=BTSP_CL_5_tasks_ELR_A
-python scripts/get_cl_metrics.py --model-folder-path=data/20260930_EIANN_2_hidden_CL_mnist_bpDale_relu_SGD_SI_config_A \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=bpDale_CL_5_tasks_SI --model-key=bpDale_CL_5_tasks_SI
-python scripts/get_cl_metrics.py --model-folder-path=data/20261002_EIANN_2_hidden_CL_mnist_DTP_SI_config_5J \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=dtp_CL_5_tasks_SI --model-key=dtp_CL_5_tasks_SI
-python scripts/get_cl_metrics.py --model-folder-path=data/20260928_EIANN_2_hidden_CL_mnist_bpDale_relu_SGD_EWC_config_A \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=bpDale_CL_5_tasks_EWC --model-key=bpDale_CL_5_tasks_EWC
-python scripts/get_cl_metrics.py --model-folder-path=data/20261012_EIANN_2_hidden_CL_mnist_bpDale_BTSP_BP_config_A \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=BTSP_BP_CL_5_tasks --model-key=BTSP_BP_CL_5_tasks
-python scripts/get_cl_metrics.py --model-folder-path=data/20261021_EIANN_2_hidden_CL_mnist_van_bp_SI_HD_v1_relu_SGD_config_A \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=van_bp_CL_5_tasks_SI_HG_v1 --model-key=van_bp_CL_5_tasks_SI_HG_v1
-python scripts/get_cl_metrics.py --model-folder-path=data/20261013_EIANN_2_hidden_CL_mnist_BTSP_SI_config_6L \
-    --data-dir=data/datasets/MNIST_data/ --num-splits=5 --label=BTSP_SI_CL_5_tasks --model-key=BTSP_SI_CL_5_tasks
+Append --training-history-only to any command to (re)write only <model_key>_training.h5.
 """
+
 import torch
 import torchvision
 import torchvision.transforms as T

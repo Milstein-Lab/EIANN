@@ -22,6 +22,7 @@ EIANN/data/datasets/
 EIANN/data/mnist/*
 EIANN/data/rl_plots
 EIANN/data/cl_plots
+EIANN/data/2ACDC
 EIANN/data/*.yaml
 EIANN/data/debug_plots
 manuscript/

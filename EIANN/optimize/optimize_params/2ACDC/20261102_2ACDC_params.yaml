@@ -1,0 +1,25 @@
+van_bp_relu_SGD:
+    #    reward: 0.9985 (5 seeds; x0, not optimized)
+    H_learning_rate: 1.
+    Output_learning_rate: 1.
+    H1_init_weight_scale: 1.
+    H1_H1_init_weight_scale: 1.
+    H2_init_weight_scale: 1.
+    Output_init_weight_scale: 1.2
+    epsilon: 0.9
+    epsilon_decay: 1.
+    gamma: 0.9
+
+eprop_relu_SGD:
+    #    reward: 1.0 (5 seeds with accumulate_updates: True, 0.9975 with False; old branch's optimized params with
+    #    learning rates doubled, not reoptimized)
+    H_learning_rate: 0.842381991001941
+    Output_learning_rate: 0.0619887582286052
+    H1_init_weight_scale: 0.3153865561556863
+    H1_H1_init_weight_scale: 0.7165045726081581
+    H2_init_weight_scale: 2.7214570643454503
+    Output_init_weight_scale: 1.781651018264462
+    epsilon: 0.6070376073482587
+    epsilon_decay: 0.9984025483962401
+    gamma: 0.15056280945389777
+    tau: 2.1984036407984133

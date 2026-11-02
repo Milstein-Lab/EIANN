@@ -10,6 +10,7 @@ PyYAML==6.0.1
 scikit-learn==1.2.2
 scikit-image==0.24.0
 matplotlib==3.9.0
+seaborn==0.13.2
 reportlab==4.2.5
 ipympl==0.9.3
 ipywidgets==8.1.7
@@ -18,3 +19,5 @@ pandas==2.3.3
 nbimporter==0.3.4
 nbformat==5.10.4
 jupyter-book==1.0.4.post1
+gymnasium==1.0.0
+minigrid==3.0.0
