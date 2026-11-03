@@ -1,4 +1,10 @@
 bounds:
+    E_tau:
+        - 3
+        - 7
+    I_tau:
+        - 3
+        - 7
     H_E_E_learning_rate:
         - 0.0001
         - 1.
@@ -79,7 +85,7 @@ kwargs:
     include_equilibration_dynamics_objective: True
 update_context:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
-      function: update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_G
+      function: update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_G_cheat_dyn
 stages:
     - source: optimize.nested_optimize_EIANN_1_hidden_mnist
       get_args_static: get_random_seeds
@@ -88,6 +94,8 @@ stages:
       get_objectives: get_objectives
 optimization_title: EIANN_2_hidden_mnist_bpDale_relu_SGD_G_cheat_dyn
 x0:
+    E_tau: 3
+    I_tau: 3
     H_E_E_learning_rate: 0.5
     Output_E_E_learning_rate: 0.5
     H_I_size: 50
