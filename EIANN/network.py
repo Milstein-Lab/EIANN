@@ -104,7 +104,8 @@ class Network(nn.Module):
         self.optimizer_params_list = []
         self.populations = {}
         self.projections = {}
-
+        self.output_pop = None
+        
         # Build network populations
         self.layers = {}
         for i, (layer_name, pop_config) in enumerate(layer_config.items()):
@@ -133,7 +134,8 @@ class Network(nn.Module):
         
         # if no output_pop is designated, default to the first population specified in the final layer
         input_layer, *_, output_layer = list(self)
-        self.output_pop = next(iter(output_layer))
+        if self.output_pop is None:
+            self.output_pop = next(iter(output_layer))
         self.input_pop = next(iter(input_layer))
 
         # Build network projections

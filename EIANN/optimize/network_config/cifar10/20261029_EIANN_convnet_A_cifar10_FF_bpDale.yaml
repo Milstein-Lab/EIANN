@@ -4,27 +4,27 @@ layer_config:
             channels: 3
             image_dim: 32
     ConvBlock1:
-        ConvE1:
-            population_type: Conv2D
-            channels: 64
-            kernel_size: 3
-            image_source: Input.E
-            activation: relu
         ConvI1:
             population_type: Conv2D
             channels: 8
             kernel_size: 3
             image_source: Input.E
             activation: relu
-        ConvE2:
+        ConvE1:
             population_type: Conv2D
             channels: 64
             kernel_size: 3
-            image_source: ConvBlock1.ConvE1
+            image_source: Input.E
             activation: relu
         ConvI2:
             population_type: Conv2D
             channels: 8
+            kernel_size: 3
+            image_source: ConvBlock1.ConvE1
+            activation: relu
+        ConvE2:
+            population_type: Conv2D
+            channels: 64
             kernel_size: 3
             image_source: ConvBlock1.ConvE1
             activation: relu
@@ -33,27 +33,27 @@ layer_config:
             kernel_size: 2
             source: ConvBlock1.ConvE2
     ConvBlock2:
-        ConvE1:
-            population_type: Conv2D
-            channels: 128
-            kernel_size: 3
-            image_source: ConvBlock1.MaxPoolE
-            activation: relu
         ConvI1:
             population_type: Conv2D
             channels: 16
             kernel_size: 3
             image_source: ConvBlock1.MaxPoolE
             activation: relu
-        ConvE2:
+        ConvE1:
             population_type: Conv2D
             channels: 128
             kernel_size: 3
-            image_source: ConvBlock2.ConvE1
+            image_source: ConvBlock1.MaxPoolE
             activation: relu
         ConvI2:
             population_type: Conv2D
             channels: 16
+            kernel_size: 3
+            image_source: ConvBlock2.ConvE1
+            activation: relu
+        ConvE2:
+            population_type: Conv2D
+            channels: 128
             kernel_size: 3
             image_source: ConvBlock2.ConvE1
             activation: relu
@@ -65,26 +65,27 @@ layer_config:
             population_type: Flatten
             source: ConvBlock2.MaxPoolE
     H1:
-        E:
-            size: 512
-            activation: relu
         I:
             size: 64
+            activation: relu
+        E:
+            size: 512
             activation: relu
     H2:
-        E:
-            size: 512
-            activation: relu
         I:
             size: 64
             activation: relu
-    Output:
         E:
-            size: 10
+            size: 512
             activation: relu
+    Output:
         I:
             size: 10
             activation: relu
+        E:
+            size: 10
+            activation: relu
+            output_pop: bool
 projection_config:
     ConvBlock1:
         ConvI1:
