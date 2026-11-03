@@ -85,7 +85,7 @@ layer_config:
         E:
             size: 10
             activation: relu
-            output_pop: bool
+            output_pop: True
 projection_config:
     ConvBlock1:
         ConvI1:
