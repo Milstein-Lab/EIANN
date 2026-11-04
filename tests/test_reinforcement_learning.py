@@ -16,7 +16,9 @@ from EIANN.reinforcement_learning.network_updates import (apply_learning_rules, 
                                                           step_learning_rules)
 from EIANN.reinforcement_learning.environments import (make_env, TaskSchedule, SequentialSchedule,
                                                        AlternatingSchedule, RandomSchedule, ScheduledEnv,
-                                                       CueTreadmillEnv, make_2ACDC_tracks)
+                                                       CueTreadmillEnv, make_2ACDC_tracks, CrossingChoiceEnv,
+                                                       make_crossing_tasks)
+from EIANN.reinforcement_learning.crossing_metrics import block_outcome_rates, episode_positions, cl_summary
 from EIANN.reinforcement_learning.continual import EpisodeBuffer, RecordEpisodes, estimate_importance
 from EIANN.reinforcement_learning.treadmill_metrics import (stack_laps, cross_correlation, region_cross_correlation,
                                                             licks_by_zone, block_rewards, seen_track_rewards)
@@ -629,3 +631,204 @@ def test_2ACDC_CL_cl_rule_network_configs(rule):
     learn_blocks(algo, make_2ACDC_tracks(), episodes_per_task=2)
     assert all(projection.learning_rule.task_num == 2 for projection in network.projections.values())
 
+
+# Crossing_CL (CrossingChoiceEnv), with either action set
+CROSSING_ACTIONS = {'egocentric': {'L': 0, 'R': 1, 'F': 2}, 'allocentric': {'N': 0, 'E': 1, 'S': 2, 'W': 3}}
+# shortest paths from (0, 0) (facing south) to the rewarded tile of tasks A, B and C
+CROSSING_PATHS = {'egocentric': ('FFFLFFLFFFRF', 'FLFFRFFLF', 'FFLFFFLF'),
+                  'allocentric': ('SSSEENNNE', 'SEESSE', 'SSEEEN')}
+# task A: onto the unrewarded tile at (3, 3); a move into the wall east of the start
+CROSSING_WRONG_PATH = {'egocentric': 'FFFLFFF', 'allocentric': 'SSSEEE'}
+CROSSING_INTO_WALL = {'egocentric': 'LF', 'allocentric': 'EN'}
+
+
+def run_crossing(env, actions):
+    """Run a string of actions; return the total reward and the last step's terminated, truncated and info."""
+    env.reset()
+    total_reward = 0.
+    for action in actions:
+        obs, reward, terminated, truncated, info = env.step(CROSSING_ACTIONS[env.actions_type][action])
+        total_reward += reward
+    return total_reward, terminated, truncated, info
+
+
+def crossing_obs_at(env, row, col, direction=None):
+    env.reset()
+    env.agent_pos = env.to_grid_pos(row, col)
+    if direction is not None:
+        env.agent_dir = direction
+    return env.gen_obs()
+
+
+def test_crossing_layouts():
+    layouts = [env.layout() for env in make_crossing_tasks()]
+    assert layouts == [['S # . G', '. # . g', '. # . .', '. . . g'],
+                       ['S # . g', '. . . g', '. # . .', '. # . G'],
+                       ['S # . g', '. # . G', '. . . .', '. # . g']]
+
+
+def test_crossing_env():
+    env = CrossingChoiceEnv()
+    check_env(env, skip_render_check=True)
+    check_env(CrossingChoiceEnv(actions='allocentric'), skip_render_check=True)
+    assert env.actions_type == 'egocentric' and env.action_space.n == 3
+    # egocentric, task B at the start facing south: [x, y] in the agent's frame, x left (east) to right (west), y far to
+    # near; category indices (unseen, empty, wall, goal)
+    obs = make_env('EIANN/Crossing-v0', gap_row=1, rewarded_tile=(3, 3)).reset()[0]
+    assert obs.shape == (36,) and obs.dtype == np.float32
+    # to the left the wall column at rows 2, 1 (the gap) and 0; ahead the corridor; to the right the border
+    assert np.array_equal(obs.reshape(3, 3, 4).argmax(axis=-1), [[2, 1, 2], [1, 1, 1], [2, 2, 2]])
+    # allocentric, task B at (0, 0): [row, col], north up; category indices (empty, wall, goal)
+    obs = make_env('EIANN/Crossing-v0', gap_row=1, rewarded_tile=(3, 3), actions='allocentric').reset()[0]
+    assert obs.shape == (27,) and make_crossing_tasks(actions='allocentric')[0].action_space.n == 4
+    assert np.array_equal(obs.reshape(3, 3, 3).argmax(axis=-1), [[1, 1, 1], [1, 0, 1], [1, 0, 0]])
+    with pytest.raises(AssertionError):
+        CrossingChoiceEnv(rewarded_tile=(2, 3))  # not a goal tile
+
+
+@pytest.mark.parametrize('actions', ['egocentric', 'allocentric'])
+@pytest.mark.parametrize('task', [0, 1, 2])
+def test_crossing_shortest_paths(task, actions):
+    env = make_crossing_tasks(actions=actions)[task]
+    path = CROSSING_PATHS[actions][task]
+    total_reward, terminated, truncated, info = run_crossing(env, path)
+    assert total_reward == pytest.approx(1.) and terminated and not truncated and info['outcome'] == 'correct'
+    # stopping one action short does not end the episode
+    assert not run_crossing(env, path[:-1])[1]
+    # a step penalty is added to every step, including the last
+    env = make_crossing_tasks(actions=actions, step_reward=-0.01)[task]
+    assert run_crossing(env, path)[0] == pytest.approx(1. - 0.01 * len(path))
+
+
+@pytest.mark.parametrize('actions', ['egocentric', 'allocentric'])
+def test_crossing_wrong_tile_and_timeout(actions):
+    env = make_crossing_tasks(actions=actions)[0]
+    total_reward, terminated, truncated, info = run_crossing(env, CROSSING_WRONG_PATH[actions])
+    assert total_reward == pytest.approx(-0.1) and terminated and info['outcome'] == 'wrong'
+    stay = 'L' if actions == 'egocentric' else 'N'  # turning in place, or walking into the border
+    total_reward, terminated, truncated, info = run_crossing(env, stay * env.max_steps)
+    assert total_reward == 0. and not terminated and truncated and info['outcome'] == 'timeout'
+    run_crossing(env, CROSSING_INTO_WALL[actions])
+    assert tuple(env.agent_pos) == env.to_grid_pos(0, 0)
+
+
+def test_crossing_cue_visibility():
+    # egocentric: at the start, facing south, the wall column is in view (the gap in B and C, an unbroken wall in A)
+    tasks = make_crossing_tasks()
+    start_obs = [task.reset()[0] for task in tasks]
+    assert not any(np.array_equal(start_obs[i], start_obs[j]) for i in range(3) for j in range(i + 1, 3))
+    # from (2, 3) facing north or south the wall column is out of view: the tasks look the same
+    for direction in (1, 3):
+        obs = [crossing_obs_at(task, 2, 3, direction) for task in tasks]
+        assert all(np.array_equal(obs[0], other) for other in obs[1:])
+    # allocentric: at the start only B's gap (row 1) is in view, so A and C look the same
+    tasks = make_crossing_tasks(actions='allocentric')
+    start_obs = [task.reset()[0] for task in tasks]
+    assert np.array_equal(start_obs[0], start_obs[2]) and not np.array_equal(start_obs[0], start_obs[1])
+    # from (2, 2), next to the wall, rows 1-3 of the wall are in view: every task looks different
+    obs = [crossing_obs_at(task, 2, 2) for task in tasks]
+    assert not any(np.array_equal(obs[i], obs[j]) for i in range(3) for j in range(i + 1, 3))
+    # from (2, 3) the wall is out of view: the tasks look the same
+    obs = [crossing_obs_at(task, 2, 3) for task in tasks]
+    assert all(np.array_equal(obs[0], other) for other in obs[1:])
+
+
+def build_crossing_network():
+    proj = lambda direction: {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': direction,
+                              'learning_rule': 'Backprop'}
+    return nt.Network({'Input': {'E': {'size': 36}}, 'H1': {'E': {'size': 16, 'activation': 'relu'}},
+                       'Output': {'E': {'size': 3, 'activation': 'linear'}}},
+                      {'H1': {'E': {'Input': {'E': proj('F')}, 'H1': {'E': proj('R')}}},
+                       'Output': {'E': {'H1': {'E': proj('F')}}}},
+                      learning_rate=0.1, optimizer='SGD', persistent_state=True, seed=0)
+
+
+def test_run_greedy_episode_records_outcome():
+    algo = QLearning(build_crossing_network(), persistent_state=True, seed=0)
+    assert algo.run_greedy_episode(make_crossing_tasks()[0])['outcome'] in ('correct', 'wrong', 'timeout')
+    assert QLearning(build_cl_network(), seed=0).run_greedy_episode(CueTreadmillEnv())['outcome'] is None
+
+
+@pytest.mark.parametrize('schedule, epsilons', [('fixed', (1., 1.)), ('decay', (0.25, 0.0625)),
+                                                ('reset', (0.25, 1.))])
+def test_epsilon_schedules(schedule, epsilons):
+    # epsilon after two episodes of the first task, then after end_task()
+    algo = QLearning(build_cl_network(), epsilon=1., epsilon_decay=0.5, epsilon_min=0., epsilon_schedule=schedule,
+                     persistent_state=True, seed=0)
+    algo.learn(CueTreadmillEnv(), episodes=2)
+    assert algo.epsilon == pytest.approx(epsilons[0])
+    algo.end_task()
+    if schedule == 'decay':
+        algo.learn(CueTreadmillEnv(), episodes=2)
+    assert algo.epsilon == pytest.approx(epsilons[1])
+    with pytest.raises(ValueError):
+        OnlineQLearning(build_cl_network(), epsilon_schedule='linear')
+
+
+def test_block_outcome_rates():
+    # 1 block of 4 episodes, validated after every episode, on 2 tasks
+    outcomes = [('correct', 'timeout'), ('wrong', 'timeout'), ('correct', 'wrong'), ('correct', 'timeout')]
+    val_laps = [[{'outcome': outcome} for outcome in step] for step in outcomes]
+    rates = block_outcome_rates(val_laps, np.arange(4), episodes_per_task=4, num_blocks=1, window=4)
+    assert np.allclose(rates['success'], [[0.75, 0.]])
+    assert np.allclose(rates['navigation'], [[1., 0.25]])
+    assert np.allclose(rates['choice'], [[0.75, 0.]])
+    rates = block_outcome_rates([[{'outcome': 'timeout'}]], [0], episodes_per_task=1, num_blocks=1, window=1)
+    assert np.isnan(rates['choice']).all()
+    with pytest.raises(ValueError):
+        block_outcome_rates([[{'outcome': None}]], [0], episodes_per_task=1, num_blocks=1, window=1)
+
+
+def test_crossing_CL_network_config():
+    config = read_from_yaml(os.path.join(os.path.dirname(EIANN.__file__), 'optimize', 'network_config', 'Crossing_CL',
+                                         '20261104_EIANN_2_hidden_Crossing_CL_van_bp_relu_SGD_config.yaml'))
+    network = nt.Network(config['layer_config'], config['projection_config'], seed=0, **config['training_kwargs'])
+    tasks = make_crossing_tasks()
+    algo = QLearning(network, persistent_state=network.persistent_state, epsilon_schedule='reset', seed=0)
+    for block in range(len(tasks)):
+        algo.learn(ScheduledEnv(TaskSchedule(tasks, order=[block])), episodes=2, val_interval=(0, -1, 1))
+        algo.end_task()
+    rates = block_outcome_rates(algo.val_laps, algo.val_episodes, episodes_per_task=2, num_blocks=3, window=2)
+    assert rates['success'].shape == (3, 3)
+
+
+@pytest.mark.parametrize('actions', ['egocentric', 'allocentric'])
+@pytest.mark.parametrize('task', [0, 1, 2])
+def test_episode_positions(task, actions):
+    env = make_crossing_tasks(actions=actions)[task]
+    path = CROSSING_PATHS[actions][task]
+    positions, outcome = episode_positions(env, [CROSSING_ACTIONS[actions][action] for action in path])
+    assert tuple(positions[0]) == env.start_pos and tuple(positions[-1]) == env.rewarded_tile
+    assert len(positions) == len(path) + 1 and outcome == 'correct'
+    # turning, or a move into a wall, repeats the position
+    into_wall = CROSSING_INTO_WALL[actions]
+    positions, outcome = episode_positions(env, [CROSSING_ACTIONS[actions][action] for action in into_wall])
+    assert positions.tolist() == [[0, 0]] * (len(into_wall) + 1) and outcome is None
+
+
+def test_cl_summary():
+    summary = cl_summary(np.eye(3), baseline=np.zeros(3))
+    assert summary == pytest.approx({'ACC': 1 / 3, 'BWT': -1., 'FWT': 0.})
+    summary = cl_summary(np.ones((3, 3)), baseline=np.array([0., 0.5, 0.]))
+    assert summary == pytest.approx({'ACC': 1., 'BWT': 0., 'FWT': 0.75})
+    assert np.isnan(cl_summary(np.eye(3))['FWT'])
+
+
+def test_crossing_plots(tmp_path):
+    matplotlib = pytest.importorskip('matplotlib')
+    matplotlib.use('Agg')
+    from EIANN.reinforcement_learning.crossing_plots import (plot_crossing_summary, animate_learning,
+                                                             animate_greedy_episodes)
+    tasks = make_crossing_tasks(max_steps=10)
+    algo = QLearning(build_crossing_network(), persistent_state=True, seed=0)
+    for block in range(len(tasks)):
+        algo.learn(ScheduledEnv(TaskSchedule(tasks, order=[block])), episodes=2, val_interval=(0, -1, 1))
+        algo.end_task()
+    # as exported by nested_optimize_EIANN_Crossing_CL
+    rl_history = {'val_laps': algo.val_laps, 'val_episodes': algo.val_episodes, 'crossing_kwargs': {'max_steps': 10},
+                  'episodes_per_task': 2, 'num_cycles': 1, 'num_tasks': 3}
+    plot_crossing_summary(rl_history, 2, title='test', save_prefix=str(tmp_path / 'model'), plot_format='png')
+    animate_learning(rl_history, window=2, val_steps=[0, 5], save_path=str(tmp_path / 'learning.gif'))
+    animate_greedy_episodes(rl_history, val_step=-1, save_path=str(tmp_path / 'greedy.gif'))
+    assert {path.name for path in tmp_path.iterdir()} == {'model_outcome_curves.png', 'model_outcome_matrices.png',
+                                                          'learning.gif', 'greedy.gif'}

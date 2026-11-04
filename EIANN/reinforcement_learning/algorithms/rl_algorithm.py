@@ -204,6 +204,8 @@ class RLAlgorithm(object):
             actions: np.ndarray of int, shape (num_steps,)
             activity: dict of np.ndarray, shape (num_steps, population size), for every population other than the
                 input and output populations
+            outcome: the env's info['outcome'] at the last step (e.g. 'correct', 'wrong' or 'timeout' for
+                CrossingChoiceEnv), or None if the env does not report one
         """
         hidden_populations = {name: population for name, population in self.network.populations.items()
                               if population is not self.network.input_pop and population is not self.network.output_pop}
@@ -223,7 +225,8 @@ class RLAlgorithm(object):
             episode_return += float(reward)
             done = terminated or truncated
         return {'episode_return': episode_return, 'q_values': np.array(q_values), 'actions': np.array(actions),
-                'activity': {name: np.array(values) for name, values in activity.items()}}
+                'activity': {name: np.array(values) for name, values in activity.items()},
+                'outcome': info.get('outcome')}
 
     def evaluate(self, env, episodes=1):
         """

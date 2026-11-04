@@ -6,9 +6,12 @@ from gymnasium.wrappers import FlattenObservation
 from .task_schedules import TaskSchedule, SequentialSchedule, AlternatingSchedule, RandomSchedule
 from .scheduled_env import ScheduledEnv
 from .cue_treadmill import CueTreadmillEnv, make_2ACDC_tracks
+from .crossing import CrossingChoiceEnv, make_crossing_tasks, CROSSING_TASKS
 
 gymnasium.register('EIANN/CueTreadmill-v0',
                    entry_point='EIANN.reinforcement_learning.environments.cue_treadmill:CueTreadmillEnv')
+gymnasium.register('EIANN/Crossing-v0',
+                   entry_point='EIANN.reinforcement_learning.environments.crossing:CrossingChoiceEnv')
 
 
 def make_env(env_id, seed=None, **kwargs):
