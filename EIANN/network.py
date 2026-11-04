@@ -104,7 +104,8 @@ class Network(nn.Module):
         self.optimizer_params_list = []
         self.populations = {}
         self.projections = {}
-
+        self.output_pop = None
+        
         # Build network populations
         self.layers = {}
         for i, (layer_name, pop_config) in enumerate(layer_config.items()):
@@ -133,7 +134,8 @@ class Network(nn.Module):
         
         # if no output_pop is designated, default to the first population specified in the final layer
         input_layer, *_, output_layer = list(self)
-        self.output_pop = next(iter(output_layer))
+        if self.output_pop is None:
+            self.output_pop = next(iter(output_layer))
         self.input_pop = next(iter(input_layer))
 
         # Build network projections
@@ -146,7 +148,16 @@ class Network(nn.Module):
                     for pre_pop_name, projection_kwargs in \
                             projection_config[post_layer_name][post_pop_name][pre_layer_name].items():
                         pre_pop = pre_layer.populations[pre_pop_name]
-                        if hasattr(pre_pop, 'image_dim') and pre_pop.image_dim is not None and hasattr(post_pop, 'kernel_size'):
+                        projection_type = projection_kwargs.pop('projection_type', None)
+                        if projection_type == 'Conv2D':
+                            if not (hasattr(pre_pop, 'image_dim') and pre_pop.image_dim is not None and
+                                    hasattr(post_pop, 'kernel_size')):
+                                raise Exception('EIANN.Network: Conv2DProjection requires pre image_dim and post kernel_size')
+                            projection = Conv2DProjection(pre_pop, post_pop, device=self.device, **projection_kwargs)
+                        elif projection_type == 'Linear':
+                            projection = Projection(pre_pop, post_pop, device=self.device, **projection_kwargs)
+                        elif (hasattr(pre_pop, 'image_dim') and pre_pop.image_dim is not None and
+                                    hasattr(post_pop, 'kernel_size')):
                             projection = Conv2DProjection(pre_pop, post_pop, device=self.device, **projection_kwargs)
                         else:
                             projection = Projection(pre_pop, post_pop, device=self.device, **projection_kwargs)

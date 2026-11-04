@@ -51,6 +51,30 @@ HebbWN_Eckmann_2:
     Output_E_H2_E_init_weight_scale: 0.35209494784253526
     Output_E_H2_E_learning_rate: 0.02238514244330842
     H_I_size: 100.0
+
+bpDale_relu_G_cheat_dyn_test:
+    H_E_E_learning_rate: 0.3980860680942911
+    Output_E_E_learning_rate: 0.07078468081982983
+    H1_E_Input_E_init_weight_scale: 2.416858991797159
+    H1_E_H1_I_init_weight_scale: 1.1158572938882887
+    H1_I_Input_E_init_weight_scale: 3.1371037827062644
+    H1_I_H1_E_init_weight_scale: 0.4835575833031128
+    H1_I_H1_I_init_weight_scale: 1.295863932103535
+    H2_E_H1_E_init_weight_scale: 0.5427969492492737
+    H2_E_H2_I_init_weight_scale: 0.47127118148939817
+    H2_I_H1_E_init_weight_scale: 1.4413459916540117
+    H2_I_H2_E_init_weight_scale: 1.5897266841738924
+    H2_I_H2_I_init_weight_scale: 2.408542744903562
+    Output_E_H2_E_init_weight_scale: 3.281687708158219
+    Output_E_Output_I_init_weight_scale: 1.5076419625966615
+    Output_I_H2_E_init_weight_scale: 2.94991175072541
+    Output_I_Output_E_init_weight_scale: 0.598405721617929
+    Output_I_Output_I_init_weight_scale: 1.532615660819997
+    H_I_size: 50.0
+    Output_I_size: 10.0
+    E_tau: 4
+    I_tau: 5
+
 BTSP_6L:
     # Uses BTSP_20 learning rule (no cross-sample temporal interaction)
     H_E_FF_E_max_weight_scale: 9.856270252078007
@@ -90,7 +114,7 @@ BTSP_6L:
 
 BP_like_EIRNN_5J_fast_equil:
     # with pre_equilibration and persistent_state
-    # unclear if decreased equilibration steps, peristent state,
+    # unclear if decreased equilibration steps, persistent state,
     # or lateral E-E recurrence caused the decreased performance
     #    accuracy: 81.4144058227539
     #    dynamics_residuals: 0.0
