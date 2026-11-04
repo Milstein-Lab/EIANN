@@ -62,9 +62,36 @@ def get_track_legend_handles(tracks):
          for i, (track, color) in enumerate(zip(tracks, SERIES_COLORS))]
 
 
-def plot_val_rewards(laps, tracks, title=None, save_path=None):
+def mark_blocks(ax, episodes, episodes_per_task, num_tracks, shade=True):
     """
-    Greedy reward over training, averaged over tracks.
+    Shade every block of a blocked schedule (AlternatingSchedule) in the color of the track it trains on, draw a dashed
+    line at every switch, and set the x limits to whole blocks, with episodes on the x axis.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+    episodes : np.ndarray of int
+        Episodes plotted, e.g. the validation episodes; the last one sets the number of blocks.
+    episodes_per_task : int
+    num_tracks : int
+    shade : bool, default True
+        False draws only the switch lines, e.g. when line colors stand for something other than tracks.
+    """
+    num_blocks = int(np.ceil((np.max(episodes) + 1) / episodes_per_task))
+    for block in range(num_blocks):
+        if shade:
+            ax.axvspan(block * episodes_per_task, (block + 1) * episodes_per_task,
+                       color=SERIES_COLORS[block % num_tracks], alpha=0.08, linewidth=0)
+        if block > 0:
+            ax.axvline(block * episodes_per_task, color='gray', linestyle='--', linewidth=0.5)
+    ax.set_xlim(0, num_blocks * episodes_per_task)
+
+
+def plot_val_rewards(laps, tracks, title=None, save_path=None, episodes_per_task=None):
+    """
+    Greedy reward over training, averaged over tracks. With episodes_per_task (a blocked schedule, e.g. 2ACDC_CL), the
+    reward of every track instead, plus their mean, with each block shaded in the color of the track it trains on and a
+    dashed line at every switch.
 
     Parameters
     ----------
@@ -73,10 +100,22 @@ def plot_val_rewards(laps, tracks, title=None, save_path=None):
     tracks : list of CueTreadmillEnv
     title : str, optional
     save_path : str, optional
+    episodes_per_task : int, optional
+        Block length of an AlternatingSchedule, in episodes. Block b trains on track b % len(tracks).
     """
-    fig, ax = plt.subplots(figsize=(2.6, 1.8), layout='constrained')
-    ax.axhline(tracks[0].reward_values[1], color='gray', linestyle='--', linewidth=0.5)
-    ax.plot(laps['episodes'], laps['rewards'].mean(axis=1), color=SERIES_COLORS[0], linewidth=1)
+    if episodes_per_task is None:
+        fig, ax = plt.subplots(figsize=(2.6, 1.8), layout='constrained')
+        ax.axhline(tracks[0].reward_values[1], color='gray', linestyle='--', linewidth=0.5)
+        ax.plot(laps['episodes'], laps['rewards'].mean(axis=1), color=SERIES_COLORS[0], linewidth=1)
+    else:
+        fig, ax = plt.subplots(figsize=(3.6, 1.8), layout='constrained')
+        mark_blocks(ax, laps['episodes'], episodes_per_task, len(tracks))
+        ax.axhline(tracks[0].reward_values[1], color='gray', linestyle=':', linewidth=0.5)
+        for track in range(len(tracks)):
+            ax.plot(laps['episodes'], laps['rewards'][:, track], color=SERIES_COLORS[track], linewidth=1,
+                    label=f'Track {track + 1}')
+        ax.plot(laps['episodes'], laps['rewards'].mean(axis=1), color='gray', linewidth=0.75, label='Mean')
+        ax.legend(frameon=False, loc='upper left', bbox_to_anchor=(1, 1))
     ax.set_xlabel('Episode')
     ax.set_ylabel('Reward')
     fig.suptitle(get_title(title, 'Validation reward'))
@@ -302,7 +341,8 @@ def plot_2ACDC_summary(rl_history, title=None, save_prefix=None, plot_format='sv
     Parameters
     ----------
     rl_history : dict
-        network.rl_history of an exported model, from nested_optimize_EIANN_2ACDC.
+        network.rl_history of an exported model, from nested_optimize_EIANN_2ACDC or nested_optimize_EIANN_2ACDC_CL
+        (whose episodes_per_task gives the per-track reward plot with block boundaries).
     title : str, optional
     save_prefix : str, optional
         Figures are saved to <save_prefix>_<plot name>.<plot_format> instead of shown.
@@ -314,7 +354,8 @@ def plot_2ACDC_summary(rl_history, title=None, save_prefix=None, plot_format='sv
     update_plot_defaults()
     laps = stack_laps(rl_history['val_laps'], rl_history['val_episodes'])
     tracks = make_2ACDC_tracks(**rl_history['treadmill_kwargs'])
-    plot_val_rewards(laps, tracks, title=title, save_path=get_save_path('val_rewards'))
+    plot_val_rewards(laps, tracks, title=title, save_path=get_save_path('val_rewards'),
+                     episodes_per_task=rl_history.get('episodes_per_task'))
     plot_final_q_values(laps, tracks, title=title, save_path=get_save_path('final_q_values'))
     plot_actions_over_training(laps, tracks, title=title, save_path=get_save_path('actions_over_training'))
     plot_hidden_activity(laps, tracks, title=title, save_path=get_save_path('hidden_activity'))

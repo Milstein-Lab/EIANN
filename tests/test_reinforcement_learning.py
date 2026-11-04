@@ -17,8 +17,9 @@ from EIANN.reinforcement_learning.network_updates import (apply_learning_rules, 
 from EIANN.reinforcement_learning.environments import (make_env, TaskSchedule, SequentialSchedule,
                                                        AlternatingSchedule, RandomSchedule, ScheduledEnv,
                                                        CueTreadmillEnv, make_2ACDC_tracks)
+from EIANN.reinforcement_learning.continual import EpisodeBuffer, RecordEpisodes, estimate_importance
 from EIANN.reinforcement_learning.treadmill_metrics import (stack_laps, cross_correlation, region_cross_correlation,
-                                                            licks_by_zone)
+                                                            licks_by_zone, block_rewards, seen_track_rewards)
 
 
 @pytest.fixture
@@ -338,13 +339,15 @@ def test_licks_by_zone():
     assert licks_by_zone({'actions': actions}, CueTreadmillEnv()).tolist() == [[[2, 0], [0, 1]]]
 
 
-def test_plot_2ACDC_summary(laps_and_tracks, tmp_path):
+@pytest.mark.parametrize('blocks', [{}, {'episodes_per_task': 2, 'num_cycles': 2, 'num_tracks': 2}])
+def test_plot_2ACDC_summary(laps_and_tracks, tmp_path, blocks):
     matplotlib = pytest.importorskip('matplotlib')
     matplotlib.use('Agg')
     from EIANN.reinforcement_learning.treadmill_plots import plot_2ACDC_summary
 
     algo, tracks = laps_and_tracks
-    rl_history = {'val_laps': algo.val_laps, 'val_episodes': algo.val_episodes, 'treadmill_kwargs': {}}
+    # with blocks, as exported by nested_optimize_EIANN_2ACDC_CL: per-track rewards with block boundaries
+    rl_history = {'val_laps': algo.val_laps, 'val_episodes': algo.val_episodes, 'treadmill_kwargs': {}, **blocks}
     plot_2ACDC_summary(rl_history, title='test', save_prefix=str(tmp_path / 'model'), plot_format='png')
     assert {path.name for path in tmp_path.iterdir()} == {
         f'model_{name}.png' for name in ('val_rewards', 'final_q_values', 'actions_over_training',
@@ -377,10 +380,12 @@ def test_q_learning_epsilon_decays_every_episode():
     assert algo.epsilon == pytest.approx(0.2)
 
 
+@pytest.mark.parametrize('task, date, schedule_class', [('2ACDC', '20261102', RandomSchedule),
+                                                        ('2ACDC_CL', '20261103', AlternatingSchedule)])
 @pytest.mark.parametrize('rule, algo_class', [('van_bp', QLearning), ('eprop', OnlineQLearning)])
-def test_2ACDC_network_config(rule, algo_class):
-    config = read_from_yaml(os.path.join(os.path.dirname(EIANN.__file__), 'optimize', 'network_config', '2ACDC',
-                                         f'20261102_EIANN_2_hidden_2ACDC_{rule}_relu_SGD_config.yaml'))
+def test_2ACDC_network_config(rule, algo_class, task, date, schedule_class):
+    config = read_from_yaml(os.path.join(os.path.dirname(EIANN.__file__), 'optimize', 'network_config', task,
+                                         f'{date}_EIANN_2_hidden_{task}_{rule}_relu_SGD_config.yaml'))
     network = nt.Network(config['layer_config'], config['projection_config'], seed=0, **config['training_kwargs'])
     assert network.persistent_state
     assert network.projections['H1E_H1E'].direction == 'R'
@@ -389,8 +394,28 @@ def test_2ACDC_network_config(rule, algo_class):
 
     tracks = [CueTreadmillEnv(cue=0, rewarded_zone=0), CueTreadmillEnv(cue=1, rewarded_zone=1)]
     algo = algo_class(network, persistent_state=network.persistent_state, seed=0)
-    algo.learn(ScheduledEnv(RandomSchedule(tracks, seed=0)), episodes=3)
+    schedule = RandomSchedule(tracks, seed=0) if schedule_class is RandomSchedule else \
+        AlternatingSchedule(tracks, episodes_per_task=2)
+    algo.learn(ScheduledEnv(schedule), episodes=3)
     assert algo.episode_lengths == [23, 23, 23]
+
+
+def test_block_rewards():
+    # 2 blocks of 4 episodes, validated after every 2nd episode; track 0 rewards 0.1 * episode, track 1 constant 1
+    episodes = np.array([1, 3, 5, 7])
+    rewards = np.stack([0.1 * episodes, np.ones(4)], axis=1)
+    matrix = block_rewards(rewards, episodes, episodes_per_task=4, num_blocks=2, window=2)
+    assert np.allclose(matrix, [[0.3, 1.], [0.7, 1.]])
+    matrix = block_rewards(rewards, episodes, episodes_per_task=4, num_blocks=2, window=4)
+    assert np.allclose(matrix, [[0.2, 1.], [0.6, 1.]])
+    # a block with no validation step in its window
+    assert np.isnan(block_rewards(rewards, episodes, episodes_per_task=4, num_blocks=3, window=2)[2]).all()
+
+
+def test_seen_track_rewards():
+    # block 0 has seen only track 0; later blocks average both tracks
+    matrix = np.array([[1., -0.1], [-0.1, 1.], [1., -0.3]])
+    assert np.allclose(seen_track_rewards(matrix), [1., 0.45, 0.35])
 
 
 def test_eprop_matches_bptt_for_leaky_single_layer():
@@ -469,3 +494,138 @@ def test_eprop_accumulated_update_matches_bptt_for_leaky_single_layer():
         model.detach()
     step_learning_rules(network)
     assert torch.allclose(weight_before - weight.detach(), 0.1 * bptt_grad)
+
+
+def build_cl_network(learning_rule='Backprop', **learning_rule_kwargs):
+    """
+    Small recurrent Q network whose projections all use learning_rule.
+    """
+    proj = lambda direction: {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': direction,
+                              'learning_rule': learning_rule, 'learning_rule_kwargs': dict(learning_rule_kwargs)}
+    return nt.Network({'Input': {'E': {'size': 5}}, 'H1': {'E': {'size': 16, 'activation': 'relu'}},
+                       'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                      {'H1': {'E': {'Input': {'E': proj('F')}, 'H1': {'E': proj('R')}}},
+                       'Output': {'E': {'H1': {'E': proj('F')}}}},
+                      learning_rate=0.1, optimizer='SGD', persistent_state=True, seed=0)
+
+
+def learn_blocks(algo, tracks, num_blocks=2, episodes_per_task=3):
+    # as nested_optimize_EIANN_2ACDC_CL: one learn() per block, then end_task()
+    for block in range(num_blocks):
+        algo.learn(ScheduledEnv(TaskSchedule(tracks, order=[block % len(tracks)])), episodes=episodes_per_task)
+        algo.end_task()
+
+
+def test_episode_buffer_is_a_reservoir():
+    buffer = EpisodeBuffer(max_episodes=3, seed=0)
+    for i in range(10):
+        buffer.add({'id': i})
+    assert len(buffer) == 3 and buffer.num_seen == 10
+    assert len({episode['id'] for episode in buffer.episodes}) == 3
+    buffer.clear()
+    assert len(buffer) == 0 and buffer.num_seen == 0
+
+
+def test_record_episodes():
+    buffer = EpisodeBuffer()
+    env = RecordEpisodes(CueTreadmillEnv(), buffer)
+    obs, info = env.reset()
+    done, num_steps = False, 0
+    while not done:
+        obs, reward, terminated, truncated, info = env.step(num_steps % 2)
+        done = terminated or truncated
+        num_steps += 1
+    episode = buffer.episodes[0]
+    assert episode['obs'].shape == (num_steps + 1, 5)
+    assert episode['actions'].tolist() == [step % 2 for step in range(num_steps)]
+    assert len(episode['rewards']) == len(episode['terminated']) == num_steps
+
+
+@pytest.mark.parametrize('method', ['fisher', 'empirical_fisher'])
+def test_estimate_importance(method):
+    network = build_cl_network('Backprop_EWC', importance_source='external')
+    algo = QLearning(network, persistent_state=True, seed=0)
+    algo.learn(ScheduledEnv(TaskSchedule(make_2ACDC_tracks(), order=[0])), episodes=3)
+    projections = algo.get_importance_projections()
+    assert len(projections) == 3
+    importance = estimate_importance(algo, algo.episode_buffer.episodes, projections, method=method)
+    for projection, projection_importance in zip(projections, importance):
+        assert projection_importance.shape == projection.weight.shape
+        assert (projection_importance >= 0).all() and projection_importance.sum() > 0
+    with pytest.raises(ValueError):
+        estimate_importance(algo, [], projections)
+
+
+def test_end_task_external_ewc():
+    network = build_cl_network('Backprop_EWC', ewc_lambda=10., importance_source='external')
+    algo = QLearning(network, persistent_state=True, seed=0, importance_num_episodes=2)
+    learn_blocks(algo, make_2ACDC_tracks())
+    for projection in network.projections.values():
+        rule = projection.learning_rule
+        assert rule.task_num == 2 and len(rule.fisher_list) == 2 and rule.external_importance is None
+        assert all((fisher >= 0).all() for fisher in rule.fisher_list)
+    # importance comes from the task's own episodes, so the buffer is reset at every task switch
+    assert len(algo.episode_buffer) == 0
+    # without set_importance, an external rule can't consolidate
+    with pytest.raises(ValueError):
+        network.update_CL_states()
+
+
+def test_end_task_si():
+    network = build_cl_network('Backprop_SI', si_lambda=1.)
+    algo = QLearning(network, persistent_state=True, seed=0)
+    learn_blocks(algo, make_2ACDC_tracks())
+    assert algo.episode_buffer is None  # SI's importance is online: no episodes are recorded
+    for projection in network.projections.values():
+        assert projection.learning_rule.task_num == 2
+        assert projection.learning_rule.omega is not None and (projection.learning_rule.omega >= 0).all()
+
+
+def test_end_task_without_cl_rules():
+    algo = QLearning(build_cl_network(), persistent_state=True, seed=0)
+    learn_blocks(algo, make_2ACDC_tracks())
+    assert algo.episode_buffer is None and len(algo.episode_returns) == 6
+
+
+def test_ewc_buffer_source_unchanged():
+    # the default importance source (used on MNIST) still caches samples and computes the Fisher itself
+    network = nt.Network({'Input': {'E': {'size': 4}}, 'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                         {'Output': {'E': {'Input': {'E': {'learning_rule': 'Backprop_EWC',
+                                                           'learning_rule_kwargs': {'fisher_num_samples': 3}}}}}},
+                         learning_rate=0.1, optimizer='SGD', seed=0)
+    for i in range(5):
+        output = network.forward(torch.rand(4))
+        apply_learning_rules(network, output, torch.tensor([1., 0.]))
+    rule = network.projections['OutputE_InputE'].learning_rule
+    assert len(network.ewc_buffer['data']) == 3 and network.ewc_buffer['num_seen'] == 5
+    network.update_CL_states()
+    assert len(rule.fisher_list) == 1 and rule.fisher_list[0].sum() > 0 and len(network.ewc_buffer['data']) == 0
+
+
+
+def test_ewc_rules_pickled_before_importance_source():
+    # MNIST EWC pickles exported before importance_source existed are reloaded with --retrain=False, after which
+    # nested calls update_CL_states (and backward, if a later phase retrains); they must behave as 'buffer'
+    network = nt.Network({'Input': {'E': {'size': 4}}, 'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                         {'Output': {'E': {'Input': {'E': {'learning_rule': 'Backprop_EWC',
+                                                           'learning_rule_kwargs': {'fisher_num_samples': 3}}}}}},
+                         learning_rate=0.1, optimizer='SGD', seed=0)
+    rule = network.projections['OutputE_InputE'].learning_rule
+    del rule.importance_source, rule.external_importance
+    for i in range(2):
+        for j in range(4):
+            apply_learning_rules(network, network.forward(torch.rand(4)), torch.tensor([1., 0.]))
+        network.update_CL_states()
+    assert len(rule.fisher_list) == 2 and rule.task_num == 2
+
+@pytest.mark.parametrize('rule', ['SI', 'EWC'])
+def test_2ACDC_CL_cl_rule_network_configs(rule):
+    config = read_from_yaml(os.path.join(os.path.dirname(EIANN.__file__), 'optimize', 'network_config', '2ACDC_CL',
+                                         f'20261103_EIANN_2_hidden_2ACDC_CL_van_bp_{rule}_relu_SGD_config.yaml'))
+    network = nt.Network(config['layer_config'], config['projection_config'], seed=0, **config['training_kwargs'])
+    assert {type(projection.learning_rule).__name__ for projection in network.projections.values()} == \
+        {f'Backprop_{rule}'}
+    algo = QLearning(network, persistent_state=network.persistent_state, seed=0)
+    learn_blocks(algo, make_2ACDC_tracks(), episodes_per_task=2)
+    assert all(projection.learning_rule.task_num == 2 for projection in network.projections.values())
+

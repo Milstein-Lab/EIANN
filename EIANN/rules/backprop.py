@@ -277,15 +277,23 @@ class Backprop_EWC(Backprop_CL):
     cached samples) is computed at the current weights, and the weights are stored as that task's anchor. The loss
     during subsequent tasks is:
         task_loss(output, target) + sum_p ewc_lambda_p * sum_t (F_pt * (W_p - W*_pt) ** 2).sum()
+    With importance_source='external', no samples are cached: F_pt is the importance passed with set_importance()
+    before each update_CL_states(), for tasks whose samples can't be replayed one input at a time (e.g. RL episodes
+    through a recurrent network; see EIANN.reinforcement_learning.continual).
     See Backprop_CL for task_incremental and task_classes.
     """
-    
+
     def __init__(self, projection, ewc_lambda=1., fisher_num_samples=1000, task_incremental=False, task_classes=None,
-                 learning_rate=None):
+                 learning_rate=None, importance_source='buffer'):
         super().__init__(projection, task_incremental=task_incremental, task_classes=task_classes,
                          learning_rate=learning_rate)
+        if importance_source not in ('buffer', 'external'):
+            raise ValueError("Backprop_EWC: importance_source must be 'buffer' or 'external', not %s" %
+                             importance_source)
         self.ewc_lambda = ewc_lambda
         self.fisher_num_samples = int(fisher_num_samples)
+        self.importance_source = importance_source
+        self.external_importance = None
         self.fisher_list = []
         self.anchor_weight_list = []
     
@@ -329,8 +337,16 @@ class Backprop_EWC(Backprop_CL):
         return penalty
     
     def update_CL_states(self):
+        # getattr: rules pickled before importance_source existed behave as 'buffer'
+        if getattr(self, 'importance_source', 'buffer') == 'external':
+            if getattr(self, 'external_importance', None) is None:
+                raise ValueError('Backprop_EWC: importance_source is external, but no importance was set with '
+                                 'set_importance() before update_CL_states() (projection %s)' % self.projection.name)
+            self.fisher_list.append(self.external_importance.detach().clone())
+            self.anchor_weight_list.append(self.projection.weight.detach().clone())
+            self.external_importance = None
         # The first projection called at the end of a task computes the Fisher for all projections using this rule
-        if len(self.fisher_list) == self.task_num:
+        elif len(self.fisher_list) == self.task_num:
             network = self.projection.post.network
             ewc_projections = self.get_projections(network)
             buffer = self.get_buffer(network)
@@ -359,8 +375,10 @@ class Backprop_EWC(Backprop_CL):
         
         ewc_projections = cls.get_projections(network)
         first_rule = ewc_projections[0].learning_rule
-        cls.cache_sample(network, network.input_pop.activity, target, first_rule.fisher_num_samples)
-        
+        # getattr: rules pickled before importance_source existed behave as 'buffer'
+        if getattr(first_rule, 'importance_source', 'buffer') == 'buffer':
+            cls.cache_sample(network, network.input_pop.activity, target, first_rule.fisher_num_samples)
+
         loss = first_rule.task_loss(network, output, target)
         for projection in ewc_projections:
             if projection.learning_rule.task_num > 0:

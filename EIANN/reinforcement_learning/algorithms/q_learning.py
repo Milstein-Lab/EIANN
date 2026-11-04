@@ -35,7 +35,7 @@ class QLearning(RLAlgorithm):
     see OnlineQLearning for updates after every step.
     """
     def __init__(self, network, gamma=0.99, epsilon=1., epsilon_decay=0.99, epsilon_min=0.05, persistent_state=False,
-                 seed=None):
+                 seed=None, importance_method='fisher', importance_num_episodes=100):
         """
         Parameters
         ----------
@@ -50,8 +50,12 @@ class QLearning(RLAlgorithm):
         persistent_state : bool, default False
             Whether to carry population states across the steps of an episode.
         seed : int, optional
+        importance_method : str, default 'fisher'
+        importance_num_episodes : int, default 100
+            See RLAlgorithm (continual learning with importance_source='external' rules).
         """
-        super().__init__(network, persistent_state=persistent_state, seed=seed)
+        super().__init__(network, persistent_state=persistent_state, seed=seed, importance_method=importance_method,
+                         importance_num_episodes=importance_num_episodes)
         self.gamma = float(gamma)
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
@@ -126,7 +130,7 @@ class OnlineQLearning(QLearning):
     inside backward, at every step.
     """
     def __init__(self, network, gamma=0.99, epsilon=1., epsilon_decay=0.99, epsilon_min=0.05, persistent_state=False,
-                 accumulate_updates=False, seed=None):
+                 accumulate_updates=False, seed=None, importance_method='fisher', importance_num_episodes=100):
         """
         Parameters
         ----------
@@ -139,9 +143,13 @@ class OnlineQLearning(QLearning):
         accumulate_updates : bool, default False
             Whether to apply the summed updates of an episode at its end instead of after every step.
         seed : int, optional
+        importance_method : str, default 'fisher'
+        importance_num_episodes : int, default 100
+            See RLAlgorithm.
         """
         super().__init__(network, gamma=gamma, epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min,
-                         persistent_state=persistent_state, seed=seed)
+                         persistent_state=persistent_state, seed=seed, importance_method=importance_method,
+                         importance_num_episodes=importance_num_episodes)
         self.accumulate_updates = accumulate_updates
 
     def run_episode(self, env):
