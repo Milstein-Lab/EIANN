@@ -706,6 +706,22 @@ def update_EIANN_config_2_hidden_BTSP_BP_CL_A(x, context):
         (Output_I_Output_I_init_weight_scale,)
 
 
+def update_EIANN_config_2_hidden_BTSP_SI_BP_CL_A(x, context):
+    """
+    update_EIANN_config_2_hidden_BTSP_BP_CL_A, with E<-E weights learned by the BTSP_SI_BP rule (BTSP_BP_CL with a
+    Synaptic Intelligence penalty). The hidden layers share H_si_lambda and the output layer has its own
+    Output_si_lambda, as in update_EIANN_config_2_hidden_BTSP_SI_CL_layer_lambda_6L. si_xi is fixed in the network
+    config.
+    """
+    update_EIANN_config_2_hidden_BTSP_BP_CL_A(x, context)
+    param_dict = param_array_to_dict(x, context.param_names)
+    H_si_lambda = param_dict['H_si_lambda']
+    Output_si_lambda = param_dict['Output_si_lambda']
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['si_lambda'] = H_si_lambda
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['si_lambda'] = H_si_lambda
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['si_lambda'] = Output_si_lambda
+
+
 def update_EIANN_config_2_hidden_BTSP_ELR_BP_CL_A(x, context):
     """
     update_EIANN_config_2_hidden_BTSP_BP_CL_A, with E<-E weights learned by the BTSP_ELR_BP_CL rule (BTSP_BP_CL with
@@ -755,6 +771,17 @@ def update_EIANN_config_2_hidden_BTSP_ELR_BP_CL_A(x, context):
         Output_E_H2_E_ELR_width
     context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['elr_scale'] = Output_E_H2_E_ELR_delta
     context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['elr_min'] = Output_E_H2_E_ELR_min
+
+
+def update_EIANN_config_2_hidden_BTSP_SI_ELR_BP_CL_A(x, context):
+    """
+    update_EIANN_config_2_hidden_BTSP_ELR_BP_CL_A, with E<-E weights learned by the BTSP_SI_ELR_BP rule (BTSP_BP_CL
+    with an elastic learning rate driven by the Synaptic Intelligence importance omega, as in Backprop_SI_ELR). The
+    parameters are the same as for BTSP_ELR_BP_CL: the ELR threshold and width are scaled by each projection's
+    max_weight, and *_ELR_delta is elr_scale (which multiplies omega in the lr_mod update). si_xi is fixed in the
+    network config.
+    """
+    update_EIANN_config_2_hidden_BTSP_ELR_BP_CL_A(x, context)
 
 
 def update_EIANN_config_2_hidden_backprop_Dale_relu_SGD_CL_INEL_A(x, context):
@@ -12918,6 +12945,63 @@ def update_EIANN_config_2_hidden_BTSP_SI_CL_6L(x, context):
         (Output_I_Output_E_init_weight_scale,)
     context.projection_config['Output']['SomaI']['Output']['SomaI']['weight_init_args'] = \
         (Output_I_Output_I_init_weight_scale,)
+
+
+def update_EIANN_config_2_hidden_BTSP_SI_ELR_CL_6L(x, context):
+    """
+    Continual-learning version of update_EIANN_config_2_hidden_BTSP_6L for BTSP_SI_ELR (BTSP_CL with an elastic
+    learning rate driven by the Synaptic Intelligence importance omega, as in Backprop_SI_ELR).
+    E<-E weights (H1.E.Input.E, H2.E.H1.E, Output.E.H2.E) are learned with the BTSP_SI_ELR rule. All other projections
+    are configured by update_EIANN_config_2_hidden_BTSP_6L. As in update_EIANN_config_2_hidden_BTSP_ELR_BP_CL_A, the
+    hidden layers share one set of ELR params and the output layer has its own, the ELR threshold and width are scaled
+    by each projection's max_weight, and *_ELR_delta is elr_scale (which multiplies omega in the lr_mod update). si_xi
+    is fixed in the network config.
+    :param x:
+    :param context:
+    """
+    update_EIANN_config_2_hidden_BTSP_6L(x, context)
+    param_dict = param_array_to_dict(x, context.param_names)
+    
+    H_E_FF_E_max_weight_scale = param_dict['H_E_FF_E_max_weight_scale']
+    H_E_E_ELR_threshold_scale = param_dict['H_E_E_ELR_threshold_scale']
+    H_E_E_ELR_width_scale = param_dict['H_E_E_ELR_width_scale']
+    H_E_E_ELR_delta = param_dict['H_E_E_ELR_delta']
+    H_E_E_ELR_min = param_dict['H_E_E_ELR_min']
+    
+    H1_E_Input_E_max_weight = H_E_FF_E_max_weight_scale / math.sqrt(context.layer_config['Input']['E']['size'])
+    H1_E_Input_E_ELR_threshold = H_E_E_ELR_threshold_scale * H1_E_Input_E_max_weight
+    H1_E_Input_E_ELR_width = H_E_E_ELR_width_scale * H1_E_Input_E_max_weight
+    
+    H2_E_H1_E_max_weight = H_E_FF_E_max_weight_scale / math.sqrt(context.layer_config['H1']['E']['size'])
+    H2_E_H1_E_ELR_threshold = H_E_E_ELR_threshold_scale * H2_E_H1_E_max_weight
+    H2_E_H1_E_ELR_width = H_E_E_ELR_width_scale * H2_E_H1_E_max_weight
+    
+    Output_E_H2_E_max_weight_scale = param_dict['Output_E_H2_E_max_weight_scale']
+    Output_E_H2_E_ELR_threshold_scale = param_dict['Output_E_H2_E_ELR_threshold_scale']
+    Output_E_H2_E_ELR_width_scale = param_dict['Output_E_H2_E_ELR_width_scale']
+    Output_E_H2_E_ELR_delta = param_dict['Output_E_H2_E_ELR_delta']
+    Output_E_H2_E_ELR_min = param_dict['Output_E_H2_E_ELR_min']
+    Output_E_H2_E_max_weight = Output_E_H2_E_max_weight_scale / math.sqrt(context.layer_config['H2']['E']['size'])
+    Output_E_H2_E_ELR_threshold = Output_E_H2_E_ELR_threshold_scale * Output_E_H2_E_max_weight
+    Output_E_H2_E_ELR_width = Output_E_H2_E_ELR_width_scale * Output_E_H2_E_max_weight
+    
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['elr_threshold'] = \
+        H1_E_Input_E_ELR_threshold
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['elr_width'] = H1_E_Input_E_ELR_width
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['elr_scale'] = H_E_E_ELR_delta
+    context.projection_config['H1']['E']['Input']['E']['learning_rule_kwargs']['elr_min'] = H_E_E_ELR_min
+    
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['elr_threshold'] = H2_E_H1_E_ELR_threshold
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['elr_width'] = H2_E_H1_E_ELR_width
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['elr_scale'] = H_E_E_ELR_delta
+    context.projection_config['H2']['E']['H1']['E']['learning_rule_kwargs']['elr_min'] = H_E_E_ELR_min
+    
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['elr_threshold'] = \
+        Output_E_H2_E_ELR_threshold
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['elr_width'] = \
+        Output_E_H2_E_ELR_width
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['elr_scale'] = Output_E_H2_E_ELR_delta
+    context.projection_config['Output']['E']['H2']['E']['learning_rule_kwargs']['elr_min'] = Output_E_H2_E_ELR_min
 
 
 

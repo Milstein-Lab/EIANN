@@ -1,16 +1,27 @@
 van_bp_relu_SGD:
-    #    starting values: 2ACDC van_bp_relu_SGD (x0), not optimized on 2ACDC_CL
-    #    5 seeds: fails (seed 66052_260 diverges at episode ~1003, after the switch back to track 0). The other 4 seeds:
-    #    phase0_reward: 1.0, phase1-3_reward: 0.4-0.45 (1.0 on the trained track, -0.1 to -0.2 on the other)
-    H_learning_rate: 1.
-    Output_learning_rate: 1.
-    H1_init_weight_scale: 1.
-    H1_H1_init_weight_scale: 1.
-    H2_init_weight_scale: 1.
-    Output_init_weight_scale: 1.2
-    epsilon: 0.9
-    epsilon_decay: 1.
-    gamma: 0.9
+    # phase0_reward: 1.0
+    # phase0_reward_track0: 1.0
+    # phase0_reward_track1: -0.15999999999999998
+    # phase1_reward: 0.959
+    # phase1_reward_track0: 0.9180000000000001
+    # phase1_reward_track1: 1.0
+    # phase2_reward: 0.9790000000000001
+    # phase2_reward_track0: 1.0
+    # phase2_reward_track1: 0.958
+    # phase3_reward: 1.0
+    # phase3_reward_track0: 1.0
+    # phase3_reward_track1: 1.0
+    # reward: 0.9845000000000003
+    H_learning_rate: 0.6041389594014048
+    Output_learning_rate: 0.8073295885371278
+    H1_init_weight_scale: 1.6032211193413455
+    H1_H1_init_weight_scale: 2.6247088965956373
+    H2_init_weight_scale: 0.08453888636630341
+    Output_init_weight_scale: 0.5220643973614167
+    epsilon: 0.8900474088473349
+    epsilon_decay: 0.9987528465276572
+    gamma: 0.2720177551092535
+
 
 eprop_relu_SGD:
     #    starting values: 2ACDC eprop_relu_SGD, not optimized on 2ACDC_CL
