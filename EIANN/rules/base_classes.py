@@ -22,7 +22,16 @@ class ContinualLearningMixin(object):
     
     def update_CL_states(self):
         self.task_num += 1
-    
+
+    def set_importance(self, importance):
+        """
+        Per-weight importance of the task that just ended, estimated outside the rule, for rules that consolidate
+        importance they don't compute themselves (importance_source='external', e.g. Backprop_EWC). Set it before
+        network.update_CL_states(); in RL, RLAlgorithm.end_task() does both.
+        :param importance: tensor of the shape of the projection's weight
+        """
+        self.external_importance = importance
+
     def get_task_classes(self, task_num=None):
         if task_num is None:
             task_num = self.task_num

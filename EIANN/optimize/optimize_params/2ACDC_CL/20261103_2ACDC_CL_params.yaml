@@ -1,0 +1,73 @@
+van_bp_relu_SGD:
+    # phase0_reward: 1.0
+    # phase0_reward_track0: 1.0
+    # phase0_reward_track1: -0.15999999999999998
+    # phase1_reward: 0.959
+    # phase1_reward_track0: 0.9180000000000001
+    # phase1_reward_track1: 1.0
+    # phase2_reward: 0.9790000000000001
+    # phase2_reward_track0: 1.0
+    # phase2_reward_track1: 0.958
+    # phase3_reward: 1.0
+    # phase3_reward_track0: 1.0
+    # phase3_reward_track1: 1.0
+    # reward: 0.9845000000000003
+    H_learning_rate: 0.6041389594014048
+    Output_learning_rate: 0.8073295885371278
+    H1_init_weight_scale: 1.6032211193413455
+    H1_H1_init_weight_scale: 2.6247088965956373
+    H2_init_weight_scale: 0.08453888636630341
+    Output_init_weight_scale: 0.5220643973614167
+    epsilon: 0.8900474088473349
+    epsilon_decay: 0.9987528465276572
+    gamma: 0.2720177551092535
+
+
+eprop_relu_SGD:
+    #    starting values: 2ACDC eprop_relu_SGD, not optimized on 2ACDC_CL
+    #    5 seeds: phase0_reward: 1.0, phase1_reward: 0.45, phase2_reward: 0.45, phase3_reward: 0.407 (reward: 0.577);
+    #    1.0 on the trained track (0.956 in phase 3), -0.1 to -0.142 on the other
+    H_learning_rate: 0.842381991001941
+    Output_learning_rate: 0.0619887582286052
+    H1_init_weight_scale: 0.3153865561556863
+    H1_H1_init_weight_scale: 0.7165045726081581
+    H2_init_weight_scale: 2.7214570643454503
+    Output_init_weight_scale: 1.781651018264462
+    epsilon: 0.6070376073482587
+    epsilon_decay: 0.9984025483962401
+    gamma: 0.15056280945389777
+    tau: 2.1984036407984133
+
+van_bp_SI_relu_SGD:
+    #    starting values: van_bp_relu_SGD, plus H_si_lambda and Output_si_lambda at the optimize config's x0; not optimized
+    #    5 seeds: fails (66052_260 diverges, as without SI); the other 4: phase0_reward 1.0, phase1_reward 0.45,
+    #    phase2_reward 0.40-0.45, phase3_reward 0.45-0.75 (one seed keeps track 1 at 0.5 after relearning track 2).
+    #    At the MNIST x0 (si_lambda 0.1), 3 of 5 seeds diverge
+    H_learning_rate: 1.
+    Output_learning_rate: 1.
+    H1_init_weight_scale: 1.
+    H1_H1_init_weight_scale: 1.
+    H2_init_weight_scale: 1.
+    Output_init_weight_scale: 1.2
+    epsilon: 0.9
+    epsilon_decay: 1.
+    gamma: 0.9
+    H_si_lambda: 0.01
+    Output_si_lambda: 0.01
+
+van_bp_EWC_relu_SGD:
+    #    starting values: van_bp_relu_SGD, plus H_ewc_lambda and Output_ewc_lambda at the optimize config's x0; not optimized
+    #    5 seeds: fails (66052_260 diverges, as without EWC); the other 4: phase0_reward 1.0, phase1_reward 0.45,
+    #    phase2_reward 0.35-0.45, phase3_reward 0.45-0.95 (one seed keeps track 1 at 0.9 after relearning track 2).
+    #    At the MNIST x0 (ewc_lambda 100; Fisher max ~0.07), training diverges right after the first switch
+    H_learning_rate: 1.
+    Output_learning_rate: 1.
+    H1_init_weight_scale: 1.
+    H1_H1_init_weight_scale: 1.
+    H2_init_weight_scale: 1.
+    Output_init_weight_scale: 1.2
+    epsilon: 0.9
+    epsilon_decay: 1.
+    gamma: 0.9
+    H_ewc_lambda: 1.
+    Output_ewc_lambda: 1.

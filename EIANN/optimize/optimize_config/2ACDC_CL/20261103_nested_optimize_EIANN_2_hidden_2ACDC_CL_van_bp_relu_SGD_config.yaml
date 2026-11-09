@@ -1,0 +1,82 @@
+bounds:
+    H_learning_rate:
+        - 0.0001
+        - 2.
+    Output_learning_rate:
+        - 0.0001
+        - 2.
+    H1_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_H1_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_init_weight_scale:
+        - 0.01
+        - 10.
+    epsilon:
+        - 0.01
+        - 0.999
+    epsilon_decay:
+        - 0.9
+        - 1.
+    gamma:
+        - 0.01
+        - 0.99
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    status_bar: False
+    episodes_per_task: 500 # consecutive episodes on each track per block
+    num_cycles: 2 # passes through all tracks; total episodes = episodes_per_task * num_tracks * num_cycles
+    algorithm: QLearning
+    algorithm_kwargs:
+        epsilon_min: 0.
+    treadmill_kwargs:
+        length: 23
+        cue_position: 8
+        cue_length: 3
+        num_cues: 2
+        reward_positions:
+            - 15
+            - 19
+        reward_length: 2
+        reward_values:
+            - 0.
+            - 1.
+            - -0.1
+    network_config_file_path: optimize/network_config/2ACDC_CL/20261103_EIANN_2_hidden_2ACDC_CL_van_bp_relu_SGD_config.yaml
+    val_interval:
+        - 0
+        - -1
+        - 10
+    num_episodes_reward_window: 100 # per block: last episodes of each block
+update_context:
+    - source: optimize.nested_optimize_EIANN_2ACDC_CL
+      function: update_EIANN_config_2_hidden_2ACDC_van_bp_relu_SGD
+    - source: optimize.nested_optimize_EIANN_2ACDC_CL
+      function: update_q_learning_kwargs
+stages:
+    - source: optimize.nested_optimize_EIANN_2ACDC_CL
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_2ACDC_CL_van_bp_relu_SGD
+x0:
+    H_learning_rate: 1.
+    Output_learning_rate: 1.
+    H1_init_weight_scale: 1.
+    H1_H1_init_weight_scale: 1.
+    H2_init_weight_scale: 1.
+    Output_init_weight_scale: 1.2
+    epsilon: 0.9
+    epsilon_decay: 1.
+    gamma: 0.9

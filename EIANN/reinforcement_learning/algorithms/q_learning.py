@@ -34,8 +34,10 @@ class QLearning(RLAlgorithm):
     backward_steps == forward_steps, gradients flow back through the whole episode. This suits backprop-based rules;
     see OnlineQLearning for updates after every step.
     """
-    def __init__(self, network, gamma=0.99, epsilon=1., epsilon_decay=0.99, epsilon_min=0.05, persistent_state=False,
-                 seed=None):
+    EPSILON_SCHEDULES = ('fixed', 'decay', 'reset')
+
+    def __init__(self, network, gamma=0.99, epsilon=1., epsilon_decay=0.99, epsilon_min=0.05, epsilon_schedule='decay',
+                 persistent_state=False, seed=None, importance_method='fisher', importance_num_episodes=100):
         """
         Parameters
         ----------
@@ -45,17 +47,31 @@ class QLearning(RLAlgorithm):
         epsilon : float, default 1.
             Initial probability of a random action.
         epsilon_decay : float, default 0.99
-            Multiplies epsilon after every episode.
+            Multiplies epsilon after every episode (unless epsilon_schedule is 'fixed').
         epsilon_min : float, default 0.05
+        epsilon_schedule : str, default 'decay'
+            'fixed': epsilon stays at its initial value.
+            'decay': epsilon decays over the whole run, across tasks.
+            'reset': as 'decay', but end_task() sets epsilon back to its initial value, so exploration restarts with
+            every task (which tells the agent when the task changed).
         persistent_state : bool, default False
             Whether to carry population states across the steps of an episode.
         seed : int, optional
+        importance_method : str, default 'fisher'
+        importance_num_episodes : int, default 100
+            See RLAlgorithm (continual learning with importance_source='external' rules).
         """
-        super().__init__(network, persistent_state=persistent_state, seed=seed)
+        super().__init__(network, persistent_state=persistent_state, seed=seed, importance_method=importance_method,
+                         importance_num_episodes=importance_num_episodes)
+        if epsilon_schedule not in self.EPSILON_SCHEDULES:
+            raise ValueError(f'{type(self).__name__}: epsilon_schedule must be one of {self.EPSILON_SCHEDULES}, not '
+                             f'{epsilon_schedule!r}')
         self.gamma = float(gamma)
         self.epsilon = epsilon
+        self.initial_epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
+        self.epsilon_schedule = epsilon_schedule
 
     def select_action(self, q):
         if self.rng.random() < self.epsilon:
@@ -113,7 +129,13 @@ class QLearning(RLAlgorithm):
         return episode_return, len(actions)
 
     def end_episode(self):
-        self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
+        if self.epsilon_schedule != 'fixed':
+            self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
+
+    def end_task(self):
+        super().end_task()
+        if self.epsilon_schedule == 'reset':
+            self.epsilon = self.initial_epsilon
 
 
 class OnlineQLearning(QLearning):
@@ -125,8 +147,9 @@ class OnlineQLearning(QLearning):
     accumulate_updates only defers rules that apply their update in step() (e.g. Eprop); Backprop updates the weights
     inside backward, at every step.
     """
-    def __init__(self, network, gamma=0.99, epsilon=1., epsilon_decay=0.99, epsilon_min=0.05, persistent_state=False,
-                 accumulate_updates=False, seed=None):
+    def __init__(self, network, gamma=0.99, epsilon=1., epsilon_decay=0.99, epsilon_min=0.05, epsilon_schedule='decay',
+                 persistent_state=False, accumulate_updates=False, seed=None, importance_method='fisher',
+                 importance_num_episodes=100):
         """
         Parameters
         ----------
@@ -135,13 +158,19 @@ class OnlineQLearning(QLearning):
         epsilon : float, default 1.
         epsilon_decay : float, default 0.99
         epsilon_min : float, default 0.05
+        epsilon_schedule : str, default 'decay'
+            See QLearning.
         persistent_state : bool, default False
         accumulate_updates : bool, default False
             Whether to apply the summed updates of an episode at its end instead of after every step.
         seed : int, optional
+        importance_method : str, default 'fisher'
+        importance_num_episodes : int, default 100
+            See RLAlgorithm.
         """
         super().__init__(network, gamma=gamma, epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min,
-                         persistent_state=persistent_state, seed=seed)
+                         epsilon_schedule=epsilon_schedule, persistent_state=persistent_state, seed=seed, importance_method=importance_method,
+                         importance_num_episodes=importance_num_episodes)
         self.accumulate_updates = accumulate_updates
 
     def run_episode(self, env):

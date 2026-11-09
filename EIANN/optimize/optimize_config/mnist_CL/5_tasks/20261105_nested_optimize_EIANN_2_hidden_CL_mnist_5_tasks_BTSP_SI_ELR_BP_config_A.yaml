@@ -1,0 +1,162 @@
+bounds:
+    H_E_FF_E_max_weight_scale:
+        - 0.1
+        - 100.
+    H1_E_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H_E_E_learning_rate:
+        - 0.0001
+        - 0.25
+    H1_E_error_scale:
+        - 0.1
+        - 1000.
+    H1_E_H1_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_I_Input_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_I_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_I_H1_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_E_error_scale:
+        - 0.1
+        - 1000.
+    H2_E_H2_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_I_H1_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_I_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_I_H2_I_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_H2_E_max_weight_scale:
+        - 0.1
+        - 100.
+    Output_E_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_E_H2_E_learning_rate:
+        - 0.0001
+        - 0.25
+    Output_E_error_scale:
+        - 0.1
+        - 1000.
+    Output_E_Output_I_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_H2_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_E_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_I_Output_I_init_weight_scale:
+        - 0.01
+        - 10.
+    H_E_E_ELR_threshold_scale:
+        - 0.001
+        - 1.
+    H_E_E_ELR_width_scale:
+        - 0.001
+        - 1.
+    H_E_E_ELR_delta:
+        - 1.0e-05
+        - 1.
+    H_E_E_ELR_min:
+        - 0.001
+        - 1.
+    Output_E_H2_E_ELR_threshold_scale:
+        - 0.001
+        - 1.
+    Output_E_H2_E_ELR_width_scale:
+        - 0.001
+        - 1.
+    Output_E_H2_E_ELR_delta:
+        - 1.0e-05
+        - 1.
+    Output_E_H2_E_ELR_min:
+        - 0.001
+        - 1.
+    H_I_size:
+        - 1.
+        - 100.
+    Output_I_size:
+        - 1.
+        - 10.
+default_params:
+    H_I_size: 50
+    Output_I_size: 10
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps_per_class: 2000
+    num_splits: 5
+    epochs: 1
+    network_config_file_path: optimize/network_config/MNIST_CL/20261105_EIANN_2_hidden_CL_mnist_bpDale_BTSP_SI_ELR_BP_config_A.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 1000
+    constrain_equilibration_dynamics: True
+    include_equilibration_dynamics_objective: True
+update_context:
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
+      function: update_EIANN_config_2_hidden_BTSP_SI_ELR_BP_CL_A
+stages:
+    - source: optimize.nested_optimize_EIANN_1_hidden_CL_mnist
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_CL_mnist_5_tasks_BTSP_SI_ELR_BP_A
+x0:
+    H_E_FF_E_max_weight_scale: 15.572296155009434
+    H1_E_Input_E_init_weight_scale: 0.6763644979440904
+    H_E_E_learning_rate: 0.0016870594715077101
+    H1_E_error_scale: 71.20847624321713
+    H1_E_H1_I_init_weight_scale: 0.8229877320117479
+    H1_I_Input_E_init_weight_scale: 1.165701319137579
+    H1_I_H1_E_init_weight_scale: 5.017341100946803
+    H1_I_H1_I_init_weight_scale: 1.1279140571581088
+    H2_E_H1_E_init_weight_scale: 0.36657062362978304
+    H2_E_error_scale: 742.1075878443789
+    H2_E_H2_I_init_weight_scale: 0.1326610500476233
+    H2_I_H1_E_init_weight_scale: 0.328838812150505
+    H2_I_H2_E_init_weight_scale: 0.8371031521128873
+    H2_I_H2_I_init_weight_scale: 1.477871162513388
+    Output_E_H2_E_max_weight_scale: 26.400703661352328
+    Output_E_H2_E_init_weight_scale: 3.793516734447916
+    Output_E_H2_E_learning_rate: 0.0003770934455834149
+    Output_E_error_scale: 134.0430976142604
+    Output_E_Output_I_init_weight_scale: 0.7359131330147656
+    Output_I_H2_E_init_weight_scale: 1.3212292444780245
+    Output_I_Output_E_init_weight_scale: 0.7682504140884598
+    Output_I_Output_I_init_weight_scale: 1.1462736750405742
+    H_E_E_ELR_threshold_scale: 0.35801273422691987
+    H_E_E_ELR_width_scale: 0.3370836351484069
+    H_E_E_ELR_delta: 0.003
+    H_E_E_ELR_min: 0.001225913307467175
+    Output_E_H2_E_ELR_threshold_scale: 0.16582625190258193
+    Output_E_H2_E_ELR_width_scale: 0.15056368078101273
+    Output_E_H2_E_ELR_delta: 0.003
+    Output_E_H2_E_ELR_min: 0.09670483827456942
+    H_I_size: 50.0
+    Output_I_size: 10.0

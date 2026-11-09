@@ -1078,6 +1078,90 @@ class BTSP_SI_HD_v1(BTSP_CL):
         super().update_CL_states()
 
 
+class BTSP_SI_ELR(BTSP_CL):
+    # lr_mod is updated during training, not set at the task switch (used by scripts/get_cl_metrics.py)
+    continuous_lr_mod = True
+
+    def __init__(self, projection, si_xi=1e-3, elr_threshold=0., elr_width=0.5, elr_scale=0.1, elr_min=0.01,
+                 **kwargs):
+        """
+        BTSP_CL with Synaptic Intelligence (Zenke et al., 2017, arXiv:1703.04200) implemented as an elastic learning
+        rate, as in Backprop_SI_ELR, instead of a loss penalty. As in BTSP_SI, the rule's own unscaled update,
+        delta_weight (see BTSP_CL.compute_delta_weight), takes the place of the negative gradient of the unregularized
+        task loss, and the per-weight importance omega and the anchor weight (the weight at the end of the previous
+        task) are computed as in BTSP_SI. Weights are updated with a per-weight learning rate:
+            W_p += learning_rate * lr_mod_p * delta_weight_p
+        and after every train step (after the weight update and weight clamping), lr_mod is updated continuously, as in
+        Backprop_SI_ELR:
+            lr_mod_p += (delta_weight_p != 0) * omega_p * lr_mod_func(|W_p - W_anchor_p|)
+            lr_mod_p = clamp(lr_mod_p, elr_min, 1)
+        where lr_mod_func is a piecewise linear function that increases from -elr_scale (distance <= elr_threshold) to
+        elr_scale (distance >= elr_threshold + elr_width). Important weights near their anchor lose learning rate, and
+        important weights far from it recover learning rate. lr_mod starts at 1, stays at 1 during the first task
+        (omega is not defined before the first task switch), and is not reset at task boundaries. Do not combine with
+        other BTSP_CL projections in the same network, since they share BTSP_CL.backward.
+        :param projection: :class:'nn.Linear'
+        :param si_xi: float; damping term of the importance normalization
+        :param elr_threshold: float
+        :param elr_width: float
+        :param elr_scale: float
+        :param elr_min: float
+        :param kwargs: passed to BTSP_CL (e.g. dep_ratio, dep_th, dep_width, max_pop_fraction, learning_rate,
+            task_incremental, task_classes)
+        """
+        super().__init__(projection, **kwargs)
+        self.si_xi = si_xi
+        self.omega = None
+        self.small_omega = torch.zeros_like(projection.weight.data)
+        # Weights are initialized by the network after the projection is built, so this is set on the first step
+        self.task_start_weight = None
+        self.unreg_delta_weight = None
+        self.prev_weight = None
+        self.elr_threshold = elr_threshold
+        self.elr_width = elr_width
+        self.elr_scale = elr_scale
+        self.elr_min = elr_min
+        self.lr_mod = torch.ones_like(projection.weight.data)
+        self.lr_mod_func = pwlin(-self.elr_scale, self.elr_scale, self.elr_threshold,
+                                 self.elr_threshold + self.elr_width)
+
+    def step(self):
+        if self.task_start_weight is None:
+            self.task_start_weight = self.projection.weight.detach().clone()
+        delta_weight = self.compute_delta_weight()
+        self.unreg_delta_weight = delta_weight.detach().clone()
+        self.prev_weight = self.projection.weight.detach().clone()
+        self.projection.weight.data += self.learning_rate * self.lr_mod * delta_weight
+
+    def update(self):
+        # Called after step() and constrain_weights_and_biases(), so the weight change includes weight clamping.
+        # unreg_delta_weight is the negative of the gradient, so the path integral -grad * delta_weight is a sum here
+        if self.prev_weight is not None:
+            weight = self.projection.weight.detach()
+            actual_delta_weight = weight - self.prev_weight
+            self.small_omega += self.unreg_delta_weight * actual_delta_weight
+            self.prev_weight = None
+
+            # elastic learning rate modulation
+            if self.omega is not None:
+                distance_to_anchor = torch.abs(weight - self.task_start_weight)
+                gate = (self.unreg_delta_weight != 0.).float()
+                self.lr_mod += gate * self.omega * self.lr_mod_func(distance_to_anchor)
+                self.lr_mod.clamp_(min=self.elr_min, max=1.)
+
+    def update_CL_states(self):
+        weight = self.projection.weight.detach().clone()
+        if self.task_start_weight is not None:
+            omega = self.small_omega / ((weight - self.task_start_weight) ** 2 + self.si_xi)
+            if self.omega is not None:
+                omega = self.omega + omega
+            # Clamp at zero, as in the reference implementation (ganguli-lab/pathint)
+            self.omega = torch.relu(omega)
+        self.task_start_weight = weight
+        self.small_omega = torch.zeros_like(weight)
+        super().update_CL_states()
+
+
 class BTSP_ELR_CL(BTSP_CL):
     def __init__(self, projection, elr_threshold=0., elr_width=0.5, elr_scale=0.1, elr_min=0.01, **kwargs):
         """
@@ -1213,6 +1297,39 @@ class BTSP_ELR_BP_CL(BTSP_BP_Mixin, BTSP_ELR_CL):
         :param error_scale: float; scales -dL/da before clamping to [-1, 1]
         :param kwargs: passed to BTSP_ELR_CL (e.g. elr_threshold, elr_width, elr_scale, elr_min, dep_ratio, dep_th,
             dep_width, learning_rate, relu_gate, task_incremental, task_classes)
+        """
+        super().__init__(projection, **kwargs)
+        self.error_scale = error_scale
+        projection.weight.requires_grad = True
+
+
+class BTSP_SI_BP(BTSP_BP_Mixin, BTSP_SI):
+    def __init__(self, projection, error_scale=1., **kwargs):
+        """
+        BTSP_SI weight update (BTSP with a Synaptic Intelligence penalty) with plateaus computed by backprop (see
+        BTSP_BP_Mixin) instead of dendritic top-down inputs. max_pop_fraction, stochastic and neg_rate_th are ignored.
+        :param projection: :class:'nn.Linear'
+        :param error_scale: float; scales -dL/da before clamping to [-1, 1]
+        :param kwargs: passed to BTSP_SI (e.g. si_lambda, si_xi, dep_ratio, dep_th, dep_width, learning_rate,
+            relu_gate, task_incremental, task_classes)
+        """
+        super().__init__(projection, **kwargs)
+        self.error_scale = error_scale
+        projection.weight.requires_grad = True
+
+
+class BTSP_SI_ELR_BP(BTSP_BP_Mixin, BTSP_SI_ELR):
+    # lr_mod is updated during training, not set at the task switch (used by scripts/get_cl_metrics.py)
+    continuous_lr_mod = True
+
+    def __init__(self, projection, error_scale=1., **kwargs):
+        """
+        BTSP_SI_ELR weight update (BTSP with an SI-driven elastic learning rate) with plateaus computed by backprop (see
+        BTSP_BP_Mixin) instead of dendritic top-down inputs. max_pop_fraction, stochastic and neg_rate_th are ignored.
+        :param projection: :class:'nn.Linear'
+        :param error_scale: float; scales -dL/da before clamping to [-1, 1]
+        :param kwargs: passed to BTSP_SI_ELR (e.g. si_xi, elr_threshold, elr_width, elr_scale, elr_min, dep_ratio,
+            dep_th, dep_width, learning_rate, relu_gate, task_incremental, task_classes)
         """
         super().__init__(projection, **kwargs)
         self.error_scale = error_scale

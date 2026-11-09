@@ -1,0 +1,75 @@
+layer_config:
+    Input:
+        E:
+            size: 5
+    H1:
+        E:
+            size: 100
+            activation: relu
+    H2:
+        E:
+            size: 100
+            activation: relu
+    Output:
+        E:
+            size: 2
+            activation: linear
+projection_config:
+    H1:
+        E:
+            Input:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.3153865561556863
+                    direction: F
+                    learning_rule: Eprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.842381991001941
+            H1:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 0.7165045726081581
+                    weight_constraint: no_autapses
+                    direction: R
+                    learning_rule: Eprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.842381991001941
+    H2:
+        E:
+            H1:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 2.7214570643454503
+                    direction: F
+                    learning_rule: Eprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.842381991001941
+    Output:
+        E:
+            H2:
+                E:
+                    weight_init: scaled_kaiming
+                    weight_init_args: !!python/tuple
+                    - 1.781651018264462
+                    direction: F
+                    learning_rule: Eprop
+                    learning_rule_kwargs:
+                        learning_rate: 0.0619887582286052
+training_kwargs:
+    tau: 2.1984036407984133
+    forward_steps: 1
+    backward_steps: 1
+    persistent_state: true
+    learning_rate: 0.84
+    verbose: false
+    optimizer: SGD
+algorithm: OnlineQLearning
+algorithm_kwargs:
+    epsilon_min: 0.0
+    accumulate_updates: true
+    gamma: 0.15056280945389777
+    epsilon: 0.6070376073482587
+    epsilon_decay: 0.9984025483962401

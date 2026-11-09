@@ -125,3 +125,56 @@ def licks_by_zone(laps, track):
     """
     cue_span, reward_spans = track.get_zone_spans()
     return np.stack([laps['actions'][:, :, start:stop].sum(axis=2) for start, stop in reward_spans], axis=2)
+
+
+def block_rewards(rewards, episodes, episodes_per_task, num_blocks, window):
+    """
+    Greedy reward on every track at the end of every block of a blocked schedule (AlternatingSchedule), like the
+    accuracy matrix of continual learning: entry [b, j] is the mean reward on track j over the validation steps in the
+    last window episodes of block b.
+
+    Parameters
+    ----------
+    rewards : np.ndarray
+        Shape (num_val, num_tracks), e.g. stack_laps(...)['rewards'].
+    episodes : np.ndarray of int
+        Episode of each validation step, shape (num_val,).
+    episodes_per_task : int
+        Length of a block, in episodes.
+    num_blocks : int
+    window : int
+        Number of episodes at the end of each block to average over.
+
+    Returns
+    -------
+    np.ndarray
+        Shape (num_blocks, num_tracks). A block without validation steps in its window gives NaN.
+    """
+    rewards = np.asarray(rewards, dtype=float)
+    episodes = np.asarray(episodes)
+    matrix = np.full((num_blocks, rewards.shape[1]), np.nan)
+    for block in range(num_blocks):
+        stop = (block + 1) * episodes_per_task
+        in_window = (episodes >= stop - window) & (episodes < stop)
+        if np.any(in_window):
+            matrix[block] = rewards[in_window].mean(axis=0)
+    return matrix
+
+
+def seen_track_rewards(reward_matrix):
+    """
+    Reward of every block averaged over the tracks seen so far, like the cumulative val set of class-incremental MNIST:
+    block b of an AlternatingSchedule averages tracks 0..min(b, num_tracks - 1). These are the 2ACDC_CL objectives.
+
+    Parameters
+    ----------
+    reward_matrix : np.ndarray
+        Shape (num_blocks, num_tracks), from block_rewards.
+
+    Returns
+    -------
+    np.ndarray
+        Shape (num_blocks,).
+    """
+    num_blocks, num_tracks = reward_matrix.shape
+    return np.array([np.mean(reward_matrix[block, :min(block + 1, num_tracks)]) for block in range(num_blocks)])

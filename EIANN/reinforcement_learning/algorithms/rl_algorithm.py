@@ -3,6 +3,7 @@ import torch
 
 from EIANN.recurrent_network import RecurrentNetwork
 from ..network_updates import reinit_learning_rules
+from ..continual import EpisodeBuffer, RecordEpisodes, estimate_importance
 
 
 def obs_to_tensor(obs, device):
@@ -39,8 +40,14 @@ class RLAlgorithm(object):
     The network's output population gives one value per action of a Discrete action space. The network is run through
     a RecurrentNetwork (self.model), which carries population states across the steps of an episode when
     persistent_state.
+
+    Continual learning: call learn() once per task and end_task() after each, as nested_optimize_EIANN_2ACDC_CL does.
+    end_task() tells the CL learning rules that the task ended (network.update_CL_states()), and first hands rules
+    with importance_source='external' (e.g. Backprop_EWC) their importance, estimated from a reservoir sample of the
+    task's training episodes (see reinforcement_learning.continual).
     """
-    def __init__(self, network, persistent_state=False, seed=None):
+    def __init__(self, network, persistent_state=False, seed=None, importance_method='fisher',
+                 importance_num_episodes=100):
         """
         Parameters
         ----------
@@ -49,11 +56,19 @@ class RLAlgorithm(object):
             Whether to carry population states across the steps of an episode.
         seed : int, optional
             Seeds the algorithm's random number generator (e.g. for exploration).
+        importance_method : str, default 'fisher'
+            How end_task() estimates importance for rules with importance_source='external' (see
+            continual.estimate_importance): 'fisher' or 'empirical_fisher'.
+        importance_num_episodes : int, default 100
+            Training episodes of each task kept (reservoir sample) to estimate importance from.
         """
         self.network = network
         self.model = RecurrentNetwork(network, persistent_state=persistent_state)
         self.seed = seed
         self.rng = np.random.default_rng(seed)
+        self.importance_method = importance_method
+        self.importance_num_episodes = int(importance_num_episodes)
+        self.episode_buffer = None
         self.reset_history()
 
     def reset_history(self):
@@ -88,6 +103,32 @@ class RLAlgorithm(object):
         """
         pass
 
+    def get_importance_projections(self):
+        """
+        Projections whose learning rule takes its importance from outside (importance_source='external').
+        """
+        return [projection for projection in self.network.projections.values()
+                if getattr(projection.learning_rule, 'importance_source', None) == 'external']
+
+    def end_task(self):
+        """
+        End the current task of a continual-learning run: estimate the importance of the weights of rules with
+        importance_source='external' from the task's training episodes and pass it to them (set_importance), then call
+        network.update_CL_states() and start a new episode buffer. Does nothing to rules without CL states.
+        """
+        projections = self.get_importance_projections()
+        if projections:
+            if self.episode_buffer is None or len(self.episode_buffer) == 0:
+                raise RuntimeError(f'{type(self).__name__}.end_task: no training episodes were recorded for this task '
+                                   f'(call learn() first)')
+            importance = estimate_importance(self, self.episode_buffer.episodes, projections,
+                                             method=self.importance_method)
+            for projection, projection_importance in zip(projections, importance):
+                projection.learning_rule.set_importance(projection_importance)
+        self.network.update_CL_states()
+        if self.episode_buffer is not None:
+            self.episode_buffer.clear()
+
     def learn(self, env, episodes, status_bar=False, val_interval=None):
         """
         Train the network on env for the given number of episodes.
@@ -109,6 +150,12 @@ class RLAlgorithm(object):
         self.check_env(env)
         reinit_learning_rules(self.network)
         val_episodes = set() if val_interval is None else get_val_episodes(episodes, val_interval)
+        # training episodes are recorded only when a rule needs them for importance; validation uses env itself
+        train_env = env
+        if self.get_importance_projections():
+            if self.episode_buffer is None:
+                self.episode_buffer = EpisodeBuffer(self.importance_num_episodes, seed=self.seed)
+            train_env = RecordEpisodes(env, self.episode_buffer)
 
         if status_bar:
             from tqdm.autonotebook import tqdm
@@ -117,7 +164,7 @@ class RLAlgorithm(object):
             episode_iter = range(episodes)
 
         for episode in episode_iter:
-            episode_return, episode_length = self.run_episode(env)
+            episode_return, episode_length = self.run_episode(train_env)
             self.episode_returns.append(episode_return)
             self.episode_lengths.append(episode_length)
             self.end_episode()
@@ -157,6 +204,8 @@ class RLAlgorithm(object):
             actions: np.ndarray of int, shape (num_steps,)
             activity: dict of np.ndarray, shape (num_steps, population size), for every population other than the
                 input and output populations
+            outcome: the env's info['outcome'] at the last step (e.g. 'correct', 'wrong' or 'timeout' for
+                CrossingChoiceEnv), or None if the env does not report one
         """
         hidden_populations = {name: population for name, population in self.network.populations.items()
                               if population is not self.network.input_pop and population is not self.network.output_pop}
@@ -176,7 +225,8 @@ class RLAlgorithm(object):
             episode_return += float(reward)
             done = terminated or truncated
         return {'episode_return': episode_return, 'q_values': np.array(q_values), 'actions': np.array(actions),
-                'activity': {name: np.array(values) for name, values in activity.items()}}
+                'activity': {name: np.array(values) for name, values in activity.items()},
+                'outcome': info.get('outcome')}
 
     def evaluate(self, env, episodes=1):
         """

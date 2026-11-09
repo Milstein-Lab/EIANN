@@ -1,0 +1,15 @@
+van_bp_relu_SGD:
+    #    starting values (x0), not optimized: egocentric actions, QLearning with the loss summed over each episode's steps,
+    #    learning rate 0.02, epsilon 0.999 decaying by 0.999 per episode to 0.05 and reset at every task, gamma 0.9, step
+    #    penalty -0.01, 2000 episodes per task. Sequential (5 seeds): every task learned in its own block (success 1.0)
+    #    and forgotten after the next one; none diverged. At learning rate 0.03, 2 of 5 seeds diverged; at 0.01, task A
+    #    was not learned within its block
+    H_learning_rate: 0.02
+    Output_learning_rate: 0.02
+    H1_init_weight_scale: 1.
+    H1_H1_init_weight_scale: 1.
+    H2_init_weight_scale: 1.
+    Output_init_weight_scale: 1.2
+    epsilon: 0.999
+    epsilon_decay: 0.999
+    gamma: 0.9
