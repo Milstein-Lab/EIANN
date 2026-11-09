@@ -1,0 +1,19 @@
+van_bp:
+    #    phase0_accuracy: 78.40237
+    #    phase0_loss: 0.043645725
+    #    phase1_accuracy: 34.47948
+    #    phase1_loss: 0.09946062
+    #    phase2_accuracy: 26.385843
+    #    phase2_loss: 0.12482524
+    #    phase3_accuracy: 19.89091
+    #    phase3_loss: 0.11751391
+    #    phase4_accuracy: 17.348999
+    #    phase4_loss: 0.12105272
+    Conv_learning_rate: 0.1602536287364647
+    H_learning_rate: 0.1780439117291422
+    Output_learning_rate: 0.19549624739932173
+    Conv1_init_weight_scale: 3.0111133274591726
+    Conv2_init_weight_scale: 0.83514933559752
+    H1_init_weight_scale: 1.8244074449381456
+    H2_init_weight_scale: 0.8618055894892432
+    Output_init_weight_scale: 1.0560409314820334

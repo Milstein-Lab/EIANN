@@ -1,0 +1,145 @@
+bounds:
+    ConvEE_learning_rate:
+        - 0.0001
+        - 1.
+    HEE_learning_rate:
+        - 0.0001
+        - 1.
+    OutputEE_learning_rate:
+        - 0.0001
+        - 1.
+    Conv1EE_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv1EI_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv1IE_F_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv1IE_R_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv1II_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2EE_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2EI_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2IE_F_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2IE_R_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2II_init_weight_scale:
+        - 0.01
+        - 10.
+    H1EE_init_weight_scale:
+        - 0.01
+        - 10.
+    H1EI_init_weight_scale:
+        - 0.01
+        - 10.
+    H1IE_F_init_weight_scale:
+        - 0.01
+        - 10.
+    H1IE_R_init_weight_scale:
+        - 0.01
+        - 10.
+    H1II_init_weight_scale:
+        - 0.01
+        - 10.
+    H2EE_init_weight_scale:
+        - 0.01
+        - 10.
+    H2EI_init_weight_scale:
+        - 0.01
+        - 10.
+    H2IE_F_init_weight_scale:
+        - 0.01
+        - 10.
+    H2IE_R_init_weight_scale:
+        - 0.01
+        - 10.
+    H2II_init_weight_scale:
+        - 0.01
+        - 10.
+    OutputEE_init_weight_scale:
+        - 0.01
+        - 10.
+    OutputEI_init_weight_scale:
+        - 0.01
+        - 10.
+    OutputIE_F_init_weight_scale:
+        - 0.01
+        - 10.
+    OutputIE_R_init_weight_scale:
+        - 0.01
+        - 10.
+    OutputII_init_weight_scale:
+        - 0.01
+        - 10.
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 20000
+    epochs: 1
+    network_config_file_path: optimize/network_config/cifar10/20261109_EIANN_convnet_A_cifar10_bpDale_G_fast_dyn.yaml
+    val_interval:
+        - -200
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 200
+    constrain_equilibration_dynamics: True
+    include_equilibration_dynamics_objective: True
+    flatten_data: False
+    val_batch_size: 1000
+update_context:
+    - source: optimize.nested_optimize_EIANN_cifar10
+      function: update_EIANN_config_convnet_A_bpDale_relu_SGD_G_zero_bias
+stages:
+    - source: optimize.nested_optimize_EIANN_cifar10
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_convnet_A_cifar10_bpDale_G_fast_dyn
+x0:
+    ConvEE_learning_rate: 0.5
+    HEE_learning_rate: 0.5
+    OutputEE_learning_rate: 0.5
+    Conv1EE_init_weight_scale: 1.
+    Conv1EI_init_weight_scale: 1.
+    Conv1IE_F_init_weight_scale: 1.
+    Conv1IE_R_init_weight_scale: 1.
+    Conv1II_init_weight_scale: 1.
+    Conv2EE_init_weight_scale: 1.
+    Conv2EI_init_weight_scale: 1.
+    Conv2IE_F_init_weight_scale: 1.
+    Conv2IE_R_init_weight_scale: 1.
+    Conv2II_init_weight_scale: 1.
+    H1EE_init_weight_scale: 1.
+    H1EI_init_weight_scale: 1.
+    H1IE_F_init_weight_scale: 1.
+    H1IE_R_init_weight_scale: 1.
+    H1II_init_weight_scale: 1.
+    H2EE_init_weight_scale: 1.
+    H2EI_init_weight_scale: 1.
+    H2IE_F_init_weight_scale: 1.
+    H2IE_R_init_weight_scale: 1.
+    H2II_init_weight_scale: 1.
+    OutputEE_init_weight_scale: 1.2
+    OutputEI_init_weight_scale: 1.2
+    OutputIE_F_init_weight_scale: 1.2
+    OutputIE_R_init_weight_scale: 1.2
+    OutputII_init_weight_scale: 1.2
