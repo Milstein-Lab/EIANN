@@ -1,15 +1,40 @@
+# success_task{j}	reached the rewarded tile
+# navigation_task{j}	reached any tile (did not time out)
+# choice_task{j}	success / navigation: of the episodes that reached a tile, how many picked the right one
+
 van_bp_relu_SGD:
-    #    starting values (x0), not optimized: egocentric actions, QLearning with the loss summed over each episode's steps,
-    #    learning rate 0.02, epsilon 0.999 decaying by 0.999 per episode to 0.05 and reset at every task, gamma 0.9, step
-    #    penalty -0.01, 2000 episodes per task. Sequential (5 seeds): every task learned in its own block (success 1.0)
-    #    and forgotten after the next one; none diverged. At learning rate 0.03, 2 of 5 seeds diverged; at 0.01, task A
-    #    was not learned within its block
-    H_learning_rate: 0.02
-    Output_learning_rate: 0.02
-    H1_init_weight_scale: 1.
-    H1_H1_init_weight_scale: 1.
-    H2_init_weight_scale: 1.
-    Output_init_weight_scale: 1.2
-    epsilon: 0.999
-    epsilon_decay: 0.999
-    gamma: 0.9
+    # phase0_reward: 0.8800000000000001
+    # phase0_reward_task0: 0.8800000000000001
+    # phase0_reward_task1: -0.4120000000000001
+    # phase0_reward_task2: -0.47200000000000025
+    # phase0_success: 1.0
+    # phase0_success_task0: 1.0
+    # phase0_success_task1: 0.0
+    # phase0_success_task2: 0.0
+    # phase1_reward: 0.3405
+    # phase1_reward_task0: -0.229
+    # phase1_reward_task1: 0.9099999999999999
+    # phase1_reward_task2: -0.4290000000000001
+    # phase1_success: 0.5
+    # phase1_success_task0: 0.0
+    # phase1_success_task1: 1.0
+    # phase1_success_task2: 0.0
+    # phase2_reward: 0.11866666666666659
+    # phase2_reward_task0: -0.41400000000000015
+    # phase2_reward_task1: -0.15
+    # phase2_reward_task2: 0.9199999999999999
+    # phase2_success: 0.3333333333333333
+    # phase2_success_task0: 0.0
+    # phase2_success_task1: 0.0
+    # phase2_success_task2: 1.0
+    # reward: 0.44638888888888884
+    H_learning_rate: 0.027117286608771694
+    Output_learning_rate: 0.10782046061430049
+    H1_init_weight_scale: 0.9988164441151679
+    H1_H1_init_weight_scale: 1.4890208039827224
+    H2_init_weight_scale: 0.8315320131211469
+    Output_init_weight_scale: 1.8233161932548663
+    epsilon: 0.48101852692424374
+    epsilon_decay: 0.9994063872744601
+    gamma: 0.8373413309591876
+

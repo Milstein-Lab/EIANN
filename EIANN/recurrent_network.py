@@ -8,20 +8,41 @@ class RecurrentNetwork(object):
     as a cue) across steps; otherwise every step starts from a fresh state.
 
     Where the computation graph is cut between steps (detach) is left to the caller.
+
+    Learning rules with traces (e.g. Eprop, BTSP_Continuous) tick them with learning_rule.forward(). trace_clock sets
+    how often:
+    - 'step': once per step, after network.forward has run all forward_steps integration substeps.
+    - 'substep': once per integration substep. Each step then runs network.forward forward_steps times with one substep
+      each, which computes the same dynamics: with persistent state, reinit leaves states alone, and prev_activity is
+      set at the start of every substep. Rules with a set_ticks_per_step method (BTSP_Continuous and its variants) are
+      told forward_steps, so their time constants stay in units of steps.
     """
     state_attributes = ('state', 'activity', 'prev_activity', 'forward_steps_activity')
+    TRACE_CLOCKS = ('step', 'substep')
 
-    def __init__(self, network, persistent_state=False):
+    def __init__(self, network, persistent_state=False, trace_clock='step'):
         """
         Parameters
         ----------
         network : Network
         persistent_state : bool, default False
             Whether to carry population states across steps of a sequence.
+        trace_clock : str, default 'step'
+            'step' or 'substep': whether learning rules tick their traces once per step or once per integration
+            substep (see the class docstring). Also set as network.trace_clock, so rules can check it; the last
+            RecurrentNetwork built on a network sets its clock.
         """
+        if trace_clock not in self.TRACE_CLOCKS:
+            raise ValueError(f'RecurrentNetwork: trace_clock must be one of {self.TRACE_CLOCKS}, not {trace_clock!r}')
         self.network = network
         self.persistent_state = persistent_state
+        self.trace_clock = trace_clock
         self.new_sequence = True
+        network.trace_clock = trace_clock
+        ticks_per_step = network.forward_steps if trace_clock == 'substep' else 1
+        for projection in network.projections.values():
+            if hasattr(projection.learning_rule, 'set_ticks_per_step'):
+                projection.learning_rule.set_ticks_per_step(ticks_per_step)
 
     def reset(self):
         """
@@ -32,8 +53,10 @@ class RecurrentNetwork(object):
     def step(self, sample, no_grad=False, store_history=False, store_dynamics=False):
         """
         Forward pass on one sample, continuing from the previous step's state when persistent_state. Learning rules
-        that keep eligibility traces (e.g. Eprop) reset them when the step starts from a fresh state, and update them
-        (learning_rule.forward()) after the step.
+        that keep eligibility traces (e.g. Eprop) reset them when the step starts from a fresh state; rules with traces
+        that last a whole sequence (reset_traces, e.g. BTSP_Continuous) reset them at the start of a sequence. Both
+        update them (learning_rule.forward()) after the step, or after every integration substep with
+        trace_clock='substep'.
 
         Returns
         -------
@@ -41,16 +64,63 @@ class RecurrentNetwork(object):
             Output population activity.
         """
         persistent_state = self.persistent_state and not self.new_sequence
-        if not persistent_state:
-            for projection in self.network.projections.values():
-                if hasattr(projection.learning_rule, 'reset_eligibility_trace'):
-                    projection.learning_rule.reset_eligibility_trace()
-        output = self.network.forward(sample, no_grad=no_grad, persistent_state=persistent_state,
-                                      store_history=store_history, store_dynamics=store_dynamics)
+        for projection in self.network.projections.values():
+            # traces that follow population states (Eprop) reset with them; traces that last a whole sequence whether
+            # or not population states persist (e.g. BTSP_Continuous) reset only at its start
+            if not persistent_state and hasattr(projection.learning_rule, 'reset_eligibility_trace'):
+                projection.learning_rule.reset_eligibility_trace()
+            if self.new_sequence and hasattr(projection.learning_rule, 'reset_traces'):
+                projection.learning_rule.reset_traces()
+        if self.trace_clock == 'step':
+            output = self.network.forward(sample, no_grad=no_grad, persistent_state=persistent_state,
+                                          store_history=store_history, store_dynamics=store_dynamics)
+            self.tick_traces()
+        else:
+            output = self.substep_forward(sample, no_grad=no_grad, persistent_state=persistent_state,
+                                          store_history=store_history, store_dynamics=store_dynamics)
+        self.new_sequence = False
+        return output
+
+    def tick_traces(self):
         for projection in self.network.projections.values():
             if hasattr(projection.learning_rule, 'forward'):
                 projection.learning_rule.forward()
-        self.new_sequence = False
+
+    def substep_forward(self, sample, no_grad=False, persistent_state=False, store_history=False,
+                        store_dynamics=False):
+        """
+        network.forward on one sample as forward_steps calls of one integration substep each, ticking learning rule
+        traces after every substep. Gradients are tracked for the last backward_steps substeps, as in network.forward.
+
+        Returns
+        -------
+        torch.Tensor
+            Output population activity.
+        """
+        network = self.network
+        forward_steps, backward_steps = network.forward_steps, network.backward_steps
+        steps_activity = {name: [] for name in network.populations}
+        network.forward_steps = network.backward_steps = 1
+        try:
+            for t in range(forward_steps):
+                output = network.forward(sample, no_grad=no_grad or t < forward_steps - backward_steps,
+                                         persistent_state=persistent_state or t > 0,
+                                         store_dynamics=store_dynamics)
+                if store_dynamics:
+                    for name, population in network.populations.items():
+                        steps_activity[name].extend(population.forward_steps_activity)
+                self.tick_traces()
+        finally:
+            network.forward_steps, network.backward_steps = forward_steps, backward_steps
+        if store_dynamics:
+            for name, population in network.populations.items():
+                population.forward_steps_activity = steps_activity[name]
+        if store_history:
+            for population in network.populations.values():
+                if store_dynamics:
+                    population.append_attribute_history('activity', population.forward_steps_activity)
+                else:
+                    population.append_attribute_history('activity', population.activity.detach().clone())
         return output
 
     def peek(self, sample):

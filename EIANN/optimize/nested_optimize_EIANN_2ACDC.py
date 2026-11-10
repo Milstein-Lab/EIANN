@@ -25,6 +25,11 @@ context = Context()
 #   --output-dir=data --label=van_bp_relu_SGD --num_instances=1 --export --disp
 
 # added param: algorithm (str) name of an RLAlgorithm in EIANN.reinforcement_learning, e.g. QLearning or OnlineQLearning
+# added param: qnext_network_config_file_path (str) network yaml of DPPQL's QNext network; when given, a QNext network is
+#   built with its own seed and passed to the algorithm as qnext_network, and exported next to the Q network as
+#   <name>_qnext.pkl and <export config>_qnext.yaml (default to None)
+# added param: qnext_input_population (str) full name of the Q network population that QNext reads, passed to the
+#   algorithm (default to the algorithm's, H1E)
 # added param: algorithm_kwargs (dict) fixed arguments of the algorithm; update_context functions add the optimized ones
 #   (e.g. update_q_learning_kwargs)
 # added param: retrain (bool) with False, loads the network exported by a previous --export run instead of training it
@@ -70,6 +75,16 @@ def config_worker():
     context.projection_config = network_config['projection_config']
     context.training_kwargs = network_config['training_kwargs']
 
+    if 'qnext_network_config_file_path' in context():
+        qnext_network_config = read_from_yaml(context.qnext_network_config_file_path)
+        context.qnext_layer_config = qnext_network_config['layer_config']
+        context.qnext_projection_config = qnext_network_config['projection_config']
+        context.qnext_training_kwargs = qnext_network_config['training_kwargs']
+        if 'qnext_input_population' in context():
+            context.algorithm_kwargs['qnext_input_population'] = context.qnext_input_population
+    else:
+        context.qnext_layer_config = None
+
     context.tracks = make_2ACDC_tracks(**context.treadmill_kwargs)
 
 
@@ -93,6 +108,14 @@ def get_data_file_path(seed, data_seed):
     return f"{context.output_dir}/{context.network_name}/{context.network_name}_{seed}_{data_seed}{label}.pkl"
 
 
+def get_qnext_path(path):
+    """
+    Path of the QNext network (DPPQL) or its config, saved next to the Q network's: <name>_qnext.<ext>.
+    """
+    root, ext = os.path.splitext(path)
+    return f"{root}_qnext{ext}"
+
+
 def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False):
     """
 
@@ -107,10 +130,17 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
     update_source_contexts(x, context)
     data_file_path = get_data_file_path(seed, data_seed)
 
+    qnext_network = None
     if context.retrain:
         network = Network(context.layer_config, context.projection_config, seed=seed, **context.training_kwargs)
+        algorithm_kwargs = dict(context.algorithm_kwargs)
+        if context.qnext_layer_config is not None:
+            # DPPQL: network seeds are 3-byte ints, so this offset gives QNext a seed distinct from every Q network's
+            qnext_network = Network(context.qnext_layer_config, context.qnext_projection_config, seed=seed + 2 ** 24,
+                                    **context.qnext_training_kwargs)
+            algorithm_kwargs['qnext_network'] = qnext_network
         algo = context.algorithm_class(network, persistent_state=network.persistent_state, seed=data_seed,
-                                       **context.algorithm_kwargs)
+                                       **algorithm_kwargs)
         env = ScheduledEnv(RandomSchedule(context.tracks, seed=data_seed))
         algo.learn(env, context.train_episodes, status_bar=context.status_bar, val_interval=context.val_interval)
         # kept on the network so that it is exported with it
@@ -118,11 +148,15 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                               'val_laps': algo.val_laps, 'episode_returns': algo.episode_returns,
                               'episode_lengths': algo.episode_lengths, 'loss_history': algo.loss_history,
                               'treadmill_kwargs': context.treadmill_kwargs}
+        if qnext_network is not None:
+            network.rl_history['qnext_loss_history'] = algo.qnext_loss_history
     else:
         if not os.path.isfile(data_file_path):
             raise FileNotFoundError('nested_optimize_EIANN_2ACDC: retrain=False requires a network exported by a '
                                     'previous --export run; not found: %s' % data_file_path)
         network = utils.load_network(data_file_path, disp=context.disp)
+        if context.qnext_layer_config is not None:
+            qnext_network = utils.load_network(get_qnext_path(data_file_path), disp=context.disp)
 
     # rewards are sums of environment rewards, so only the loss shows that the weights diverged
     if not np.isfinite(network.rl_history['loss_history'][-1]):
@@ -131,7 +165,10 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         return dict()
 
     num_val_steps_reward_window = context.num_episodes_reward_window // int(context.val_interval[2])
-    results = {'reward': np.mean(network.rl_history['val_rewards'][-num_val_steps_reward_window:])}
+    # relative to a lap without licks (every lap has the same length), so rewards shifted to be non-negative, e.g.
+    # (0.1, 1.1, 0.) instead of (0., 1., -0.1), give the same feature as the unshifted task
+    results = {'reward': np.mean(network.rl_history['val_rewards'][-num_val_steps_reward_window:]) -
+                         context.treadmill_kwargs['length'] * context.treadmill_kwargs['reward_values'][0]}
 
     if plot:
         from EIANN.reinforcement_learning.treadmill_plots import plot_2ACDC_summary  # keeps seaborn off cluster workers
@@ -148,12 +185,21 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
                        'algorithm_kwargs': context.algorithm_kwargs}
         write_to_yaml(context.export_network_config_file_path, config_dict, convert_scalars=True)
         utils.save_network(network, path=data_file_path, disp=False)
+        if qnext_network is not None:
+            # saved separately: an nn.Module attribute of network would become one of its submodules
+            qnext_config_dict = {'layer_config': context.qnext_layer_config,
+                                 'projection_config': context.qnext_projection_config,
+                                 'training_kwargs': context.qnext_training_kwargs}
+            write_to_yaml(get_qnext_path(context.export_network_config_file_path), qnext_config_dict,
+                          convert_scalars=True)
+            utils.save_network(qnext_network, path=get_qnext_path(data_file_path), disp=False)
         if context.disp:
             print('nested_optimize_EIANN_2ACDC: pid: %i exported network config to %s and network history to %s' %
                   (os.getpid(), context.export_network_config_file_path, data_file_path))
 
     if not context.interactive:
         del network
+        del qnext_network
         gc.collect()
     else:
         context.update(locals())
@@ -178,6 +224,7 @@ def filter_features(primitives, current_features, model_id=None, export=False, p
 
 
 def get_objectives(features, model_id=None, export=False, plot=False):
-    max_reward = context.treadmill_kwargs['reward_values'][1]
+    # one correct lick, relative to a lap without licks (see compute_features)
+    max_reward = context.treadmill_kwargs['reward_values'][1] - context.treadmill_kwargs['reward_values'][0]
     objectives = {'reward': max_reward - features['reward']}
     return features, objectives

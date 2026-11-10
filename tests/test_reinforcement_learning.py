@@ -1,5 +1,6 @@
 import os
 
+import gymnasium
 import numpy as np
 import pytest
 import torch
@@ -9,7 +10,7 @@ import EIANN.network as nt
 from gymnasium.utils.env_checker import check_env
 from EIANN.recurrent_network import RecurrentNetwork
 from EIANN.utils import read_from_yaml
-from EIANN.reinforcement_learning import RLAlgorithm, QLearning, OnlineQLearning
+from EIANN.reinforcement_learning import RLAlgorithm, QLearning, OnlineQLearning, DPPQL, OnlineDPPQL
 from EIANN.reinforcement_learning.algorithms.rl_algorithm import get_val_episodes
 from EIANN.reinforcement_learning.algorithms.q_learning import masked_target
 from EIANN.reinforcement_learning.network_updates import (apply_learning_rules, compute_learning_rule_updates,
@@ -234,6 +235,56 @@ def test_recurrent_network_gradient_through_steps(recurrent_network):
     assert torch.autograd.grad(q.sum(), hidden, allow_unused=True)[0] is None
 
 
+def build_2ACDC_network(model, date='20261109', seed=0):
+    config = read_from_yaml(os.path.join(os.path.dirname(EIANN.__file__), 'optimize', 'network_config', '2ACDC',
+                                         f'{date}_EIANN_2_hidden_2ACDC_{model}_config.yaml'))
+    return nt.Network(config['layer_config'], config['projection_config'], seed=seed, **config['training_kwargs'])
+
+
+@pytest.mark.parametrize('store_dynamics', [False, True])
+def test_substep_clock_matches_step_clock(store_dynamics):
+    # one lap of the bpDale network (E/I loops, forward_steps 5, backward_steps 5): running each step as 5 one-substep
+    # calls of network.forward gives the same outputs, histories and BPTT gradients through the whole lap
+    observations = lap_observations(CueTreadmillEnv())[:8]
+    results = {}
+    for trace_clock in RecurrentNetwork.TRACE_CLOCKS:
+        network = build_2ACDC_network('bpDale_relu_SGD')
+        assert network.forward_steps == 5
+        model = RecurrentNetwork(network, persistent_state=True, trace_clock=trace_clock)
+        model.reset()
+        outputs = torch.stack([model.step(obs, store_history=True, store_dynamics=store_dynamics)
+                               for obs in observations])
+        assert (network.forward_steps, network.backward_steps) == (5, 5)
+        weights = [projection.weight for projection in network.projections.values()]
+        grads = torch.autograd.grad((outputs ** 2).sum(), weights)
+        history = {name: pop.get_attribute_history('activity') for name, pop in network.populations.items()}
+        results[trace_clock] = outputs.detach(), grads, history
+    (outputs, grads, history), (sub_outputs, sub_grads, sub_history) = results['step'], results['substep']
+    assert torch.allclose(outputs, sub_outputs, atol=1e-6)
+    for grad, sub_grad in zip(grads, sub_grads):
+        assert torch.allclose(grad, sub_grad, atol=1e-5)
+    for name in history:
+        assert history[name].shape == sub_history[name].shape
+        assert torch.allclose(history[name], sub_history[name], atol=1e-6)
+
+
+def test_substep_clock_ticks_traces_every_substep():
+    network = build_2ACDC_network('eprop_bpDale_relu_SGD')
+    model = RecurrentNetwork(network, persistent_state=True, trace_clock='substep')
+    assert network.trace_clock == 'substep'
+    rule = network.projections['H1E_InputE'].learning_rule
+    ticks = []
+    rule.forward = lambda forward=rule.forward: ticks.append(1) or forward()
+    model.reset()
+    model.step(lap_observations(CueTreadmillEnv())[0])
+    assert len(ticks) == network.forward_steps == 5
+
+
+def test_trace_clock_must_be_valid(recurrent_network):
+    with pytest.raises(ValueError):
+        RecurrentNetwork(recurrent_network, trace_clock='episode')
+
+
 @pytest.mark.parametrize('algo_class', [QLearning, OnlineQLearning])
 def test_q_learning_persistent_state(recurrent_network, algo_class):
     tracks = [CueTreadmillEnv(cue=0, rewarded_zone=0), CueTreadmillEnv(cue=1, rewarded_zone=1)]
@@ -382,12 +433,19 @@ def test_q_learning_epsilon_decays_every_episode():
     assert algo.epsilon == pytest.approx(0.2)
 
 
-@pytest.mark.parametrize('task, date, schedule_class', [('2ACDC', '20261102', RandomSchedule),
-                                                        ('2ACDC_CL', '20261103', AlternatingSchedule)])
-@pytest.mark.parametrize('rule, algo_class', [('van_bp', QLearning), ('eprop', OnlineQLearning)])
-def test_2ACDC_network_config(rule, algo_class, task, date, schedule_class):
+@pytest.mark.parametrize('task, date, model, algo_class, schedule_class, algo_kwargs', [
+    ('2ACDC', '20261102', 'van_bp_relu_SGD', QLearning, RandomSchedule, {}),
+    ('2ACDC', '20261102', 'eprop_relu_SGD', OnlineQLearning, RandomSchedule, {}),
+    ('2ACDC', '20261109', 'bpDale_relu_SGD', QLearning, RandomSchedule, {}),
+    ('2ACDC', '20261109', 'eprop_bpDale_relu_SGD', OnlineQLearning, RandomSchedule,
+     {'trace_clock': 'substep', 'accumulate_updates': True}),
+    ('2ACDC', '20261109', 'BTSP_Continuous', OnlineQLearning, RandomSchedule, {'trace_clock': 'substep'}),
+    ('2ACDC', '20261109', 'BTSP_Eprop', OnlineQLearning, RandomSchedule, {'trace_clock': 'substep'}),
+    ('2ACDC_CL', '20261103', 'van_bp_relu_SGD', QLearning, AlternatingSchedule, {}),
+    ('2ACDC_CL', '20261103', 'eprop_relu_SGD', OnlineQLearning, AlternatingSchedule, {})])
+def test_2ACDC_network_config(model, algo_class, task, date, schedule_class, algo_kwargs):
     config = read_from_yaml(os.path.join(os.path.dirname(EIANN.__file__), 'optimize', 'network_config', task,
-                                         f'{date}_EIANN_2_hidden_{task}_{rule}_relu_SGD_config.yaml'))
+                                         f'{date}_EIANN_2_hidden_{task}_{model}_config.yaml'))
     network = nt.Network(config['layer_config'], config['projection_config'], seed=0, **config['training_kwargs'])
     assert network.persistent_state
     assert network.projections['H1E_H1E'].direction == 'R'
@@ -395,12 +453,41 @@ def test_2ACDC_network_config(rule, algo_class, task, date, schedule_class):
                    for projection in network.projections.values())
 
     tracks = [CueTreadmillEnv(cue=0, rewarded_zone=0), CueTreadmillEnv(cue=1, rewarded_zone=1)]
-    algo = algo_class(network, persistent_state=network.persistent_state, seed=0)
+    algo = algo_class(network, persistent_state=network.persistent_state, seed=0, **algo_kwargs)
     schedule = RandomSchedule(tracks, seed=0) if schedule_class is RandomSchedule else \
         AlternatingSchedule(tracks, episodes_per_task=2)
     algo.learn(ScheduledEnv(schedule), episodes=3)
     assert algo.episode_lengths == [23, 23, 23]
 
+
+
+def test_2ACDC_bpDale_and_BTSP_share_architecture():
+    # bpDale_relu_SGD, eprop_bpDale_relu_SGD, BTSP_Continuous and BTSP_Eprop are compared on 2ACDC, so their E/SomaI
+    # sizes and dynamics match (tau is the x0 value: optimized for all but bpDale_relu_SGD)
+    def load(model):
+        return read_from_yaml(os.path.join(os.path.dirname(EIANN.__file__), 'optimize', 'network_config', '2ACDC',
+                                           f'20261109_EIANN_2_hidden_2ACDC_{model}_config.yaml'))
+
+    def architecture(config):
+        sizes = {(layer, pop): kwargs['size'] for layer, pops in config['layer_config'].items()
+                 for pop, kwargs in pops.items() if pop in ('E', 'SomaI')}
+        dynamics = {key: config['training_kwargs'][key] for key in ('forward_steps', 'tau', 'persistent_state')}
+        return sizes, dynamics
+
+    reference = architecture(load('bpDale_relu_SGD'))
+    assert reference[1]['forward_steps'] == 5
+    for model in ('eprop_bpDale_relu_SGD', 'BTSP_Continuous', 'BTSP_Eprop'):
+        assert architecture(load(model)) == reference
+
+
+def test_2ACDC_eprop_bpDale_fixes_every_SomaI_projection():
+    network = build_2ACDC_network('eprop_bpDale_relu_SGD')
+    for name, projection in network.projections.items():
+        rule = type(projection.learning_rule).__name__
+        if projection.pre.name == 'SomaI' or projection.post.name == 'SomaI':
+            assert rule == 'LearningRule', name
+        else:
+            assert rule == 'Eprop', name
 
 def test_block_rewards():
     # 2 blocks of 4 episodes, validated after every 2nd episode; track 0 rewards 0.1 * episode, track 1 constant 1
@@ -496,6 +583,43 @@ def test_eprop_accumulated_update_matches_bptt_for_leaky_single_layer():
         model.detach()
     step_learning_rules(network)
     assert torch.allclose(weight_before - weight.detach(), 0.1 * bptt_grad)
+
+
+def test_eprop_substep_clock_matches_bptt_for_leaky_single_layer():
+    # forward_steps 5 with the trace ticked every substep: the only path from the weight to the state is still the
+    # layer's own leak, so the accumulated e-prop update over a sequence equals BPTT through every substep and step
+    network = nt.Network({'Input': {'E': {'size': 3}}, 'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                         {'Output': {'E': {'Input': {'E': {'direction': 'F', 'learning_rule': 'Eprop'}}}}},
+                         learning_rate=0.1, optimizer='SGD', tau=3, forward_steps=5, backward_steps=5, seed=0)
+    weight = network.projections['OutputE_InputE'].weight
+    samples = torch.rand(4, 3, generator=torch.Generator().manual_seed(0))
+    targets = torch.rand(4, 2, generator=torch.Generator().manual_seed(1))
+
+    model = RecurrentNetwork(network, persistent_state=True)
+    model.reset()
+    outputs = model.run(samples)
+    bptt_grad = torch.autograd.grad(sum(network.criterion(outputs[i], targets[i]) for i in range(4)), weight)[0]
+
+    weight_before = weight.detach().clone()
+    model = RecurrentNetwork(network, persistent_state=True, trace_clock='substep')
+    model.reset()
+    for i, sample in enumerate(samples):
+        output = model.step(sample)
+        compute_learning_rule_updates(network, output, targets[i])
+        model.detach()
+    step_learning_rules(network)
+    assert torch.allclose(weight_before - weight.detach(), 0.1 * bptt_grad, atol=1e-6)
+
+
+def test_eprop_forward_steps_requires_substep_clock():
+    network = nt.Network({'Input': {'E': {'size': 3}}, 'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                         {'Output': {'E': {'Input': {'E': {'direction': 'F', 'learning_rule': 'Eprop'}}}}},
+                         learning_rate=0.1, optimizer='SGD', tau=3, forward_steps=5, backward_steps=1, seed=0)
+    model = RecurrentNetwork(network, persistent_state=True)
+    model.reset()
+    output = model.step(torch.ones(3))
+    with pytest.raises(RuntimeError, match='trace_clock'):
+        compute_learning_rule_updates(network, output, output.detach() + 1.)
 
 
 def build_cl_network(learning_rule='Backprop', **learning_rule_kwargs):
@@ -832,3 +956,104 @@ def test_crossing_plots(tmp_path):
     animate_greedy_episodes(rl_history, val_step=-1, save_path=str(tmp_path / 'greedy.gif'))
     assert {path.name for path in tmp_path.iterdir()} == {'model_outcome_curves.png', 'model_outcome_matrices.png',
                                                           'learning.gif', 'greedy.gif'}
+
+
+def build_qnext_network(input_size=16, output_size=1, learning_rule='Backprop'):
+    proj = lambda: {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': 'F',
+                    'learning_rule': learning_rule}
+    return nt.Network({'Input': {'E': {'size': input_size}}, 'H1': {'E': {'size': 8, 'activation': 'relu'}},
+                       'Output': {'E': {'size': output_size, 'activation': 'linear'}}},
+                      {'H1': {'E': {'Input': {'E': proj()}}}, 'Output': {'E': {'H1': {'E': proj()}}}},
+                      learning_rate=0.1, optimizer='SGD', seed=1)
+
+
+class RecordRewards(gymnasium.Wrapper):
+    def reset(self, **kwargs):
+        self.rewards = []
+        return self.env.reset(**kwargs)
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        self.rewards.append(float(reward))
+        return obs, reward, terminated, truncated, info
+
+
+@pytest.mark.parametrize('algo_class, learning_rule, algo_kwargs', [
+    (DPPQL, 'Backprop', {}), (OnlineDPPQL, 'Backprop', {}), (OnlineDPPQL, 'Eprop', {'accumulate_updates': True})])
+def test_dppql_learn_and_evaluate(algo_class, learning_rule, algo_kwargs):
+    network = build_recurrent_network(learning_rule, tau=2 if learning_rule == 'Eprop' else 1)
+    qnext_network = build_qnext_network()
+    initial_weights = {name: projection.weight.detach().clone()
+                       for name, projection in qnext_network.projections.items()}
+    algo = algo_class(network, qnext_network, persistent_state=True, seed=0, **algo_kwargs)
+    tracks = make_2ACDC_tracks()
+    algo.learn(ScheduledEnv(RandomSchedule(tracks, seed=0)), episodes=3, val_interval=(0, -1, 2))
+    assert algo.episode_lengths == [23, 23, 23]
+    # DPPQL updates both networks once per episode, OnlineDPPQL once per step
+    num_updates = 3 if algo_class is DPPQL else 3 * 23
+    assert len(algo.loss_history) == num_updates and len(algo.qnext_loss_history) == num_updates
+    assert np.isfinite(algo.loss_history).all() and np.isfinite(algo.qnext_loss_history).all()
+    assert any(not torch.equal(initial_weights[name], projection.weight)
+               for name, projection in qnext_network.projections.items())
+    assert isinstance(algo.evaluate(tracks[0]), float)
+
+
+@pytest.mark.parametrize('algo_class', [DPPQL, OnlineDPPQL])
+def test_dppql_targets(algo_class):
+    network, qnext_network = build_recurrent_network('Backprop'), build_qnext_network()
+    algo = algo_class(network, qnext_network, gamma=0.5, epsilon=0.5, persistent_state=True, seed=0)
+    q_updates, qnext_updates = [], []
+    # record what each network would be updated toward, with the weights left fixed
+    algo.update = lambda q, actions, td_targets, step=True: q_updates.append((q.detach(), td_targets.detach()))
+    algo.update_qnext = lambda output, target, step=True: qnext_updates.append((output.detach(), target.detach()))
+    env = RecordRewards(CueTreadmillEnv(cue=0, rewarded_zone=0))
+    algo.run_episode(env)
+
+    # DPPQL makes one update per episode on all steps; OnlineDPPQL one per step, in step order
+    q = torch.cat([q.view(-1, 2) for q, _ in q_updates])
+    td_targets = torch.cat([target.view(-1) for _, target in q_updates])
+    qnext = torch.cat([output.view(-1) for output, _ in qnext_updates])
+    qnext_targets = torch.cat([target.view(-1) for _, target in qnext_updates])
+    rewards = torch.tensor(env.rewards)
+    assert len(q) == len(qnext) == len(rewards) == 23
+    # Q bootstraps from QNext(h_t), and from nothing at termination
+    assert torch.allclose(td_targets[:-1], rewards[:-1] + 0.5 * qnext[:-1])
+    assert td_targets[-1] == rewards[-1]
+    # QNext(h_t) predicts max_a Q(s_{t+1}, a), and 0 at termination
+    assert torch.allclose(qnext_targets[:-1], q[1:].max(dim=1).values)
+    assert qnext_targets[-1] == 0.
+
+
+def test_dppql_check_env():
+    env = CueTreadmillEnv()
+    with pytest.raises(AssertionError):  # QNext input must match the size of H1E (16)
+        DPPQL(build_recurrent_network('Backprop'), build_qnext_network(input_size=8)).learn(env, episodes=1)
+    with pytest.raises(AssertionError):  # QNext predicts one value
+        DPPQL(build_recurrent_network('Backprop'), build_qnext_network(output_size=2)).learn(env, episodes=1)
+    with pytest.raises(ValueError):
+        DPPQL(build_recurrent_network('Backprop'), build_qnext_network(),
+              qnext_input_population='H2E').learn(env, episodes=1)
+
+
+@pytest.mark.parametrize('q_config, qnext_config, algo_class', [
+    ('20261102_EIANN_2_hidden_2ACDC_van_bp_relu_SGD_config.yaml',
+     '20261109_EIANN_1_hidden_2ACDC_DPPQL_QNext_van_bp_relu_SGD_config.yaml', DPPQL),
+    ('20261102_EIANN_2_hidden_2ACDC_eprop_relu_SGD_config.yaml',
+     '20261109_EIANN_1_hidden_2ACDC_DPPQL_QNext_van_bp_relu_SGD_config.yaml', OnlineDPPQL),
+    ('20261109_EIANN_2_hidden_2ACDC_bpDale_relu_SGD_config.yaml',
+     '20261109_EIANN_1_hidden_2ACDC_DPPQL_QNext_bpDale_relu_SGD_config.yaml', DPPQL)])
+def test_2ACDC_DPPQL_network_config(q_config, qnext_config, algo_class):
+    config_dir = os.path.join(os.path.dirname(EIANN.__file__), 'optimize', 'network_config', '2ACDC')
+    config = read_from_yaml(os.path.join(config_dir, q_config))
+    qnext_config = read_from_yaml(os.path.join(config_dir, qnext_config))
+    network = nt.Network(config['layer_config'], config['projection_config'], seed=0, **config['training_kwargs'])
+    qnext_network = nt.Network(qnext_config['layer_config'], qnext_config['projection_config'], seed=1,
+                               **qnext_config['training_kwargs'])
+    assert network.persistent_state and not qnext_network.persistent_state
+    assert network.projections['H1E_H1E'].direction == 'R'
+    assert not any(projection.post is network.H2.E and projection.pre is network.H2.E
+                   for projection in network.projections.values())
+
+    algo = algo_class(network, qnext_network, persistent_state=network.persistent_state, seed=0)
+    algo.learn(ScheduledEnv(RandomSchedule(make_2ACDC_tracks(), seed=0)), episodes=2)
+    assert algo.episode_lengths == [23, 23]
