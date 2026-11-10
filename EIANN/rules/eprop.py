@@ -16,9 +16,12 @@ class Eprop(LearningRule):
     where the loss is. The gradient is the sum over steps of the outer product L_t e_t. With tau == 1 the trace has no
     memory and the gradient equals backprop truncated to the current substep.
 
-    With forward_steps == 1, a step is one substep. With forward_steps > 1, the traces must tick every substep: run the
-    network with RecurrentNetwork(trace_clock='substep') (RL algorithms: trace_clock='substep'). Otherwise the trace
-    would see only the last substep's activity once per step, and backward raises.
+    With forward_steps == 1, a step is one substep. With forward_steps > 1, the clock must be chosen explicitly:
+    - RecurrentNetwork(trace_clock='substep') (RL algorithms: trace_clock='substep') ticks the traces every substep,
+      which gives the gradient above exactly;
+    - trace_clock='step' ticks them once per step with the last substep's activity: an approximation in which tau is in
+      steps, and the earlier substeps of a step reach the gradient only through the learning signal of the last one.
+    With no clock set (trace_clock=None, the default), backward raises.
 
     The rule's methods split the work:
       forward()  update the eligibility trace after every forward step (called by RecurrentNetwork.step, which also
@@ -27,7 +30,7 @@ class Eprop(LearningRule):
       step()     apply the accumulated gradient with the network's optimizer and clear it.
     Calling step() after every backward() updates online; calling it once per episode accumulates over the episode.
 
-    Requirements: forward_steps == 1 or trace_clock 'substep'; somatic projections; backward runs on the output of a
+    Requirements: forward_steps == 1 or an explicit trace_clock ('substep', or 'step' as an approximation); somatic projections; backward runs on the output of a
     single step; all trainable projections of the network use Eprop. Autapses of recurrent projections are learned like any other weight; remove
     them with the no_autapses weight constraint.
     """
@@ -68,10 +71,11 @@ class Eprop(LearningRule):
             'Eprop: backward takes the output of a single step (e.g. OnlineQLearning)'
         rules = [projection.learning_rule for projection in network.projections.values()
                  if isinstance(projection.learning_rule, cls)]
-        if network.forward_steps > 1 and getattr(network, 'trace_clock', 'step') != 'substep':
-            raise RuntimeError(f'Eprop: forward_steps is {network.forward_steps}, so eligibility traces must tick every '
-                               f'integration substep: run the network with RecurrentNetwork(trace_clock=\'substep\') '
-                               f'(RL algorithms: trace_clock=\'substep\')')
+        if network.forward_steps > 1 and getattr(network, 'trace_clock', None) is None:
+            raise RuntimeError(f'Eprop: forward_steps is {network.forward_steps}, so choose when eligibility traces '
+                               f'tick: RecurrentNetwork(trace_clock=\'substep\') for every integration substep (exact), '
+                               f'or trace_clock=\'step\' for once per step (approximate); RL algorithms take the same '
+                               f'trace_clock kwarg')
         if any(rule.eligibility_trace is None for rule in rules):
             raise RuntimeError('Eprop: eligibility traces are updated by forward(); run the network with '
                                'EIANN.recurrent_network.RecurrentNetwork.step')

@@ -441,6 +441,10 @@ def test_q_learning_epsilon_decays_every_episode():
      {'trace_clock': 'substep', 'accumulate_updates': True}),
     ('2ACDC', '20261109', 'BTSP_Continuous', OnlineQLearning, RandomSchedule, {'trace_clock': 'substep'}),
     ('2ACDC', '20261109', 'BTSP_Eprop', OnlineQLearning, RandomSchedule, {'trace_clock': 'substep'}),
+    ('2ACDC', '20261109', 'eprop_bpDale_relu_SGD', OnlineQLearning, RandomSchedule,
+     {'trace_clock': 'step', 'accumulate_updates': True}),
+    ('2ACDC', '20261109', 'BTSP_Continuous', OnlineQLearning, RandomSchedule, {'trace_clock': 'step'}),
+    ('2ACDC', '20261109', 'BTSP_Eprop', OnlineQLearning, RandomSchedule, {'trace_clock': 'step'}),
     ('2ACDC_CL', '20261103', 'van_bp_relu_SGD', QLearning, AlternatingSchedule, {}),
     ('2ACDC_CL', '20261103', 'eprop_relu_SGD', OnlineQLearning, AlternatingSchedule, {})])
 def test_2ACDC_network_config(model, algo_class, task, date, schedule_class, algo_kwargs):
@@ -620,6 +624,32 @@ def test_eprop_forward_steps_requires_substep_clock():
     output = model.step(torch.ones(3))
     with pytest.raises(RuntimeError, match='trace_clock'):
         compute_learning_rule_updates(network, output, output.detach() + 1.)
+
+
+def test_eprop_step_clock_ticks_once_per_step_on_last_substep():
+    # an explicit trace_clock='step' runs Eprop with forward_steps > 1 as an approximation: the trace ticks once per
+    # step, on the activity of the last substep
+    network = nt.Network({'Input': {'E': {'size': 3}}, 'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                         {'Output': {'E': {'Input': {'E': {'direction': 'F', 'learning_rule': 'Eprop'}}}}},
+                         learning_rate=0.1, optimizer='SGD', tau=3, forward_steps=5, backward_steps=1, seed=0)
+    rule = network.projections['OutputE_InputE'].learning_rule
+    model = RecurrentNetwork(network, persistent_state=True, trace_clock='step')
+    assert network.trace_clock == 'step'
+    model.reset()
+    samples = torch.rand(3, 3, generator=torch.Generator().manual_seed(0))
+    expected = None
+    for sample in samples:
+        output = model.step(sample)
+        expected = sample / 3. if expected is None else (1. - 1. / 3.) * expected + sample / 3.
+        assert torch.allclose(rule.eligibility_trace, expected)
+        compute_learning_rule_updates(network, output, output.detach() + 1.)
+        model.detach()
+    assert rule.accumulated_grad.abs().sum() > 0
+
+
+def test_trace_clock_default_runs_as_step(recurrent_network):
+    model = RecurrentNetwork(recurrent_network)
+    assert model.trace_clock == 'step' and recurrent_network.trace_clock is None
 
 
 def build_cl_network(learning_rule='Backprop', **learning_rule_kwargs):
@@ -916,6 +946,16 @@ def test_crossing_CL_network_config():
     assert rates['success'].shape == (3, 3)
 
 
+def test_crossing_network_config():
+    # Crossing: tasks interleaved at random, as nested_optimize_EIANN_Crossing; the whole run is one block
+    config = read_from_yaml(os.path.join(os.path.dirname(EIANN.__file__), 'optimize', 'network_config', 'Crossing',
+                                         '20261110_EIANN_2_hidden_Crossing_van_bp_relu_SGD_config.yaml'))
+    network = nt.Network(config['layer_config'], config['projection_config'], seed=0, **config['training_kwargs'])
+    algo = QLearning(network, persistent_state=network.persistent_state, seed=0)
+    algo.learn(ScheduledEnv(RandomSchedule(make_crossing_tasks(), seed=0)), episodes=4, val_interval=(0, -1, 1))
+    rates = block_outcome_rates(algo.val_laps, algo.val_episodes, episodes_per_task=4, num_blocks=1, window=4)
+    assert rates['success'].shape == (1, 3)
+
 @pytest.mark.parametrize('actions', ['egocentric', 'allocentric'])
 @pytest.mark.parametrize('task', [0, 1, 2])
 def test_episode_positions(task, actions):
@@ -956,6 +996,22 @@ def test_crossing_plots(tmp_path):
     animate_greedy_episodes(rl_history, val_step=-1, save_path=str(tmp_path / 'greedy.gif'))
     assert {path.name for path in tmp_path.iterdir()} == {'model_outcome_curves.png', 'model_outcome_matrices.png',
                                                           'learning.gif', 'greedy.gif'}
+
+
+def test_crossing_plots_interleaved(tmp_path):
+    matplotlib = pytest.importorskip('matplotlib')
+    matplotlib.use('Agg')
+    from EIANN.reinforcement_learning.crossing_plots import plot_crossing_summary, animate_learning
+    algo = QLearning(build_crossing_network(), persistent_state=True, seed=0)
+    algo.learn(ScheduledEnv(RandomSchedule(make_crossing_tasks(max_steps=10), seed=0)), episodes=4,
+               val_interval=(0, -1, 1))
+    # as exported by nested_optimize_EIANN_Crossing
+    rl_history = {'val_laps': algo.val_laps, 'val_episodes': algo.val_episodes, 'crossing_kwargs': {'max_steps': 10},
+                  'episodes_per_task': 4, 'num_cycles': 1, 'num_tasks': 3, 'interleaved': True}
+    plot_crossing_summary(rl_history, 4, title='test', save_prefix=str(tmp_path / 'model'), plot_format='png')
+    animate_learning(rl_history, window=2, val_steps=[0, 3], save_path=str(tmp_path / 'learning.gif'))
+    assert {path.name for path in tmp_path.iterdir()} == {'model_outcome_curves.png', 'model_outcome_matrices.png',
+                                                          'learning.gif'}
 
 
 def build_qnext_network(input_size=16, output_size=1, learning_rule='Backprop'):

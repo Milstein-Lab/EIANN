@@ -28,7 +28,7 @@ class DPPQL(QLearning):
     """
     def __init__(self, network, qnext_network, qnext_input_population='H1E', gamma=0.99, epsilon=1.,
                  epsilon_decay=0.99, epsilon_min=0.05, epsilon_schedule='decay', persistent_state=False, seed=None,
-                 importance_method='fisher', importance_num_episodes=100, trace_clock='step'):
+                 importance_method='fisher', importance_num_episodes=100, trace_clock=None):
         """
         Parameters
         ----------
@@ -51,7 +51,7 @@ class DPPQL(QLearning):
         importance_method : str, default 'fisher'
         importance_num_episodes : int, default 100
             See RLAlgorithm.
-        trace_clock : str, default 'step'
+        trace_clock : str, optional
             See RLAlgorithm; applies to the Q network. QNext always uses 'step'.
         """
         self.qnext_network = qnext_network
@@ -175,7 +175,7 @@ class OnlineDPPQL(DPPQL):
     def __init__(self, network, qnext_network, qnext_input_population='H1E', gamma=0.99, epsilon=1.,
                  epsilon_decay=0.99, epsilon_min=0.05, epsilon_schedule='decay', persistent_state=False,
                  accumulate_updates=False, seed=None, importance_method='fisher', importance_num_episodes=100,
-                 trace_clock='step'):
+                 trace_clock=None):
         """
         Parameters
         ----------

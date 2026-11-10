@@ -142,6 +142,12 @@ at (2,3), and 5 tasks would need a 5×5 interior.
    learn the delay, and forgetting can't be measured for it.
 2. Training on randomly interleaved tasks (`RandomSchedule`) reaches near-optimal success on all three. This shows the
    tasks are compatible and gives the upper bound for the CL plots.
+   This is the nested task **Crossing** (`optimize/nested_optimize_EIANN_Crossing.py`, configs in
+   `optimize/{network_config,optimize_config,optimize_params}/Crossing/`). It trains 6000 random-order episodes, the
+   same total as Crossing_CL, with ε decaying over the whole run and no `end_task()`, and has one objective, the greedy
+   reward averaged over tasks over the last 250 episodes. At its x0 (van_bp, learning rate 0.03, ε decay 0.9995), only 1
+   of 5 seeds solved all three tasks within 6000 episodes (success A 0.38, B 0.80, C 0.80); every failure was a
+   timeout, never the wrong tile. It still needs to be optimized.
 3. Plain sequential backprop clearly forgets, with BWT well below 0. If it doesn't, the task is too easy to separate
    CL methods.
 
@@ -200,6 +206,11 @@ Post-hoc analysis: `notebooks/Crossing_CL_analysis.ipynb`. It covers:
 - `crossing_plots.py`: the summary plots and the two videos. `nested.analyze --plot` makes the summary plots.
 - `optimize/nested_optimize_EIANN_Crossing_CL.py`, with configs in `optimize/{network_config,optimize_config,
   optimize_params}/Crossing_CL/`. Only van_bp so far.
+- `optimize/nested_optimize_EIANN_Crossing.py`: the interleaved counterpart (task Crossing), with configs in
+  `optimize/{network_config,optimize_config,optimize_params}/Crossing/` and Expanse jobscripts
+  `optimize/jobscripts/{optimize,export_optimized}_EIANN_expanse_cpu_Crossing.sh`. It stores `rl_history` as a single
+  block with `interleaved: True`, so `crossing_metrics` and `crossing_plots` work on it unchanged, except that the
+  plots draw no blocks.
 - Tests in `tests/test_reinforcement_learning.py`:
   - the layouts;
   - the shortest paths, wrong tile, timeout and walls;

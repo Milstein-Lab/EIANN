@@ -16,30 +16,32 @@ class RecurrentNetwork(object):
       each, which computes the same dynamics: with persistent state, reinit leaves states alone, and prev_activity is
       set at the start of every substep. Rules with a set_ticks_per_step method (BTSP_Continuous and its variants) are
       told forward_steps, so their time constants stay in units of steps.
+    trace_clock=None runs as 'step' but leaves network.trace_clock None, so rules that are only exact with the substep
+    clock (Eprop with forward_steps > 1) can refuse to run unless 'step' was chosen explicitly.
     """
     state_attributes = ('state', 'activity', 'prev_activity', 'forward_steps_activity')
     TRACE_CLOCKS = ('step', 'substep')
 
-    def __init__(self, network, persistent_state=False, trace_clock='step'):
+    def __init__(self, network, persistent_state=False, trace_clock=None):
         """
         Parameters
         ----------
         network : Network
         persistent_state : bool, default False
             Whether to carry population states across steps of a sequence.
-        trace_clock : str, default 'step'
+        trace_clock : str, optional
             'step' or 'substep': whether learning rules tick their traces once per step or once per integration
-            substep (see the class docstring). Also set as network.trace_clock, so rules can check it; the last
-            RecurrentNetwork built on a network sets its clock.
+            substep (see the class docstring). None (the default) runs as 'step'. Also set as network.trace_clock
+            (None stays None), so rules can check it; the last RecurrentNetwork built on a network sets its clock.
         """
-        if trace_clock not in self.TRACE_CLOCKS:
+        if trace_clock is not None and trace_clock not in self.TRACE_CLOCKS:
             raise ValueError(f'RecurrentNetwork: trace_clock must be one of {self.TRACE_CLOCKS}, not {trace_clock!r}')
         self.network = network
         self.persistent_state = persistent_state
-        self.trace_clock = trace_clock
+        self.trace_clock = 'step' if trace_clock is None else trace_clock
         self.new_sequence = True
         network.trace_clock = trace_clock
-        ticks_per_step = network.forward_steps if trace_clock == 'substep' else 1
+        ticks_per_step = network.forward_steps if self.trace_clock == 'substep' else 1
         for projection in network.projections.values():
             if hasattr(projection.learning_rule, 'set_ticks_per_step'):
                 projection.learning_rule.set_ticks_per_step(ticks_per_step)

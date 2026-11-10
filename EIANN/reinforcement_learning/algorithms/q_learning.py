@@ -38,7 +38,7 @@ class QLearning(RLAlgorithm):
 
     def __init__(self, network, gamma=0.99, epsilon=1., epsilon_decay=0.99, epsilon_min=0.05, epsilon_schedule='decay',
                  persistent_state=False, seed=None, importance_method='fisher', importance_num_episodes=100,
-                 trace_clock='step'):
+                 trace_clock=None):
         """
         Parameters
         ----------
@@ -61,7 +61,7 @@ class QLearning(RLAlgorithm):
         importance_method : str, default 'fisher'
         importance_num_episodes : int, default 100
             See RLAlgorithm (continual learning with importance_source='external' rules).
-        trace_clock : str, default 'step'
+        trace_clock : str, optional
             See RLAlgorithm.
         """
         super().__init__(network, persistent_state=persistent_state, seed=seed, importance_method=importance_method,
@@ -152,7 +152,7 @@ class OnlineQLearning(QLearning):
     """
     def __init__(self, network, gamma=0.99, epsilon=1., epsilon_decay=0.99, epsilon_min=0.05, epsilon_schedule='decay',
                  persistent_state=False, accumulate_updates=False, seed=None, importance_method='fisher',
-                 importance_num_episodes=100, trace_clock='step'):
+                 importance_num_episodes=100, trace_clock=None):
         """
         Parameters
         ----------
@@ -169,7 +169,7 @@ class OnlineQLearning(QLearning):
         seed : int, optional
         importance_method : str, default 'fisher'
         importance_num_episodes : int, default 100
-        trace_clock : str, default 'step'
+        trace_clock : str, optional
             See RLAlgorithm.
         """
         super().__init__(network, gamma=gamma, epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min,
