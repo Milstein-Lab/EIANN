@@ -78,6 +78,38 @@ eprop_bpDale_relu_SGD:
     gamma: 0.9284098636510926
     tau: 2.818549755943454
 
+eprop_bpDale_learnedI_relu_SGD:
+    #    reward: 0.852 (5 seeds, nested.analyze; 0.79 to 0.90 per seed, about 57 s per seed); x0, not optimized, needs a
+    #    cluster optimization. eprop_bpDale_relu_SGD's optimized params with every SomaI
+    #    projection learned (Eprop onto E from SomaI, Eprop_SomaI onto SomaI); H_E_I and H_I_E learning rates set to
+    #    its H_E_E_learning_rate
+    H_E_E_learning_rate: 0.07758953807021901
+    Output_E_E_learning_rate: 0.15256869852044858
+    H_E_I_learning_rate: 0.07758953807021901
+    H_I_E_learning_rate: 0.07758953807021901
+    H1_E_Input_E_init_weight_scale: 1.5819896483666573
+    H1_E_H1_E_init_weight_scale: 0.15928377605705749
+    H1_E_H1_I_init_weight_scale: 0.763769065179977
+    H1_I_Input_E_init_weight_scale: 2.5994293536278597
+    H1_I_H1_E_init_weight_scale: 2.2855359518986957
+    H1_I_H1_I_init_weight_scale: 1.013155317660376
+    H2_E_H1_E_init_weight_scale: 0.39996175967461556
+    H2_E_H2_I_init_weight_scale: 0.6684845069283567
+    H2_I_H1_E_init_weight_scale: 0.8546102947930063
+    H2_I_H2_E_init_weight_scale: 0.6417783757686177
+    H2_I_H2_I_init_weight_scale: 1.4312525645420195
+    Output_E_H2_E_init_weight_scale: 3.374220868281835
+    Output_E_Output_I_init_weight_scale: 0.41594491571333786
+    Output_I_H2_E_init_weight_scale: 0.5417812233223569
+    Output_I_Output_E_init_weight_scale: 0.26106307414084623
+    Output_I_Output_I_init_weight_scale: 0.04901211718784201
+    H_I_size: 13.105096756936236
+    Output_I_size: 1.752959928215772
+    epsilon: 0.16416804153820586
+    epsilon_decay: 0.9901643173516512
+    gamma: 0.9284098636510926
+    tau: 2.818549755943454
+
 # DPPQL_van_bp_relu_SGD:
 #     #    reward: 0.9615 (5 seeds, nested.analyze; 0.9 to 1.0 per seed); x0, not optimized. Q params from
 #     #    van_bp_relu_SGD; gamma 0.1 as in basic_rl's dual_q_learning (0.5 and 0.9 were worse); QNext learning rates
