@@ -37,7 +37,8 @@ class QLearning(RLAlgorithm):
     EPSILON_SCHEDULES = ('fixed', 'decay', 'reset')
 
     def __init__(self, network, gamma=0.99, epsilon=1., epsilon_decay=0.99, epsilon_min=0.05, epsilon_schedule='decay',
-                 persistent_state=False, seed=None, importance_method='fisher', importance_num_episodes=100):
+                 persistent_state=False, seed=None, importance_method='fisher', importance_num_episodes=100,
+                 trace_clock=None):
         """
         Parameters
         ----------
@@ -60,9 +61,11 @@ class QLearning(RLAlgorithm):
         importance_method : str, default 'fisher'
         importance_num_episodes : int, default 100
             See RLAlgorithm (continual learning with importance_source='external' rules).
+        trace_clock : str, optional
+            See RLAlgorithm.
         """
         super().__init__(network, persistent_state=persistent_state, seed=seed, importance_method=importance_method,
-                         importance_num_episodes=importance_num_episodes)
+                         importance_num_episodes=importance_num_episodes, trace_clock=trace_clock)
         if epsilon_schedule not in self.EPSILON_SCHEDULES:
             raise ValueError(f'{type(self).__name__}: epsilon_schedule must be one of {self.EPSILON_SCHEDULES}, not '
                              f'{epsilon_schedule!r}')
@@ -149,7 +152,7 @@ class OnlineQLearning(QLearning):
     """
     def __init__(self, network, gamma=0.99, epsilon=1., epsilon_decay=0.99, epsilon_min=0.05, epsilon_schedule='decay',
                  persistent_state=False, accumulate_updates=False, seed=None, importance_method='fisher',
-                 importance_num_episodes=100):
+                 importance_num_episodes=100, trace_clock=None):
         """
         Parameters
         ----------
@@ -166,11 +169,12 @@ class OnlineQLearning(QLearning):
         seed : int, optional
         importance_method : str, default 'fisher'
         importance_num_episodes : int, default 100
+        trace_clock : str, optional
             See RLAlgorithm.
         """
         super().__init__(network, gamma=gamma, epsilon=epsilon, epsilon_decay=epsilon_decay, epsilon_min=epsilon_min,
                          epsilon_schedule=epsilon_schedule, persistent_state=persistent_state, seed=seed, importance_method=importance_method,
-                         importance_num_episodes=importance_num_episodes)
+                         importance_num_episodes=importance_num_episodes, trace_clock=trace_clock)
         self.accumulate_updates = accumulate_updates
 
     def run_episode(self, env):

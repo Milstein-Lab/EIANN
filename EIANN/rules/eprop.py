@@ -7,13 +7,21 @@ class Eprop(LearningRule):
     Symmetric e-prop (Bellec et al. 2020, https://doi.org/10.1038/s41467-020-17236-y) for networks run one sample at a
     time over a sequence, e.g. the steps of an episode with EIANN.recurrent_network.RecurrentNetwork.
 
-    With forward_steps == 1, the post state follows s_t = (1 - 1/tau) s_{t-1} + (bias + sum_i W_i x_i,t) / tau, where
-    x_t is the presynaptic activity (of the previous step for recurrent projections). e-prop keeps only the path from a
-    weight to the post state through the post unit's own leak, giving the eligibility trace
+    Every integration substep updates the post state as s_t = (1 - 1/tau) s_{t-1} + (bias + sum_i W_i x_i,t) / tau,
+    where x_t is the presynaptic activity (of the previous substep for recurrent projections). e-prop keeps only the
+    path from a weight to the post state through the post unit's own leak, giving the eligibility trace
         e_t = (1 - 1/tau) e_{t-1} + x_t / tau,
-    which depends only on the presynaptic unit and is stored as a vector. The learning signal L_t = dL_t/ds_t is
-    backpropagated within the current step only, and the gradient is the sum over steps of the outer product L_t e_t.
-    With tau == 1 the trace has no memory and the gradient equals backprop truncated to the current step.
+    ticked once per substep, which depends only on the presynaptic unit and is stored as a vector. The learning signal
+    L_t = dL_t/ds_t is backpropagated within the current substep only, and is nonzero only at the last substep of a step,
+    where the loss is. The gradient is the sum over steps of the outer product L_t e_t. With tau == 1 the trace has no
+    memory and the gradient equals backprop truncated to the current substep.
+
+    With forward_steps == 1, a step is one substep. With forward_steps > 1, the clock must be chosen explicitly:
+    - RecurrentNetwork(trace_clock='substep') (RL algorithms: trace_clock='substep') ticks the traces every substep,
+      which gives the gradient above exactly;
+    - trace_clock='step' ticks them once per step with the last substep's activity: an approximation in which tau is in
+      steps, and the earlier substeps of a step reach the gradient only through the learning signal of the last one.
+    With no clock set (trace_clock=None, the default), backward raises.
 
     The rule's methods split the work:
       forward()  update the eligibility trace after every forward step (called by RecurrentNetwork.step, which also
@@ -22,13 +30,12 @@ class Eprop(LearningRule):
       step()     apply the accumulated gradient with the network's optimizer and clear it.
     Calling step() after every backward() updates online; calling it once per episode accumulates over the episode.
 
-    Requirements: forward_steps == 1; somatic projections; backward runs on the output of a single step; all trainable
-    projections of the network use Eprop. Autapses of recurrent projections are learned like any other weight; remove
+    Requirements: forward_steps == 1 or an explicit trace_clock ('substep', or 'step' as an approximation); somatic projections; backward runs on the output of a
+    single step; all trainable projections of the network use Eprop. Autapses of recurrent projections are learned like any other weight; remove
     them with the no_autapses weight constraint.
     """
     def __init__(self, projection, learning_rate=None):
         super().__init__(projection, learning_rate)
-        assert projection.post.network.forward_steps == 1, 'Eprop: requires forward_steps == 1'
         assert projection.compartment not in ['dend', 'dendrite'], 'Eprop: only somatic projections are supported'
         # gradients are only taken with respect to population states, but the states must be part of the graph
         projection.weight.requires_grad = True
@@ -44,7 +51,7 @@ class Eprop(LearningRule):
 
     def forward(self):
         """
-        Update the eligibility trace from the presynaptic activity of the forward step that just ran.
+        Update the eligibility trace from the presynaptic activity of the integration substep that just ran.
         """
         pre = self.projection.pre
         tau = self.projection.post.tau
@@ -64,6 +71,11 @@ class Eprop(LearningRule):
             'Eprop: backward takes the output of a single step (e.g. OnlineQLearning)'
         rules = [projection.learning_rule for projection in network.projections.values()
                  if isinstance(projection.learning_rule, cls)]
+        if network.forward_steps > 1 and getattr(network, 'trace_clock', None) is None:
+            raise RuntimeError(f'Eprop: forward_steps is {network.forward_steps}, so choose when eligibility traces '
+                               f'tick: RecurrentNetwork(trace_clock=\'substep\') for every integration substep (exact), '
+                               f'or trace_clock=\'step\' for once per step (approximate); RL algorithms take the same '
+                               f'trace_clock kwarg')
         if any(rule.eligibility_trace is None for rule in rules):
             raise RuntimeError('Eprop: eligibility traces are updated by forward(); run the network with '
                                'EIANN.recurrent_network.RecurrentNetwork.step')

@@ -47,7 +47,7 @@ class RLAlgorithm(object):
     task's training episodes (see reinforcement_learning.continual).
     """
     def __init__(self, network, persistent_state=False, seed=None, importance_method='fisher',
-                 importance_num_episodes=100):
+                 importance_num_episodes=100, trace_clock=None):
         """
         Parameters
         ----------
@@ -61,9 +61,13 @@ class RLAlgorithm(object):
             continual.estimate_importance): 'fisher' or 'empirical_fisher'.
         importance_num_episodes : int, default 100
             Training episodes of each task kept (reservoir sample) to estimate importance from.
+        trace_clock : str, optional
+            'step' or 'substep': whether learning rules with traces tick them once per environment step or once per
+            integration substep (see RecurrentNetwork). None runs as 'step'. Eprop with forward_steps > 1 needs
+            'substep' (exact) or an explicit 'step' (approximate).
         """
         self.network = network
-        self.model = RecurrentNetwork(network, persistent_state=persistent_state)
+        self.model = RecurrentNetwork(network, persistent_state=persistent_state, trace_clock=trace_clock)
         self.seed = seed
         self.rng = np.random.default_rng(seed)
         self.importance_method = importance_method

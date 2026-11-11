@@ -1,0 +1,228 @@
+bounds:
+    H_E_FF_E_max_weight_scale:
+        - 0.01
+        - 20.0
+    H1_E_Input_E_init_weight_factor:
+        - 0.01
+        - 1.0
+    H1_E_H1_E_max_weight_scale:
+        - 0.01
+        - 20.0
+    H1_E_H1_E_init_weight_factor:
+        - 0.01
+        - 1.0
+    H_E_E_learning_rate:
+        - 0.0001
+        - 0.25
+    H1_E_H2_E_weight_scale:
+        - 0.01
+        - 10.0
+    neg_rate_th:
+        - 0.0
+        - 0.5
+    max_pop_fraction:
+        - 0.01
+        - 1.0
+    tau_ET:
+        - 0.1
+        - 20.0
+    tau_IS:
+        - 0.1
+        - 10.0
+    dep_th:
+        - 0.01
+        - 0.9
+    dep_width:
+        - 0.01
+        - 0.5
+    H1_E_H1_SomaI_init_weight_scale:
+        - 0.01
+        - 10.0
+    H1_SomaI_H1_E_init_weight_scale:
+        - 0.01
+        - 10.0
+    H1_SomaI_Input_E_init_weight_scale:
+        - 0.01
+        - 10.0
+    H1_SomaI_H1_SomaI_init_weight_scale:
+        - 0.01
+        - 10.0
+    H1_E_H1_DendI_init_weight_scale:
+        - 0.01
+        - 10.0
+    H_E_DendI_learning_rate:
+        - 0.0001
+        - 0.25
+    H1_DendI_H1_E_weight_scale:
+        - 0.01
+        - 10.0
+    H1_DendI_H1_DendI_weight_scale:
+        - 0.01
+        - 10.0
+    DendI_E_learning_rate:
+        - 0.0001
+        - 1.0
+    DendI_DendI_learning_rate:
+        - 0.0001
+        - 1.0
+    H2_E_H1_E_init_weight_factor:
+        - 0.01
+        - 1.0
+    H2_E_Output_E_weight_scale:
+        - 0.01
+        - 10.0
+    H2_E_H2_SomaI_init_weight_scale:
+        - 0.01
+        - 10.0
+    H2_SomaI_H2_E_init_weight_scale:
+        - 0.01
+        - 10.0
+    H2_SomaI_H1_E_init_weight_scale:
+        - 0.01
+        - 10.0
+    H2_SomaI_H2_SomaI_init_weight_scale:
+        - 0.01
+        - 10.0
+    H2_E_H2_DendI_init_weight_scale:
+        - 0.01
+        - 10.0
+    H2_DendI_H2_E_weight_scale:
+        - 0.01
+        - 10.0
+    H2_DendI_H2_DendI_weight_scale:
+        - 0.01
+        - 10.0
+    Output_E_H2_E_max_weight_scale:
+        - 0.01
+        - 20.0
+    Output_E_H2_E_init_weight_factor:
+        - 0.01
+        - 1.0
+    Output_E_H2_E_learning_rate:
+        - 0.0001
+        - 0.25
+    Output_E_Output_I_init_weight_scale:
+        - 0.01
+        - 10.0
+    Output_I_Output_E_init_weight_scale:
+        - 0.01
+        - 10.0
+    Output_I_H2_E_init_weight_scale:
+        - 0.01
+        - 10.0
+    Output_I_Output_I_init_weight_scale:
+        - 0.01
+        - 10.0
+    H_I_size:
+        - 1
+        - 20
+    Output_I_size:
+        - 1
+        - 2
+    tau:
+        - 1.0
+        - 10.0
+    epsilon:
+        - 0.01
+        - 0.999
+    epsilon_decay:
+        - 0.9
+        - 1.0
+    gamma:
+        - 0.01
+        - 0.99
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    status_bar: False
+    train_episodes: 1000
+    algorithm: OnlineQLearning
+    algorithm_kwargs:
+        epsilon_min: 0.
+        accumulate_updates: False # BTSP_Continuous weights change after every step
+        trace_clock: step # traces tick once per environment step, after all 5 integration substeps (substep version: BTSP_Continuous)
+    treadmill_kwargs:
+        length: 23
+        cue_position: 8
+        cue_length: 3
+        num_cues: 2
+        reward_positions:
+            - 15
+            - 19
+        reward_length: 2
+        # (ignore, correct lick, wrong lick): the 2ACDC values (0., 1., -0.1) shifted by +0.1 so that all Q targets
+        # are >= 0 (BTSP E weights are non-negative); every lap has the same length, so the optimal policy is unchanged,
+        # and the reward feature is reported relative to a lap without licks, in the unshifted units
+        reward_values:
+            - 0.1
+            - 1.1
+            - 0.
+    network_config_file_path: optimize/network_config/2ACDC/20261109_EIANN_2_hidden_2ACDC_BTSP_Continuous_config.yaml
+    val_interval:
+        - -1000
+        - -1
+        - 10
+    num_episodes_reward_window: 200
+update_context:
+    - source: optimize.nested_optimize_EIANN_2ACDC
+      function: update_EIANN_config_2_hidden_2ACDC_BTSP_Continuous
+    - source: optimize.nested_optimize_EIANN_2ACDC
+      function: update_tau
+    - source: optimize.nested_optimize_EIANN_2ACDC
+      function: update_q_learning_kwargs
+stages:
+    - source: optimize.nested_optimize_EIANN_2ACDC
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_2ACDC_BTSP_Continuous_step_clock
+x0:
+    H_E_FF_E_max_weight_scale: 7.788609158406613
+    H1_E_Input_E_init_weight_factor: 0.44148085242662294
+    H1_E_H1_E_max_weight_scale: 2.0
+    H1_E_H1_E_init_weight_factor: 0.1
+    H_E_E_learning_rate: 0.00938294618946663
+    H1_E_H2_E_weight_scale: 0.16914695597382515
+    neg_rate_th: 0.0
+    max_pop_fraction: 1.0
+    tau_ET: 3.0
+    tau_IS: 1.0
+    dep_th: 0.2
+    dep_width: 0.1
+    H1_E_H1_SomaI_init_weight_scale: 1.8465890474026487
+    H1_SomaI_H1_E_init_weight_scale: 0.7559077315353061
+    H1_SomaI_Input_E_init_weight_scale: 2.343115372006121
+    H1_SomaI_H1_SomaI_init_weight_scale: 1.0868198240743892
+    H1_E_H1_DendI_init_weight_scale: 1.7371394099251893
+    H_E_DendI_learning_rate: 0.03888840729184042
+    H1_DendI_H1_E_weight_scale: 1.818219554989597
+    H1_DendI_H1_DendI_weight_scale: 0.5070979162787277
+    DendI_E_learning_rate: 0.13292864353596703
+    DendI_DendI_learning_rate: 0.06085700670526915
+    H2_E_H1_E_init_weight_factor: 0.11128317870213929
+    H2_E_Output_E_weight_scale: 0.9552263595956582
+    H2_E_H2_SomaI_init_weight_scale: 0.307379610388407
+    H2_SomaI_H2_E_init_weight_scale: 0.3016102106647725
+    H2_SomaI_H1_E_init_weight_scale: 1.9665123573403203
+    H2_SomaI_H2_SomaI_init_weight_scale: 0.9120145277865381
+    H2_E_H2_DendI_init_weight_scale: 6.018251161556481
+    H2_DendI_H2_E_weight_scale: 4.590664762918663
+    H2_DendI_H2_DendI_weight_scale: 0.883285944933908
+    Output_E_H2_E_max_weight_scale: 9.856494070402997
+    Output_E_H2_E_init_weight_factor: 0.9351330816419723
+    Output_E_H2_E_learning_rate: 0.019856826836325604
+    Output_E_Output_I_init_weight_scale: 0.30960437593267404
+    Output_I_Output_E_init_weight_scale: 0.21986736823621184
+    Output_I_H2_E_init_weight_scale: 0.8093417138412852
+    Output_I_Output_I_init_weight_scale: 1.5466764661394883
+    H_I_size: 10
+    Output_I_size: 2
+    tau: 3.0
+    epsilon: 0.6070376073482587
+    epsilon_decay: 0.9984025483962401
+    gamma: 0.15056280945389777

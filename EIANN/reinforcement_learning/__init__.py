@@ -1,1 +1,1 @@
-from .algorithms import RLAlgorithm, QLearning, OnlineQLearning
+from .algorithms import RLAlgorithm, QLearning, OnlineQLearning, DPPQL, OnlineDPPQL

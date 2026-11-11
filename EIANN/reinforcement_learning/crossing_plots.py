@@ -1,6 +1,8 @@
 """
-Plots of the Crossing_CL task (CrossingChoiceEnv), from the rl_history that nested_optimize_EIANN_Crossing_CL saves
-with every exported network. Everything works from the greedy episodes recorded during training, so nothing retrains.
+Plots of the Crossing_CL and Crossing tasks (CrossingChoiceEnv), from the rl_history that nested_optimize_EIANN_Crossing_CL
+and nested_optimize_EIANN_Crossing save with every exported network. Everything works from the greedy episodes recorded
+during training, so nothing retrains. Crossing (tasks interleaved at random) is stored as a single block of all episodes,
+with rl_history['interleaved'] = True; plots then don't mark blocks or a trained task.
 """
 import os
 import shutil
@@ -27,6 +29,21 @@ def task_name(task):
 
 def get_tasks(rl_history):
     return make_crossing_tasks(**(rl_history.get('crossing_kwargs') or {}))
+
+
+def get_num_blocks(rl_history):
+    # Crossing (interleaved) trains all tasks in one block
+    return 1 if rl_history.get('interleaved') else rl_history['num_tasks'] * rl_history['num_cycles']
+
+
+def mark_training(ax, episodes, rl_history):
+    """
+    Shade the blocks of a blocked schedule (mark_blocks), or only set the x limits when the tasks are interleaved.
+    """
+    if rl_history.get('interleaved'):
+        ax.set_xlim(0, rl_history['episodes_per_task'])
+    else:
+        mark_blocks(ax, episodes, rl_history['episodes_per_task'], rl_history['num_tasks'])
 
 
 def draw_room(ax, env, frame_color=None):
@@ -122,7 +139,7 @@ def plot_outcome_curves(rl_history, window=10, title=None, save_path=None):
     fig, axes = plt.subplots(1, 3, figsize=(7.2, 1.8), sharey=True, layout='constrained')
     for ax, (key, label) in zip(axes, (('success', 'Success'), ('navigation', 'Reached a tile'),
                                         ('choice', 'Choice accuracy'))):
-        mark_blocks(ax, episodes, rl_history['episodes_per_task'], num_tasks)
+        mark_training(ax, episodes, rl_history)
         for task in range(num_tasks):
             ax.plot(episodes, curves[key][:, task], color=SERIES_COLORS[task], linewidth=1,
                     label=f'Task {task_name(task)}')
@@ -142,22 +159,24 @@ def plot_outcome_matrices(rl_history, window, title=None, save_path=None):
     block (as the nested features).
     """
     num_tasks = rl_history['num_tasks']
-    num_blocks = num_tasks * rl_history['num_cycles']
+    num_blocks = get_num_blocks(rl_history)
+    row_labels = ['Interleaved'] if rl_history.get('interleaved') else None
     rates = block_outcome_rates(rl_history['val_laps'], rl_history['val_episodes'], rl_history['episodes_per_task'],
                                 num_blocks, window)
     fig, axes = plt.subplots(1, 3, figsize=(6.6, 1.9), layout='constrained')
     for ax, (key, label) in zip(axes, (('success', 'Success'), ('navigation', 'Reached a tile'),
                                         ('choice', 'Choice accuracy'))):
-        plot_matrix(ax, rates[key], num_tasks)
+        plot_matrix(ax, rates[key], num_tasks, row_labels=row_labels)
         ax.set_title(label)
     if title is not None:
         fig.suptitle(title)
     save_or_show(fig, save_path)
 
 
-def plot_matrix(ax, matrix, num_tasks, vmin=0., vmax=1.):
+def plot_matrix(ax, matrix, num_tasks, vmin=0., vmax=1., row_labels=None):
     """
-    One block x task matrix, with its values written in the cells.
+    One block x task matrix, with its values written in the cells. Rows are labeled with the block and the task it trains
+    on, unless row_labels are given.
     """
     image = ax.imshow(matrix, cmap='viridis', vmin=vmin, vmax=vmax, aspect='auto')
     num_blocks = matrix.shape[0]
@@ -167,9 +186,12 @@ def plot_matrix(ax, matrix, num_tasks, vmin=0., vmax=1.):
             ax.text(task, block, '–' if np.isnan(value) else f'{value:.2f}', ha='center', va='center', fontsize=6,
                     color='white' if np.isnan(value) or value < 0.5 * (vmin + vmax) else 'black')
     ax.set_xticks(range(matrix.shape[1]), [task_name(task) for task in range(matrix.shape[1])])
-    ax.set_yticks(range(num_blocks), [f'{block} ({task_name(block % num_tasks)})' for block in range(num_blocks)])
+    if row_labels is None:
+        ax.set_yticks(range(num_blocks), [f'{block} ({task_name(block % num_tasks)})' for block in range(num_blocks)])
+        ax.set_ylabel('Block (trained on)')
+    else:
+        ax.set_yticks(range(num_blocks), row_labels)
     ax.set_xlabel('Evaluated on task')
-    ax.set_ylabel('Block (trained on)')
     return image
 
 
@@ -195,8 +217,8 @@ def plot_crossing_summary(rl_history, window, title=None, save_prefix=None, plot
 def animate_learning(rl_history, window=10, val_steps=None, title=None, interval=125, save_path=None, dpi=120):
     """
     Video of learning over training: one frame per validation step, with the greedy path on every task at that step
-    (end marked green if correct, red if wrong, gray on timeout), the task being trained framed in its color, and the
-    success curves below with a line at the current episode.
+    (end marked green if correct, red if wrong, gray on timeout), the task being trained framed in its color (none when
+    the tasks are interleaved), and the success curves below with a line at the current episode.
 
     Parameters
     ----------
@@ -233,7 +255,7 @@ def animate_learning(rl_history, window=10, val_steps=None, title=None, interval
                             top=0.86, bottom=0.12)
     room_axes = [fig.add_subplot(grid[0, task]) for task in range(num_tasks)]
     curve_ax = fig.add_subplot(grid[1, :])
-    mark_blocks(curve_ax, episodes, episodes_per_task, num_tasks)
+    mark_training(curve_ax, episodes, rl_history)
     for task in range(num_tasks):
         curve_ax.plot(episodes, curves['success'][:, task], color=SERIES_COLORS[task], linewidth=1,
                       label=f'Task {task_name(task)}')
@@ -254,7 +276,8 @@ def animate_learning(rl_history, window=10, val_steps=None, title=None, interval
     def update(frame):
         step = val_steps[frame]
         episode = episodes[step]
-        trained = min(int(episode // episodes_per_task), rl_history['num_cycles'] * num_tasks - 1) % num_tasks
+        trained = None if rl_history.get('interleaved') else \
+            min(int(episode // episodes_per_task), get_num_blocks(rl_history) - 1) % num_tasks
         artists = []
         for task, (ax, env) in enumerate(zip(room_axes, tasks)):
             ax.clear()
@@ -263,7 +286,8 @@ def animate_learning(rl_history, window=10, val_steps=None, title=None, interval
             artists += draw_trajectory(ax, positions, outcome)
             ax.set_title(f'Task {task_name(task)}', color=SERIES_COLORS[task])
         cursor.set_xdata([episode, episode])
-        suptitle.set_text(get_title(title, f'Episode {episode + 1}: training on task {task_name(trained)}'))
+        training = 'all tasks interleaved' if trained is None else f'task {task_name(trained)}'
+        suptitle.set_text(get_title(title, f'Episode {episode + 1}: training on {training}'))
         return artists + [cursor, suptitle]
 
     anim = animation.FuncAnimation(fig, update, frames=len(val_steps), interval=interval, blit=False)

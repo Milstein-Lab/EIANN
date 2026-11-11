@@ -598,6 +598,51 @@ BTSP_SI_CL_5_tasks:
     H_I_size: 50.0
     Output_I_size: 10.0
 
+BTSP_BP_SI_CL_5_tasks:
+    # final_dynamics_residuals: 0.0
+    # phase0_accuracy: 99.87541961669922
+    # phase0_dynamics_residuals: 0.0
+    # phase0_loss: 0.002795353066176176
+    # phase1_accuracy: 93.42233276367188
+    # phase1_dynamics_residuals: 0.0
+    # phase1_loss: 0.02309500053524971
+    # phase2_accuracy: 83.21379089355469
+    # phase2_dynamics_residuals: 0.0
+    # phase2_loss: 0.04105191305279732
+    # phase3_accuracy: 79.18206787109375
+    # phase3_dynamics_residuals: 0.0
+    # phase3_loss: 0.04900515824556351
+    # phase4_accuracy: 67.55279541015625
+    # phase4_dynamics_residuals: 0.0
+    # phase4_loss: 0.061076827347278595
+    H_E_FF_E_max_weight_scale: 10.011635363441215
+    H1_E_Input_E_init_weight_scale: 2.365760700554111
+    H_E_E_learning_rate: 0.011655533424487127
+    H1_E_error_scale: 30.260993049233768
+    H1_E_H1_I_init_weight_scale: 1.1031623963183612
+    H1_I_Input_E_init_weight_scale: 1.7691818279670173
+    H1_I_H1_E_init_weight_scale: 1.1806524186336569
+    H1_I_H1_I_init_weight_scale: 1.0090208044720579
+    H2_E_H1_E_init_weight_scale: 0.7945462049494866
+    H2_E_error_scale: 261.4590497765134
+    H2_E_H2_I_init_weight_scale: 1.4808512631017219
+    H2_I_H1_E_init_weight_scale: 0.22098495476839394
+    H2_I_H2_E_init_weight_scale: 0.15542243106504894
+    H2_I_H2_I_init_weight_scale: 1.0853821363032274
+    Output_E_H2_E_max_weight_scale: 31.10986000278137
+    Output_E_H2_E_init_weight_scale: 2.5687976613575865
+    Output_E_H2_E_learning_rate: 0.014973835323041362
+    Output_E_error_scale: 130.8348793266547
+    Output_E_Output_I_init_weight_scale: 0.44161830062656976
+    Output_I_H2_E_init_weight_scale: 3.786652939490451
+    Output_I_Output_E_init_weight_scale: 0.02466412065889443
+    Output_I_Output_I_init_weight_scale: 2.901504538057631
+    H_I_size: 50.0
+    Output_I_size: 10.0
+    H_si_lambda: 0.06728965713943034
+    Output_si_lambda: 0.12510690350749645
+
+
 van_bp_CL_5_tasks_SI_ELR:
     # phase0_accuracy: 99.91436
     # phase0_loss: 0.0022309013

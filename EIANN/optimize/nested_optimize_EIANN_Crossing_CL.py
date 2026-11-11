@@ -25,9 +25,9 @@ context = Context()
 # ('fixed', 'decay' or 'reset'; see QLearning).
 # Objectives, as in 2ACDC_CL: for every block b, phase{b}_reward is the greedy reward averaged over the tasks seen so far,
 # over the last num_episodes_reward_window episodes of the block. Features only: phase{b}_reward_task{j} (the block x
-# task reward matrix), reward (the mean of the phase rewards), and per block and task the success rate (rewarded tile),
-# navigation rate (any tile) and choice accuracy (success / navigation): phase{b}_{success,navigation,choice}_task{j},
-# with phase{b}_success as the mean success over the tasks seen so far.
+# task reward matrix), reward (the mean of the phase rewards), and per block and task the success rate (rewarded tile)
+# and choice accuracy (success / fraction of episodes that reached any tile): phase{b}_{success,choice}_task{j}, with
+# phase{b}_success as the mean success over the tasks seen so far.
 
 # train and export a single seed (must be run from the EIANN package directory):
 # python -m nested.analyze --framework=serial \
@@ -179,8 +179,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         results[f'phase{block}_success'] = phase_success[block]
         for task in range(num_tasks):
             results[f'phase{block}_reward_task{task}'] = reward_matrix[block, task]
-            for rate in ('success', 'navigation'):
-                results[f'phase{block}_{rate}_task{task}'] = rates[rate][block, task]
+            results[f'phase{block}_success_task{task}'] = rates['success'][block, task]
             # NaN when no tile was reached; filter_features skips it instead of failing the instance
             results[f'phase{block}_choice_task{task}'] = rates['choice'][block, task]
     # summary only (not an objective)

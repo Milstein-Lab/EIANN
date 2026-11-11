@@ -1,0 +1,19 @@
+# reward	greedy reward averaged over tasks (objective); reward_task{j} per task
+# success_task{j}	reached the rewarded tile
+# navigation_task{j}	reached any tile (did not time out)
+# choice_task{j}	success / navigation: of the episodes that reached a tile, how many picked the right one
+
+van_bp_relu_SGD:
+    #    not optimized: x0 of the optimize config (the earlier hand-tuned interleaved check, lr 0.03)
+    #    5 seeds (laptop, 2026-11-10): reward 0.425, success 0.66 (A 0.38, B 0.80, C 0.80), choice 1.0 on every task.
+    #    Only seed 1 solved all three; seeds 2-3 solved B and C but never A; seed 4 had A at 0.9; seed 5 reached no tile
+    #    on any task. Every failure is navigation (timeouts), not the wrong tile
+    H_learning_rate: 0.03
+    Output_learning_rate: 0.03
+    H1_init_weight_scale: 1.
+    H1_H1_init_weight_scale: 1.
+    H2_init_weight_scale: 1.
+    Output_init_weight_scale: 1.2
+    epsilon: 0.999
+    epsilon_decay: 0.9995
+    gamma: 0.9

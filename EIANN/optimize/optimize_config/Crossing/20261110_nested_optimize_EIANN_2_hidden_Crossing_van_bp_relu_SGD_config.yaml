@@ -1,0 +1,76 @@
+bounds:
+    H_learning_rate:
+        - 0.0001
+        - 2.
+    Output_learning_rate:
+        - 0.0001
+        - 2.
+    H1_init_weight_scale:
+        - 0.01
+        - 10.
+    H1_H1_init_weight_scale:
+        - 0.01
+        - 10.
+    H2_init_weight_scale:
+        - 0.01
+        - 10.
+    Output_init_weight_scale:
+        - 0.01
+        - 10.
+    epsilon:
+        - 0.01
+        - 0.999
+    epsilon_decay:
+        - 0.9
+        - 1.
+    gamma:
+        - 0.01
+        - 0.99
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 4
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    status_bar: False
+    train_episodes: 6000 # tasks A, B, C drawn at random every episode; the same total as Crossing_CL (3 tasks x 2000)
+    algorithm: QLearning # one update per episode, with backprop through the whole episode, which trains the memory egocentric tasks need (the network config sums the loss over steps)
+    algorithm_kwargs:
+        epsilon_min: 0.05
+        epsilon_schedule: decay # over the whole run: there are no task switches
+    crossing_kwargs: # CrossingChoiceEnv arguments shared by tasks A, B and C, the same as Crossing_CL
+        actions: egocentric # turn left, turn right, forward (or allocentric: north, east, south, west)
+        correct_reward: 1.
+        wrong_reward: -0.1
+        step_reward: -0.01
+        max_steps: 50
+        agent_view_size: 3
+    network_config_file_path: optimize/network_config/Crossing/20261110_EIANN_2_hidden_Crossing_van_bp_relu_SGD_config.yaml
+    val_interval:
+        - 0
+        - -1
+        - 25
+    num_episodes_reward_window: 250 # 10 validation steps (one greedy episode per task each)
+update_context:
+    - source: optimize.nested_optimize_EIANN_Crossing
+      function: update_EIANN_config_2_hidden_2ACDC_van_bp_relu_SGD
+    - source: optimize.nested_optimize_EIANN_Crossing
+      function: update_q_learning_kwargs
+stages:
+    - source: optimize.nested_optimize_EIANN_Crossing
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_Crossing_van_bp_relu_SGD
+x0:
+    H_learning_rate: 0.03
+    Output_learning_rate: 0.03
+    H1_init_weight_scale: 1.
+    H1_H1_init_weight_scale: 1.
+    H2_init_weight_scale: 1.
+    Output_init_weight_scale: 1.2
+    epsilon: 0.999
+    epsilon_decay: 0.9995
+    gamma: 0.9
