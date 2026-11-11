@@ -40,8 +40,6 @@ FF_bpDale_convnet_A:
     OutputIE_init_weight_scale: 0.4957206712194807
 
 bpDale_G_convnet_A_fast_dyn_test:
-    #    accuracy: 29.268
-    #    loss: 0.08245114
     ConvEE_learning_rate: 0.06031664557336458
     HEE_learning_rate: 0.16189023472191755
     OutputEE_learning_rate: 0.22738847509822555
