@@ -8,6 +8,16 @@ import datetime
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+import importlib
+import torch._dynamo
+
+
+# torch 2.5.1 creates problems for model serialization, this is a workaround
+ConfigModuleType = type(torch._dynamo.config)
+
+@dill.register(ConfigModuleType)
+def save_config_module(pickler, obj):
+  pickler.save_reduce(importlib.import_module, (obj.__name__,), obj=obj)
 
 
 def build_EIANN_from_config(config_path, network_seed=42, config_format='normal', training_kwargs=None):
