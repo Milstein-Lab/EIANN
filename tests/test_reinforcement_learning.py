@@ -441,6 +441,13 @@ def test_q_learning_epsilon_decays_every_episode():
      {'trace_clock': 'substep', 'accumulate_updates': True}),
     ('2ACDC', '20261111', 'eprop_bpDale_learnedI_relu_SGD', OnlineQLearning, RandomSchedule,
      {'trace_clock': 'substep', 'accumulate_updates': True}),
+    # 15 substeps: the step-clock models' networks and the bpDale variants
+    ('2ACDC', '20261112', 'eprop_bpDale_15steps_relu_SGD', OnlineQLearning, RandomSchedule,
+     {'trace_clock': 'step', 'accumulate_updates': True}),
+    ('2ACDC', '20261112', 'BTSP_Continuous_15steps', OnlineQLearning, RandomSchedule, {'trace_clock': 'step'}),
+    ('2ACDC', '20261112', 'BTSP_Eprop_15steps', OnlineQLearning, RandomSchedule, {'trace_clock': 'step'}),
+    ('2ACDC', '20261112', 'bpDale_15steps_relu_SGD', QLearning, RandomSchedule, {}),
+    ('2ACDC', '20261112', 'bpDale_frozenI_15steps_relu_SGD', QLearning, RandomSchedule, {}),
     ('2ACDC', '20261109', 'BTSP_Continuous', OnlineQLearning, RandomSchedule, {'trace_clock': 'substep'}),
     ('2ACDC', '20261109', 'BTSP_Eprop', OnlineQLearning, RandomSchedule, {'trace_clock': 'substep'}),
     ('2ACDC', '20261109', 'eprop_bpDale_relu_SGD', OnlineQLearning, RandomSchedule,

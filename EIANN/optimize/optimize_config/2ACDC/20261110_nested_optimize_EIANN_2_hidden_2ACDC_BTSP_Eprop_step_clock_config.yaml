@@ -144,7 +144,7 @@ kwargs:
     algorithm_kwargs:
         epsilon_min: 0.
         accumulate_updates: False # BTSP_Eprop weights change after every step
-        trace_clock: step # traces tick once per environment step, after all 5 integration substeps (substep version: BTSP_Eprop)
+        trace_clock: step # traces tick once per environment step, after all 15 integration substeps (substep version: BTSP_Eprop, 5 substeps)
     treadmill_kwargs:
         length: 23
         cue_position: 8
@@ -161,7 +161,7 @@ kwargs:
             - 0.1
             - 1.1
             - 0.
-    network_config_file_path: optimize/network_config/2ACDC/20261109_EIANN_2_hidden_2ACDC_BTSP_Eprop_config.yaml
+    network_config_file_path: optimize/network_config/2ACDC/20261112_EIANN_2_hidden_2ACDC_BTSP_Eprop_15steps_config.yaml
     val_interval:
         - -1000
         - -1
