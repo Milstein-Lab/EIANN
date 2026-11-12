@@ -3,17 +3,29 @@
 # navigation_task{j}	reached any tile (did not time out)
 # choice_task{j}	success / navigation: of the episodes that reached a tile, how many picked the right one
 
+# python -m nested.analyze --framework=serial --config-file-path=optimize/optimize_config/Crossing/20261110_nested_optimize_EIANN_2_hidden_Crossing_van_bp_relu_SGD_config.yaml --param-file-path=optimize/optimize_params/Crossing/20261110_Crossing_params.yaml --model-key=van_bp_relu_SGD --output-dir=data/Crossing --label=van_bp_relu_SGD --export --num_instances=1 --retrain=True --status_bar=True --disp --plot --plot_dir=data/Crossing/plots --plot_format=png
 van_bp_relu_SGD:
-    #    not optimized: x0 of the optimize config (the earlier hand-tuned interleaved check, lr 0.03)
-    #    5 seeds (laptop, 2026-11-10): reward 0.425, success 0.66 (A 0.38, B 0.80, C 0.80), choice 1.0 on every task.
-    #    Only seed 1 solved all three; seeds 2-3 solved B and C but never A; seed 4 had A at 0.9; seed 5 reached no tile
-    #    on any task. Every failure is navigation (timeouts), not the wrong tile
-    H_learning_rate: 0.03
-    Output_learning_rate: 0.03
-    H1_init_weight_scale: 1.
-    H1_H1_init_weight_scale: 1.
-    H2_init_weight_scale: 1.
-    Output_init_weight_scale: 1.2
-    epsilon: 0.999
-    epsilon_decay: 0.9995
-    gamma: 0.9
+    # choice_task0: 1.0
+    # choice_task1: 1.0
+    # choice_task2: 1.0
+    # navigation_task0: 1.0
+    # navigation_task1: 1.0
+    # navigation_task2: 1.0
+    # reward: 0.9021333333333332
+    # reward_task0: 0.8784000000000001
+    # reward_task1: 0.908
+    # reward_task2: 0.9199999999999999
+    # success: 1.0
+    # success_task0: 1.0
+    # success_task1: 1.0
+    # success_task2: 1.0
+    H_learning_rate: 0.008908167034758777
+    Output_learning_rate: 0.006572952638848117
+    H1_init_weight_scale: 0.49437301195339617
+    H1_H1_init_weight_scale: 1.1703843270999146
+    H2_init_weight_scale: 1.4197800471608502
+    Output_init_weight_scale: 3.286664585300573
+    epsilon: 0.2284912561334827
+    epsilon_decay: 0.9876037857953404
+    gamma: 0.9115767138061914
+

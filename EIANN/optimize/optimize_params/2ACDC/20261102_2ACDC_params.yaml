@@ -1,18 +1,17 @@
 van_bp_relu_SGD:
-    #    reward: 0.9985 (5 seeds; x0, not optimized)
-    H_learning_rate: 1.
-    Output_learning_rate: 1.
-    H1_init_weight_scale: 1.
-    H1_H1_init_weight_scale: 1.
-    H2_init_weight_scale: 1.
-    Output_init_weight_scale: 1.2
-    epsilon: 0.9
-    epsilon_decay: 1.
-    gamma: 0.9
+    # reward: 1.0
+    H_learning_rate: 0.5608726206050821
+    Output_learning_rate: 0.003151865121110878
+    H1_init_weight_scale: 1.1983372610065848
+    H1_H1_init_weight_scale: 1.3480457012941023
+    H2_init_weight_scale: 0.14302758626943712
+    Output_init_weight_scale: 0.38977743531842163
+    epsilon: 0.9403785969959201
+    epsilon_decay: 0.9540185153520044
+    gamma: 0.020221445767986648
 
 eprop_relu_SGD:
-    #    reward: 1.0 (5 seeds with accumulate_updates: True, 0.9975 with False; old branch's optimized params with
-    #    learning rates doubled, not reoptimized)
+    # reward: 1.0
     H_learning_rate: 0.842381991001941
     Output_learning_rate: 0.0619887582286052
     H1_init_weight_scale: 0.3153865561556863
@@ -25,10 +24,63 @@ eprop_relu_SGD:
     tau: 2.1984036407984133
 
 bpDale_relu_SGD:
-    #    reward: 0.9035 (5 seeds, nested.analyze, about 51 s per seed; 0.855 for 1 seed in the verifier); x0, not
-    #    optimized, needs a cluster optimization. Q params from the old branch's treadmill_RL bpDale_relu_SGD (reward 1.0 there,
-    #    with an H2 E->E projection this network does not have) with learning rates doubled, as in DPPQL_bpDale_relu_SGD;
-    #    H_I_size 10 (the YAML's SomaI size, shared with BTSP_Continuous/BTSP_Eprop) instead of the old branch's 50
+    # reward: 1.0
+    H_E_E_learning_rate: 0.5377622051505293
+    H_E_I_learning_rate: 0.5478208538121427
+    H_I_E_learning_rate: 0.23576837422457858
+    Output_E_E_learning_rate: 1.613635246099913
+    H1_E_Input_E_init_weight_scale: 3.7214412441385196
+    H1_E_H1_E_init_weight_scale: 0.998621782596121
+    H1_E_H1_I_init_weight_scale: 1.0187324131060314
+    H1_I_Input_E_init_weight_scale: 2.429512689440876
+    H1_I_H1_E_init_weight_scale: 4.505057926718641
+    H1_I_H1_I_init_weight_scale: 3.558068200035321
+    H2_E_H1_E_init_weight_scale: 4.512538757439094
+    H2_E_H2_I_init_weight_scale: 1.9143464689429543
+    H2_I_H1_E_init_weight_scale: 4.293229108139604
+    H2_I_H2_E_init_weight_scale: 2.48576612348976
+    H2_I_H2_I_init_weight_scale: 1.1831431848250182
+    Output_E_H2_E_init_weight_scale: 0.8233809103653791
+    Output_E_Output_I_init_weight_scale: 0.11396025969688464
+    Output_I_H2_E_init_weight_scale: 1.3418183321301613
+    Output_I_Output_E_init_weight_scale: 3.2001022955530036
+    Output_I_Output_I_init_weight_scale: 4.868601566835994
+    H_I_size: 7.980238210743559
+    Output_I_size: 1.393766896124643
+    epsilon: 0.30667534883638625
+    epsilon_decay: 0.9996086137614943
+    gamma: 0.05876397880092175
+
+# python -m nested.analyze --framework=serial --config-file-path=optimize/optimize_config/2ACDC/20261111_nested_optimize_EIANN_2_hidden_2ACDC_bpDale_frozenI_relu_SGD_config.yaml --param-file-path=optimize/optimize_params/2ACDC/20261102_2ACDC_params.yaml --model-key=bpDale_frozenI_relu_SGD --output-dir=data/2ACDC --label=bpDale_frozenI_relu_SGD --export --num_instances=5 --retrain=True --status_bar=True --disp --plot --plot_dir=data/2ACDC/plots --plot_format=png
+bpDale_frozenI_relu_SGD:
+    # reward: 0.9804999999999999
+    H_E_E_learning_rate: 1.9178760897274374
+    Output_E_E_learning_rate: 0.2150795981576746
+    H1_E_Input_E_init_weight_scale: 2.5939292371334095
+    H1_E_H1_E_init_weight_scale: 0.2926201061466812
+    H1_E_H1_I_init_weight_scale: 2.4209727121690547
+    H1_I_Input_E_init_weight_scale: 1.2325433190613213
+    H1_I_H1_E_init_weight_scale: 0.6069620466232882
+    H1_I_H1_I_init_weight_scale: 2.649171141001572
+    H2_E_H1_E_init_weight_scale: 4.806814032042344
+    H2_E_H2_I_init_weight_scale: 1.1863002479032638
+    H2_I_H1_E_init_weight_scale: 5.217745632263721
+    H2_I_H2_E_init_weight_scale: 3.475763699629539
+    H2_I_H2_I_init_weight_scale: 3.311254329200576
+    Output_E_H2_E_init_weight_scale: 0.341330330500314
+    Output_E_Output_I_init_weight_scale: 1.0737398033513836
+    Output_I_H2_E_init_weight_scale: 3.059863679006987
+    Output_I_Output_E_init_weight_scale: 0.44322966849030365
+    Output_I_Output_I_init_weight_scale: 1.7771467519724515
+    H_I_size: 12.191564555790027
+    Output_I_size: 1.2992780248234757
+    epsilon: 0.9407027947722097
+    epsilon_decay: 0.9784324305935972
+    gamma: 0.737321765071606
+
+bpDale_15steps_relu_SGD:
+    #    reward: not measured yet; x0, not optimized. bpDale_relu_SGD with forward_steps and backward_steps 15 instead of 5;
+    #    x0 from its optimize config
     H_E_E_learning_rate: 0.8684180205996999
     H_E_I_learning_rate: 0.7668046231353168
     H_I_E_learning_rate: 0.2572550360709658
@@ -49,347 +101,397 @@ bpDale_relu_SGD:
     Output_I_H2_E_init_weight_scale: 2.717570831315474
     Output_I_Output_E_init_weight_scale: 1.480134192043798
     Output_I_Output_I_init_weight_scale: 1.2956215075690731
-    H_I_size: 10.
-    Output_I_size: 2.
+    H_I_size: 10.0
+    Output_I_size: 2.0
+    epsilon: 0.4121999700795728
+    epsilon_decay: 0.9680906455311008
+    gamma: 0.9593636934617314
+
+bpDale_frozenI_15steps_relu_SGD:
+    #    reward: not measured yet; x0, not optimized. bpDale_frozenI_relu_SGD with forward_steps and backward_steps 15 instead of 5;
+    #    x0 from its optimize config
+    H_E_E_learning_rate: 0.8684180205996999
+    Output_E_E_learning_rate: 0.3532176407072572
+    H1_E_Input_E_init_weight_scale: 0.9611158918992545
+    H1_E_H1_E_init_weight_scale: 0.2779497364362825
+    H1_E_H1_I_init_weight_scale: 1.4657460216827154
+    H1_I_Input_E_init_weight_scale: 0.2889448300825227
+    H1_I_H1_E_init_weight_scale: 1.1282676981493893
+    H1_I_H1_I_init_weight_scale: 3.5816238775142466
+    H2_E_H1_E_init_weight_scale: 1.1155215372764575
+    H2_E_H2_I_init_weight_scale: 1.7829730314101926
+    H2_I_H1_E_init_weight_scale: 1.114365717184956
+    H2_I_H2_E_init_weight_scale: 1.215732036462136
+    H2_I_H2_I_init_weight_scale: 1.7759602360908637
+    Output_E_H2_E_init_weight_scale: 3.2113050020154907
+    Output_E_Output_I_init_weight_scale: 0.2667354895182376
+    Output_I_H2_E_init_weight_scale: 2.717570831315474
+    Output_I_Output_E_init_weight_scale: 1.480134192043798
+    Output_I_Output_I_init_weight_scale: 1.2956215075690731
+    H_I_size: 10.0
+    Output_I_size: 2.0
     epsilon: 0.4121999700795728
     epsilon_decay: 0.9680906455311008
     gamma: 0.9593636934617314
 
 eprop_bpDale_relu_SGD:
-    #    reward: -0.2095 (5 seeds, nested.analyze, about 38 s per seed; -0.9525 for 1 seed in the verifier): x0, not
-    #    optimized, mostly wrong licks; needs a cluster optimization. bpDale_relu_SGD's architecture and weight scales with Eprop on the E <- E
-    #    projections and fixed SomaI projections; learning rates, epsilon, epsilon_decay and gamma from eprop_relu_SGD;
-    #    tau 3 from the bpDale YAML (optimized here, fixed in bpDale_relu_SGD)
-    H_E_E_learning_rate: 0.842381991001941
-    Output_E_E_learning_rate: 0.0619887582286052
-    H1_E_Input_E_init_weight_scale: 0.9611158918992545
-    H1_E_H1_E_init_weight_scale: 0.2779497364362825
-    H1_E_H1_I_init_weight_scale: 1.4657460216827154
-    H1_I_Input_E_init_weight_scale: 0.2889448300825227
-    H1_I_H1_E_init_weight_scale: 1.1282676981493893
-    H1_I_H1_I_init_weight_scale: 3.5816238775142466
-    H2_E_H1_E_init_weight_scale: 1.1155215372764575
-    H2_E_H2_I_init_weight_scale: 1.7829730314101926
-    H2_I_H1_E_init_weight_scale: 1.114365717184956
-    H2_I_H2_E_init_weight_scale: 1.215732036462136
-    H2_I_H2_I_init_weight_scale: 1.7759602360908637
-    Output_E_H2_E_init_weight_scale: 3.2113050020154907
-    Output_E_Output_I_init_weight_scale: 0.2667354895182376
-    Output_I_H2_E_init_weight_scale: 2.717570831315474
-    Output_I_Output_E_init_weight_scale: 1.480134192043798
-    Output_I_Output_I_init_weight_scale: 1.2956215075690731
-    H_I_size: 10.
-    Output_I_size: 2.
-    epsilon: 0.6070376073482587
-    epsilon_decay: 0.9984025483962401
-    gamma: 0.15056280945389777
-    tau: 3.
+    # reward: 0.9019999999999998
+    H_E_E_learning_rate: 0.07758953807021901
+    Output_E_E_learning_rate: 0.15256869852044858
+    H1_E_Input_E_init_weight_scale: 1.5819896483666573
+    H1_E_H1_E_init_weight_scale: 0.15928377605705749
+    H1_E_H1_I_init_weight_scale: 0.763769065179977
+    H1_I_Input_E_init_weight_scale: 2.5994293536278597
+    H1_I_H1_E_init_weight_scale: 2.2855359518986957
+    H1_I_H1_I_init_weight_scale: 1.013155317660376
+    H2_E_H1_E_init_weight_scale: 0.39996175967461556
+    H2_E_H2_I_init_weight_scale: 0.6684845069283567
+    H2_I_H1_E_init_weight_scale: 0.8546102947930063
+    H2_I_H2_E_init_weight_scale: 0.6417783757686177
+    H2_I_H2_I_init_weight_scale: 1.4312525645420195
+    Output_E_H2_E_init_weight_scale: 3.374220868281835
+    Output_E_Output_I_init_weight_scale: 0.41594491571333786
+    Output_I_H2_E_init_weight_scale: 0.5417812233223569
+    Output_I_Output_E_init_weight_scale: 0.26106307414084623
+    Output_I_Output_I_init_weight_scale: 0.04901211718784201
+    H_I_size: 13.105096756936236
+    Output_I_size: 1.752959928215772
+    epsilon: 0.16416804153820586
+    epsilon_decay: 0.9901643173516512
+    gamma: 0.9284098636510926
+    tau: 2.818549755943454
 
-DPPQL_van_bp_relu_SGD:
-    #    reward: 0.9615 (5 seeds, nested.analyze; 0.9 to 1.0 per seed); x0, not optimized. Q params from
-    #    van_bp_relu_SGD; gamma 0.1 as in basic_rl's dual_q_learning (0.5 and 0.9 were worse); QNext learning rates
-    #    from a 3-value sweep (1.0, 0.3, 0.1)
-    H_learning_rate: 1.
-    Output_learning_rate: 1.
-    H1_init_weight_scale: 1.
-    H1_H1_init_weight_scale: 1.
-    H2_init_weight_scale: 1.
-    Output_init_weight_scale: 1.2
-    QNext_H_learning_rate: 0.3
-    QNext_Output_learning_rate: 0.3
-    QNext_H1_init_weight_scale: 1.
-    QNext_Output_init_weight_scale: 1.2
-    epsilon: 0.9
-    epsilon_decay: 1.
-    gamma: 0.1
+eprop_bpDale_learnedI_relu_SGD:
+    #    reward: 0.852 (5 seeds, nested.analyze; 0.79 to 0.90 per seed, about 57 s per seed); x0, not optimized, needs a
+    #    cluster optimization. eprop_bpDale_relu_SGD's optimized params with every SomaI
+    #    projection learned (Eprop onto E from SomaI, Eprop_SomaI onto SomaI); H_E_I and H_I_E learning rates set to
+    #    its H_E_E_learning_rate
+    H_E_E_learning_rate: 0.07758953807021901
+    Output_E_E_learning_rate: 0.15256869852044858
+    H_E_I_learning_rate: 0.07758953807021901
+    H_I_E_learning_rate: 0.07758953807021901
+    H1_E_Input_E_init_weight_scale: 1.5819896483666573
+    H1_E_H1_E_init_weight_scale: 0.15928377605705749
+    H1_E_H1_I_init_weight_scale: 0.763769065179977
+    H1_I_Input_E_init_weight_scale: 2.5994293536278597
+    H1_I_H1_E_init_weight_scale: 2.2855359518986957
+    H1_I_H1_I_init_weight_scale: 1.013155317660376
+    H2_E_H1_E_init_weight_scale: 0.39996175967461556
+    H2_E_H2_I_init_weight_scale: 0.6684845069283567
+    H2_I_H1_E_init_weight_scale: 0.8546102947930063
+    H2_I_H2_E_init_weight_scale: 0.6417783757686177
+    H2_I_H2_I_init_weight_scale: 1.4312525645420195
+    Output_E_H2_E_init_weight_scale: 3.374220868281835
+    Output_E_Output_I_init_weight_scale: 0.41594491571333786
+    Output_I_H2_E_init_weight_scale: 0.5417812233223569
+    Output_I_Output_E_init_weight_scale: 0.26106307414084623
+    Output_I_Output_I_init_weight_scale: 0.04901211718784201
+    H_I_size: 13.105096756936236
+    Output_I_size: 1.752959928215772
+    epsilon: 0.16416804153820586
+    epsilon_decay: 0.9901643173516512
+    gamma: 0.9284098636510926
+    tau: 2.818549755943454
 
-DPPQL_eprop_relu_SGD:
-    #    reward: 0.997 (5 seeds, nested.analyze, OnlineDPPQL with accumulate_updates: True); x0, not optimized. Q params
-    #    from eprop_relu_SGD; QNext learning rates 0.03 (0.1 diverged on 1 of 3 seeds)
-    H_learning_rate: 0.842381991001941
-    Output_learning_rate: 0.0619887582286052
-    H1_init_weight_scale: 0.3153865561556863
-    H1_H1_init_weight_scale: 0.7165045726081581
-    H2_init_weight_scale: 2.7214570643454503
-    Output_init_weight_scale: 1.781651018264462
-    QNext_H_learning_rate: 0.03
-    QNext_Output_learning_rate: 0.03
-    QNext_H1_init_weight_scale: 1.
-    QNext_Output_init_weight_scale: 1.2
-    epsilon: 0.6070376073482587
-    epsilon_decay: 0.9984025483962401
-    gamma: 0.15056280945389777
-    tau: 2.1984036407984133
+# DPPQL_van_bp_relu_SGD:
+#     #    reward: 0.9615 (5 seeds, nested.analyze; 0.9 to 1.0 per seed); x0, not optimized. Q params from
+#     #    van_bp_relu_SGD; gamma 0.1 as in basic_rl's dual_q_learning (0.5 and 0.9 were worse); QNext learning rates
+#     #    from a 3-value sweep (1.0, 0.3, 0.1)
+#     H_learning_rate: 1.
+#     Output_learning_rate: 1.
+#     H1_init_weight_scale: 1.
+#     H1_H1_init_weight_scale: 1.
+#     H2_init_weight_scale: 1.
+#     Output_init_weight_scale: 1.2
+#     QNext_H_learning_rate: 0.3
+#     QNext_Output_learning_rate: 0.3
+#     QNext_H1_init_weight_scale: 1.
+#     QNext_Output_init_weight_scale: 1.2
+#     epsilon: 0.9
+#     epsilon_decay: 1.
+#     gamma: 0.1
 
-DPPQL_bpDale_relu_SGD:
-    #    reward: 0.846 (2 seeds, nested.analyze; 0.484 with the old branch's epsilon, epsilon_decay, gamma); x0, not
-    #    optimized, needs a cluster optimization. Q params from the old branch's treadmill_RL bpDale_relu_SGD (reward 1.0
-    #    there, with an H2 E->E projection this Q network does not have) with learning rates doubled; QNext params
-    #    from the old DNQL bpDale QNext yaml
-    H_E_E_learning_rate: 0.8684180205996999
-    H_E_I_learning_rate: 0.7668046231353168
-    H_I_E_learning_rate: 0.2572550360709658
-    Output_E_E_learning_rate: 0.3532176407072572
-    H1_E_Input_E_init_weight_scale: 0.9611158918992545
-    H1_E_H1_E_init_weight_scale: 0.2779497364362825
-    H1_E_H1_I_init_weight_scale: 1.4657460216827154
-    H1_I_Input_E_init_weight_scale: 0.2889448300825227
-    H1_I_H1_E_init_weight_scale: 1.1282676981493893
-    H1_I_H1_I_init_weight_scale: 3.5816238775142466
-    H2_E_H1_E_init_weight_scale: 1.1155215372764575
-    H2_E_H2_I_init_weight_scale: 1.7829730314101926
-    H2_I_H1_E_init_weight_scale: 1.114365717184956
-    H2_I_H2_E_init_weight_scale: 1.215732036462136
-    H2_I_H2_I_init_weight_scale: 1.7759602360908637
-    Output_E_H2_E_init_weight_scale: 3.2113050020154907
-    Output_E_Output_I_init_weight_scale: 0.2667354895182376
-    Output_I_H2_E_init_weight_scale: 2.717570831315474
-    Output_I_Output_E_init_weight_scale: 1.480134192043798
-    Output_I_Output_I_init_weight_scale: 1.2956215075690731
-    H_I_size: 50.
-    Output_I_size: 2.
-    QNext_H_E_E_learning_rate: 0.1
-    QNext_H_E_I_learning_rate: 0.1
-    QNext_H_I_E_learning_rate: 0.1
-    QNext_Output_E_E_learning_rate: 0.1
-    QNext_H1_E_Input_E_init_weight_scale: 1.
-    QNext_H1_E_H1_I_init_weight_scale: 1.
-    QNext_H1_I_Input_E_init_weight_scale: 1.
-    QNext_H1_I_H1_E_init_weight_scale: 1.
-    QNext_H1_I_H1_I_init_weight_scale: 1.
-    QNext_Output_E_H1_E_init_weight_scale: 1.
-    QNext_Output_E_Output_I_init_weight_scale: 1.
-    QNext_Output_I_H1_E_init_weight_scale: 1.
-    QNext_Output_I_Output_E_init_weight_scale: 1.
-    QNext_Output_I_Output_I_init_weight_scale: 1.
-    QNext_H_I_size: 10.
-    QNext_Output_I_size: 1.
-    epsilon: 0.9
-    epsilon_decay: 1.
-    gamma: 0.1
+# DPPQL_eprop_relu_SGD:
+#     #    reward: 0.997 (5 seeds, nested.analyze, OnlineDPPQL with accumulate_updates: True); x0, not optimized. Q params
+#     #    from eprop_relu_SGD; QNext learning rates 0.03 (0.1 diverged on 1 of 3 seeds)
+#     H_learning_rate: 0.842381991001941
+#     Output_learning_rate: 0.0619887582286052
+#     H1_init_weight_scale: 0.3153865561556863
+#     H1_H1_init_weight_scale: 0.7165045726081581
+#     H2_init_weight_scale: 2.7214570643454503
+#     Output_init_weight_scale: 1.781651018264462
+#     QNext_H_learning_rate: 0.03
+#     QNext_Output_learning_rate: 0.03
+#     QNext_H1_init_weight_scale: 1.
+#     QNext_Output_init_weight_scale: 1.2
+#     epsilon: 0.6070376073482587
+#     epsilon_decay: 0.9984025483962401
+#     gamma: 0.15056280945389777
+#     tau: 2.1984036407984133
+
+# DPPQL_bpDale_relu_SGD:
+#     #    reward: 0.846 (2 seeds, nested.analyze; 0.484 with the old branch's epsilon, epsilon_decay, gamma); x0, not
+#     #    optimized, needs a cluster optimization. Q params from the old branch's treadmill_RL bpDale_relu_SGD (reward 1.0
+#     #    there, with an H2 E->E projection this Q network does not have) with learning rates doubled; QNext params
+#     #    from the old DNQL bpDale QNext yaml
+#     H_E_E_learning_rate: 0.8684180205996999
+#     H_E_I_learning_rate: 0.7668046231353168
+#     H_I_E_learning_rate: 0.2572550360709658
+#     Output_E_E_learning_rate: 0.3532176407072572
+#     H1_E_Input_E_init_weight_scale: 0.9611158918992545
+#     H1_E_H1_E_init_weight_scale: 0.2779497364362825
+#     H1_E_H1_I_init_weight_scale: 1.4657460216827154
+#     H1_I_Input_E_init_weight_scale: 0.2889448300825227
+#     H1_I_H1_E_init_weight_scale: 1.1282676981493893
+#     H1_I_H1_I_init_weight_scale: 3.5816238775142466
+#     H2_E_H1_E_init_weight_scale: 1.1155215372764575
+#     H2_E_H2_I_init_weight_scale: 1.7829730314101926
+#     H2_I_H1_E_init_weight_scale: 1.114365717184956
+#     H2_I_H2_E_init_weight_scale: 1.215732036462136
+#     H2_I_H2_I_init_weight_scale: 1.7759602360908637
+#     Output_E_H2_E_init_weight_scale: 3.2113050020154907
+#     Output_E_Output_I_init_weight_scale: 0.2667354895182376
+#     Output_I_H2_E_init_weight_scale: 2.717570831315474
+#     Output_I_Output_E_init_weight_scale: 1.480134192043798
+#     Output_I_Output_I_init_weight_scale: 1.2956215075690731
+#     H_I_size: 50.
+#     Output_I_size: 2.
+#     QNext_H_E_E_learning_rate: 0.1
+#     QNext_H_E_I_learning_rate: 0.1
+#     QNext_H_I_E_learning_rate: 0.1
+#     QNext_Output_E_E_learning_rate: 0.1
+#     QNext_H1_E_Input_E_init_weight_scale: 1.
+#     QNext_H1_E_H1_I_init_weight_scale: 1.
+#     QNext_H1_I_Input_E_init_weight_scale: 1.
+#     QNext_H1_I_H1_E_init_weight_scale: 1.
+#     QNext_H1_I_H1_I_init_weight_scale: 1.
+#     QNext_Output_E_H1_E_init_weight_scale: 1.
+#     QNext_Output_E_Output_I_init_weight_scale: 1.
+#     QNext_Output_I_H1_E_init_weight_scale: 1.
+#     QNext_Output_I_Output_E_init_weight_scale: 1.
+#     QNext_Output_I_Output_I_init_weight_scale: 1.
+#     QNext_H_I_size: 10.
+#     QNext_Output_I_size: 1.
+#     epsilon: 0.9
+#     epsilon_decay: 1.
+#     gamma: 0.1
 
 BTSP_Continuous:
-    #    reward: not yet measured (x0, not optimized). Shared params from the old branch's treadmill_RL BTSP
-    #    optimize config x0 (never optimized to a result there); H1 E->E recurrence, trace params (tau_ET 3, tau_IS 1,
-    #    dep_th 0.2, dep_width 0.1) and H_I_size 10 are new; epsilon/epsilon_decay/gamma from eprop_relu_SGD.
-    #    Architecture as bpDale_relu_SGD since 2026-11-09 (50 E units per hidden layer, forward_steps 5; was 100 and 15)
-    #    and trace_clock: substep since 2026-11-10 (1 seed in the verifier: -0.275 for BTSP_Continuous, -0.2575 for
-    #    BTSP_Eprop)
-    H_E_FF_E_max_weight_scale: 7.788609158406613
-    H1_E_Input_E_init_weight_factor: 0.44148085242662294
-    H1_E_H1_E_max_weight_scale: 2.0
-    H1_E_H1_E_init_weight_factor: 0.1
-    H_E_E_learning_rate: 0.00938294618946663
-    H1_E_H2_E_weight_scale: 0.16914695597382515
-    neg_rate_th: 0.0
-    max_pop_fraction: 1.0
-    tau_ET: 3.0
-    tau_IS: 1.0
-    dep_th: 0.2
-    dep_width: 0.1
-    H1_E_H1_SomaI_init_weight_scale: 1.8465890474026487
-    H1_SomaI_H1_E_init_weight_scale: 0.7559077315353061
-    H1_SomaI_Input_E_init_weight_scale: 2.343115372006121
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.0868198240743892
-    H1_E_H1_DendI_init_weight_scale: 1.7371394099251893
-    H_E_DendI_learning_rate: 0.03888840729184042
-    H1_DendI_H1_E_weight_scale: 1.818219554989597
-    H1_DendI_H1_DendI_weight_scale: 0.5070979162787277
-    DendI_E_learning_rate: 0.13292864353596703
-    DendI_DendI_learning_rate: 0.06085700670526915
-    H2_E_H1_E_init_weight_factor: 0.11128317870213929
-    H2_E_Output_E_weight_scale: 0.9552263595956582
-    H2_E_H2_SomaI_init_weight_scale: 0.307379610388407
-    H2_SomaI_H2_E_init_weight_scale: 0.3016102106647725
-    H2_SomaI_H1_E_init_weight_scale: 1.9665123573403203
-    H2_SomaI_H2_SomaI_init_weight_scale: 0.9120145277865381
-    H2_E_H2_DendI_init_weight_scale: 6.018251161556481
-    H2_DendI_H2_E_weight_scale: 4.590664762918663
-    H2_DendI_H2_DendI_weight_scale: 0.883285944933908
-    Output_E_H2_E_max_weight_scale: 9.856494070402997
-    Output_E_H2_E_init_weight_factor: 0.9351330816419723
-    Output_E_H2_E_learning_rate: 0.019856826836325604
-    Output_E_Output_I_init_weight_scale: 0.30960437593267404
-    Output_I_Output_E_init_weight_scale: 0.21986736823621184
-    Output_I_H2_E_init_weight_scale: 0.8093417138412852
-    Output_I_Output_I_init_weight_scale: 1.5466764661394883
-    H_I_size: 10
-    Output_I_size: 2
-    tau: 3.0
-    epsilon: 0.6070376073482587
-    epsilon_decay: 0.9984025483962401
-    gamma: 0.15056280945389777
+    # reward: 0.8740000000000008
+    H_E_FF_E_max_weight_scale: 3.7094529709618445
+    H1_E_Input_E_init_weight_factor: 0.1080743631765481
+    H1_E_H1_E_max_weight_scale: 0.21418232157258738
+    H1_E_H1_E_init_weight_factor: 0.4551219013775398
+    H_E_E_learning_rate: 0.0708247201425298
+    H1_E_H2_E_weight_scale: 0.11219161545267398
+    neg_rate_th: 0.05602892530676928
+    max_pop_fraction: 0.3107739597458394
+    tau_ET: 0.10452720967177066
+    tau_IS: 0.2841065429398999
+    dep_th: 0.3588437418409771
+    dep_width: 0.16699561946739985
+    H1_E_H1_SomaI_init_weight_scale: 0.2577269086070126
+    H1_SomaI_H1_E_init_weight_scale: 0.7780194583930521
+    H1_SomaI_Input_E_init_weight_scale: 0.9298567795053674
+    H1_SomaI_H1_SomaI_init_weight_scale: 7.218395862153658
+    H1_E_H1_DendI_init_weight_scale: 0.27788073015040765
+    H_E_DendI_learning_rate: 0.06875938372062354
+    H1_DendI_H1_E_weight_scale: 3.279436932108266
+    H1_DendI_H1_DendI_weight_scale: 1.6702468649871822
+    DendI_E_learning_rate: 0.06063513691627774
+    DendI_DendI_learning_rate: 0.12151591745317084
+    H2_E_H1_E_init_weight_factor: 0.35245013874942305
+    H2_E_Output_E_weight_scale: 1.3056956089732714
+    H2_E_H2_SomaI_init_weight_scale: 0.6089053744517855
+    H2_SomaI_H2_E_init_weight_scale: 1.7187684392857523
+    H2_SomaI_H1_E_init_weight_scale: 1.1785719328321753
+    H2_SomaI_H2_SomaI_init_weight_scale: 2.2643483391214936
+    H2_E_H2_DendI_init_weight_scale: 1.314318318243154
+    H2_DendI_H2_E_weight_scale: 1.9146664035702678
+    H2_DendI_H2_DendI_weight_scale: 1.6220327365698948
+    Output_E_H2_E_max_weight_scale: 13.007090490079305
+    Output_E_H2_E_init_weight_factor: 0.5503994812373131
+    Output_E_H2_E_learning_rate: 0.04812668726083615
+    Output_E_Output_I_init_weight_scale: 1.3749180866043318
+    Output_I_Output_E_init_weight_scale: 0.3805731992214334
+    Output_I_H2_E_init_weight_scale: 0.10532723316919444
+    Output_I_Output_I_init_weight_scale: 0.49229199630720605
+    H_I_size: 8.374502191440559
+    Output_I_size: 1.199418191144955
+    tau: 2.1915421692473527
+    epsilon: 0.3371891557860378
+    epsilon_decay: 0.969233359625486
+    gamma: 0.5651996438311566
 
 BTSP_Eprop:
-    #    reward: 0.625 (1 seed, nested.analyze via the verifier; x0, not optimized). Sanity runs outside nested: 0.7, 0.0,
-    #    0.7 over 3 seeds (the 0.0 seed stopped licking). Same x0 as BTSP_Continuous. Measured with 100 E units and forward_steps 15,
-    #    before the switch to bpDale_relu_SGD's architecture (50 E units, forward_steps 5) on 2026-11-09
-    H_E_FF_E_max_weight_scale: 7.788609158406613
-    H1_E_Input_E_init_weight_factor: 0.44148085242662294
-    H1_E_H1_E_max_weight_scale: 2.0
-    H1_E_H1_E_init_weight_factor: 0.1
-    H_E_E_learning_rate: 0.00938294618946663
-    H1_E_H2_E_weight_scale: 0.16914695597382515
-    neg_rate_th: 0.0
-    max_pop_fraction: 1.0
-    tau_ET: 3.0
-    tau_IS: 1.0
-    dep_th: 0.2
-    dep_width: 0.1
-    H1_E_H1_SomaI_init_weight_scale: 1.8465890474026487
-    H1_SomaI_H1_E_init_weight_scale: 0.7559077315353061
-    H1_SomaI_Input_E_init_weight_scale: 2.343115372006121
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.0868198240743892
-    H1_E_H1_DendI_init_weight_scale: 1.7371394099251893
-    H_E_DendI_learning_rate: 0.03888840729184042
-    H1_DendI_H1_E_weight_scale: 1.818219554989597
-    H1_DendI_H1_DendI_weight_scale: 0.5070979162787277
-    DendI_E_learning_rate: 0.13292864353596703
-    DendI_DendI_learning_rate: 0.06085700670526915
-    H2_E_H1_E_init_weight_factor: 0.11128317870213929
-    H2_E_Output_E_weight_scale: 0.9552263595956582
-    H2_E_H2_SomaI_init_weight_scale: 0.307379610388407
-    H2_SomaI_H2_E_init_weight_scale: 0.3016102106647725
-    H2_SomaI_H1_E_init_weight_scale: 1.9665123573403203
-    H2_SomaI_H2_SomaI_init_weight_scale: 0.9120145277865381
-    H2_E_H2_DendI_init_weight_scale: 6.018251161556481
-    H2_DendI_H2_E_weight_scale: 4.590664762918663
-    H2_DendI_H2_DendI_weight_scale: 0.883285944933908
-    Output_E_H2_E_max_weight_scale: 9.856494070402997
-    Output_E_H2_E_init_weight_factor: 0.9351330816419723
-    Output_E_H2_E_learning_rate: 0.019856826836325604
-    Output_E_Output_I_init_weight_scale: 0.30960437593267404
-    Output_I_Output_E_init_weight_scale: 0.21986736823621184
-    Output_I_H2_E_init_weight_scale: 0.8093417138412852
-    Output_I_Output_I_init_weight_scale: 1.5466764661394883
-    H_I_size: 10
-    Output_I_size: 2
-    tau: 3.0
-    epsilon: 0.6070376073482587
-    epsilon_decay: 0.9984025483962401
-    gamma: 0.15056280945389777
-eprop_bpDale_step_clock_relu_SGD:
-    #    reward: -0.11 (1 seed in the verifier, 2026-11-10; substep clock: -0.9525); x0, not optimized. Same x0 as eprop_bpDale_relu_SGD, with trace_clock: step in place of substep: traces tick once
-    #    per environment step on the last substep's activity (5 forward steps), so tau is in steps
-    #    and Eprop is an approximation (the earlier substeps reach the gradient only through the
-    #    learning signal of the last one)
-    H_E_E_learning_rate: 0.842381991001941
-    Output_E_E_learning_rate: 0.0619887582286052
-    H1_E_Input_E_init_weight_scale: 0.9611158918992545
-    H1_E_H1_E_init_weight_scale: 0.2779497364362825
-    H1_E_H1_I_init_weight_scale: 1.4657460216827154
-    H1_I_Input_E_init_weight_scale: 0.2889448300825227
-    H1_I_H1_E_init_weight_scale: 1.1282676981493893
-    H1_I_H1_I_init_weight_scale: 3.5816238775142466
-    H2_E_H1_E_init_weight_scale: 1.1155215372764575
-    H2_E_H2_I_init_weight_scale: 1.7829730314101926
-    H2_I_H1_E_init_weight_scale: 1.114365717184956
-    H2_I_H2_E_init_weight_scale: 1.215732036462136
-    H2_I_H2_I_init_weight_scale: 1.7759602360908637
-    Output_E_H2_E_init_weight_scale: 3.2113050020154907
-    Output_E_Output_I_init_weight_scale: 0.2667354895182376
-    Output_I_H2_E_init_weight_scale: 2.717570831315474
-    Output_I_Output_E_init_weight_scale: 1.480134192043798
-    Output_I_Output_I_init_weight_scale: 1.2956215075690731
-    H_I_size: 10.
-    Output_I_size: 2.
-    epsilon: 0.6070376073482587
-    epsilon_decay: 0.9984025483962401
-    gamma: 0.15056280945389777
-    tau: 3.
+    # reward: 0.8735000000000008
+    H_E_FF_E_max_weight_scale: 3.7703819986014686
+    H1_E_Input_E_init_weight_factor: 0.3354791459291462
+    H1_E_H1_E_max_weight_scale: 1.4763085628056973
+    H1_E_H1_E_init_weight_factor: 0.1558338204557576
+    H_E_E_learning_rate: 0.05703998160748539
+    H1_E_H2_E_weight_scale: 4.126263324169759
+    neg_rate_th: 0.03738790648322572
+    max_pop_fraction: 0.03471742499633544
+    tau_ET: 0.8621056971316725
+    tau_IS: 0.4544755884092124
+    dep_th: 0.5673766432682288
+    dep_width: 0.18216785824776094
+    H1_E_H1_SomaI_init_weight_scale: 0.799647021624649
+    H1_SomaI_H1_E_init_weight_scale: 1.2629451062603123
+    H1_SomaI_Input_E_init_weight_scale: 3.314535382170911
+    H1_SomaI_H1_SomaI_init_weight_scale: 5.236454976726629
+    H1_E_H1_DendI_init_weight_scale: 0.49854052451269487
+    H_E_DendI_learning_rate: 0.024770919754761006
+    H1_DendI_H1_E_weight_scale: 1.8932918289746268
+    H1_DendI_H1_DendI_weight_scale: 0.5332322699042795
+    DendI_E_learning_rate: 0.06540528532134453
+    DendI_DendI_learning_rate: 0.3007900125852356
+    H2_E_H1_E_init_weight_factor: 0.5494141016406564
+    H2_E_Output_E_weight_scale: 0.5658340422153371
+    H2_E_H2_SomaI_init_weight_scale: 1.6430668736975453
+    H2_SomaI_H2_E_init_weight_scale: 0.36382964076290425
+    H2_SomaI_H1_E_init_weight_scale: 0.9288396965609017
+    H2_SomaI_H2_SomaI_init_weight_scale: 1.727104966560426
+    H2_E_H2_DendI_init_weight_scale: 2.167361264024793
+    H2_DendI_H2_E_weight_scale: 0.5466399585599958
+    H2_DendI_H2_DendI_weight_scale: 1.3380875158918326
+    Output_E_H2_E_max_weight_scale: 11.594562605463974
+    Output_E_H2_E_init_weight_factor: 0.39677920441188097
+    Output_E_H2_E_learning_rate: 0.028586264863973473
+    Output_E_Output_I_init_weight_scale: 0.854350849005132
+    Output_I_Output_E_init_weight_scale: 0.6393911870452725
+    Output_I_H2_E_init_weight_scale: 0.5194436463746569
+    Output_I_Output_I_init_weight_scale: 4.3556624066248455
+    H_I_size: 9.958161836285319
+    Output_I_size: 1.7112772968692114
+    tau: 4.275924461250339
+    epsilon: 0.17958332460358997
+    epsilon_decay: 0.9978033424236231
+    gamma: 0.6066074704660915
+    
+# eprop_bpDale_step_clock_relu_SGD:
+#     #    reward: -0.11 (1 seed in the verifier, 2026-11-10; substep clock: -0.9525); x0, not optimized. Same x0 as eprop_bpDale_relu_SGD, with trace_clock: step in place of substep: traces tick once
+#     #    per environment step on the last substep's activity (5 forward steps), so tau is in steps
+#     #    and Eprop is an approximation (the earlier substeps reach the gradient only through the
+#     #    learning signal of the last one)
+#     H_E_E_learning_rate: 0.842381991001941
+#     Output_E_E_learning_rate: 0.0619887582286052
+#     H1_E_Input_E_init_weight_scale: 0.9611158918992545
+#     H1_E_H1_E_init_weight_scale: 0.2779497364362825
+#     H1_E_H1_I_init_weight_scale: 1.4657460216827154
+#     H1_I_Input_E_init_weight_scale: 0.2889448300825227
+#     H1_I_H1_E_init_weight_scale: 1.1282676981493893
+#     H1_I_H1_I_init_weight_scale: 3.5816238775142466
+#     H2_E_H1_E_init_weight_scale: 1.1155215372764575
+#     H2_E_H2_I_init_weight_scale: 1.7829730314101926
+#     H2_I_H1_E_init_weight_scale: 1.114365717184956
+#     H2_I_H2_E_init_weight_scale: 1.215732036462136
+#     H2_I_H2_I_init_weight_scale: 1.7759602360908637
+#     Output_E_H2_E_init_weight_scale: 3.2113050020154907
+#     Output_E_Output_I_init_weight_scale: 0.2667354895182376
+#     Output_I_H2_E_init_weight_scale: 2.717570831315474
+#     Output_I_Output_E_init_weight_scale: 1.480134192043798
+#     Output_I_Output_I_init_weight_scale: 1.2956215075690731
+#     H_I_size: 10.
+#     Output_I_size: 2.
+#     epsilon: 0.6070376073482587
+#     epsilon_decay: 0.9984025483962401
+#     gamma: 0.15056280945389777
+#     tau: 3.
 
-BTSP_Continuous_step_clock:
-    #    reward: -1.035 (1 seed in the verifier, 2026-11-10; substep clock: -0.275); x0, not optimized. Same x0 as BTSP_Continuous, with trace_clock: step in place of substep: traces tick once
-    #    per environment step on the last substep's activity (5 forward steps), so tau is in steps
-    H_E_FF_E_max_weight_scale: 7.788609158406613
-    H1_E_Input_E_init_weight_factor: 0.44148085242662294
-    H1_E_H1_E_max_weight_scale: 2.0
-    H1_E_H1_E_init_weight_factor: 0.1
-    H_E_E_learning_rate: 0.00938294618946663
-    H1_E_H2_E_weight_scale: 0.16914695597382515
-    neg_rate_th: 0.0
-    max_pop_fraction: 1.0
-    tau_ET: 3.0
-    tau_IS: 1.0
-    dep_th: 0.2
-    dep_width: 0.1
-    H1_E_H1_SomaI_init_weight_scale: 1.8465890474026487
-    H1_SomaI_H1_E_init_weight_scale: 0.7559077315353061
-    H1_SomaI_Input_E_init_weight_scale: 2.343115372006121
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.0868198240743892
-    H1_E_H1_DendI_init_weight_scale: 1.7371394099251893
-    H_E_DendI_learning_rate: 0.03888840729184042
-    H1_DendI_H1_E_weight_scale: 1.818219554989597
-    H1_DendI_H1_DendI_weight_scale: 0.5070979162787277
-    DendI_E_learning_rate: 0.13292864353596703
-    DendI_DendI_learning_rate: 0.06085700670526915
-    H2_E_H1_E_init_weight_factor: 0.11128317870213929
-    H2_E_Output_E_weight_scale: 0.9552263595956582
-    H2_E_H2_SomaI_init_weight_scale: 0.307379610388407
-    H2_SomaI_H2_E_init_weight_scale: 0.3016102106647725
-    H2_SomaI_H1_E_init_weight_scale: 1.9665123573403203
-    H2_SomaI_H2_SomaI_init_weight_scale: 0.9120145277865381
-    H2_E_H2_DendI_init_weight_scale: 6.018251161556481
-    H2_DendI_H2_E_weight_scale: 4.590664762918663
-    H2_DendI_H2_DendI_weight_scale: 0.883285944933908
-    Output_E_H2_E_max_weight_scale: 9.856494070402997
-    Output_E_H2_E_init_weight_factor: 0.9351330816419723
-    Output_E_H2_E_learning_rate: 0.019856826836325604
-    Output_E_Output_I_init_weight_scale: 0.30960437593267404
-    Output_I_Output_E_init_weight_scale: 0.21986736823621184
-    Output_I_H2_E_init_weight_scale: 0.8093417138412852
-    Output_I_Output_I_init_weight_scale: 1.5466764661394883
-    H_I_size: 10
-    Output_I_size: 2
-    tau: 3.0
-    epsilon: 0.6070376073482587
-    epsilon_decay: 0.9984025483962401
-    gamma: 0.15056280945389777
+# BTSP_Continuous_step_clock:
+#     #    reward: -1.035 (1 seed in the verifier, 2026-11-10; substep clock: -0.275); x0, not optimized. Same x0 as BTSP_Continuous, with trace_clock: step in place of substep: traces tick once
+#     #    per environment step on the last substep's activity (5 forward steps), so tau is in steps
+#     H_E_FF_E_max_weight_scale: 7.788609158406613
+#     H1_E_Input_E_init_weight_factor: 0.44148085242662294
+#     H1_E_H1_E_max_weight_scale: 2.0
+#     H1_E_H1_E_init_weight_factor: 0.1
+#     H_E_E_learning_rate: 0.00938294618946663
+#     H1_E_H2_E_weight_scale: 0.16914695597382515
+#     neg_rate_th: 0.0
+#     max_pop_fraction: 1.0
+#     tau_ET: 3.0
+#     tau_IS: 1.0
+#     dep_th: 0.2
+#     dep_width: 0.1
+#     H1_E_H1_SomaI_init_weight_scale: 1.8465890474026487
+#     H1_SomaI_H1_E_init_weight_scale: 0.7559077315353061
+#     H1_SomaI_Input_E_init_weight_scale: 2.343115372006121
+#     H1_SomaI_H1_SomaI_init_weight_scale: 1.0868198240743892
+#     H1_E_H1_DendI_init_weight_scale: 1.7371394099251893
+#     H_E_DendI_learning_rate: 0.03888840729184042
+#     H1_DendI_H1_E_weight_scale: 1.818219554989597
+#     H1_DendI_H1_DendI_weight_scale: 0.5070979162787277
+#     DendI_E_learning_rate: 0.13292864353596703
+#     DendI_DendI_learning_rate: 0.06085700670526915
+#     H2_E_H1_E_init_weight_factor: 0.11128317870213929
+#     H2_E_Output_E_weight_scale: 0.9552263595956582
+#     H2_E_H2_SomaI_init_weight_scale: 0.307379610388407
+#     H2_SomaI_H2_E_init_weight_scale: 0.3016102106647725
+#     H2_SomaI_H1_E_init_weight_scale: 1.9665123573403203
+#     H2_SomaI_H2_SomaI_init_weight_scale: 0.9120145277865381
+#     H2_E_H2_DendI_init_weight_scale: 6.018251161556481
+#     H2_DendI_H2_E_weight_scale: 4.590664762918663
+#     H2_DendI_H2_DendI_weight_scale: 0.883285944933908
+#     Output_E_H2_E_max_weight_scale: 9.856494070402997
+#     Output_E_H2_E_init_weight_factor: 0.9351330816419723
+#     Output_E_H2_E_learning_rate: 0.019856826836325604
+#     Output_E_Output_I_init_weight_scale: 0.30960437593267404
+#     Output_I_Output_E_init_weight_scale: 0.21986736823621184
+#     Output_I_H2_E_init_weight_scale: 0.8093417138412852
+#     Output_I_Output_I_init_weight_scale: 1.5466764661394883
+#     H_I_size: 10
+#     Output_I_size: 2
+#     tau: 3.0
+#     epsilon: 0.6070376073482587
+#     epsilon_decay: 0.9984025483962401
+#     gamma: 0.15056280945389777
 
-BTSP_Eprop_step_clock:
-    #    reward: -0.1825 (1 seed in the verifier, 2026-11-10; substep clock: -0.2575); x0, not optimized. Same x0 as BTSP_Eprop, with trace_clock: step in place of substep: traces tick once
-    #    per environment step on the last substep's activity (5 forward steps), so tau is in steps
-    H_E_FF_E_max_weight_scale: 7.788609158406613
-    H1_E_Input_E_init_weight_factor: 0.44148085242662294
-    H1_E_H1_E_max_weight_scale: 2.0
-    H1_E_H1_E_init_weight_factor: 0.1
-    H_E_E_learning_rate: 0.00938294618946663
-    H1_E_H2_E_weight_scale: 0.16914695597382515
-    neg_rate_th: 0.0
-    max_pop_fraction: 1.0
-    tau_ET: 3.0
-    tau_IS: 1.0
-    dep_th: 0.2
-    dep_width: 0.1
-    H1_E_H1_SomaI_init_weight_scale: 1.8465890474026487
-    H1_SomaI_H1_E_init_weight_scale: 0.7559077315353061
-    H1_SomaI_Input_E_init_weight_scale: 2.343115372006121
-    H1_SomaI_H1_SomaI_init_weight_scale: 1.0868198240743892
-    H1_E_H1_DendI_init_weight_scale: 1.7371394099251893
-    H_E_DendI_learning_rate: 0.03888840729184042
-    H1_DendI_H1_E_weight_scale: 1.818219554989597
-    H1_DendI_H1_DendI_weight_scale: 0.5070979162787277
-    DendI_E_learning_rate: 0.13292864353596703
-    DendI_DendI_learning_rate: 0.06085700670526915
-    H2_E_H1_E_init_weight_factor: 0.11128317870213929
-    H2_E_Output_E_weight_scale: 0.9552263595956582
-    H2_E_H2_SomaI_init_weight_scale: 0.307379610388407
-    H2_SomaI_H2_E_init_weight_scale: 0.3016102106647725
-    H2_SomaI_H1_E_init_weight_scale: 1.9665123573403203
-    H2_SomaI_H2_SomaI_init_weight_scale: 0.9120145277865381
-    H2_E_H2_DendI_init_weight_scale: 6.018251161556481
-    H2_DendI_H2_E_weight_scale: 4.590664762918663
-    H2_DendI_H2_DendI_weight_scale: 0.883285944933908
-    Output_E_H2_E_max_weight_scale: 9.856494070402997
-    Output_E_H2_E_init_weight_factor: 0.9351330816419723
-    Output_E_H2_E_learning_rate: 0.019856826836325604
-    Output_E_Output_I_init_weight_scale: 0.30960437593267404
-    Output_I_Output_E_init_weight_scale: 0.21986736823621184
-    Output_I_H2_E_init_weight_scale: 0.8093417138412852
-    Output_I_Output_I_init_weight_scale: 1.5466764661394883
-    H_I_size: 10
-    Output_I_size: 2
-    tau: 3.0
-    epsilon: 0.6070376073482587
-    epsilon_decay: 0.9984025483962401
-    gamma: 0.15056280945389777
+# BTSP_Eprop_step_clock:
+#     #    reward: -0.1825 (1 seed in the verifier, 2026-11-10; substep clock: -0.2575); x0, not optimized. Same x0 as BTSP_Eprop, with trace_clock: step in place of substep: traces tick once
+#     #    per environment step on the last substep's activity (5 forward steps), so tau is in steps
+#     H_E_FF_E_max_weight_scale: 7.788609158406613
+#     H1_E_Input_E_init_weight_factor: 0.44148085242662294
+#     H1_E_H1_E_max_weight_scale: 2.0
+#     H1_E_H1_E_init_weight_factor: 0.1
+#     H_E_E_learning_rate: 0.00938294618946663
+#     H1_E_H2_E_weight_scale: 0.16914695597382515
+#     neg_rate_th: 0.0
+#     max_pop_fraction: 1.0
+#     tau_ET: 3.0
+#     tau_IS: 1.0
+#     dep_th: 0.2
+#     dep_width: 0.1
+#     H1_E_H1_SomaI_init_weight_scale: 1.8465890474026487
+#     H1_SomaI_H1_E_init_weight_scale: 0.7559077315353061
+#     H1_SomaI_Input_E_init_weight_scale: 2.343115372006121
+#     H1_SomaI_H1_SomaI_init_weight_scale: 1.0868198240743892
+#     H1_E_H1_DendI_init_weight_scale: 1.7371394099251893
+#     H_E_DendI_learning_rate: 0.03888840729184042
+#     H1_DendI_H1_E_weight_scale: 1.818219554989597
+#     H1_DendI_H1_DendI_weight_scale: 0.5070979162787277
+#     DendI_E_learning_rate: 0.13292864353596703
+#     DendI_DendI_learning_rate: 0.06085700670526915
+#     H2_E_H1_E_init_weight_factor: 0.11128317870213929
+#     H2_E_Output_E_weight_scale: 0.9552263595956582
+#     H2_E_H2_SomaI_init_weight_scale: 0.307379610388407
+#     H2_SomaI_H2_E_init_weight_scale: 0.3016102106647725
+#     H2_SomaI_H1_E_init_weight_scale: 1.9665123573403203
+#     H2_SomaI_H2_SomaI_init_weight_scale: 0.9120145277865381
+#     H2_E_H2_DendI_init_weight_scale: 6.018251161556481
+#     H2_DendI_H2_E_weight_scale: 4.590664762918663
+#     H2_DendI_H2_DendI_weight_scale: 0.883285944933908
+#     Output_E_H2_E_max_weight_scale: 9.856494070402997
+#     Output_E_H2_E_init_weight_factor: 0.9351330816419723
+#     Output_E_H2_E_learning_rate: 0.019856826836325604
+#     Output_E_Output_I_init_weight_scale: 0.30960437593267404
+#     Output_I_Output_E_init_weight_scale: 0.21986736823621184
+#     Output_I_H2_E_init_weight_scale: 0.8093417138412852
+#     Output_I_Output_I_init_weight_scale: 1.5466764661394883
+#     H_I_size: 10
+#     Output_I_size: 2
+#     tau: 3.0
+#     epsilon: 0.6070376073482587
+#     epsilon_decay: 0.9984025483962401
+#     gamma: 0.15056280945389777

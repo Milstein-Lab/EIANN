@@ -84,7 +84,7 @@ kwargs:
     algorithm_kwargs:
         epsilon_min: 0.
         accumulate_updates: True # True: calculates weight update online, applies at end of episode
-        trace_clock: step # traces tick once per environment step, after all 5 integration substeps (substep version: eprop_bpDale_relu_SGD)
+        trace_clock: step # traces tick once per environment step, after all 15 integration substeps (substep version: eprop_bpDale_relu_SGD, 5 substeps)
     treadmill_kwargs:
         length: 23
         cue_position: 8
@@ -98,7 +98,7 @@ kwargs:
             - 0.
             - 1.
             - -0.1
-    network_config_file_path: optimize/network_config/2ACDC/20261109_EIANN_2_hidden_2ACDC_eprop_bpDale_relu_SGD_config.yaml
+    network_config_file_path: optimize/network_config/2ACDC/20261112_EIANN_2_hidden_2ACDC_eprop_bpDale_15steps_relu_SGD_config.yaml
     val_interval:
         - -1000
         - -1

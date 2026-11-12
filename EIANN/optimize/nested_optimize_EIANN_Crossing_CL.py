@@ -214,20 +214,21 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
 
 
 def filter_features(primitives, current_features, model_id=None, export=False, plot=False):
-    # choice accuracy is NaN in a block where no tile was reached; it is averaged over the instances that have it.
-    # Any other NaN or inf (e.g. a block without validation steps) fails the evaluation
+    # choice accuracy is NaN in a block where no tile was reached; it is averaged over the instances that have it, and
+    # stays NaN when none has it (the key must still be there: nested fixes the feature names from the first model that
+    # succeeds). Any other NaN or inf (e.g. a block without validation steps) fails the evaluation
     features = {}
     for instance_features in primitives:
         for key, val in instance_features.items():
+            if key not in features:
+                features[key] = []
             if np.isnan(val) or np.isinf(val):
                 if '_choice_' in key and np.isnan(val):
                     continue
                 return dict()
-            if key not in features:
-                features[key] = []
             features[key].append(val)
     for key, val in features.items():
-        features[key] = np.mean(val)
+        features[key] = np.mean(val) if val else np.nan
 
     return features
 

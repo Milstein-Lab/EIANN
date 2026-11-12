@@ -11,7 +11,8 @@ from .environments import make_2ACDC_tracks
 from .treadmill_metrics import stack_laps, cross_correlation_history, region_cross_correlation_history
 
 # fixed order: a population or track keeps its color whichever others are plotted with it
-SERIES_COLORS = ('#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300')
+# (at least as many as recorded populations: the BTSP networks record 7, with the DendI populations)
+SERIES_COLORS = ('#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#8e5bd0', '#8c564b', '#5e6a78')
 REGION_LABELS = {'initial_region': 'Initial', 'indicator': 'Indicator', 'pre_r1': 'Pre R1', 'pre_r2': 'Pre R2',
                  'end_region': 'End', 'off_diagonal': 'Off diagonal'}
 
@@ -38,9 +39,10 @@ def save_or_show(fig, save_path, dpi=600):
         plt.show(block=False)
         return
     os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
-    # keep text editable in vector output
+    # keep text editable in vector output; opaque white background, since update_plot_defaults sets
+    # savefig.transparent, which makes the figures hard to read on dark viewers
     with matplotlib.rc_context({'svg.fonttype': 'none', 'pdf.fonttype': 42, 'ps.fonttype': 42}):
-        fig.savefig(save_path, dpi=dpi, bbox_inches='tight')
+        fig.savefig(save_path, dpi=dpi, bbox_inches='tight', transparent=False, facecolor='white')
     plt.close(fig)
 
 
@@ -359,7 +361,11 @@ def plot_2ACDC_summary(rl_history, title=None, save_prefix=None, plot_format='sv
     plot_final_q_values(laps, tracks, title=title, save_path=get_save_path('final_q_values'))
     plot_actions_over_training(laps, tracks, title=title, save_path=get_save_path('actions_over_training'))
     plot_hidden_activity(laps, tracks, title=title, save_path=get_save_path('hidden_activity'))
-    plot_cross_correlation_over_training(laps, tracks, title=title, save_path=get_save_path('cross_correlation'))
-    plot_region_cross_correlation(laps, tracks, title=title, save_path=get_save_path('region_cross_correlation'))
-    plot_region_cross_correlation(laps, tracks, panels='population', title=title,
+    # cross-correlations of the E populations only (H1E, H2E, ...), not SomaI/DendI
+    e_populations = [population for population in laps['activity'] if population.endswith('E')]
+    plot_cross_correlation_over_training(laps, tracks, populations=e_populations, title=title,
+                                         save_path=get_save_path('cross_correlation'))
+    plot_region_cross_correlation(laps, tracks, populations=e_populations, title=title,
+                                  save_path=get_save_path('region_cross_correlation'))
+    plot_region_cross_correlation(laps, tracks, populations=e_populations, panels='population', title=title,
                                   save_path=get_save_path('region_cross_correlation_by_population'))
