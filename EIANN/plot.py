@@ -846,7 +846,7 @@ def plot_batch_accuracy_from_data(average_pop_activity_dict, sort=False, populat
         elif population != 'all':
             average_pop_activity_dict = {population: average_pop_activity_dict[population]}
     elif isinstance(population, list):
-        average_pop_activity_dict = {pop: average_pop_activity_dict[pop] for pop in population}
+        average_pop_activity_dict = {pop: average_pop_activity_dict[pop] for pop in population if pop in average_pop_activity_dict}
     else:
         assert hasattr(population, 'fullname'), 'Population must be a string, list of strings, or EIANN.Population object'
         average_pop_activity_dict = {population.fullname: average_pop_activity_dict[population.fullname]}
@@ -931,7 +931,7 @@ def plot_batch_accuracy(network, test_dataloader, population='OutputE',
         elif population != 'all':
             pop_activity_dict = {population: pop_activity_dict[population]}
     elif isinstance(population, list):
-        pop_activity_dict = {pop: pop_activity_dict[pop] for pop in population}
+        pop_activity_dict = {pop: pop_activity_dict[pop] for pop in population if pop in pop_activity_dict}
     else:
         assert hasattr(population, 'fullname'), 'Population must be a string, list of strings, or EIANN.Population object'
         pop_activity_dict = {population.fullname: pop_activity_dict[population.fullname]}

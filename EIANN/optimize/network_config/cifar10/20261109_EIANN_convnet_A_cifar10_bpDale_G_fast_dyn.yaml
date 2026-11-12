@@ -406,7 +406,7 @@ projection_config:
                     weight_bounds:
                         - 0
                         - null
-                    direction: F
+                    direction: R
                     learning_rule: null
         E:
             H1:

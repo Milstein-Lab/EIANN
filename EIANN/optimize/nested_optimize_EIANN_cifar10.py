@@ -324,7 +324,17 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             if context.flatten_data:
                 population = 'all'
             else:
-                population = 'OutputE'
+                population = []
+                for layer in network:
+                    if layer.name == 'Input':
+                        continue
+                    elif 'ConvBlock' in layer.name:
+                        if 'FlatE' in layer.populations:
+                            pop = layer.populations['FlatE']
+                            population.append(pop.fullname)
+                    else:
+                        for pop in layer:
+                            population.append(pop.fullname)
             plot_batch_accuracy(network, test_dataloader, population=population, title=title)
     
     if not context.retrain:
@@ -419,7 +429,17 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.flatten_data:
             population = 'all'
         else:
-            population = 'OutputE'
+            population = []
+            for layer in network:
+                if layer.name == 'Input':
+                    continue
+                elif 'ConvBlock' in layer.name:
+                    if 'FlatE' in layer.populations:
+                        pop = layer.populations['FlatE']
+                        population.append(pop.fullname)
+                else:
+                    for pop in layer:
+                        population.append(pop.fullname)
         plot_batch_accuracy(network, test_dataloader, population=population, sorted_output_idx=sorted_output_idx,
                             title=title)
         plot_train_loss_history(network)
