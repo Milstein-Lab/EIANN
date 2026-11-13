@@ -243,6 +243,9 @@ def config_worker():
             raise Exception('nested_optimize_EIANN_cifar10: val_batch_size: %i leaves a final batch of size 1' % val_batch_size)
     context.val_dataloader = torch.utils.data.DataLoader(CIFAR10_val, batch_size=val_batch_size, shuffle=False)
     context.test_dataloader = torch.utils.data.DataLoader(CIFAR10_test, batch_size=test_batch_size, shuffle=False)
+    
+    if 'device' in context():
+        context.training_kwargs['device'] = context.device
 
 
 def get_mean_forward_dend_loss(network, num_steps, abs=True):
