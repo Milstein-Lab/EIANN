@@ -23,6 +23,9 @@ bounds:
     Output_init_weight_scale:
         - 0.01
         - 10.
+    si_lambda:
+        - 0.0001
+        - 10.
 default_params:
 kwargs:
     network_id: 1
@@ -35,7 +38,7 @@ kwargs:
     train_steps_per_class: 2000
     num_splits: 5
     epochs: 1
-    network_config_file_path: optimize/network_config/cifar10/20261110_EIANN_convnet_B_cifar10_van_bp.yaml
+    network_config_file_path: optimize/network_config/cifar10_CL/20261114_EIANN_convnet_B_cifar10_van_bp_SI.yaml
     val_interval:
         - -200
         - -1
@@ -46,14 +49,14 @@ kwargs:
     val_batch_size: 1000
 update_context:
     - source: optimize.nested_optimize_EIANN_CL_cifar10
-      function: update_EIANN_config_convnet_A_van_bp_relu_SGD_G_zero_bias  # works with B
+      function: update_EIANN_config_convnet_B_van_bp_SI_relu_SGD
 stages:
     - source: optimize.nested_optimize_EIANN_CL_cifar10
       get_args_static: get_random_seeds
       compute_features: compute_features
       filter_features: filter_features
       get_objectives: get_objectives
-optimization_title: EIANN_convnet_B_CL_cifar10_5_tasks_van_bp
+optimization_title: EIANN_convnet_B_CL_cifar10_5_tasks_van_bp_SI
 x0:
     Conv_learning_rate: 0.5
     H_learning_rate: 0.5
@@ -63,3 +66,4 @@ x0:
     H1_init_weight_scale: 1.
     H2_init_weight_scale: 1.
     Output_init_weight_scale: 1.2
+    si_lambda: 1.
