@@ -12,7 +12,7 @@ from EIANN import Network
 from EIANN.utils import (read_from_yaml, write_to_yaml, analyze_simple_EIANN_epoch_loss_and_accuracy, \
     sort_by_val_history, recompute_validation_loss_and_accuracy, check_equilibration_dynamics, \
     recompute_train_loss_and_accuracy, compute_test_loss_and_accuracy_history, sort_by_class_averaged_val_output,
-                         get_binned_mean_population_attribute_history_dict)
+                         get_binned_mean_population_attribute_history_dict, mpi_get_dynamic_cuda_device)
 from EIANN.plot import (plot_batch_accuracy, plot_train_loss_history, plot_validate_loss_history, plot_receptive_fields,
                         plot_representation_metrics)
 from nested.utils import Context, str_to_bool
@@ -243,6 +243,11 @@ def config_worker():
             raise Exception('nested_optimize_EIANN_cifar10: val_batch_size: %i leaves a final batch of size 1' % val_batch_size)
     context.val_dataloader = torch.utils.data.DataLoader(CIFAR10_val, batch_size=val_batch_size, shuffle=False)
     context.test_dataloader = torch.utils.data.DataLoader(CIFAR10_test, batch_size=test_batch_size, shuffle=False)
+    
+    if 'device' in context():
+        if context.device == 'dynamic_cuda':
+            context.device = mpi_get_dynamic_cuda_device(context, context.debug)
+        context.training_kwargs['device'] = context.device
 
 
 def get_mean_forward_dend_loss(network, num_steps, abs=True):
@@ -324,7 +329,17 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
             if context.flatten_data:
                 population = 'all'
             else:
-                population = 'OutputE'
+                population = []
+                for layer in network:
+                    if layer.name == 'Input':
+                        continue
+                    elif 'ConvBlock' in layer.name:
+                        if 'FlatE' in layer.populations:
+                            pop = layer.populations['FlatE']
+                            population.append(pop.fullname)
+                    else:
+                        for pop in layer:
+                            population.append(pop.fullname)
             plot_batch_accuracy(network, test_dataloader, population=population, title=title)
     
     if not context.retrain:
@@ -419,7 +434,17 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         if context.flatten_data:
             population = 'all'
         else:
-            population = 'OutputE'
+            population = []
+            for layer in network:
+                if layer.name == 'Input':
+                    continue
+                elif 'ConvBlock' in layer.name:
+                    if 'FlatE' in layer.populations:
+                        pop = layer.populations['FlatE']
+                        population.append(pop.fullname)
+                else:
+                    for pop in layer:
+                        population.append(pop.fullname)
         plot_batch_accuracy(network, test_dataloader, population=population, sorted_output_idx=sorted_output_idx,
                             title=title)
         plot_train_loss_history(network)

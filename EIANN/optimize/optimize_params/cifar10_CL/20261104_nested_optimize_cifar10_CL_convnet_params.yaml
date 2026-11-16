@@ -1,4 +1,4 @@
-van_bp:
+convnet_A_van_bp:
     #    phase0_accuracy: 78.40237
     #    phase0_loss: 0.043645725
     #    phase1_accuracy: 34.47948
@@ -17,3 +17,14 @@ van_bp:
     H1_init_weight_scale: 1.8244074449381456
     H2_init_weight_scale: 0.8618055894892432
     Output_init_weight_scale: 1.0560409314820334
+
+convnet_B_van_bp_test:
+    Conv_learning_rate: 0.1602536287364647
+    H_learning_rate: 0.1780439117291422
+    Output_learning_rate: 0.19549624739932173
+    Conv1_init_weight_scale: 3.0111133274591726
+    Conv2_init_weight_scale: 0.83514933559752
+    H1_init_weight_scale: 1.8244074449381456
+    H2_init_weight_scale: 0.8618055894892432
+    Output_init_weight_scale: 1.0560409314820334
+    si_lambda: 9.808349327917263

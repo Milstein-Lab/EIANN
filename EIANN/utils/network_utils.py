@@ -20,6 +20,21 @@ def save_config_module(pickler, obj):
   pickler.save_reduce(importlib.import_module, (obj.__name__,), obj=obj)
 
 
+def mpi_get_dynamic_cuda_device(context, debug):
+    if 'global_comm' not in context() or not torch.cuda.is_available():
+        local_rank = None
+        device = 'cpu'
+    else:
+        local_rank = context.global_comm.rank
+        num_gpus = torch.cuda.device_count()  # 4 on Expanse full GPU nodes
+        gpu_id = local_rank % num_gpus
+        torch.cuda.set_device(gpu_id)
+        device = f'cuda:{gpu_id}'
+    if debug:
+        print('rank: %s, device: %s' % (local_rank, device))
+    return device
+
+
 def build_EIANN_from_config(config_path, network_seed=42, config_format='normal', training_kwargs=None):
     '''
     Build an EIANN network from a config file

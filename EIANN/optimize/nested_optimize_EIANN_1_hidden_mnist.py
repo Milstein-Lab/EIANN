@@ -218,6 +218,9 @@ def config_worker():
         torch.utils.data.DataLoader(MNIST_train[0:-10000], shuffle=True, generator=context.data_generator)
     context.val_dataloader = torch.utils.data.DataLoader(MNIST_train[-10000:], batch_size=10000, shuffle=False)
     context.test_dataloader = torch.utils.data.DataLoader(MNIST_test, batch_size=10000, shuffle=False)
+    
+    if 'device' in context():
+        context.training_kwargs['device'] = context.device
 
 
 def get_mean_forward_dend_loss(network, num_steps, abs=True):

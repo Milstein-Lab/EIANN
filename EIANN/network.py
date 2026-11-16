@@ -181,6 +181,7 @@ class Network(nn.Module):
             optimizer = optimizer(self.optimizer_params_list, **optimizer_kwargs)
 
         self.optimizer = optimizer
+        self.to(self.device)
         self.init_weights_and_biases()
         self.reset_history()
 
