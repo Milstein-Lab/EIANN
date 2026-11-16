@@ -9,15 +9,20 @@ class RecurrentNetwork(object):
 
     Where the computation graph is cut between steps (detach) is left to the caller.
 
+    Every step runs network.forward forward_steps times with one integration substep each (substep_forward), which
+    computes the same dynamics as one call with all of them: with persistent state, reinit leaves states alone, and
+    prev_activity is set at the start of every substep. This lets learning rules act between substeps.
+
     Learning rules with traces (e.g. Eprop, BTSP_Continuous) tick them with learning_rule.forward(). trace_clock sets
     how often:
-    - 'step': once per step, after network.forward has run all forward_steps integration substeps.
-    - 'substep': once per integration substep. Each step then runs network.forward forward_steps times with one substep
-      each, which computes the same dynamics: with persistent state, reinit leaves states alone, and prev_activity is
-      set at the start of every substep. Rules with a set_ticks_per_step method (BTSP_Continuous and its variants) are
-      told forward_steps, so their time constants stay in units of steps.
+    - 'step': once per step, after the last substep.
+    - 'substep': once per integration substep. Rules with a set_ticks_per_step method (BTSP_Continuous and its
+      variants) are told forward_steps, so their time constants stay in units of steps.
     trace_clock=None runs as 'step' but leaves network.trace_clock None, so rules that are only exact with the substep
     clock (Eprop with forward_steps > 1) can refuse to run unless 'step' was chosen explicitly.
+
+    Rules that take exact gradients within the last backward_steps substeps (start_window, e.g. Eprop_Window) are told
+    just before the first of them runs, substep forward_steps - backward_steps, on either clock.
     """
     state_attributes = ('state', 'activity', 'prev_activity', 'forward_steps_activity')
     TRACE_CLOCKS = ('step', 'substep')
@@ -73,13 +78,9 @@ class RecurrentNetwork(object):
                 projection.learning_rule.reset_eligibility_trace()
             if self.new_sequence and hasattr(projection.learning_rule, 'reset_traces'):
                 projection.learning_rule.reset_traces()
-        if self.trace_clock == 'step':
-            output = self.network.forward(sample, no_grad=no_grad, persistent_state=persistent_state,
-                                          store_history=store_history, store_dynamics=store_dynamics)
-            self.tick_traces()
-        else:
-            output = self.substep_forward(sample, no_grad=no_grad, persistent_state=persistent_state,
-                                          store_history=store_history, store_dynamics=store_dynamics)
+        output = self.substep_forward(sample, no_grad=no_grad, persistent_state=persistent_state,
+                                      store_history=store_history, store_dynamics=store_dynamics,
+                                      tick_every_substep=self.trace_clock == 'substep')
         self.new_sequence = False
         return output
 
@@ -88,11 +89,22 @@ class RecurrentNetwork(object):
             if hasattr(projection.learning_rule, 'forward'):
                 projection.learning_rule.forward()
 
+    def start_window(self):
+        """
+        Tell learning rules that keep a window of tracked substeps (start_window, e.g. Eprop_Window) that the first
+        substep with gradients is about to run.
+        """
+        for projection in self.network.projections.values():
+            if hasattr(projection.learning_rule, 'start_window'):
+                projection.learning_rule.start_window()
+
     def substep_forward(self, sample, no_grad=False, persistent_state=False, store_history=False,
-                        store_dynamics=False):
+                        store_dynamics=False, tick_every_substep=True):
         """
         network.forward on one sample as forward_steps calls of one integration substep each, ticking learning rule
-        traces after every substep. Gradients are tracked for the last backward_steps substeps, as in network.forward.
+        traces after every substep (or, with tick_every_substep False, once after the last). Gradients are tracked for
+        the last backward_steps substeps, as in network.forward; rules with a window (start_window) are told just before
+        the first of them.
 
         Returns
         -------
@@ -105,12 +117,17 @@ class RecurrentNetwork(object):
         network.forward_steps = network.backward_steps = 1
         try:
             for t in range(forward_steps):
+                if not no_grad and t == forward_steps - backward_steps:
+                    self.start_window()
                 output = network.forward(sample, no_grad=no_grad or t < forward_steps - backward_steps,
                                          persistent_state=persistent_state or t > 0,
                                          store_dynamics=store_dynamics)
                 if store_dynamics:
                     for name, population in network.populations.items():
                         steps_activity[name].extend(population.forward_steps_activity)
+                if tick_every_substep:
+                    self.tick_traces()
+            if not tick_every_substep:
                 self.tick_traces()
         finally:
             network.forward_steps, network.backward_steps = forward_steps, backward_steps

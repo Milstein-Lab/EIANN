@@ -22,7 +22,8 @@ from EIANN.reinforcement_learning.environments import (make_env, TaskSchedule, S
 from EIANN.reinforcement_learning.crossing_metrics import block_outcome_rates, episode_positions, cl_summary
 from EIANN.reinforcement_learning.continual import EpisodeBuffer, RecordEpisodes, estimate_importance
 from EIANN.reinforcement_learning.treadmill_metrics import (stack_laps, cross_correlation, region_cross_correlation,
-                                                            licks_by_zone, block_rewards, seen_track_rewards)
+                                                            licks_by_zone, block_rewards, seen_track_rewards,
+                                                            lap_equilibration, equilibration_error)
 
 
 @pytest.fixture
@@ -392,8 +393,41 @@ def test_licks_by_zone():
     assert licks_by_zone({'actions': actions}, CueTreadmillEnv()).tolist() == [[[2, 0], [0, 1]]]
 
 
+def test_lap_equilibration_continues_the_persistent_lap(recurrent_network):
+    network = recurrent_network
+    network.forward_steps = network.backward_steps = 3
+    network.persistent_state = True
+    tracks = make_2ACDC_tracks()
+    model = RecurrentNetwork(network, persistent_state=True)
+    model.step(torch.as_tensor(tracks[0].cell_observations[0]), no_grad=True)
+    state_before = {name: population.state.clone() for name, population in network.populations.items()
+                    if hasattr(population, 'state')}
+
+    dynamics = lap_equilibration(network, tracks, num_steps=6)
+    assert set(dynamics) == {'H1E', 'OutputE'}
+    assert dynamics['H1E'].shape == (2, 23, 6, 16)
+    # every extended run starts from the state of the real lap, so its activity at the trained forward_steps is the
+    # lap's output
+    for i, track in enumerate(tracks):
+        model.reset()
+        outputs = model.run(lap_observations(track), no_grad=True).numpy()
+        assert np.allclose(dynamics['OutputE'][i, :, 2], outputs, atol=1e-6)
+    # the network is left as it was
+    model.reset()
+    model.step(torch.as_tensor(tracks[0].cell_observations[0]), no_grad=True)
+    assert network.forward_steps == network.backward_steps == 3
+    for name, state in state_before.items():
+        assert torch.equal(network.populations[name].state, state)
+
+
+def test_equilibration_error():
+    dynamics = np.array([[[3., 0.], [1., 1.], [1., 0.]]])  # (1 position, 3 substeps, 2 units)
+    assert np.allclose(equilibration_error(dynamics), [[2., 1., 0.]])
+
+
 @pytest.mark.parametrize('blocks', [{}, {'episodes_per_task': 2, 'num_cycles': 2, 'num_tracks': 2}])
-def test_plot_2ACDC_summary(laps_and_tracks, tmp_path, blocks):
+@pytest.mark.parametrize('with_network', [False, True])
+def test_plot_2ACDC_summary(laps_and_tracks, tmp_path, blocks, with_network):
     matplotlib = pytest.importorskip('matplotlib')
     matplotlib.use('Agg')
     from EIANN.reinforcement_learning.treadmill_plots import plot_2ACDC_summary
@@ -401,11 +435,14 @@ def test_plot_2ACDC_summary(laps_and_tracks, tmp_path, blocks):
     algo, tracks = laps_and_tracks
     # with blocks, as exported by nested_optimize_EIANN_2ACDC_CL: per-track rewards with block boundaries
     rl_history = {'val_laps': algo.val_laps, 'val_episodes': algo.val_episodes, 'treadmill_kwargs': {}, **blocks}
-    plot_2ACDC_summary(rl_history, title='test', save_prefix=str(tmp_path / 'model'), plot_format='png')
-    assert {path.name for path in tmp_path.iterdir()} == {
-        f'model_{name}.png' for name in ('val_rewards', 'final_q_values', 'actions_over_training',
-                                         'hidden_activity_H1E', 'cross_correlation_H1E', 'region_cross_correlation',
-                                         'region_cross_correlation_by_population')}
+    # with the network, also its equilibration during laps
+    plot_2ACDC_summary(rl_history, title='test', save_prefix=str(tmp_path / 'model'), plot_format='png',
+                       network=algo.network if with_network else None, equilibration_steps=4)
+    names = ['val_rewards', 'final_q_values', 'actions_over_training', 'hidden_activity_H1E', 'cross_correlation_H1E',
+             'region_cross_correlation', 'region_cross_correlation_by_population']
+    if with_network:
+        names += ['lap_equilibration', 'equilibration_error']
+    assert {path.name for path in tmp_path.iterdir()} == {f'model_{name}.png' for name in names}
 
 
 def test_new_algorithm_only_needs_run_episode():
@@ -448,6 +485,8 @@ def test_q_learning_epsilon_decays_every_episode():
     ('2ACDC', '20261112', 'BTSP_Eprop_15steps', OnlineQLearning, RandomSchedule, {'trace_clock': 'step'}),
     ('2ACDC', '20261112', 'bpDale_15steps_relu_SGD', QLearning, RandomSchedule, {}),
     ('2ACDC', '20261112', 'bpDale_frozenI_15steps_relu_SGD', QLearning, RandomSchedule, {}),
+    ('2ACDC', '20261113', 'eprop_window_bpDale_relu_SGD', OnlineQLearning, RandomSchedule,
+     {'trace_clock': 'step', 'accumulate_updates': True}),
     ('2ACDC', '20261109', 'BTSP_Continuous', OnlineQLearning, RandomSchedule, {'trace_clock': 'substep'}),
     ('2ACDC', '20261109', 'BTSP_Eprop', OnlineQLearning, RandomSchedule, {'trace_clock': 'substep'}),
     ('2ACDC', '20261109', 'eprop_bpDale_relu_SGD', OnlineQLearning, RandomSchedule,
@@ -510,6 +549,14 @@ def test_2ACDC_eprop_bpDale_learnedI_learns_every_projection():
         assert rule == ('Eprop_SomaI' if projection.post.name == 'SomaI' else 'Eprop'), name
         if projection.pre.name == 'SomaI':
             assert projection.direction == 'R', name
+
+
+def test_2ACDC_eprop_window_bpDale_learns_every_projection():
+    # every projection, E and SomaI, on Eprop_Window, with a window of 3 of 15 substeps
+    network = build_2ACDC_network('eprop_window_bpDale_relu_SGD', date='20261113')
+    assert (network.forward_steps, network.backward_steps) == (15, 3)
+    for name, projection in network.projections.items():
+        assert type(projection.learning_rule).__name__ == 'Eprop_Window', name
 
 
 def test_block_rewards():
@@ -671,22 +718,23 @@ SOMAI_PROJECTIONS = ('H1SomaI_InputE', 'H1SomaI_H1E', 'H1SomaI_H1SomaI', 'Output
                      'OutputSomaI_OutputSomaI')
 
 
-def build_eprop_SomaI_network(somai_rule='Eprop_SomaI', tau=2, forward_steps=2, backward_steps=1, seed=0):
+def build_eprop_SomaI_network(somai_rule='Eprop_SomaI', tau=2, forward_steps=2, backward_steps=1, seed=0,
+                              e_rule='Eprop'):
     """
     E/SomaI network with SomaI in a hidden layer and in the output layer, as in the 2ACDC Dale's law networks: SomaI
-    drives E only through recurrent projections. Projections onto SomaI use somai_rule, all others Eprop. Biases make
+    drives E only through recurrent projections. Projections onto SomaI use somai_rule, all others e_rule. Biases make
     the initial activities nonzero, so every presynaptic population contributes to the first substep's trace.
     """
     proj = lambda direction, rule: {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': direction,
                                     'learning_rule': rule}
     pop = lambda size, activation='relu': {'size': size, 'activation': activation, 'include_bias': True}
-    s = somai_rule
+    s, e = somai_rule, e_rule
     return nt.Network(
         {'Input': {'E': {'size': 4}}, 'H1': {'E': pop(6), 'SomaI': pop(3)},
          'Output': {'E': pop(2, 'linear'), 'SomaI': pop(2)}},
-        {'H1': {'E': {'Input': {'E': proj('F', 'Eprop')}, 'H1': {'E': proj('R', 'Eprop'), 'SomaI': proj('R', 'Eprop')}},
+        {'H1': {'E': {'Input': {'E': proj('F', e)}, 'H1': {'E': proj('R', e), 'SomaI': proj('R', e)}},
                 'SomaI': {'Input': {'E': proj('F', s)}, 'H1': {'E': proj('R', s), 'SomaI': proj('R', s)}}},
-         'Output': {'E': {'H1': {'E': proj('F', 'Eprop')}, 'Output': {'SomaI': proj('R', 'Eprop')}},
+         'Output': {'E': {'H1': {'E': proj('F', e)}, 'Output': {'SomaI': proj('R', e)}},
                     'SomaI': {'H1': {'E': proj('F', s)}, 'Output': {'E': proj('R', s), 'SomaI': proj('R', s)}}}},
         learning_rate=0.1, optimizer='SGD', tau=tau, forward_steps=forward_steps, backward_steps=backward_steps,
         seed=seed)
@@ -777,6 +825,186 @@ def test_eprop_SomaI_requires_substep_clock():
     output = model.step(torch.ones(4))
     with pytest.raises(RuntimeError, match='Eprop_SomaI'):
         compute_learning_rule_updates(network, output, output.detach() + 1.)
+
+def run_eprop_steps(network, samples, targets, trace_clock='substep', persistent_state=True):
+    """
+    Run a sequence of steps as OnlineQLearning with accumulate_updates does, and return the outputs.
+    """
+    model = RecurrentNetwork(network, persistent_state=persistent_state, trace_clock=trace_clock)
+    model.reset()
+    outputs = []
+    for sample, target in zip(samples, targets):
+        output = model.step(sample, store_history=True)
+        outputs.append(output.detach().clone())
+        compute_learning_rule_updates(network, output, target)
+        model.detach()
+    return torch.stack(outputs)
+
+
+def eprop_sequence(num_steps=6):
+    return (torch.rand(num_steps, 4, generator=torch.Generator().manual_seed(0)),
+            torch.rand(num_steps, 2, generator=torch.Generator().manual_seed(1)))
+
+
+@pytest.mark.parametrize('trace_clock', ['substep', 'step'])
+def test_eprop_window_over_the_whole_step_is_bptt(trace_clock):
+    # backward_steps == forward_steps from a fresh state: no time before the window, so the gradient of every
+    # projection, SomaI included, is autograd through all substeps
+    network = build_eprop_SomaI_network('Eprop_Window', e_rule='Eprop_Window', tau=3, forward_steps=4,
+                                        backward_steps=4, seed=1)
+    sample, target = torch.rand(4, generator=torch.Generator().manual_seed(0)), torch.tensor([1., -1.])
+    names = list(network.projections)
+    reference = torch.autograd.grad(network.criterion(network.forward(sample), target),
+                                    [network.projections[name].weight for name in names])
+    model = RecurrentNetwork(network, persistent_state=False, trace_clock=trace_clock)
+    model.reset()
+    output = model.step(sample)
+    compute_learning_rule_updates(network, output, target)
+    for name, grad in zip(names, reference):
+        assert grad.abs().sum() > 0, name
+        assert torch.allclose(network.projections[name].learning_rule.accumulated_grad, grad, atol=1e-6), name
+
+
+def test_eprop_window_of_one_substep_without_recurrence_is_eprop():
+    # with only forward projections, the state at the window start reaches the loss only through its own leak, so
+    # dL/ds(T-1) = (1 - 1/tau) dL/ds(T), and the window's gradient adds up to Eprop's L_T e_T, over a persistent sequence
+    def build(rule):
+        proj = {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': 'F', 'learning_rule': rule}
+        return nt.Network({'Input': {'E': {'size': 4}}, 'H1': {'E': {'size': 6, 'activation': 'relu'}},
+                           'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                          {'H1': {'E': {'Input': {'E': proj}}}, 'Output': {'E': {'H1': {'E': proj}}}},
+                          learning_rate=0.1, optimizer='SGD', tau=3, forward_steps=3, backward_steps=1, seed=0)
+    samples, targets = eprop_sequence()
+    networks = {rule: build(rule) for rule in ('Eprop', 'Eprop_Window')}
+    for network in networks.values():
+        run_eprop_steps(network, samples, targets)
+    for name, projection in networks['Eprop_Window'].projections.items():
+        grad = projection.learning_rule.accumulated_grad
+        assert grad.abs().sum() > 0, name
+        assert torch.allclose(grad, networks['Eprop'].projections[name].learning_rule.accumulated_grad, atol=1e-6), name
+
+
+def test_eprop_window_learns_SomaI():
+    # with backward_steps 1, the gradient of the projections onto SomaI is Eprop_SomaI's (signal at T-1 with e(T-1));
+    # a longer window adds the exact in-window terms
+    samples, targets = eprop_sequence()
+    grads = {}
+    for e_rule, somai_rule, backward_steps in (('Eprop', 'Eprop_SomaI', 1), ('Eprop_Window', 'Eprop_Window', 1),
+                                               ('Eprop_Window', 'Eprop_Window', 3)):
+        network = build_eprop_SomaI_network(somai_rule, e_rule=e_rule, tau=3, forward_steps=5,
+                                            backward_steps=backward_steps, seed=1)
+        run_eprop_steps(network, samples, targets)
+        grads[somai_rule, backward_steps] = {name: network.projections[name].learning_rule.accumulated_grad
+                                             for name in SOMAI_PROJECTIONS}
+    for name in SOMAI_PROJECTIONS:
+        assert grads['Eprop_Window', 3][name].abs().sum() > 0, name
+        assert torch.allclose(grads['Eprop_Window', 1][name], grads['Eprop_SomaI', 1][name], atol=1e-6), name
+    assert any(not torch.allclose(grads['Eprop_Window', 3][name], grads['Eprop_Window', 1][name])
+               for name in SOMAI_PROJECTIONS)
+
+
+def test_eprop_window_leaves_dynamics_unchanged():
+    samples, targets = eprop_sequence()
+    networks, outputs = {}, {}
+    for rule in ('Eprop_Window', None):
+        networks[rule] = build_eprop_SomaI_network(rule, e_rule=rule or 'Eprop', tau=3, forward_steps=5,
+                                                   backward_steps=3)
+        model = RecurrentNetwork(networks[rule], persistent_state=True, trace_clock='substep')
+        model.reset()
+        outputs[rule] = torch.stack([model.step(sample, store_history=True).detach().clone() for sample in samples])
+    assert torch.equal(outputs['Eprop_Window'], outputs[None])
+    for name, population in networks['Eprop_Window'].populations.items():
+        assert torch.equal(population.get_attribute_history('activity'),
+                           networks[None].populations[name].get_attribute_history('activity')), name
+
+
+@pytest.mark.parametrize('trace_tau', [None, 5.])
+def test_eprop_trace_tau(trace_tau):
+    # constant input to a forward projection: after k ticks from a fresh trace, e = x (1 - (1 - 1/tau_e)^k), with
+    # tau_e = trace_tau, or the voltage tau (2) when unset
+    proj = {'weight_init': 'scaled_kaiming', 'weight_init_args': (1.,), 'direction': 'F', 'learning_rule': 'Eprop',
+            'learning_rule_kwargs': {'trace_tau': trace_tau}}
+    network = nt.Network({'Input': {'E': {'size': 4}}, 'Output': {'E': {'size': 2, 'activation': 'linear'}}},
+                         {'Output': {'E': {'Input': {'E': proj}}}}, tau=2, forward_steps=3, seed=0)
+    model = RecurrentNetwork(network, persistent_state=True, trace_clock='substep')
+    model.reset()
+    sample = torch.rand(4, generator=torch.Generator().manual_seed(0))
+    model.step(sample)
+    tau_e = 2. if trace_tau is None else trace_tau
+    trace = network.projections['OutputE_InputE'].learning_rule.eligibility_trace
+    assert torch.allclose(trace, sample * (1. - (1. - 1. / tau_e) ** 3))
+
+
+def test_eprop_window_step_clock_first_step_is_window_bptt():
+    # step clock, window of 2 of 4 substeps, from a fresh state: the trace has not ticked yet when the window starts,
+    # so the gradient is autograd through the window alone
+    network = build_eprop_SomaI_network('Eprop_Window', e_rule='Eprop_Window', tau=3, forward_steps=4,
+                                        backward_steps=2, seed=1)
+    sample, target = torch.rand(4, generator=torch.Generator().manual_seed(0)), torch.tensor([1., -1.])
+    names = list(network.projections)
+    reference = torch.autograd.grad(network.criterion(network.forward(sample), target),
+                                    [network.projections[name].weight for name in names], allow_unused=True)
+    model = RecurrentNetwork(network, persistent_state=True, trace_clock='step')
+    model.reset()
+    output = model.step(sample)
+    compute_learning_rule_updates(network, output, target)
+    for name, grad in zip(names, reference):
+        grad = torch.zeros_like(network.projections[name].weight) if grad is None else grad
+        assert torch.allclose(network.projections[name].learning_rule.accumulated_grad, grad, atol=1e-6), name
+
+
+def test_eprop_window_step_clock_ticks_once_per_step():
+    # constant input: the trace of Input -> H1 E ticks once per step (x / tau_e, then (1 - 1/tau_e) x / tau_e + x / tau_e),
+    # the window of step 2 pairs its signal with the trace after step 1, and the dynamics are those of one
+    # network.forward call over all substeps
+    tau_e = 4.
+    sample = torch.rand(4, generator=torch.Generator().manual_seed(0))
+    network = build_eprop_SomaI_network('Eprop_Window', e_rule='Eprop_Window', tau=3, forward_steps=4,
+                                        backward_steps=2)
+    for projection in network.projections.values():
+        projection.learning_rule.trace_tau = tau_e
+    rule = network.projections['H1E_InputE'].learning_rule
+    model = RecurrentNetwork(network, persistent_state=True, trace_clock='step')
+    model.reset()
+    outputs = [model.step(sample).detach().clone()]
+    assert torch.allclose(rule.eligibility_trace, sample / tau_e)
+    model.detach()
+    outputs.append(model.step(sample).detach().clone())
+    assert torch.allclose(rule.window_trace, sample / tau_e)
+    assert torch.allclose(rule.eligibility_trace, (1. - 1. / tau_e) * sample / tau_e + sample / tau_e)
+
+    fixed_network = build_eprop_SomaI_network(None, e_rule=None, tau=3, forward_steps=4, backward_steps=2)
+    fixed_outputs = [fixed_network.forward(sample, no_grad=True, persistent_state=step > 0).clone()
+                     for step in range(2)]
+    assert torch.allclose(torch.stack(outputs), torch.stack(fixed_outputs), atol=1e-6)
+
+
+def test_eprop_window_checks():
+    # Eprop_SomaI's per-substep leaves would cut the window's graph
+    network = build_eprop_SomaI_network('Eprop_SomaI', e_rule='Eprop_Window', tau=3, forward_steps=4,
+                                        backward_steps=2)
+    model = RecurrentNetwork(network, persistent_state=True, trace_clock='substep')
+    model.reset()
+    output = model.step(torch.ones(4))
+    with pytest.raises(RuntimeError, match='Eprop_SomaI'):
+        compute_learning_rule_updates(network, output, output.detach() + 1.)
+
+
+def test_update_eprop_trace_tau():
+    pytest.importorskip('nested')
+    from types import SimpleNamespace
+    from EIANN.optimize.network_rl_config_updates import update_eprop_trace_tau
+    projection_config = {'H1': {'E': {'Input': {'E': {'learning_rule': 'Eprop_Window', 'learning_rule_kwargs': {}}},
+                                      'H1': {'SomaI': {'learning_rule': 'Eprop'}}},
+                                'SomaI': {'H1': {'E': {'learning_rule': None}}}},
+                         'Output': {'E': {'H1': {'E': {'learning_rule': 'Backprop', 'learning_rule_kwargs': {}}}}}}
+    context = SimpleNamespace(param_names=['tau', 'trace_tau'], projection_config=projection_config)
+    update_eprop_trace_tau([3., 12.], context)
+    assert projection_config['H1']['E']['Input']['E']['learning_rule_kwargs'] == {'trace_tau': 12.}
+    assert projection_config['H1']['E']['H1']['SomaI']['learning_rule_kwargs'] == {'trace_tau': 12.}
+    assert 'learning_rule_kwargs' not in projection_config['H1']['SomaI']['H1']['E']
+    assert projection_config['Output']['E']['H1']['E']['learning_rule_kwargs'] == {}
+
 
 def test_trace_clock_default_runs_as_step(recurrent_network):
     model = RecurrentNetwork(recurrent_network)
