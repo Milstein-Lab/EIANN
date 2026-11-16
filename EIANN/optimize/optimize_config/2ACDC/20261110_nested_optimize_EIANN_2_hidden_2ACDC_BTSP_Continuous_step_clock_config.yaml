@@ -119,9 +119,9 @@ bounds:
     Output_I_size:
         - 1
         - 2
-    tau:
-        - 1.0
-        - 10.0
+    tau: # voltage tau in substeps; 60 keeps ~78% per env step at forward_steps 15 (cue memory)
+        - 1.
+        - 60.
     epsilon:
         - 0.01
         - 0.999

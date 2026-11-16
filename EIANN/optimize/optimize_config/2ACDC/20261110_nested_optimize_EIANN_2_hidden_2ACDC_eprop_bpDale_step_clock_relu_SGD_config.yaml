@@ -68,9 +68,12 @@ bounds:
     gamma:
         - 0.01
         - 0.99
-    tau:
+    tau: # voltage tau in substeps; 60 keeps ~78% per env step at forward_steps 15 (cue memory)
         - 1.
-        - 10.
+        - 60.
+    trace_tau: # e-prop trace tau in env steps (trace_clock: step), separate from the voltage tau
+        - 1.
+        - 20.
 default_params:
 kwargs:
     network_id: 1
@@ -111,6 +114,8 @@ update_context:
       function: update_tau
     - source: optimize.nested_optimize_EIANN_2ACDC
       function: update_q_learning_kwargs
+    - source: optimize.nested_optimize_EIANN_2ACDC
+      function: update_eprop_trace_tau
 stages:
     - source: optimize.nested_optimize_EIANN_2ACDC
       get_args_static: get_random_seeds
@@ -143,3 +148,4 @@ x0:
     epsilon_decay: 0.9984025483962401
     gamma: 0.15056280945389777
     tau: 3.
+    trace_tau: 3. # = tau: the trace used the voltage tau before trace_tau was separate

@@ -176,7 +176,7 @@ def compute_features(x, seed, data_seed, model_id=None, export=False, plot=False
         label = os.path.splitext(os.path.basename(data_file_path))[0]
         save_prefix = None if context.plot_dir is None else f"{context.plot_dir}/{label}"
         plot_2ACDC_summary(rl_history, title=f'{seed}_{data_seed}', save_prefix=save_prefix,
-                           plot_format=context.plot_format)
+                           plot_format=context.plot_format, network=network)
 
     if export:
         config_dict = {'layer_config': context.layer_config,

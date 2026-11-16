@@ -178,3 +178,88 @@ def seen_track_rewards(reward_matrix):
     """
     num_blocks, num_tracks = reward_matrix.shape
     return np.array([np.mean(reward_matrix[block, :min(block + 1, num_tracks)]) for block in range(num_blocks)])
+
+
+def lap_equilibration(network, tracks, num_steps=30):
+    """
+    How far a trained network is from equilibrium during real laps, with state persisting across steps as in training
+    (persistent_state, as RecurrentNetwork runs it). A greedy lap of every track is run with the trained forward_steps;
+    at every position, before that step, the carried-over state is run num_steps integration substeps on the position's
+    observation, to see where it settles, and then restored. So the extended run at each position starts from exactly
+    the state that the network had there. (utils.check_equilibration_dynamics instead starts every sample from a fresh
+    state, which a lap only does at its first position.)
+
+    No learning rule is ticked or stepped, and the network's population states and forward_steps are restored
+    afterwards, so the network is unchanged.
+
+    Parameters
+    ----------
+    network : Network
+    tracks : list of CueTreadmillEnv
+        Tracks of the same length.
+    num_steps : int, default 30
+        Substeps of the extended run at each position.
+
+    Returns
+    -------
+    dict
+        Population name (all but the input) to the activity of the extended runs, shape
+        (num_tracks, length, num_steps, population size).
+    """
+    import torch
+    from EIANN.recurrent_network import RecurrentNetwork
+
+    input_pop = next(iter(list(network)[0]))  # as Network.forward finds it
+    populations = {name: population for name, population in network.populations.items() if population is not input_pop}
+
+    def save_state():
+        return {name: {attr: getattr(population, attr) for attr in RecurrentNetwork.state_attributes
+                       if hasattr(population, attr)} for name, population in network.populations.items()}
+
+    def restore_state(saved):
+        for name, population in network.populations.items():
+            for attr, value in saved[name].items():
+                setattr(population, attr, value)
+
+    trained_steps = (network.forward_steps, network.backward_steps)
+    initial_state = save_state()
+    dynamics = {name: [] for name in populations}
+    try:
+        for track in tracks:
+            track_dynamics = {name: [] for name in populations}
+            for position, obs in enumerate(track.cell_observations):
+                sample = torch.as_tensor(obs, dtype=torch.float32)
+                persistent_state = network.persistent_state and position > 0
+                saved = save_state()
+                network.forward_steps = network.backward_steps = num_steps
+                network.forward(sample, no_grad=True, persistent_state=persistent_state, store_dynamics=True)
+                for name, population in populations.items():
+                    track_dynamics[name].append(torch.stack(population.forward_steps_activity).cpu().numpy())
+                restore_state(saved)
+                network.forward_steps, network.backward_steps = trained_steps
+                network.forward(sample, no_grad=True, persistent_state=persistent_state)
+            for name in populations:
+                dynamics[name].append(np.stack(track_dynamics[name]))
+    finally:
+        network.forward_steps, network.backward_steps = trained_steps
+        restore_state(initial_state)
+    return {name: np.stack(value) for name, value in dynamics.items()}
+
+
+def equilibration_error(dynamics):
+    """
+    Distance of the activity at every substep from that at the last substep, relative to the last: |a_t - a_T| / |a_T|
+    with L1 norms over units.
+
+    Parameters
+    ----------
+    dynamics : np.ndarray
+        Shape (..., num_steps, population size), e.g. one population of lap_equilibration.
+
+    Returns
+    -------
+    np.ndarray
+        Shape (..., num_steps); 0 at the last substep.
+    """
+    final = dynamics[..., -1:, :]
+    return np.abs(dynamics - final).sum(axis=-1) / np.maximum(np.abs(final).sum(axis=-1), 1e-12)

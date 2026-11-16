@@ -8,7 +8,8 @@ import seaborn as sns  # registers the 'icefire' colormap with matplotlib
 
 from EIANN.plot import clean_axes, update_plot_defaults
 from .environments import make_2ACDC_tracks
-from .treadmill_metrics import stack_laps, cross_correlation_history, region_cross_correlation_history
+from .treadmill_metrics import (stack_laps, cross_correlation_history, region_cross_correlation_history,
+                                lap_equilibration, equilibration_error)
 
 # fixed order: a population or track keeps its color whichever others are plotted with it
 # (at least as many as recorded populations: the BTSP networks record 7, with the DendI populations)
@@ -335,7 +336,87 @@ def plot_region_cross_correlation(laps, tracks, populations=None, regions=None, 
     save_or_show(fig, save_path)
 
 
-def plot_2ACDC_summary(rl_history, title=None, save_prefix=None, plot_format='svg'):
+def plot_lap_equilibration(dynamics, tracks, trained_steps, populations=None, title=None, save_path=None):
+    """
+    Mean activity of every population over the extended runs of lap_equilibration, one line per position colored by
+    position, one row per track and one column per population. A dashed line marks the trained forward_steps, where a
+    real step reads the network out.
+
+    Parameters
+    ----------
+    dynamics : dict
+        From lap_equilibration.
+    tracks : list of CueTreadmillEnv
+    trained_steps : int
+        The network's forward_steps.
+    populations : list of str, optional
+        Defaults to every population in dynamics.
+    title : str, optional
+    save_path : str, optional
+    """
+    populations = list(dynamics) if populations is None else populations
+    num_tracks, length, num_steps = dynamics[populations[0]].shape[:3]
+    substeps = np.arange(1, num_steps + 1)
+    cmap = plt.get_cmap('viridis')
+    fig, axes = plt.subplots(num_tracks, len(populations), figsize=(1.8 * len(populations) + 0.8, 1.6 * num_tracks),
+                             sharex=True, squeeze=False, layout='constrained')
+    for row in range(num_tracks):
+        for col, population in enumerate(populations):
+            ax = axes[row, col]
+            for position, trace in enumerate(dynamics[population][row].mean(axis=-1)):
+                ax.plot(substeps, trace, color=cmap(position / max(length - 1, 1)), linewidth=0.6)
+            ax.axvline(trained_steps, color='gray', linestyle='--', linewidth=0.75)
+            if row == 0:
+                ax.set_title(population)
+            if row == num_tracks - 1:
+                ax.set_xlabel('Substep')
+            clean_axes(ax)
+        axes[row, 0].set_ylabel(f'Track {row + 1}\nMean activity')
+    fig.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(0, length - 1)), ax=axes, fraction=0.03,
+                 label='Position')
+    fig.suptitle(get_title(title, f'Equilibration during laps (dashed: forward_steps = {trained_steps})'))
+    save_or_show(fig, save_path)
+
+
+def plot_equilibration_error(dynamics, trained_steps, populations=None, title=None, save_path=None):
+    """
+    Distance from the final activity (equilibration_error) at every substep of the extended runs of lap_equilibration,
+    median and max over the positions of every track, one line per population. A dashed line marks the trained
+    forward_steps: the value there is how far the network is from settling when a real step reads it out.
+
+    Parameters
+    ----------
+    dynamics : dict
+        From lap_equilibration.
+    trained_steps : int
+        The network's forward_steps.
+    populations : list of str, optional
+        Defaults to every population in dynamics.
+    title : str, optional
+    save_path : str, optional
+    """
+    populations = list(dynamics) if populations is None else populations
+    fig, axes = plt.subplots(1, 2, figsize=(5.2, 2.), sharey=True, layout='constrained')
+    for population, color in zip(populations, SERIES_COLORS):
+        error = equilibration_error(dynamics[population])  # (num_tracks, length, num_steps)
+        error = error.reshape(-1, error.shape[-1])[:, :-1]  # 0 at the last substep, which is left out of the log axis
+        substeps = np.arange(1, error.shape[-1] + 1)
+        for ax, summary in zip(axes, (np.median, np.max)):
+            ax.plot(substeps, np.maximum(summary(error, axis=0), 1e-6), color=color, linewidth=1, label=population)
+    for ax, label in zip(axes, ('Median', 'Max')):
+        ax.axvline(trained_steps, color='gray', linestyle='--', linewidth=0.75)
+        ax.set_yscale('log')
+        ax.set_xlabel('Substep')
+        ax.set_title(f'{label} over positions')
+        clean_axes(ax)
+    axes[0].set_ylabel('|a(t) - a(final)| / |a(final)|')
+    axes[1].legend(frameon=False, loc='upper left', bbox_to_anchor=(1, 1))
+    fig.suptitle(get_title(title, 'Distance from equilibrium during laps'))
+    save_or_show(fig, save_path)
+
+
+def plot_2ACDC_summary(rl_history, title=None, save_prefix=None, plot_format='svg', network=None,
+                       equilibration_steps=30):
     """
     The standard plots of a trained 2ACDC model. nested --plot and the analysis notebook both call this, so that they
     show the same thing.
@@ -349,6 +430,11 @@ def plot_2ACDC_summary(rl_history, title=None, save_prefix=None, plot_format='sv
     save_prefix : str, optional
         Figures are saved to <save_prefix>_<plot name>.<plot_format> instead of shown.
     plot_format : str, default 'svg'
+    network : Network, optional
+        The trained network. If given, also plots its equilibration during laps (lap_equilibration), which runs
+        the network and so needs it, not just rl_history.
+    equilibration_steps : int, default 30
+        Substeps of the extended runs of lap_equilibration.
     """
     def get_save_path(name):
         return None if save_prefix is None else f'{save_prefix}_{name}.{plot_format}'
@@ -369,3 +455,9 @@ def plot_2ACDC_summary(rl_history, title=None, save_prefix=None, plot_format='sv
                                   save_path=get_save_path('region_cross_correlation'))
     plot_region_cross_correlation(laps, tracks, populations=e_populations, panels='population', title=title,
                                   save_path=get_save_path('region_cross_correlation_by_population'))
+    if network is not None:
+        dynamics = lap_equilibration(network, tracks, num_steps=equilibration_steps)
+        plot_lap_equilibration(dynamics, tracks, network.forward_steps, title=title,
+                               save_path=get_save_path('lap_equilibration'))
+        plot_equilibration_error(dynamics, network.forward_steps, title=title,
+                                 save_path=get_save_path('equilibration_error'))

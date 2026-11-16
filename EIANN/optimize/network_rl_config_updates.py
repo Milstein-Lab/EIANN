@@ -53,7 +53,7 @@ def set_learning_rule_kwarg(projection_config, learning_rule, key, value, post_l
             for pre_pops in pre_layers.values():
                 for projection_kwargs in pre_pops.values():
                     if projection_kwargs.get('learning_rule') == learning_rule:
-                        projection_kwargs['learning_rule_kwargs'][key] = value
+                        projection_kwargs.setdefault('learning_rule_kwargs', {})[key] = value
 
 
 def set_hidden_and_output_kwarg(context, learning_rule, key, H_value, Output_value):
@@ -63,6 +63,20 @@ def set_hidden_and_output_kwarg(context, learning_rule, key, H_value, Output_val
     hidden_layers = [layer for layer in context.projection_config if layer != 'Output']
     set_learning_rule_kwarg(context.projection_config, learning_rule, key, H_value, post_layers=hidden_layers)
     set_learning_rule_kwarg(context.projection_config, learning_rule, key, Output_value, post_layers=['Output'])
+
+
+EPROP_RULES = ('Eprop', 'Eprop_SomaI', 'Eprop_Window')
+
+
+def update_eprop_trace_tau(x, context):
+    """
+    Eligibility trace time constant of every e-prop projection (rules/eprop.py), separate from the voltage tau: param
+    trace_tau (in substeps with trace_clock: substep, in steps with trace_clock: step).
+    """
+    param_dict = param_array_to_dict(x, context.param_names)
+
+    for learning_rule in EPROP_RULES:
+        set_learning_rule_kwarg(context.projection_config, learning_rule, 'trace_tau', param_dict['trace_tau'])
 
 
 def update_SI_lambda(x, context):
