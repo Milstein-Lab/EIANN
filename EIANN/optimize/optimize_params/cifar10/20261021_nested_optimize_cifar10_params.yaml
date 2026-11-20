@@ -52,35 +52,65 @@ FF_bpDale_convnet_A:
     OutputEI_init_weight_scale: 0.6915920712497073
     OutputIE_init_weight_scale: 0.4957206712194807
 
-bpDale_G_convnet_B_fast_dyn_test:
-    #    accuracy: 31.019001007080078
-    #    dynamics_residuals: 0.27182377874851227
-    #    loss: 0.08137141168117523
-    ConvEE_learning_rate: 0.13217366067362638
-    HEE_learning_rate: 0.0829823747946268
-    OutputEE_learning_rate: 0.12073646957711444
-    Conv1EE_init_weight_scale: 1.6338797153453017
-    Conv1EI_init_weight_scale: 0.3501187914071029
-    Conv1IE_F_init_weight_scale: 0.11291974665181244
-    Conv1IE_R_init_weight_scale: 0.39533657577551784
-    Conv1II_init_weight_scale: 0.7407081157942406
-    Conv2EE_init_weight_scale: 1.5003228796383647
-    Conv2EI_init_weight_scale: 2.0992538262619562
-    Conv2IE_F_init_weight_scale: 1.0827557458954211
-    Conv2IE_R_init_weight_scale: 2.8573798852182106
-    Conv2II_init_weight_scale: 1.0574278711760727
-    H1EE_init_weight_scale: 1.5145054352366802
-    H1EI_init_weight_scale: 0.35220963532791266
-    H1IE_F_init_weight_scale: 2.7524598106774203
-    H1IE_R_init_weight_scale: 0.3861195209123012
-    H1II_init_weight_scale: 0.4671415997124345
-    H2EE_init_weight_scale: 3.3124933192721593
-    H2EI_init_weight_scale: 1.815491663772789
-    H2IE_F_init_weight_scale: 1.2005451940338818
-    H2IE_R_init_weight_scale: 2.2339501125120043
-    H2II_init_weight_scale: 0.34011079905130004
-    OutputEE_init_weight_scale: 2.5648743467720974
-    OutputEI_init_weight_scale: 0.6980693897653166
-    OutputIE_F_init_weight_scale: 2.105897205595538
-    OutputIE_R_init_weight_scale: 1.2497073871677629
-    OutputII_init_weight_scale: 2.1839796617463385
+FF_bpDale_convnet_C_test:
+    #    accuracy: 29.268
+    #    loss: 0.08245114
+    ConvEE_learning_rate: 0.06031664557336458
+    ConvEI_learning_rate: 0.004949118271297724
+    ConvIE_learning_rate: 0.16231110104291704
+    HEE_learning_rate: 0.16189023472191755
+    HEI_learning_rate: 0.07535278621021389
+    HIE_learning_rate: 0.0012761468093945212
+    OutputEE_learning_rate: 0.22738847509822555
+    OutputEI_learning_rate: 0.1580684184137751
+    OutputIE_learning_rate: 0.020940115923382754
+    Conv1EE_init_weight_scale: 0.5606118835604231
+    Conv1EI_init_weight_scale: 0.9575001851469362
+    Conv1IE_init_weight_scale: 0.3943103220363971
+    Conv2EE_init_weight_scale: 1.2788976808701946
+    Conv2EI_init_weight_scale: 0.06462105632254693
+    Conv2IE_init_weight_scale: 1.136505933049013
+    H1EE_init_weight_scale: 1.1821058824947113
+    H1EI_init_weight_scale: 0.6282414001881897
+    H1IE_init_weight_scale: 0.49522593351557215
+    H2EE_init_weight_scale: 3.3741765007933413
+    H2EI_init_weight_scale: 1.2752312839506095
+    H2IE_init_weight_scale: 0.6517047725019621
+    OutputEE_init_weight_scale: 0.9688808504432396
+    OutputEI_init_weight_scale: 0.6915920712497073
+    OutputIE_init_weight_scale: 0.4957206712194807
+    max_pool_correction: 10.
+
+bpDale_G_convnet_B_fast_dyn:
+    #    accuracy: 33.91999816894531
+    #    dynamics_residuals: 0.18227845728397368
+    #    loss: 0.07960660755634308
+    ConvEE_learning_rate: 0.17551438292452048
+    HEE_learning_rate: 0.11400857285979896
+    OutputEE_learning_rate: 0.03657627797034342
+    Conv1EE_init_weight_scale: 2.2670839289127405
+    Conv1EI_init_weight_scale: 0.5212749243711501
+    Conv1IE_F_init_weight_scale: 0.38576660894802695
+    Conv1IE_R_init_weight_scale: 0.5469627834732257
+    Conv1II_init_weight_scale: 1.1302663167679765
+    Conv2EE_init_weight_scale: 1.8324532104822222
+    Conv2EI_init_weight_scale: 1.9708595125647321
+    Conv2IE_F_init_weight_scale: 1.502124883877137
+    Conv2IE_R_init_weight_scale: 3.0642729665550723
+    Conv2II_init_weight_scale: 1.1499272267023042
+    H1EE_init_weight_scale: 1.5248161838169285
+    H1EI_init_weight_scale: 0.32432660139368863
+    H1IE_F_init_weight_scale: 2.6995145010959964
+    H1IE_R_init_weight_scale: 0.7182088346180224
+    H1II_init_weight_scale: 0.30651323397921426
+    H2EE_init_weight_scale: 3.5422031743903233
+    H2EI_init_weight_scale: 2.0669290391375768
+    H2IE_F_init_weight_scale: 1.3672265807314483
+    H2IE_R_init_weight_scale: 1.6861718201488811
+    H2II_init_weight_scale: 0.5675950542996833
+    OutputEE_init_weight_scale: 2.8152268079356855
+    OutputEI_init_weight_scale: 1.3046049955040286
+    OutputIE_F_init_weight_scale: 2.168373001581408
+    OutputIE_R_init_weight_scale: 1.0360556695920524
+    OutputII_init_weight_scale: 2.3154127518456376
+

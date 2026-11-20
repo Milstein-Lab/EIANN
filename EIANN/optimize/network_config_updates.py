@@ -2224,6 +2224,11 @@ def update_EIANN_config_convnet_A_FF_bpDale_relu_SGD_F_zero_bias(x, context):
     Conv2EI_init_weight_scale = param_dict['Conv2EI_init_weight_scale']
     Conv2IE_init_weight_scale = param_dict['Conv2IE_init_weight_scale']
     
+    if 'max_pool_correction' in param_dict:
+        max_pool_correction = param_dict['max_pool_correction']
+        context.layer_config['ConvBlock1']['MaxPoolE']['output_correction'] = max_pool_correction
+        context.layer_config['ConvBlock2']['MaxPoolE']['output_correction'] = max_pool_correction
+    
     HEE_learning_rate = param_dict['HEE_learning_rate']
     HEI_learning_rate = param_dict['HEI_learning_rate']
     HIE_learning_rate = param_dict['HIE_learning_rate']

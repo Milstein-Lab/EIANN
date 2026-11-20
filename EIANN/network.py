@@ -1208,7 +1208,8 @@ class Conv2DPopulation(Population):
 
 class MaxPool2DPopulation(Population):
     def __init__(self, network, layer, name, population_type, custom_update=None, custom_update_kwargs=None,
-                 output_pop=False, kernel_size=2, source=None, device=None, **kwargs):
+                 output_pop=False, kernel_size=2, source=None, device=None,
+                 output_correction=None, **kwargs):
         """
         Class for population of neurons that performs a MaxPool2D operation on the output of a Conv2DPopulation.
         Currently automatic calculation of output image_dim assumes default stride, padding, and dilation.
@@ -1221,6 +1222,8 @@ class MaxPool2DPopulation(Population):
         :param output_pop: bool; a single population must be designated as the output population to compute network loss
         :param kernel_size: int; height and width of pool kernel
         :param source: str; name of population with reference input image_dim
+        :param device: torch.device
+        :param output_correction: account for drift of mean activity amplitude when pooling
         """
         self.device = device
         # Constants
@@ -1235,13 +1238,17 @@ class MaxPool2DPopulation(Population):
             raise Exception('FlattenPopulation: invalid source population: %s' % source)
         self.source_pop = source_pop
         self.image_dim = source_image_dim // self.kernel_size
+        if output_correction is None:
+            self.output_correction = 1.
+        else:
+            self.output_correction = output_correction
         size = self.source_pop.size
         
         super().__init__(network, layer, name, size, custom_update=custom_update,
                          custom_update_kwargs=custom_update_kwargs, output_pop=output_pop, device=device)
     
     def forward(self):
-        self.activity = self.pool(self.source_pop.activity)
+        self.activity = self.pool(self.source_pop.activity) / self.output_correction
     
     def reinit(self, device, batch_size=1, persistent_state=False):
         """
@@ -1271,7 +1278,7 @@ class MaxPool2DPopulation(Population):
                 else:
                     self.state = torch.zeros(self.size, self.image_dim, self.image_dim, device=device)
                 self.state += self.bias.unsqueeze(-1).unsqueeze(-1)
-            self.activity = self.activation(self.state).to(device)
+            self.activity = self.activation(self.state).to(device) / self.output_correction
 
 
 class FlattenPopulation(Population):
@@ -1352,7 +1359,8 @@ class Input(Population):
 class Projection(nn.Linear):
     def __init__(self, pre_pop, post_pop, weight_init=None, weight_init_args=None, weight_constraint=None,
                  weight_constraint_kwargs={}, weight_bounds=None, direction='forward', update_phase='all',
-                 compartment=None, learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None):
+                 compartment=None, learning_rule='Backprop', learning_rule_kwargs=None, device=None, dtype=None,
+                 **kwargs):
         """
 
         :param pre_pop: :class:'Population'
