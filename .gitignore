@@ -28,6 +28,7 @@ EIANN/data/debug_plots
 manuscript/
 
 EIANN/data/mnist
+EIANN/data/optimization_histories
 
 ~$runs.xlsx
 
