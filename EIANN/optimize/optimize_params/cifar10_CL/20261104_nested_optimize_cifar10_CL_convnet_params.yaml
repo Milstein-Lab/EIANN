@@ -18,13 +18,44 @@ convnet_A_van_bp:
     H2_init_weight_scale: 0.8618055894892432
     Output_init_weight_scale: 1.0560409314820334
 
-convnet_B_van_bp_test:
-    Conv_learning_rate: 0.1602536287364647
-    H_learning_rate: 0.1780439117291422
-    Output_learning_rate: 0.19549624739932173
-    Conv1_init_weight_scale: 3.0111133274591726
-    Conv2_init_weight_scale: 0.83514933559752
-    H1_init_weight_scale: 1.8244074449381456
-    H2_init_weight_scale: 0.8618055894892432
-    Output_init_weight_scale: 1.0560409314820334
-    si_lambda: 9.808349327917263
+convnet_B_van_bp_5_tasks_CL:
+    #    phase0_accuracy: 84.186386
+    #    phase0_loss: 0.028670728
+    #    phase1_accuracy: 33.123123
+    #    phase1_loss: 0.09953781
+    #    phase2_accuracy: 25.706213
+    #    phase2_loss: 0.12488534
+    #    phase3_accuracy: 21.721628
+    #    phase3_loss: 0.120237745
+    #    phase4_accuracy: 17.681
+    #    phase4_loss: 0.124203146
+    Conv_learning_rate: 0.06019640335955908
+    H_learning_rate: 0.40075350179489433
+    Output_learning_rate: 0.06656626268167667
+    Conv1_init_weight_scale: 3.7107446830959367
+    Conv2_init_weight_scale: 1.1452382000108325
+    H1_init_weight_scale: 0.7096626294165325
+    H2_init_weight_scale: 1.2267778528759519
+    Output_init_weight_scale: 1.3139054862138748
+
+convnet_B_van_bp_SI_5_tasks_CL:
+    # many failed models, si_lambda is causing nan loss
+    #    phase0_accuracy: 84.388565
+    #    phase0_loss: 0.02581113
+    #    phase1_accuracy: 33.445946
+    #    phase1_loss: 0.101819836
+    #    phase2_accuracy: 24.396809
+    #    phase2_loss: 0.12079036
+    #    phase3_accuracy: 20.065205
+    #    phase3_loss: 0.11314781
+    #    phase4_accuracy: 20.834
+    #    phase4_loss: 0.10832797
+    Conv_learning_rate: 0.006485507937381197
+    H_learning_rate: 0.008134604276307326
+    Output_learning_rate: 0.025086772024129327
+    Conv1_init_weight_scale: 4.606181818434803
+    Conv2_init_weight_scale: 1.7376959536964993
+    H1_init_weight_scale: 0.40824329867201925
+    H2_init_weight_scale: 4.0502777856647665
+    Output_init_weight_scale: 0.4359120301229515
+    si_lambda: 0.07964671346319435

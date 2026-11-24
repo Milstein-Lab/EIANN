@@ -1,0 +1,204 @@
+bounds:
+    Conv1E1E_learning_rate:
+        - 0.0001
+        - 1.
+    Conv1E2E_learning_rate:
+        - 0.0001
+        - 1.
+    Conv2E1E_learning_rate:
+        - 0.0001
+        - 1.
+    Conv2E2E_learning_rate:
+        - 0.0001
+        - 1.
+    Conv1E1I_learning_rate:
+        - 0.0001
+        - 1.
+    Conv1E2I_learning_rate:
+        - 0.0001
+        - 1.
+    Conv2E1I_learning_rate:
+        - 0.0001
+        - 1.
+    Conv2E2I_learning_rate:
+        - 0.0001
+        - 1.
+    Conv1I1E_learning_rate:
+        - 0.0001
+        - 1.
+    Conv1I2E_learning_rate:
+        - 0.0001
+        - 1.
+    Conv2I1E_learning_rate:
+        - 0.0001
+        - 1.
+    Conv2I2E_learning_rate:
+        - 0.0001
+        - 1.
+    H1EE_learning_rate:
+        - 0.0001
+        - 1.
+    H2EE_learning_rate:
+        - 0.0001
+        - 1.
+    H1EI_learning_rate:
+        - 0.0001
+        - 1.
+    H2EI_learning_rate:
+        - 0.0001
+        - 1.
+    H1IE_learning_rate:
+        - 0.0001
+        - 1.
+    H2IE_learning_rate:
+        - 0.0001
+        - 1.
+    OutputEE_learning_rate:
+        - 0.0001
+        - 1.
+    OutputEI_learning_rate:
+        - 0.0001
+        - 1.
+    OutputIE_learning_rate:
+        - 0.0001
+        - 1.
+    Conv1E1E_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv1E2E_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2E1E_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2E2E_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv1E1I_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv1E2I_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2E1I_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2E2I_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv1I1E_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv1I2E_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2I1E_init_weight_scale:
+        - 0.01
+        - 10.
+    Conv2I2E_init_weight_scale:
+        - 0.01
+        - 10.
+    H1EE_init_weight_scale:
+        - 0.01
+        - 10.
+    H1EI_init_weight_scale:
+        - 0.01
+        - 10.
+    H1IE_init_weight_scale:
+        - 0.01
+        - 10.
+    H2EE_init_weight_scale:
+        - 0.01
+        - 10.
+    H2EI_init_weight_scale:
+        - 0.01
+        - 10.
+    H2IE_init_weight_scale:
+        - 0.01
+        - 10.
+    OutputEE_init_weight_scale:
+        - 0.01
+        - 10.
+    OutputEI_init_weight_scale:
+        - 0.01
+        - 10.
+    OutputIE_init_weight_scale:
+        - 0.01
+        - 10.
+    max_pool_correction:
+        - 1.
+        - 10.
+default_params:
+kwargs:
+    network_id: 1
+    task_id: 2
+    seed_start: 1
+    num_instances: 5
+    data_seed_start: 1
+    supervised: True
+    status_bar: False
+    train_steps: 20000
+    epochs: 1
+    network_config_file_path: optimize/network_config/cifar10/20261120_EIANN_convnet_C_cifar10_FF_bpDale.yaml
+    val_interval:
+        - -200
+        - -1
+        - 100
+    num_training_steps_accuracy_window: 200
+    constrain_equilibration_dynamics: False
+    flatten_data: False
+    val_batch_size: 1000
+update_context:
+    - source: optimize.nested_optimize_EIANN_cifar10
+      function: update_EIANN_config_convnet_D_FF_bpDale_relu_SGD_F_zero_bias
+stages:
+    - source: optimize.nested_optimize_EIANN_cifar10
+      get_args_static: get_random_seeds
+      compute_features: compute_features
+      filter_features: filter_features
+      get_objectives: get_objectives
+optimization_title: EIANN_2_hidden_convnet_D_cifar10_FF_bpDale
+x0:
+    Conv1E1E_learning_rate: 0.5
+    Conv1E2E_learning_rate: 0.5
+    Conv2E1E_learning_rate: 0.5
+    Conv2E2E_learning_rate: 0.5
+    Conv1E1I_learning_rate: 0.5
+    Conv1E2I_learning_rate: 0.5
+    Conv2E1I_learning_rate: 0.5
+    Conv2E2I_learning_rate: 0.5
+    Conv1I1E_learning_rate: 0.5
+    Conv1I2E_learning_rate: 0.5
+    Conv2I1E_learning_rate: 0.5
+    Conv2I2E_learning_rate: 0.5
+    H1EE_learning_rate: 0.5
+    H2EE_learning_rate: 0.5
+    H1EI_learning_rate: 0.5
+    H2EI_learning_rate: 0.5
+    H1IE_learning_rate: 0.5
+    H2IE_learning_rate: 0.5
+    OutputEE_learning_rate: 0.5
+    OutputEI_learning_rate: 0.5
+    OutputIE_learning_rate: 0.5
+    Conv1E1E_init_weight_scale: 1.
+    Conv1E2E_init_weight_scale: 1.
+    Conv2E1E_init_weight_scale: 1.
+    Conv2E2E_init_weight_scale: 1.
+    Conv1E1I_init_weight_scale: 1.
+    Conv1E2I_init_weight_scale: 1.
+    Conv2E1I_init_weight_scale: 1.
+    Conv2E2I_init_weight_scale: 1.
+    Conv1I1E_init_weight_scale: 1.
+    Conv1I2E_init_weight_scale: 1.
+    Conv2I1E_init_weight_scale: 1.
+    Conv2I2E_init_weight_scale: 1.
+    H1EE_init_weight_scale: 1.
+    H1EI_init_weight_scale: 1.
+    H1IE_init_weight_scale: 1.
+    H2EE_init_weight_scale: 1.
+    H2EI_init_weight_scale: 1.
+    H2IE_init_weight_scale: 1.
+    OutputEE_init_weight_scale: 1.2
+    OutputEI_init_weight_scale: 1.2
+    OutputIE_init_weight_scale: 1.2
+    max_pool_correction: 2.6
