@@ -82,6 +82,7 @@ FF_bpDale_convnet_C:
     max_pool_correction: 5.894533179805491
 
 FF_bpDale_convnet_D_test:
+    # adding softplus activation
     Conv1E1E_learning_rate: 0.1271064673165118
     Conv1E2E_learning_rate: 0.1271064673165118
     Conv2E1E_learning_rate: 0.1271064673165118

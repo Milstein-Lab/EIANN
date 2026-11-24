@@ -139,7 +139,7 @@ kwargs:
     status_bar: False
     train_steps: 20000
     epochs: 1
-    network_config_file_path: optimize/network_config/cifar10/20261120_EIANN_convnet_C_cifar10_FF_bpDale.yaml
+    network_config_file_path: optimize/network_config/cifar10/20261120_EIANN_convnet_D_cifar10_FF_bpDale.yaml
     val_interval:
         - -200
         - -1
